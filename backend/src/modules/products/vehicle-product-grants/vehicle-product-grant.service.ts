@@ -35,60 +35,66 @@ export class VehicleProductGrantService {
     await this.loadGrantEligibleVehicle(input.organizationId, input.vehicleId);
 
     const now = new Date();
-    const outcome = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.vehicleProductGrant.findUnique({
-        where: {
-          vehicleId_productSlug: {
-            vehicleId: input.vehicleId,
-            productSlug: input.productSlug,
-          },
-        },
-      });
+    const uniqueKey = {
+      vehicleId_productSlug: {
+        vehicleId: input.vehicleId,
+        productSlug: input.productSlug,
+      },
+    } as const;
 
-      if (existing?.status === VehicleProductGrantStatus.ACTIVE) {
-        if (existing.organizationId !== input.organizationId) {
-          throw new BadRequestException(
-            `Grant organization mismatch for vehicle ${input.vehicleId}`,
-          );
-        }
-        return { record: existing, auditKind: null as null | 'grant' | 're-grant' };
-      }
+    type GrantOutcome = {
+      record: VehicleProductGrantRecord;
+      auditKind: null | 'grant' | 're-grant';
+    };
 
-      if (existing?.status === VehicleProductGrantStatus.REVOKED) {
-        if (existing.organizationId !== input.organizationId) {
-          throw new NotFoundException('Vehicle product grant not found');
+    let outcome: GrantOutcome;
+    try {
+      outcome = await this.prisma.$transaction(async (tx) => {
+        const existing = await tx.vehicleProductGrant.findUnique({ where: uniqueKey });
+
+        if (existing?.status === VehicleProductGrantStatus.ACTIVE) {
+          if (existing.organizationId !== input.organizationId) {
+            throw new BadRequestException(
+              `Grant organization mismatch for vehicle ${input.vehicleId}`,
+            );
+          }
+          return { record: existing, auditKind: null };
         }
-        const activated = await tx.vehicleProductGrant.updateMany({
-          where: {
-            id: existing.id,
-            status: VehicleProductGrantStatus.REVOKED,
-          },
-          data: {
-            organizationId: input.organizationId,
-            status: VehicleProductGrantStatus.ACTIVE,
-            grantVersion: { increment: 1 },
-            grantedAt: now,
-            grantedByUserId: input.grantedByUserId,
-            revokedAt: null,
-            revokedByUserId: null,
-          },
-        });
-        if (activated.count !== 1) {
-          const raced = await tx.vehicleProductGrant.findUnique({
+
+        if (existing?.status === VehicleProductGrantStatus.REVOKED) {
+          if (existing.organizationId !== input.organizationId) {
+            throw new NotFoundException('Vehicle product grant not found');
+          }
+          const activated = await tx.vehicleProductGrant.updateMany({
+            where: {
+              id: existing.id,
+              status: VehicleProductGrantStatus.REVOKED,
+            },
+            data: {
+              organizationId: input.organizationId,
+              status: VehicleProductGrantStatus.ACTIVE,
+              grantVersion: { increment: 1 },
+              grantedAt: now,
+              grantedByUserId: input.grantedByUserId,
+              revokedAt: null,
+              revokedByUserId: null,
+            },
+          });
+          if (activated.count !== 1) {
+            const raced = await tx.vehicleProductGrant.findUnique({
+              where: { id: existing.id },
+            });
+            if (raced?.status === VehicleProductGrantStatus.ACTIVE) {
+              return { record: raced, auditKind: null };
+            }
+            throw new BadRequestException('Grant state changed concurrently; retry');
+          }
+          const activatedRow = await tx.vehicleProductGrant.findUniqueOrThrow({
             where: { id: existing.id },
           });
-          if (raced?.status === VehicleProductGrantStatus.ACTIVE) {
-            return { record: raced, auditKind: null };
-          }
-          throw new BadRequestException('Grant state changed concurrently; retry');
+          return { record: activatedRow, auditKind: 're-grant' as const };
         }
-        const activatedRow = await tx.vehicleProductGrant.findUniqueOrThrow({
-          where: { id: existing.id },
-        });
-        return { record: activatedRow, auditKind: 're-grant' as const };
-      }
 
-      try {
         const created = await tx.vehicleProductGrant.create({
           data: {
             organizationId: input.organizationId,
@@ -101,25 +107,22 @@ export class VehicleProductGrantService {
           },
         });
         return { record: created, auditKind: 'grant' as const };
-      } catch (err: unknown) {
-        const code = (err as { code?: string })?.code;
-        if (code !== 'P2002') {
-          throw err;
-        }
-        const raced = await tx.vehicleProductGrant.findUnique({
-          where: {
-            vehicleId_productSlug: {
-              vehicleId: input.vehicleId,
-              productSlug: input.productSlug,
-            },
-          },
-        });
-        if (raced?.status === VehicleProductGrantStatus.ACTIVE && raced.organizationId === input.organizationId) {
-          return { record: raced, auditKind: null };
-        }
+      });
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code !== 'P2002') {
+        throw err;
+      }
+      const raced = await this.prisma.vehicleProductGrant.findUnique({ where: uniqueKey });
+      if (
+        raced?.status === VehicleProductGrantStatus.ACTIVE &&
+        raced.organizationId === input.organizationId
+      ) {
+        outcome = { record: raced, auditKind: null };
+      } else {
         throw new BadRequestException('Grant state changed concurrently; retry');
       }
-    });
+    }
 
   if (input.audit && outcome.auditKind) {
       await this.masterAdminAudit.record({

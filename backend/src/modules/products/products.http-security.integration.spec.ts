@@ -76,7 +76,7 @@ describe('ProductsController — HTTP security (vehicle access admin)', () => {
       expect.objectContaining({
         orgId: ORG,
         productSlug: ProductSlug.RENTAL,
-        vehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+        vehicleAccessMode: undefined,
       }),
     );
 

@@ -5,6 +5,7 @@
 export const P2_PR3_DISPOSABLE_DATABASE_NAMES = [
   'synqdrive_p2_pr3_vehicle_access',
   'synqdrive_product_catalog_p2_pr1',
+  'synqdrive_p3_pr9_concurrency',
 ] as const;
 
 const FORBIDDEN_URL_PATTERN =

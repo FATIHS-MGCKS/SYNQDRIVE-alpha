@@ -19,8 +19,6 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { parseVehicleAccessModeParam } from './parse-vehicle-access-mode';
 import { parseProductSlugParam } from './vehicle-product-grants/parse-product-slug';
-import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
-
 type MasterAdminRequest = {
   user?: { id: string };
   ip?: string;
@@ -69,7 +67,7 @@ export class ProductsController {
     const vehicleAccessMode =
       body.vehicleAccessMode !== undefined && body.vehicleAccessMode !== null
         ? parseVehicleAccessModeParam(body.vehicleAccessMode)
-        : defaultVehicleAccessModeForNewAssignment(productSlug);
+        : undefined;
     return this.productsService.assignProductForMasterAdmin({
       orgId: body.orgId,
       productSlug,

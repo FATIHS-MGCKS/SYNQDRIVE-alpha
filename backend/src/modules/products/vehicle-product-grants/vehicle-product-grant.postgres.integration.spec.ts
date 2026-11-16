@@ -1,8 +1,9 @@
 /**
- * Isolated Postgres concurrency gate for P3-PR9 vehicle product grants.
+ * Isolated Postgres concurrency gate for vehicle product grants.
+ *
  * Run:
  *   VEHICLE_PRODUCT_GRANT_POSTGRES_INTEGRATION=1 \
- *   DATABASE_URL=postgresql://synqdrive_p1b_gate:...@127.0.0.1:5432/synqdrive_p3_pr9_concurrency \
+ *   DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5433/synqdrive_product_catalog_p2_pr1 \
  *   npm test -- --runInBand vehicle-product-grant.postgres
  */
 import {
@@ -16,18 +17,10 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { VehicleProductGrantService } from './vehicle-product-grant.service';
+import { assertP2Pr3DisposablePostgresPreflight } from '../testing/p2-pr3-disposable-postgres-preflight';
 
 const LIVE = process.env.VEHICLE_PRODUCT_GRANT_POSTGRES_INTEGRATION === '1';
-
-function assertEphemeralDatabaseUrl() {
-  const url = process.env.DATABASE_URL ?? '';
-  if (!url || /production|staging|app\.synqdrive|hstgr\.cloud|srv1374778/i.test(url)) {
-    throw new Error('VEHICLE_PRODUCT_GRANT_POSTGRES_INTEGRATION requires isolated DATABASE_URL');
-  }
-  if (!/127\.0\.0\.1|localhost/i.test(url)) {
-    throw new Error('DATABASE_URL must target local ephemeral PostgreSQL');
-  }
-}
+const OPT_IN = 'VEHICLE_PRODUCT_GRANT_POSTGRES_INTEGRATION';
 
 (LIVE ? describe : describe.skip)('VehicleProductGrant — postgres concurrency gate', () => {
   const prisma = new PrismaClient();
@@ -39,7 +32,7 @@ function assertEphemeralDatabaseUrl() {
   const grantIds: string[] = [];
 
   beforeAll(() => {
-    assertEphemeralDatabaseUrl();
+    assertP2Pr3DisposablePostgresPreflight(OPT_IN);
     service = new VehicleProductGrantService(prisma as unknown as PrismaService, audit);
   });
 

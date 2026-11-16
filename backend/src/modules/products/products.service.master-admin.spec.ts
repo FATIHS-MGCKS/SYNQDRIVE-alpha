@@ -81,6 +81,96 @@ describe('ProductsService — vehicle access mode', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('reassignment with omitted vehicleAccessMode preserves stored mode', async () => {
+    prisma.organizationProduct.findUnique.mockResolvedValue({
+      id: 'op-1',
+      vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+      plan: OrgProductPlan.STARTER,
+      status: OrgProductStatus.SUSPENDED,
+    });
+    prisma.organizationProduct.update.mockResolvedValue({
+      id: 'op-1',
+      vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+      status: OrgProductStatus.ACTIVE,
+    });
+
+    await service.assignProductForMasterAdmin({
+      orgId: ORG,
+      productSlug: ProductSlug.RENTAL,
+      actorUserId: ADMIN,
+    });
+
+    expect(prisma.organizationProduct.update).toHaveBeenCalled();
+    expect(prisma.organizationProduct.create).not.toHaveBeenCalled();
+  });
+
+  it('new VYMOD assignment defaults to SELECTED_VEHICLES when mode omitted', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'prod-vymod',
+      slug: ProductSlug.VYMOD,
+      catalogStatus: ProductCatalogStatus.ACTIVE,
+    });
+    prisma.organizationProduct.findUnique.mockResolvedValue(null);
+    prisma.organizationProduct.create.mockResolvedValue({
+      id: 'op-v',
+      vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+    });
+
+    await service.assignProductForMasterAdmin({
+      orgId: ORG,
+      productSlug: ProductSlug.VYMOD,
+      actorUserId: ADMIN,
+    });
+
+    expect(prisma.organizationProduct.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+        }),
+      }),
+    );
+  });
+
+  it('removeProduct audits only after successful delete', async () => {
+    prisma.product.findUnique.mockResolvedValue({ id: PID, slug: ProductSlug.RENTAL });
+    prisma.organizationProduct.findUnique.mockResolvedValue({
+      id: 'op-del',
+      vehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+      status: OrgProductStatus.ACTIVE,
+    });
+    const deleted = {
+      id: 'op-del',
+      vehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+    };
+    prisma.organizationProduct.delete.mockResolvedValue(deleted);
+
+    const result = await service.removeProduct(ORG, ProductSlug.RENTAL, {
+      actorUserId: ADMIN,
+      audit: { correlationId: 'c-del' },
+    });
+
+    expect(result).toBe(deleted);
+    expect(prisma.organizationProduct.delete).toHaveBeenCalled();
+    expect(masterAdminAudit.record).toHaveBeenCalledTimes(1);
+    const deleteOrder = prisma.organizationProduct.delete.mock.invocationCallOrder[0];
+    const auditOrder = masterAdminAudit.record.mock.invocationCallOrder[0];
+    expect(deleteOrder).toBeLessThan(auditOrder);
+  });
+
+  it('removeProduct does not audit when delete fails', async () => {
+    prisma.product.findUnique.mockResolvedValue({ id: PID, slug: ProductSlug.RENTAL });
+    prisma.organizationProduct.findUnique.mockResolvedValue({ id: 'op-del' });
+    prisma.organizationProduct.delete.mockRejectedValue(new Error('delete failed'));
+
+    await expect(
+      service.removeProduct(ORG, ProductSlug.RENTAL, {
+        actorUserId: ADMIN,
+        audit: { correlationId: 'c-fail' },
+      }),
+    ).rejects.toThrow('delete failed');
+    expect(masterAdminAudit.record).not.toHaveBeenCalled();
+  });
+
   it('audits reassignment when plan or status mutates', async () => {
     prisma.organizationProduct.findUnique.mockResolvedValue({
       id: 'op-1',

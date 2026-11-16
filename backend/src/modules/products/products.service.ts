@@ -147,7 +147,8 @@ export class ProductsService {
     orgId: string;
     productSlug: ProductSlug;
     plan?: string;
-    vehicleAccessMode: OrganizationProductVehicleAccessMode;
+    /** Omitted on reassignment preserves the stored mode; required implicitly for new rows via defaults. */
+    vehicleAccessMode?: OrganizationProductVehicleAccessMode;
     actorUserId: string;
     audit?: MasterAdminAuditContext;
   }): Promise<OrganizationProduct> {
@@ -167,7 +168,10 @@ export class ProductsService {
     });
 
     if (existing) {
-      if (existing.vehicleAccessMode !== input.vehicleAccessMode) {
+      if (
+        input.vehicleAccessMode !== undefined &&
+        input.vehicleAccessMode !== existing.vehicleAccessMode
+      ) {
         throw new BadRequestException(
           'vehicleAccessMode cannot be changed via assign; use PATCH vehicle-access-mode',
         );
@@ -210,13 +214,16 @@ export class ProductsService {
       return updated;
     }
 
+    const vehicleAccessModeForCreate =
+      input.vehicleAccessMode ?? defaultVehicleAccessModeForNewAssignment(product.slug);
+
     const created = await this.prisma.organizationProduct.create({
       data: {
         organizationId: input.orgId,
         productId: product.id,
         plan: planValue,
         status: OrgProductStatus.ACTIVE,
-        vehicleAccessMode: input.vehicleAccessMode,
+        vehicleAccessMode: vehicleAccessModeForCreate,
         activatedAt: new Date(),
       },
     });
@@ -228,7 +235,7 @@ export class ProductsService {
         actorPlatformRole: 'MASTER_ADMIN',
         targetOrganizationId: input.orgId,
         entityId: created.id,
-        description: `Organization product assigned (${input.productSlug}) with vehicle access mode ${input.vehicleAccessMode}`,
+        description: `Organization product assigned (${input.productSlug}) with vehicle access mode ${vehicleAccessModeForCreate}`,
         correlationId: input.audit.correlationId,
         route: input.audit.route,
         ipAddress: input.audit.ipAddress,
@@ -236,7 +243,7 @@ export class ProductsService {
         changeSummary: 'assign',
         after: {
           productSlug: input.productSlug,
-          vehicleAccessMode: input.vehicleAccessMode,
+          vehicleAccessMode: vehicleAccessModeForCreate,
           status: created.status,
         },
         metadata: { domain: 'organization_product', action: 'assign' },
@@ -368,6 +375,10 @@ export class ProductsService {
       throw new NotFoundException('Organization product assignment not found');
     }
 
+    const deleted = await this.prisma.organizationProduct.delete({
+      where: { id: orgProduct.id },
+    });
+
     if (masterAdmin) {
       await this.masterAdminAudit.record({
         auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
@@ -389,8 +400,6 @@ export class ProductsService {
       });
     }
 
-    return this.prisma.organizationProduct.delete({
-      where: { id: orgProduct.id },
-    });
+    return deleted;
   }
 }
