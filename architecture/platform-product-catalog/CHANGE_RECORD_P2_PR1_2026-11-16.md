@@ -17,7 +17,7 @@ Owner 2026-11-16: Alpha is the central platform; future apps need a governed pro
 
 - Add `VYMOD` to `ProductSlug`
 - Add `ProductCatalogStatus` + `Product.catalogStatus` (default ACTIVE)
-- Idempotent VYMOD row migration and `ensureVymodCatalogProduct()`
+- Idempotent VYMOD row migration (SQL only — no runtime catalog overwrite helper)
 - Additive `catalogStatus` on `ProductsService` list/stats responses
 
 ## NON-EFFECTS
@@ -30,5 +30,12 @@ Owner 2026-11-16: Alpha is the central platform; future apps need a governed pro
 ## VALIDATION
 
 - `npx prisma validate`
-- Jest: `product-catalog-canonical.spec.ts`, `products.service.spec.ts`
+- Jest: `products.service.spec.ts`
 - Optional: `PRODUCT_CATALOG_FOUNDATION_POSTGRES_INTEGRATION=1` postgres gate
+
+## Review remediation (2026-11-16)
+
+- Removed `catalogStatus ?? ACTIVE` fallback in `ProductsService` (schema-required field).
+- Removed unused `ensureVymodCatalogProduct()` helper (canonical SQL migration is sole writer).
+- Documented `DISABLED` as catalog metadata only; no `ProductLicenseGuard` coupling in P2-PR1.
+- Postgres gate: disposable DB at `127.0.0.1:5433`, `prisma migrate deploy` for 3 migrations, replay no-op.

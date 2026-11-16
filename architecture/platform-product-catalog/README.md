@@ -19,9 +19,19 @@
 |------|----------|
 | `ProductSlug.VYMOD` | Enum extension only; RENTAL/FLEET/TAXI unchanged |
 | `ProductCatalogStatus` | `ACTIVE` \| `DISABLED` on `Product`; existing rows default `ACTIVE` |
-| VYMOD catalog row | Idempotent SQL migration + `ensureVymodCatalogProduct()` — **no** org assignment |
+| VYMOD catalog row | Idempotent SQL migration (`20261116153100_*`) — **no** org assignment |
 | `ProductLicenseGuard` | **Unchanged** in P2-PR1 |
 | M2M / vehicle grants | Out of scope (later slices) |
+
+## `ProductCatalogStatus.DISABLED` (P2-PR1)
+
+`DISABLED` is **catalog metadata only** for Master Admin / platform inventory. It does **not**:
+
+- Revoke or block existing `OrganizationProduct` entitlements
+- Change `ProductLicenseGuard` (still `OrganizationProduct.status === ACTIVE` only)
+- Prevent `assignProduct` for a disabled catalog product until a future slice explicitly wires enforcement
+
+Treat `catalogStatus` as lifecycle visibility in the product catalog, separate from org licensing state.
 
 ## Backward compatibility
 
@@ -32,4 +42,4 @@
 ## Evidence
 
 - Migrations: `backend/prisma/migrations/20261116153000_p2_pr1_*` through `20261116160000_p2_pr1_*`
-- Registration helper: `backend/src/modules/products/product-catalog-canonical.ts`
+- VYMOD row: migration `20261116153100_p2_pr1_product_catalog_vymod_row` (canonical SQL; no runtime overwrite helper in P2-PR1)
