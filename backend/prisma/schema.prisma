@@ -1656,6 +1656,7 @@ model Organization {
 
   memberships                                               OrganizationMembership[]
   organizationProducts                                      OrganizationProduct[]
+  vehicleProductGrants                                      VehicleProductGrant[]
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
@@ -2944,16 +2945,22 @@ model Product {
   @@map("products")
 }
 
+enum OrganizationProductVehicleAccessMode {
+  ORGANIZATION_WIDE
+  SELECTED_VEHICLES
+}
+
 model OrganizationProduct {
-  id             String           @id @default(uuid())
-  organizationId String           @map("organization_id")
-  productId      String           @map("product_id")
-  status         OrgProductStatus @default(ACTIVE)
-  plan           OrgProductPlan   @default(STARTER)
-  activatedAt    DateTime?        @map("activated_at")
-  expiresAt      DateTime?        @map("expires_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id                String                               @id @default(uuid())
+  organizationId    String                               @map("organization_id")
+  productId         String                               @map("product_id")
+  status            OrgProductStatus                     @default(ACTIVE)
+  plan              OrgProductPlan                       @default(STARTER)
+  vehicleAccessMode OrganizationProductVehicleAccessMode @map("vehicle_access_mode")
+  activatedAt       DateTime?                            @map("activated_at")
+  expiresAt         DateTime?                            @map("expires_at")
+  createdAt         DateTime                             @default(now()) @map("created_at")
+  updatedAt         DateTime                             @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])
@@ -2961,6 +2968,34 @@ model OrganizationProduct {
   @@unique([organizationId, productId])
   @@index([organizationId])
   @@map("organization_products")
+}
+
+enum VehicleProductGrantStatus {
+  ACTIVE
+  REVOKED
+}
+
+model VehicleProductGrant {
+  id              String                    @id @default(uuid())
+  organizationId  String                    @map("organization_id")
+  vehicleId       String                    @map("vehicle_id")
+  productSlug     ProductSlug               @map("product_slug")
+  status          VehicleProductGrantStatus @default(ACTIVE)
+  grantVersion    Int                       @default(1) @map("grant_version")
+  grantedAt       DateTime                  @default(now()) @map("granted_at")
+  revokedAt       DateTime?                 @map("revoked_at")
+  grantedByUserId String                    @map("granted_by_user_id")
+  revokedByUserId String?                   @map("revoked_by_user_id")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, productSlug])
+  @@index([organizationId, productSlug, status])
+  @@index([vehicleId])
+  @@map("vehicle_product_grants")
 }
 
 // ------------------------------------------------
@@ -3060,6 +3095,7 @@ model Vehicle {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   organization                           Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicleProductGrants                   VehicleProductGrant[]
   homeStation                            Station?                                @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
   currentStation                         Station?                                @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
   expectedStation                        Station?                                @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)

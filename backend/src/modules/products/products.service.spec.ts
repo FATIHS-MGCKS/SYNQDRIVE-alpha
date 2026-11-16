@@ -1,4 +1,9 @@
-import { ProductCatalogStatus, ProductSlug } from '@prisma/client';
+import {
+  OrganizationProductVehicleAccessMode,
+  OrgProductStatus,
+  ProductCatalogStatus,
+  ProductSlug,
+} from '@prisma/client';
 import { ProductsService } from './products.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -76,6 +81,49 @@ describe('ProductsService — catalog foundation', () => {
       totalOrgs: 2,
       active: 1,
       trial: 1,
+    });
+  });
+
+  describe('assignProduct vehicleAccessMode', () => {
+    it('creates RENTAL with ORGANIZATION_WIDE without changing mode on update', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'p-rental',
+        slug: ProductSlug.RENTAL,
+      });
+      prisma.organizationProduct.upsert.mockImplementation(async (args) => args);
+
+      await service.assignProduct('org-1', 'RENTAL');
+      expect(prisma.organizationProduct.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            vehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+          }),
+          update: expect.not.objectContaining({
+            vehicleAccessMode: expect.anything(),
+          }),
+        }),
+      );
+    });
+
+    it('creates VYMOD with SELECTED_VEHICLES', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'p-vymod',
+        slug: ProductSlug.VYMOD,
+      });
+      prisma.organizationProduct.upsert.mockResolvedValue({
+        id: 'op',
+        status: OrgProductStatus.ACTIVE,
+        vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+      });
+
+      await service.assignProduct('org-1', 'VYMOD');
+      expect(prisma.organizationProduct.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+          }),
+        }),
+      );
     });
   });
 });

@@ -4,6 +4,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
 import { ProductsModule } from './products.module';
 import { EntitlementsQueryService } from './entitlements/entitlements-query.service';
 import { CoreEntitlementsReadController } from './entitlements/core-entitlements-read.controller';
+import { ProductVehicleAccessService } from './product-vehicle-access/product-vehicle-access.service';
 
 describe('ProductsModule — entitlements DI bootstrap', () => {
   it('resolves entitlements read controller and query service', async () => {
@@ -19,5 +20,6 @@ describe('ProductsModule — entitlements DI bootstrap', () => {
 
     expect(moduleRef.get(EntitlementsQueryService)).toBeInstanceOf(EntitlementsQueryService);
     expect(moduleRef.get(CoreEntitlementsReadController)).toBeInstanceOf(CoreEntitlementsReadController);
+    expect(moduleRef.get(ProductVehicleAccessService)).toBeInstanceOf(ProductVehicleAccessService);
   });
 });

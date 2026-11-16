@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OrganizationProduct, OrgProductPlan, OrgProductStatus, ProductSlug } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Active',
@@ -92,6 +93,8 @@ export class ProductsService {
 
     const planValue = (plan as OrgProductPlan) || OrgProductPlan.STARTER;
 
+    const vehicleAccessMode = defaultVehicleAccessModeForNewAssignment(product.slug);
+
     return this.prisma.organizationProduct.upsert({
       where: {
         organizationId_productId: { organizationId: orgId, productId: product.id },
@@ -101,6 +104,7 @@ export class ProductsService {
         productId: product.id,
         plan: planValue,
         status: OrgProductStatus.ACTIVE,
+        vehicleAccessMode,
         activatedAt: new Date(),
       },
       update: {
