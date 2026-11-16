@@ -37,6 +37,7 @@ export class ProductsService {
       slug: p.slug,
       name: p.name,
       description: p.description ?? '',
+      catalogStatus: p.catalogStatus,
       organizationsCount: p.organizationProducts.length,
     }));
   }
@@ -70,6 +71,7 @@ export class ProductsService {
       id: p.id,
       slug: p.slug,
       name: p.name,
+      catalogStatus: p.catalogStatus,
       totalOrgs: p.organizationProducts.length,
       active: p.organizationProducts.filter((op) => op.status === 'ACTIVE').length,
       trial: p.organizationProducts.filter((op) => op.status === 'TRIAL').length,
