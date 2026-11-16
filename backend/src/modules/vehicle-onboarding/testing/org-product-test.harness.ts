@@ -1,5 +1,6 @@
 import { OrgProductPlan, OrgProductStatus, ProductSlug, type PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { defaultVehicleAccessModeForNewAssignment } from '@modules/products/organization-product-vehicle-access-defaults';
 
 export async function ensureOrganizationProductEntitlement(
   prisma: PrismaClient,
@@ -27,6 +28,7 @@ export async function ensureOrganizationProductEntitlement(
       productId: product.id,
       status,
       plan: OrgProductPlan.STARTER,
+      vehicleAccessMode: defaultVehicleAccessModeForNewAssignment(slug),
       activatedAt: new Date(),
     },
     update: { status },
