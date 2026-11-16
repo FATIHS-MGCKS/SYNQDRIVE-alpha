@@ -300,6 +300,7 @@ enum ProductSlug {
   RENTAL
   FLEET
   TAXI
+  VYMOD
 }
 
 enum OrgProductStatus {
@@ -2925,12 +2926,18 @@ model VehicleStationTransfer {
 // PRODUCTS & LICENSING
 // ------------------------------------------------
 
+enum ProductCatalogStatus {
+  ACTIVE
+  DISABLED
+}
+
 model Product {
-  id          String      @id @default(uuid())
-  slug        ProductSlug @unique
-  name        String
-  description String?
-  createdAt   DateTime    @default(now()) @map("created_at")
+  id            String               @id @default(uuid())
+  slug          ProductSlug          @unique
+  name          String
+  description   String?
+  catalogStatus ProductCatalogStatus @default(ACTIVE) @map("catalog_status")
+  createdAt     DateTime             @default(now()) @map("created_at")
 
   organizationProducts OrganizationProduct[]
 

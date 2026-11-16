@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-11-08 (Service Events & Compliance → `AUDIT_IN_PROGRESS`; Service Info V2 provider-agnostic maintenance forecast bootstrap authority)
+**Last updated:** 2026-11-16 (Platform product catalog P2-PR1 → `AUDIT_IN_PROGRESS`; VYMOD slug + catalog status foundation on Alpha central platform)
 
 ---
 
@@ -59,7 +59,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Payments (Rental Collections) | Stripe Connect payment collection for booking and organization payment requests. | `NOT_STARTED` | N/A — inventory only | — |
 | Platform Admin | Master-admin operations dashboard, security governance, and cross-tenant platform controls. | `NOT_STARTED` | N/A — inventory only | — |
 | Pricing & Deposits | Rental tariff pricing rules, publish flow, and deposit resolution for checkout. | `NOT_STARTED` | N/A — inventory only | — |
-| Products (Rental Catalog) | Rental product catalog definitions and org product assignments. | `NOT_STARTED` | N/A — inventory only | — |
+| Products (Platform catalog) | Platform product catalog (`ProductSlug`, catalog status) and org product assignments; Alpha central platform (Master Admin + Rental). | `AUDIT_IN_PROGRESS` | P2-PR1 foundation 2026-11-16 · Core extraction **PAUSED** | [`architecture/platform-product-catalog/`](platform-product-catalog/) |
 | Prospects | Pre-customer prospect and lead records for master-admin sales pipeline. | `NOT_STARTED` | N/A — inventory only | — |
 | Rental Driving Analysis | Rental-period driving analysis aggregation for bookings and drivers consuming trip intelligence. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · Consumer Audit V1 traceability · DS4 consumer PR-6 | [`architecture/rental-driving-analysis/`](rental-driving-analysis/) |
 | Rental Health | Fleet-level health aggregation consuming source vehicle health modules without recalculating. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 cross-module governance PR-0 | [`architecture/rental-health/`](rental-health/) |

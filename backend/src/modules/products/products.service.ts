@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OrganizationProduct, OrgProductPlan, OrgProductStatus, ProductSlug } from '@prisma/client';
+import {
+  OrganizationProduct,
+  OrgProductPlan,
+  OrgProductStatus,
+  ProductCatalogStatus,
+  ProductSlug,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -37,6 +43,7 @@ export class ProductsService {
       slug: p.slug,
       name: p.name,
       description: p.description ?? '',
+      catalogStatus: p.catalogStatus ?? ProductCatalogStatus.ACTIVE,
       organizationsCount: p.organizationProducts.length,
     }));
   }
@@ -70,6 +77,7 @@ export class ProductsService {
       id: p.id,
       slug: p.slug,
       name: p.name,
+      catalogStatus: p.catalogStatus ?? ProductCatalogStatus.ACTIVE,
       totalOrgs: p.organizationProducts.length,
       active: p.organizationProducts.filter((op) => op.status === 'ACTIVE').length,
       trial: p.organizationProducts.filter((op) => op.status === 'TRIAL').length,
