@@ -24,6 +24,7 @@
 | M2M / vehicle grants | Out of scope (later slices) |
 | Entitlements read API v1 | P2-PR2 — JWT + `OrgScopingGuard` only; `m2mProductionReady=false` until P3 |
 | Vehicle product access | P2-PR3 — schema + internal `ProductVehicleAccessService`; grants empty until P2-PR4 |
+| Master Admin grants / mode | P2-PR4A — backend APIs + MFA + audit; UI in P2-PR4B |
 
 ## `ProductCatalogStatus.DISABLED` (P2-PR1)
 

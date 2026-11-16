@@ -20,11 +20,13 @@ describe('ProductsService — catalog foundation', () => {
     },
   };
 
+  const masterAdminAudit = { record: jest.fn().mockResolvedValue(undefined) };
+
   let service: ProductsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ProductsService(prisma as unknown as PrismaService);
+    service = new ProductsService(prisma as unknown as PrismaService, masterAdminAudit as never);
   });
 
   it('findAll exposes catalogStatus with ACTIVE default semantics', async () => {
