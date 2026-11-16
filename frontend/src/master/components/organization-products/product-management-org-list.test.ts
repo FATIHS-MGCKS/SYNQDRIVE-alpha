@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchProductManagementOrgPage } from './product-management-org-list';
+import { fetchProductManagementOrgPage, shouldUpdateOrgListState } from './product-management-org-list';
 
 const listOperational = vi.fn();
 
@@ -10,6 +10,13 @@ vi.mock('../../../lib/api', () => ({
     },
   },
 }));
+
+describe('shouldUpdateOrgListState', () => {
+  it('blocks stale failures from replacing newer UI state', () => {
+    expect(shouldUpdateOrgListState(1, 2)).toBe(false);
+    expect(shouldUpdateOrgListState(2, 2)).toBe(true);
+  });
+});
 
 describe('fetchProductManagementOrgPage', () => {
   it('drops stale responses when a newer request was started', async () => {

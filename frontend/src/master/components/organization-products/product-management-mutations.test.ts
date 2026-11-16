@@ -17,17 +17,18 @@ describe('applyMasterProductApiResult', () => {
 
   it('surfaces refresh failure after HTTP success', async () => {
     const setError = vi.fn();
+    const { syncRefreshFailedError } = await import('./product-management-sync-errors');
     await expect(
       applyMasterProductApiResult(
         204,
         undefined,
         async () => {
-          throw new Error('refresh failed');
+          throw syncRefreshFailedError('refresh failed');
         },
         setError,
       ),
     ).rejects.toThrow('refresh failed');
-    expect(setError).toHaveBeenCalledWith('refresh failed');
+    expect(setError).toHaveBeenCalledWith(expect.stringContaining('wurde gespeichert'));
   });
 
   it('maps 409 without running refresh', async () => {

@@ -1,4 +1,5 @@
 import { classifyMasterProductApiError } from '../../organizations/product-management.policy';
+import { formatPostMutationSyncFailure } from './product-management-sync-errors';
 
 /** Applies admin product API result; awaits refresh on success. */
 export async function applyMasterProductApiResult(
@@ -12,9 +13,7 @@ export async function applyMasterProductApiResult(
       await onSuccess();
       return true;
     } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : 'Aktualisierung nach erfolgreicher Aktion fehlgeschlagen';
-      setActionError(msg);
+      setActionError(formatPostMutationSyncFailure(e));
       throw e;
     }
   }

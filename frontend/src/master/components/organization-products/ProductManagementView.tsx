@@ -9,7 +9,7 @@ import { MasterPageHeader } from '../../shell/MasterPageHeader';
 import type { AdminCatalogProductRow } from '../../organizations/product-management.types';
 import { ProductRoadmapOverview } from './ProductRoadmapOverview';
 import type { OrganizationOperationalRowDto } from '../../organizations/types';
-import { fetchProductManagementOrgPage } from './product-management-org-list';
+import { fetchProductManagementOrgPage, shouldUpdateOrgListState } from './product-management-org-list';
 
 const ORG_PAGE_SIZE = 25;
 
@@ -69,10 +69,11 @@ export function ProductManagementView({ onOpenOrgProducts }: ProductManagementVi
       setOrgTotal(total);
       setOrgTotalPages(totalPages);
     } catch (e) {
+      if (!shouldUpdateOrgListState(requestId, orgRequestId.current)) return;
       setOrgError(e instanceof Error ? e.message : 'Organisationen konnten nicht geladen werden');
       setOrgRows([]);
     } finally {
-      if (requestId === orgRequestId.current) {
+      if (shouldUpdateOrgListState(requestId, orgRequestId.current)) {
         setOrgLoading(false);
       }
     }

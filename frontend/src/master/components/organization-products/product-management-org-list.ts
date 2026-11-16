@@ -7,6 +7,10 @@ export type ProductManagementOrgListQuery = {
   search?: string;
 };
 
+export function shouldUpdateOrgListState(requestId: number, activeRequestId: number): boolean {
+  return requestId === activeRequestId;
+}
+
 export async function fetchProductManagementOrgPage(
   query: ProductManagementOrgListQuery,
   requestId: number,

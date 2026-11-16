@@ -13,18 +13,18 @@ export type OrgVehicleLoadResult = {
 };
 
 export async function loadOrgVehiclesForProductGrants(orgId: string): Promise<OrgVehicleLoadResult> {
-  let page = 1;
   const all: OrgVehicleListRow[] = [];
   let reportedTotal: number | null = null;
-  let hitPageCap = false;
 
-  while (page <= VEHICLE_LIST_MAX_PAGES) {
+  for (let page = 1; page <= VEHICLE_LIST_MAX_PAGES; page += 1) {
     const res = await api.vehicles.listByOrg(orgId, { page, limit: VEHICLE_LIST_PAGE_SIZE });
     const chunk = (res.data ?? []) as OrgVehicleListRow[];
-    all.push(...chunk);
-    reportedTotal = res.meta?.total ?? reportedTotal;
-    const total = reportedTotal ?? all.length;
-    if (chunk.length < VEHICLE_LIST_PAGE_SIZE || all.length >= total) {
+
+    if (res.meta?.total != null) {
+      reportedTotal = res.meta.total;
+    }
+
+    if (chunk.length === 0) {
       return {
         vehicles: all,
         complete: true,
@@ -33,18 +33,37 @@ export async function loadOrgVehiclesForProductGrants(orgId: string): Promise<Or
         stoppedReason: 'end_of_data',
       };
     }
-    page += 1;
+
+    all.push(...chunk);
+
+    if (chunk.length < VEHICLE_LIST_PAGE_SIZE) {
+      return {
+        vehicles: all,
+        complete: true,
+        loadedCount: all.length,
+        reportedTotal,
+        stoppedReason: 'end_of_data',
+      };
+    }
+
+    if (reportedTotal != null && all.length >= reportedTotal) {
+      return {
+        vehicles: all,
+        complete: true,
+        loadedCount: all.length,
+        reportedTotal,
+        stoppedReason: 'end_of_data',
+      };
+    }
   }
 
-  hitPageCap = true;
-  const complete =
-    reportedTotal != null ? all.length >= reportedTotal : false;
+  const complete = reportedTotal != null && all.length >= reportedTotal;
 
   return {
     vehicles: all,
-    complete: !hitPageCap && complete,
+    complete,
     loadedCount: all.length,
     reportedTotal,
-    stoppedReason: hitPageCap && !complete ? 'page_cap' : 'end_of_data',
+    stoppedReason: complete ? 'end_of_data' : 'page_cap',
   };
 }

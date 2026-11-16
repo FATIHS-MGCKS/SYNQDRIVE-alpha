@@ -29,6 +29,10 @@ import type {
 } from '../../organizations/product-management.types';
 import { applyMasterProductApiResult } from './product-management-mutations';
 import { loadOrgVehiclesForProductGrants } from './product-management-org-vehicles';
+import {
+  shouldApplyGrantLoadResult,
+  syncRefreshFailedError,
+} from './product-management-sync-errors';
 
 type MutationKind =
   | 'assign'
@@ -62,12 +66,17 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
   const [vehiclesLoadMeta, setVehiclesLoadMeta] = useState<{ loaded: number; total: number | null } | null>(
     null,
   );
+  const [grantsContextSlug, setGrantsContextSlug] = useState<string | null>(null);
+  const [grantsLoadError, setGrantsLoadError] = useState<string | null>(null);
+
+  const grantLoadRequestId = useRef(0);
+  const expandedSlugRef = useRef<string | null>(null);
 
   const mutationInFlight = useRef<Set<string>>(new Set());
   const [, setMutationTick] = useState(0);
   const isMutationActive = (key: string) => mutationInFlight.current.has(key);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { throwOnFailure?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
@@ -78,7 +87,11 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
       setCatalog(Array.isArray(cat) ? cat : []);
       setAssignments(Array.isArray(orgProducts) ? orgProducts : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Produktdaten konnten nicht geladen werden');
+      const msg = e instanceof Error ? e.message : 'Produktdaten konnten nicht geladen werden';
+      setError(msg);
+      if (opts?.throwOnFailure) {
+        throw syncRefreshFailedError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -127,15 +140,44 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
     }
   };
 
+  const resetGrantVehicleState = useCallback(() => {
+    setGrants([]);
+    setVehicles([]);
+    setVehiclesLoadComplete(true);
+    setVehiclesLoadMeta(null);
+    setGrantsContextSlug(null);
+    setGrantsLoadError(null);
+  }, []);
+
   const loadGrantsAndVehicles = useCallback(
     async (productSlug: string) => {
+      const requestId = ++grantLoadRequestId.current;
       setGrantsLoading(true);
       setVehiclesLoading(true);
+      setGrantsLoadError(null);
+      setGrants([]);
+      setVehicles([]);
+      setVehiclesLoadComplete(true);
+      setVehiclesLoadMeta(null);
+      setGrantsContextSlug(null);
+
       try {
         const [grantRows, vehicleLoad] = await Promise.all([
           api.products.listVehicleGrants(orgId, productSlug),
           loadOrgVehiclesForProductGrants(orgId),
         ]);
+
+        if (
+          !shouldApplyGrantLoadResult(
+            requestId,
+            grantLoadRequestId.current,
+            productSlug,
+            expandedSlugRef.current,
+          )
+        ) {
+          return;
+        }
+
         setGrants(Array.isArray(grantRows) ? grantRows : []);
         setVehicles(vehicleLoad.vehicles);
         setVehiclesLoadComplete(vehicleLoad.complete);
@@ -143,24 +185,55 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
           loaded: vehicleLoad.loadedCount,
           total: vehicleLoad.reportedTotal,
         });
+        setGrantsContextSlug(productSlug);
       } catch (e) {
-        setActionError(e instanceof Error ? e.message : 'Fahrzeugzugriff konnte nicht geladen werden');
+        if (
+          !shouldApplyGrantLoadResult(
+            requestId,
+            grantLoadRequestId.current,
+            productSlug,
+            expandedSlugRef.current,
+          )
+        ) {
+          return;
+        }
+        const msg = e instanceof Error ? e.message : 'Fahrzeugzugriff konnte nicht geladen werden';
+        resetGrantVehicleState();
+        setGrantsLoadError(msg);
+        throw syncRefreshFailedError(msg);
       } finally {
-        setGrantsLoading(false);
-        setVehiclesLoading(false);
+        if (
+          shouldApplyGrantLoadResult(
+            requestId,
+            grantLoadRequestId.current,
+            productSlug,
+            expandedSlugRef.current,
+          )
+        ) {
+          setGrantsLoading(false);
+          setVehiclesLoading(false);
+        }
       }
     },
-    [orgId],
+    [orgId, resetGrantVehicleState],
   );
 
   const toggleExpanded = (slug: string, mode: string) => {
     if (expandedSlug === slug) {
+      expandedSlugRef.current = null;
+      grantLoadRequestId.current += 1;
       setExpandedSlug(null);
+      resetGrantVehicleState();
       return;
     }
+    grantLoadRequestId.current += 1;
+    expandedSlugRef.current = slug;
+    resetGrantVehicleState();
     setExpandedSlug(slug);
     if (mode === 'SELECTED_VEHICLES') {
-      void loadGrantsAndVehicles(slug);
+      void loadGrantsAndVehicles(slug).catch(() => {
+        /* surfaced via grantsLoadError / actionError on mutation path */
+      });
     }
   };
 
@@ -415,7 +488,8 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                         res.status,
                         res.errorMessage,
                         async () => {
-                          await refresh();
+                          await refresh({ throwOnFailure: true });
+                          expandedSlugRef.current = row.productSlug;
                           setExpandedSlug(row.productSlug);
                           await loadGrantsAndVehicles(row.productSlug);
                         },
@@ -431,8 +505,18 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
 
             {isSelected && (
               <div className="space-y-4">
-                {grantsLoading || vehiclesLoading ? (
+                {grantsLoadError ? (
+                  <MasterErrorState
+                    title="Fahrzeugzugriff"
+                    error={grantsLoadError}
+                    onRetry={() => {
+                      void loadGrantsAndVehicles(row.productSlug);
+                    }}
+                  />
+                ) : grantsLoading || vehiclesLoading ? (
                   <MasterLoadingState variant="rows" count={3} />
+                ) : grantsContextSlug !== row.productSlug ? (
+                  <MasterLoadingState variant="rows" count={2} />
                 ) : (
                   <>
                     <div>
@@ -568,7 +652,7 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
               res.errorMessage,
               async () => {
                 setAssignOpen(false);
-                await refresh();
+                await refresh({ throwOnFailure: true });
               },
               setActionError,
             );
@@ -599,7 +683,7 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
               async () => {
                 setRemoveTarget(null);
                 if (expandedSlug === slug) setExpandedSlug(null);
-                await refresh();
+                await refresh({ throwOnFailure: true });
               },
               setActionError,
             );
@@ -628,7 +712,8 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
               res.errorMessage,
               async () => {
                 setBroadenTarget(null);
-                await refresh();
+                await refresh({ throwOnFailure: true });
+                expandedSlugRef.current = slug;
                 setExpandedSlug(slug);
               },
               setActionError,
