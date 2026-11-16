@@ -22,6 +22,7 @@
 | VYMOD catalog row | Idempotent SQL migration (`20261116153100_*`) — **no** org assignment |
 | `ProductLicenseGuard` | **Unchanged** in P2-PR1 |
 | M2M / vehicle grants | Out of scope (later slices) |
+| Entitlements read API v1 | P2-PR2 — JWT + `OrgScopingGuard` only; `m2mProductionReady=false` until P3 |
 
 ## `ProductCatalogStatus.DISABLED` (P2-PR1)
 
