@@ -12,7 +12,7 @@
 
 ## Legacy
 
-- Migration backfill: existing `organization_products` → `ORGANIZATION_WIDE`
+- Migration backfill: existing RENTAL/FLEET/TAXI → `ORGANIZATION_WIDE`; existing VYMOD → `SELECTED_VEHICLES`
 - No automatic vehicle grants; grants table empty at deploy
 
 ## Effective access (ACTIVE license only)

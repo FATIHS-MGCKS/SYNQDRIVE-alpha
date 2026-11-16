@@ -1,7 +1,7 @@
 /**
  * Run:
  *   PRODUCT_VEHICLE_ACCESS_POSTGRES_INTEGRATION=1 \
- *   DATABASE_URL=postgresql://...@127.0.0.1:5433/... \
+ *   DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5433/synqdrive_product_catalog_p2_pr1 \
  *   npm test -- --runInBand product-vehicle-access.postgres
  */
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -15,8 +15,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ProductVehicleAccessService } from './product-vehicle-access.service';
+import { assertP2Pr3DisposablePostgresPreflight } from '../testing/p2-pr3-disposable-postgres-preflight';
 
 const LIVE = process.env.PRODUCT_VEHICLE_ACCESS_POSTGRES_INTEGRATION === '1';
+const OPT_IN = 'PRODUCT_VEHICLE_ACCESS_POSTGRES_INTEGRATION';
 
 (LIVE ? describe : describe.skip)('ProductVehicleAccessService — postgres', () => {
   const prisma = new PrismaClient();
@@ -24,6 +26,7 @@ const LIVE = process.env.PRODUCT_VEHICLE_ACCESS_POSTGRES_INTEGRATION === '1';
   const orgIds: string[] = [];
 
   beforeAll(() => {
+    assertP2Pr3DisposablePostgresPreflight(OPT_IN);
     service = new ProductVehicleAccessService(prisma as unknown as PrismaService);
   });
 
