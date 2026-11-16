@@ -24,7 +24,7 @@ vi.mock('../../../lib/api', () => ({
     organizations: {
       listOperational: vi.fn().mockResolvedValue({
         data: [{ id: 'org-9', companyName: 'Demo GmbH', city: 'Berlin', country: 'DE' }],
-        meta: { total: 1, page: 1, limit: 25, totalPages: 1 },
+        meta: { total: 26, page: 1, limit: 25, totalPages: 2 },
       }),
     },
   },

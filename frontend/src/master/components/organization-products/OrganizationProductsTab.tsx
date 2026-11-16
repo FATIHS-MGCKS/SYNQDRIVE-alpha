@@ -27,6 +27,8 @@ import type {
   OrgVehicleListRow,
   VehicleProductGrantRow,
 } from '../../organizations/product-management.types';
+import { applyMasterProductApiResult } from './product-management-mutations';
+import { loadOrgVehiclesForProductGrants } from './product-management-org-vehicles';
 
 type MutationKind =
   | 'assign'
@@ -37,23 +39,6 @@ type MutationKind =
 
 interface OrganizationProductsTabProps {
   orgId: string;
-}
-
-async function loadAllOrgVehicles(orgId: string): Promise<OrgVehicleListRow[]> {
-  const pageSize = 100;
-  let page = 1;
-  const all: OrgVehicleListRow[] = [];
-  let total = Infinity;
-  while (all.length < total) {
-    const res = await api.vehicles.listByOrg(orgId, { page, limit: pageSize });
-    const chunk = (res.data ?? []) as OrgVehicleListRow[];
-    all.push(...chunk);
-    total = res.meta?.total ?? chunk.length;
-    if (chunk.length < pageSize) break;
-    page += 1;
-    if (page > 50) break;
-  }
-  return all;
 }
 
 export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps) {
@@ -73,8 +58,14 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
   const [grantsLoading, setGrantsLoading] = useState(false);
   const [vehicles, setVehicles] = useState<OrgVehicleListRow[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [vehiclesLoadComplete, setVehiclesLoadComplete] = useState(true);
+  const [vehiclesLoadMeta, setVehiclesLoadMeta] = useState<{ loaded: number; total: number | null } | null>(
+    null,
+  );
 
   const mutationInFlight = useRef<Set<string>>(new Set());
+  const [, setMutationTick] = useState(0);
+  const isMutationActive = (key: string) => mutationInFlight.current.has(key);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -132,19 +123,8 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
       }
     } finally {
       mutationInFlight.current.delete(key);
+      setMutationTick((n) => n + 1);
     }
-  };
-
-  const handleApiResult = (
-    status: number,
-    errorMessage: string | undefined,
-    onSuccess: () => void,
-  ) => {
-    if (status >= 200 && status < 300) {
-      onSuccess();
-      return;
-    }
-    setActionError(classifyMasterProductApiError(status, errorMessage ?? ''));
   };
 
   const loadGrantsAndVehicles = useCallback(
@@ -152,12 +132,17 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
       setGrantsLoading(true);
       setVehiclesLoading(true);
       try {
-        const [grantRows, vehicleRows] = await Promise.all([
+        const [grantRows, vehicleLoad] = await Promise.all([
           api.products.listVehicleGrants(orgId, productSlug),
-          loadAllOrgVehicles(orgId),
+          loadOrgVehiclesForProductGrants(orgId),
         ]);
         setGrants(Array.isArray(grantRows) ? grantRows : []);
-        setVehicles(vehicleRows);
+        setVehicles(vehicleLoad.vehicles);
+        setVehiclesLoadComplete(vehicleLoad.complete);
+        setVehiclesLoadMeta({
+          loaded: vehicleLoad.loadedCount,
+          total: vehicleLoad.reportedTotal,
+        });
       } catch (e) {
         setActionError(e instanceof Error ? e.message : 'Fahrzeugzugriff konnte nicht geladen werden');
       } finally {
@@ -419,18 +404,23 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                   type="button"
                   size="sm"
                   variant="outline"
-                  disabled={mutationInFlight.current.has(`access:${row.productSlug}`)}
+                  disabled={isMutationActive(`access:${row.productSlug}`)}
                   onClick={() =>
                     void runGuarded(`access:${row.productSlug}`, 'access-mode', async () => {
                       const res = await api.products.patchVehicleAccessModeResult(orgId, row.productSlug, {
                         vehicleAccessMode: 'SELECTED_VEHICLES',
                         ifCurrentVehicleAccessMode: 'ORGANIZATION_WIDE',
                       });
-                      handleApiResult(res.status, res.errorMessage, async () => {
-                        await refresh();
-                        setExpandedSlug(row.productSlug);
-                        await loadGrantsAndVehicles(row.productSlug);
-                      });
+                      await applyMasterProductApiResult(
+                        res.status,
+                        res.errorMessage,
+                        async () => {
+                          await refresh();
+                          setExpandedSlug(row.productSlug);
+                          await loadGrantsAndVehicles(row.productSlug);
+                        },
+                        setActionError,
+                      );
                     })
                   }
                 >
@@ -466,7 +456,7 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                disabled={mutationInFlight.current.has(`revoke:${g.vehicleId}`)}
+                                disabled={isMutationActive(`revoke:${g.vehicleId}`)}
                                 onClick={() =>
                                   void runGuarded(`revoke:${g.vehicleId}`, 'revoke', async () => {
                                     const res = await api.products.revokeVehicleProductResult(
@@ -474,9 +464,14 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                                       g.vehicleId,
                                       row.productSlug,
                                     );
-                                    handleApiResult(res.status, res.errorMessage, async () => {
-                                      await loadGrantsAndVehicles(row.productSlug);
-                                    });
+                                    await applyMasterProductApiResult(
+                                      res.status,
+                                      res.errorMessage,
+                                      async () => {
+                                        await loadGrantsAndVehicles(row.productSlug);
+                                      },
+                                      setActionError,
+                                    );
                                   })
                                 }
                               >
@@ -491,9 +486,15 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                     <div>
                       <h4 className="text-sm font-semibold mb-2">Grant vergeben</h4>
                       <p className="text-xs text-muted-foreground mb-2">
-                        Alle Fahrzeuge der Organisation werden geladen (paginiert). Nur Fahrzeuge ohne
-                        aktiven Grant werden angeboten.
+                        Fahrzeuge werden paginiert geladen. Nur Fahrzeuge ohne aktiven Grant werden angeboten.
                       </p>
+                      {!vehiclesLoadComplete && vehiclesLoadMeta && (
+                        <p className="text-xs text-[color:var(--status-watch)] mb-2" role="status">
+                          Nur {vehiclesLoadMeta.loaded} von{' '}
+                          {vehiclesLoadMeta.total ?? 'unbekannt vielen'} Fahrzeugen geladen (Listenlimit).
+                          Grant-Liste kann unvollständig sein.
+                        </p>
+                      )}
                       <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y">
                         {vehicles
                           .filter((v) => !grantedVehicleIds.has(v.id))
@@ -506,7 +507,7 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                               <Button
                                 type="button"
                                 size="sm"
-                                disabled={mutationInFlight.current.has(`grant:${v.id}`)}
+                                disabled={isMutationActive(`grant:${v.id}`)}
                                 onClick={() =>
                                   void runGuarded(`grant:${v.id}`, 'grant', async () => {
                                     const res = await api.products.grantVehicleProductResult(
@@ -514,9 +515,14 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                                       v.id,
                                       row.productSlug,
                                     );
-                                    handleApiResult(res.status, res.errorMessage, async () => {
-                                      await loadGrantsAndVehicles(row.productSlug);
-                                    });
+                                    await applyMasterProductApiResult(
+                                      res.status,
+                                      res.errorMessage,
+                                      async () => {
+                                        await loadGrantsAndVehicles(row.productSlug);
+                                      },
+                                      setActionError,
+                                    );
                                   })
                                 }
                               >
@@ -550,17 +556,22 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
         title="Produkt zuweisen"
         description={`Produkt ${assignSlug} dieser Organisation zuweisen? Für Fleet/VYMOD wird keine externe App aktiviert.`}
         confirmLabel="Zuweisen"
-        loading={mutationInFlight.current.has('assign')}
+        loading={isMutationActive('assign')}
         onConfirm={async () => {
           await runGuarded('assign', 'assign', async () => {
             const res = await api.products.assignResult({
               orgId,
               productSlug: assignSlug,
             });
-            handleApiResult(res.status, res.errorMessage, async () => {
-              setAssignOpen(false);
-              await refresh();
-            });
+            await applyMasterProductApiResult(
+              res.status,
+              res.errorMessage,
+              async () => {
+                setAssignOpen(false);
+                await refresh();
+              },
+              setActionError,
+            );
           });
         }}
       />
@@ -576,17 +587,22 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
         }
         confirmLabel="Entfernen"
         tone="critical"
-        loading={mutationInFlight.current.has('remove')}
+        loading={isMutationActive('remove')}
         onConfirm={async () => {
           if (!removeTarget) return;
           const slug = removeTarget.productSlug;
           await runGuarded('remove', 'remove', async () => {
             const res = await api.products.removeResult(orgId, slug);
-            handleApiResult(res.status, res.errorMessage, async () => {
-              setRemoveTarget(null);
-              if (expandedSlug === slug) setExpandedSlug(null);
-              await refresh();
-            });
+            await applyMasterProductApiResult(
+              res.status,
+              res.errorMessage,
+              async () => {
+                setRemoveTarget(null);
+                if (expandedSlug === slug) setExpandedSlug(null);
+                await refresh();
+              },
+              setActionError,
+            );
           });
         }}
       />
@@ -598,7 +614,7 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
         description="Organisationsweiter Fahrzeugzugriff gewährt allen berechtigten Fahrzeugen Zugriff auf dieses Produkt. Fortfahren?"
         confirmLabel="Erweitern"
         tone="critical"
-        loading={mutationInFlight.current.has('broaden')}
+        loading={isMutationActive('broaden')}
         onConfirm={async () => {
           if (!broadenTarget) return;
           const slug = broadenTarget.productSlug;
@@ -607,11 +623,16 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
               vehicleAccessMode: 'ORGANIZATION_WIDE',
               ifCurrentVehicleAccessMode: 'SELECTED_VEHICLES',
             });
-            handleApiResult(res.status, res.errorMessage, async () => {
-              setBroadenTarget(null);
-              await refresh();
-              setExpandedSlug(slug);
-            });
+            await applyMasterProductApiResult(
+              res.status,
+              res.errorMessage,
+              async () => {
+                setBroadenTarget(null);
+                await refresh();
+                setExpandedSlug(slug);
+              },
+              setActionError,
+            );
           });
         }}
       />

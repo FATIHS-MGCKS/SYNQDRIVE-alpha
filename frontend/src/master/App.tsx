@@ -49,7 +49,6 @@ import { MasterAdminShell, PageContainer } from './shell';
 import { MasterMfaGate } from './components/MasterMfaGate';
 import { MfaStepUpDialog } from '../components/mfa/MfaStepUpDialog';
 import { ProductManagementView } from './components/organization-products/ProductManagementView';
-import { writeOrgTabToUrl } from './organizations/org.utils';
 
 function mapApiOrg(o: any): Organization {
   return {
@@ -167,7 +166,16 @@ export default function App() {
   const [detailOrgId, setDetailOrgId] = useState<string | null>(initialNav.orgId ?? null);
 
   const navigateMaster = useCallback(
-    (view: MasterView, opts?: { settingsTab?: string; orgId?: string | null; replace?: boolean; keepOrg?: boolean }) => {
+    (
+      view: MasterView,
+      opts?: {
+        settingsTab?: string;
+        orgId?: string | null;
+        orgTab?: string | null;
+        replace?: boolean;
+        keepOrg?: boolean;
+      },
+    ) => {
       if (view === 'vsi-intelligence' || view === 'apds-intelligence') {
         setCurrentView(view);
         pushMasterIntelligenceUrl(view, emptyIntelligenceContext(), { replace: opts?.replace });
@@ -177,6 +185,7 @@ export default function App() {
         view,
         settingsTab: opts?.settingsTab ?? (view === 'settings' ? settingsTab : undefined),
         orgId: opts?.orgId ?? (opts?.keepOrg ? detailOrgId ?? undefined : undefined),
+        orgTab: opts?.orgTab,
         archCategory: view === 'architektur' ? archCategory : undefined,
         hmTab: view === 'high-mobility' ? hmTab : undefined,
       };
@@ -492,8 +501,7 @@ export default function App() {
         {currentView === 'product-management' && (
           <ProductManagementView
             onOpenOrgProducts={(orgId) => {
-              writeOrgTabToUrl('products', false);
-              navigateMaster('organizations', { orgId });
+              navigateMaster('organizations', { orgId, orgTab: 'products' });
             }}
           />
         )}

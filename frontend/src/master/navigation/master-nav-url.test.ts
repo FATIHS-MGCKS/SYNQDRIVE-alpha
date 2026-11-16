@@ -34,4 +34,20 @@ describe('master-nav-url', () => {
     expect(qs).toContain('view=organizations');
     expect(qs).toContain('orgId=org-1');
   });
+
+  it('includes orgTab in a single organizations navigation query', () => {
+    const qs = buildMasterNavSearch(
+      { view: 'organizations', orgId: 'org-99', orgTab: 'products' },
+      false,
+    );
+    expect(qs).toContain('view=organizations');
+    expect(qs).toContain('orgId=org-99');
+    expect(qs).toContain('orgTab=products');
+  });
+
+  it('clears orgTab when leaving organizations view', () => {
+    const qs = buildMasterNavSearch({ view: 'product-management' }, false);
+    expect(qs).toContain('view=product-management');
+    expect(qs).not.toContain('orgTab=');
+  });
 });
