@@ -87,6 +87,7 @@ export type OrgDetailTab =
   | 'overview'
   | 'users'
   | 'vehicles'
+  | 'products'
   | 'billing'
   | 'integrations'
   | 'activity'
@@ -96,6 +97,7 @@ export const ORG_DETAIL_TABS: Array<{ id: OrgDetailTab; label: string }> = [
   { id: 'overview', label: 'Übersicht' },
   { id: 'users', label: 'Benutzer' },
   { id: 'vehicles', label: 'Fahrzeuge' },
+  { id: 'products', label: 'Produkte' },
   { id: 'billing', label: 'Abrechnung' },
   { id: 'integrations', label: 'Integrationen' },
   { id: 'activity', label: 'Aktivität' },
