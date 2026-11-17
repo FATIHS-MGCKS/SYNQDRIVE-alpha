@@ -179,6 +179,8 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 | **ClickHouse** | Optional analytics mirror (`telemetry_hf_*`, waypoints) — not canonical |
 | **Redis/BullMQ** | Async orchestration; durable state in `DrivingIntelligenceJob` |
 
+**Job booking validation (P4-PR1 — CONFIRMED in repo):** `DrivingIntelligenceJobRepository` resolves rental bookings via `DRIVING_INTELLIGENCE_BOOKING_RESOLUTION_PORT` (`DrivingIntelligenceBookingResolutionPrismaAdapter` under `bookings/`). Core vehicle-intelligence code must not call `prisma.booking` for DI job persist validation.
+
 **No raw HF time series in Postgres** (CONFIRMED). Optional CH mirror only.
 
 ## API / UI consumers (CONFIRMED)

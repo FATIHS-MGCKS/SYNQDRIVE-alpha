@@ -292,6 +292,15 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service.ts
 
+  - id: DI-SVC-BOOKING-RESOLUTION-PORT-001
+    type: service
+    title: DrivingIntelligenceBookingResolutionPort
+    epistemic_status: CONFIRMED
+    summary: Rental supplies org-scoped booking vehicleId for DI job persist validation (P4-PR1).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/ports/driving-intelligence-booking-resolution.port.ts
+      - backend/src/modules/bookings/driving-intelligence-booking-resolution/driving-intelligence-booking-resolution.adapter.ts
+
   - id: DI-SCHED-RECONCILE-001
     type: scheduler
     title: DrivingAnalysisReconciliationScheduler
