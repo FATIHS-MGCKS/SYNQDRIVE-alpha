@@ -5,15 +5,24 @@
 **Central registry:** [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../SYNQDRIVE_RENTAL_ARCHITECTURE.md)  
 **Progress ledger:** [`PROGRESS_LEDGER.md`](PROGRESS_LEDGER.md)
 
-## Owner decision — superseded trajectories
+## Historical trajectory (pre–owner pause — not claimed as completed)
+
+**Epistemic:** Repository and owner decision records — **CONFIRMED** for intent; no claim that full extraction shipped or that automated merges ran.
+
+1. **SYNQDRIVE-alpha** was **copied into** the **SYNQDRIVE-CORE** repository as a parallel line of development.
+2. **Core** was **intended** to become a **separate central backend** (distinct deployable).
+3. **Rental** was **intended** to become a **separate application**, communicating with Core through **secured APIs / M2M**.
+4. **Owner decision 2026-11-16:** that extraction trajectory is **PAUSED**. Alpha remains the permanent platform repo; Core remains a **reference fork** for selective manual ports only — **no** automated cherry-pick, merge-back, or continuation of the old extraction roadmap.
+
+## Owner decision — superseded trajectories (binding)
 
 | Previous trajectory | Current binding |
 |--------------------|-----------------|
-| SYNQDRIVE-CORE as mandatory separate runtime with automated merge into Alpha | **PAUSED** — CORE is a **historical reference fork** only; selective manual ports allowed; no automated cherry-pick/merge |
-| Rental as future extractable app forced through external M2M while co-located | **REJECTED** — Rental is **first-class** and uses **in-process** Core platform services + user JWT |
+| Core extraction as primary platform path (separate Core backend + separate Rental app over M2M) | **PAUSED** — logical Core/Rental **domains** stay in **one** Alpha deployment; M2M only for **external** product backends (Fleet/VYMOD) |
+| Rental as co-located app forced through external M2M to Core | **REJECTED** — Rental is **first-class** and uses **in-process** shared platform services + user JWT |
 | TAXI as operational `ProductSlug` | **RETIRED** — historical rows preserved; `BusinessType.TAXI` and legal scope `TAXI` remain distinct |
 
-## Current architecture (verified on `origin/main`)
+## Current architecture (verified on `origin/main` — `7f243d0fe30ba87e9225f5b3a454d901d5fef934`)
 
 **Epistemic:** Repository layout and module inventory are **CONFIRMED** from tree + registry. Production runtime details for new platform slices require separate Production read-only evidence per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md).
 
@@ -65,17 +74,22 @@ Shared governance: Master Admin, `OrganizationProduct`, entitlements policy (`en
 
 ## M2M (external applications — P3+)
 
-| Requirement | P3-PR1 state (`main` + open PR #2415) |
-|-------------|--------------------------------------|
-| Registry tables | Planned in PR #2415 — **not on `main` at ledger init** |
-| Runtime enabled | `CORE_APP_M2M_ENABLED=false` default |
+| Requirement | P3-PR1 state on `main` (merged #2415 — **inactive runtime**) |
+|-------------|----------------------------------------------------------------|
+| Registry tables | `core_app_service_clients`, `core_app_service_org_grants` — **merged**; module **not** wired in `AppModule` |
+| Client default | `DISABLED`; org grant default `REVOKED`; credentials **hash-only** |
+| Runtime enabled | `CORE_APP_M2M_ENABLED=false` default — **fail-closed** |
 | Production ready | `CORE_APP_M2M_PRODUCTION_READY=false` default |
 | Token exchange | **Not implemented** (P3-PR2) |
-| Scopes (canonical) | `core:entitlements:read`, `core:app:vehicle:read` (per Core reference; PR #2415) |
+| Scopes (canonical) | `core:entitlements:read`, `core:app:vehicle:read` (rejects `core:app:vehicles:read`) |
+| Eligible products | FLEET/VYMOD-style external slugs; **RENTAL not M2M-required** when co-located |
 | Redis rate limits | **Not implemented** (P3-PR3) |
 | Master Admin client UI | **Not implemented** (P3-PR5) |
+| Production deploy | **NOT_CLAIMED** for P3-PR1 merge |
 
-**Tenant safety:** Org grants FK to `organizations`; validation must enforce client+org pairing (domain service in PR #2415).
+Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHANGE_RECORD_P3_PR1_2026-11-17.md).
+
+**Tenant safety:** Org grants FK to `organizations`; validation enforces client+org pairing (`CoreAppServiceRegistryService`).
 
 ## Intelligence contracts
 
@@ -87,7 +101,7 @@ Shared governance: Master Admin, `OrganizationProduct`, entitlements policy (`en
 | Phase | Scope | Merge to `main` (ledger) | Production deploy |
 |-------|--------|---------------------------|-------------------|
 | **P2** | Catalog, entitlements read, vehicle access/grants, MA product UI, TAXI retirement, entitlement alignment | PR #2408–#2414 **MERGED** | **Not claimed** by these PRs alone |
-| **P3-PR1** | Inactive service-client registry | PR #2415 **OPEN** (head `1ccce4167`) | **NO** |
+| **P3-PR1** | Inactive service-client registry (runtime default OFF) | PR #2415 **MERGED** (`7f243d0fe`) | **NOT_CLAIMED** |
 | **P3-PR2** | Token exchange + authZ | Planned | NO |
 | **P3-PR3** | Redis rate limits | Planned | NO |
 | **P3-PR4** | Versioned product/vehicle APIs | Planned | NO |
@@ -130,4 +144,4 @@ Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`
 4. After merge/deploy: reconcile ledger `merge_status` / `deploy_status` in the next authorized documentation update only — never infer deploy from merge alone.
 5. Run `bash architecture/scripts/validate-module-registry.sh` when registry metadata changes.
 
-**Last updated:** 2026-11-17 (foundation documentation PR)
+**Last updated:** 2026-11-17 (PR #2416 — post #2415/#2417 main sync)

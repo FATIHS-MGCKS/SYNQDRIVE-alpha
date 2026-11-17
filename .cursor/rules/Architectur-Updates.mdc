@@ -13,7 +13,8 @@ alwaysApply: true
 
 ## After every substantive change (same workstream/PR)
 
-- Append a **progress ledger** row when the workstream is platform-scoped (Master Plan / Progress Ledger paths above); link to change records, do not paste them in full.
+- Append a **progress ledger** row when the workstream is platform-scoped (Master Plan / Progress Ledger paths above); link to change records, do not paste them in full; freeze prior rows instead of silently rewriting lifecycle status.
+- Update the **Master Plan** when platform ownership, roadmap, or owner decisions change (same PR).
 - Update the affected **module authority** — only relevant artifacts (`CURRENT_STATE.md`, human/machine graphs, decisions/WHY, evidence, contradictions/gaps, open questions/hypotheses, append-only change ledger, validation records).
 - Never silently rewrite or delete historical decisions, contradictions, failed approaches, or evidence.
 - For **cross-module** changes: inspect and update **every owning authority**.

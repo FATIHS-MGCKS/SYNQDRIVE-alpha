@@ -50,6 +50,7 @@ Applies to platform, product catalog, entitlements, Master Admin, M2M, and cross
 7. **Post-merge/deploy:** Reconcile ledger `merge_status` / `deploy_status` only in the next authorized documentation update (verify GitHub and deploy attestation).
 8. **`AUTHORITY_ACTIVE`:** Do not promote modules without [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) gates.
 9. **Completion reports:** Record architecture governance and per-module `REGISTRY_REVIEWED: UPDATED|UNCHANGED` results (see [`.cursor/rules/Architectur-Updates.mdc`](.cursor/rules/Architectur-Updates.mdc)).
+10. **Lifecycle accuracy:** Distinguish planned, implemented, merged, deployed, and production-validated; preserve superseded ledger rows and decision history (append-only; frozen init snapshots when status reconciles).
 
 ## Mandatory architecture-first workflow
 
