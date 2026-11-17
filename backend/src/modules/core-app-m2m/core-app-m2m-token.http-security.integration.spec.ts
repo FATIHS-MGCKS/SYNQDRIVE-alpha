@@ -17,7 +17,7 @@ import { CoreAppM2mRateLimitMemoryRedis } from './testing/core-app-m2m-rate-limi
 import { CoreEntitlementsReadController } from '@modules/products/entitlements/core-entitlements-read.controller';
 import { EntitlementsQueryService } from '@modules/products/entitlements/entitlements-query.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
-import { CoreAppM2mModule } from './core-app-m2m.module';
+import { createCoreAppM2mIntegrationModule } from './testing/core-app-m2m-module.testing';
 import {
   CORE_APP_M2M_JWT_AUDIENCE_DEFAULT,
   CORE_APP_M2M_JWT_ISSUER_DEFAULT,
@@ -77,21 +77,22 @@ async function createHttpSecurityApp(userJwtSecret: string): Promise<{
 
   process.env.JWT_SECRET = userJwtSecret;
 
-    const moduleRef = await Test.createTestingModule({
-      imports: [CoreAppM2mModule],
-      controllers: [CoreEntitlementsReadController],
-      providers: [
-        EntitlementsQueryService,
-        OrgScopingGuard,
-        { provide: PrismaService, useValue: prisma },
-        { provide: APP_GUARD, useClass: AuthGuard },
-      ],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(prisma)
-      .overrideProvider(RedisService)
-      .useValue(new CoreAppM2mRateLimitMemoryRedis())
-      .compile();
+    const moduleRef = await createCoreAppM2mIntegrationModule(
+      (builder) =>
+        builder
+          .overrideProvider(PrismaService)
+          .useValue(prisma)
+          .overrideProvider(RedisService)
+          .useValue(new CoreAppM2mRateLimitMemoryRedis()),
+      {
+        controllers: [CoreEntitlementsReadController],
+        providers: [
+          EntitlementsQueryService,
+          OrgScopingGuard,
+          { provide: APP_GUARD, useClass: AuthGuard },
+        ],
+      },
+    ).compile();
 
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(

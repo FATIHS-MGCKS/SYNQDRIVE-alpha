@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P3-PR4)
+**Last updated:** 2026-11-17 (P3 complete on `main`; integration certification evidence)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -104,6 +104,10 @@ See `CHANGE_RECORD_P3_PR4_2026-11-17.md`.
 - **Does not** enable M2M runtime or assign org products automatically
 
 See `CHANGE_RECORD_P3_PR5_2026-11-17.md`.
+
+## P3 integration certification (post–#2421)
+
+Evidence record: [`evidence/P3_FINAL_INTEGRATION_CERTIFICATION_2026-11-17.md`](evidence/P3_FINAL_INTEGRATION_CERTIFICATION_2026-11-17.md) — **PASS_WITH_BLOCKERS** (fresh-DB migration pre-existing blocker; M2M not production-activated).
 
 ## Evidence
 
