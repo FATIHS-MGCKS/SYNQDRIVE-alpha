@@ -95,10 +95,10 @@ Implementation reference: `backend/src/modules/core-app-m2m/core-app-service-reg
 | Client default | `DISABLED`; org grant default `REVOKED`; credentials **hash-only** |
 | Runtime enabled | `CORE_APP_M2M_ENABLED=false` default — **fail-closed** |
 | Production ready | `CORE_APP_M2M_PRODUCTION_READY=false` default |
-| Token exchange | **Not implemented** (P3-PR2) |
+| Token exchange | **MERGED** #2418 (`core.app.token.v1`) |
 | Scopes (canonical) | `core:entitlements:read`, `core:app:vehicle:read` (rejects `core:app:vehicles:read`) |
 | Eligible product slugs | `RENTAL`, `FLEET`, `VYMOD` (registry-neutral); **RENTAL not M2M-required** for in-process consumption |
-| Redis rate limits | **OPEN PR** P3-PR3 (this slice); required when M2M enabled |
+| Redis rate limits | **MERGED** #2419 (`c9a4042dd`); required when M2M enabled |
 | Master Admin client UI | **Not implemented** (P3-PR5) |
 | Production deploy | **NOT_CLAIMED** for P3-PR1 merge |
 
@@ -118,8 +118,8 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | **P2** | Catalog, entitlements read, vehicle access/grants, MA product UI, TAXI retirement, entitlement alignment | PR #2408–#2414 **MERGED** | **Not claimed** by these PRs alone |
 | **P3-PR1** | Inactive service-client registry (runtime default OFF) | PR #2415 **MERGED** (`7f243d0fe`) | **NOT_CLAIMED** |
 | **P3-PR2** | Token exchange + authZ (`core.app.token.v1`) | **MERGED** #2418 (`c68b6618c`) | **NOT_CLAIMED** |
-| **P3-PR3** | Redis rate limits (token endpoint) | **OPEN PR** (this slice) | **NOT_CLAIMED** |
-| **P3-PR4** | Versioned product/vehicle APIs | Planned | NO |
+| **P3-PR3** | Redis rate limits (token endpoint) | **MERGED** #2419 | **NOT_CLAIMED** |
+| **P3-PR4** | Versioned vehicle read APIs (`core.read.vehicles.v1`) | **OPEN PR** (this slice) | **NOT_CLAIMED** |
 | **P3-PR5** | MA service-client UI | Planned | NO |
 | **P4** | Complete contracts without Rental disruption | Planned | Owner-gated |
 | **P5** | Full MA architecture/security audit | Planned | Owner sign-off |

@@ -1,5 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
+import { CORE_APP_M2M_SKIP_USER_JWT_KEY } from '@modules/core-app-m2m/core-app-m2m-skip-user-jwt.decorator';
 import { CORE_APP_M2M_TOKEN_TYPE } from '@modules/core-app-m2m/core-app-m2m-jwt.config';
 import { sessionClaimsFromJwt } from '@shared/auth/auth-session-claims.types';
 
@@ -58,7 +60,7 @@ export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
   private readonly jwtSecret: string;
 
-  constructor() {
+  constructor(private readonly reflector: Reflector) {
     // JWT_SECRET must be present — validated by app.config.ts at startup before this runs
     if (!process.env.JWT_SECRET) {
       throw new Error('FATAL: JWT_SECRET is not set. AuthGuard cannot initialise without it.');
@@ -83,6 +85,14 @@ export class AuthGuard implements CanActivate {
     }
 
     if (PUBLIC_PATH_PREFIXES.some((p) => pathWithoutQuery.startsWith(p))) {
+      return true;
+    }
+
+    const skipUserJwt = this.reflector.getAllAndOverride<boolean>(CORE_APP_M2M_SKIP_USER_JWT_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (skipUserJwt === true) {
       return true;
     }
 
