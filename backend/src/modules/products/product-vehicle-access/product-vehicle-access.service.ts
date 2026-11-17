@@ -6,6 +6,7 @@ import {
   VehicleProductGrantStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES } from '../entitlements/entitlements-policy';
 import { PRODUCT_VEHICLE_ACCESS_ELIGIBLE_LIFECYCLES } from './product-vehicle-access.policy';
 import type { AuthorizedVehicleWhereInput, ResolvedProductVehicleAccess } from './product-vehicle-access.types';
 
@@ -21,7 +22,7 @@ export class ProductVehicleAccessService {
       where: {
         organizationId,
         product: { slug: productSlug },
-        status: OrgProductStatus.ACTIVE,
+        status: { in: [...ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES] },
       },
       select: {
         id: true,

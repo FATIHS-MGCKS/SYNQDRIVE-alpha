@@ -44,7 +44,7 @@ describe('ProductVehicleAccessService', () => {
     );
     expect(prisma.organizationProduct.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: OrgProductStatus.ACTIVE }),
+        where: expect.objectContaining({ status: { in: [OrgProductStatus.ACTIVE] } }),
       }),
     );
   });
@@ -188,7 +188,7 @@ describe('ProductVehicleAccessService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           organizationId: ORG_A,
-          status: OrgProductStatus.ACTIVE,
+          status: { in: [OrgProductStatus.ACTIVE] },
         }),
       }),
     );

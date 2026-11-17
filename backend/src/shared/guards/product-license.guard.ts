@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES } from '@modules/products/entitlements/entitlements-policy';
 import { PrismaService } from '../database/prisma.service';
 
 export const PRODUCT_KEY = 'required_product';
@@ -37,7 +38,7 @@ export class ProductLicenseGuard implements CanActivate {
       where: {
         organizationId,
         product: { slug: requiredProduct as any },
-        status: 'ACTIVE',
+        status: { in: [...ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES] },
       },
     });
 

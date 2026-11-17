@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import { ORGANIZATION_PRODUCT_VEHICLE_GRANT_ENTITLEMENT_STATUSES } from '../entitlements/entitlements-policy';
 import { assertPlatformProductGrantWritable } from '../retired-platform-product-slugs';
 import type { VehicleProductGrantListItem, VehicleProductGrantRecord } from './vehicle-product-grant.types';
 
@@ -287,7 +288,7 @@ export class VehicleProductGrantService {
       where: {
         organizationId,
         product: { slug: productSlug },
-        status: OrgProductStatus.ACTIVE,
+        status: { in: [...ORGANIZATION_PRODUCT_VEHICLE_GRANT_ENTITLEMENT_STATUSES] },
       },
       select: { id: true },
     });

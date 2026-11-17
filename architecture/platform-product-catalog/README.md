@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P2-PR4C)
+**Last updated:** 2026-11-17 (P2-PR5)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -35,6 +35,16 @@
 - Prevent `assignProduct` for a disabled catalog product until a future slice explicitly wires enforcement
 
 Treat `catalogStatus` as lifecycle visibility in the product catalog, separate from org licensing state.
+
+## Entitlement policy (P2-PR5)
+
+Canonical status capabilities: `backend/src/modules/products/entitlements/entitlements-policy.ts`
+
+- **Operational / route guards:** `ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES` (ACTIVE only)
+- **Declared API:** `core.entitlements.v1` — TRIAL grants UI capability only; activation fail-closed
+- **`expiresAt`:** reported factually; **not** enforced at runtime (`NOT_ENFORCED_STATUS_ONLY_PARITY`)
+
+See `CHANGE_RECORD_P2_PR5_2026-11-17.md`.
 
 ## TAXI platform product retirement (P2-PR4C)
 
