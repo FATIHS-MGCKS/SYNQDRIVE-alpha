@@ -98,7 +98,7 @@ Implementation reference: `backend/src/modules/core-app-m2m/core-app-service-reg
 | Token exchange | **Not implemented** (P3-PR2) |
 | Scopes (canonical) | `core:entitlements:read`, `core:app:vehicle:read` (rejects `core:app:vehicles:read`) |
 | Eligible product slugs | `RENTAL`, `FLEET`, `VYMOD` (registry-neutral); **RENTAL not M2M-required** for in-process consumption |
-| Redis rate limits | **Not implemented** (P3-PR3) |
+| Redis rate limits | **OPEN PR** P3-PR3 (this slice); required when M2M enabled |
 | Master Admin client UI | **Not implemented** (P3-PR5) |
 | Production deploy | **NOT_CLAIMED** for P3-PR1 merge |
 
@@ -117,8 +117,8 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 |-------|--------|---------------------------|-------------------|
 | **P2** | Catalog, entitlements read, vehicle access/grants, MA product UI, TAXI retirement, entitlement alignment | PR #2408–#2414 **MERGED** | **Not claimed** by these PRs alone |
 | **P3-PR1** | Inactive service-client registry (runtime default OFF) | PR #2415 **MERGED** (`7f243d0fe`) | **NOT_CLAIMED** |
-| **P3-PR2** | Token exchange + authZ (`core.app.token.v1`) | **OPEN PR** (this slice) | **NOT_CLAIMED** |
-| **P3-PR3** | Redis rate limits | Planned | NO |
+| **P3-PR2** | Token exchange + authZ (`core.app.token.v1`) | **MERGED** #2418 (`c68b6618c`) | **NOT_CLAIMED** |
+| **P3-PR3** | Redis rate limits (token endpoint) | **OPEN PR** (this slice) | **NOT_CLAIMED** |
 | **P3-PR4** | Versioned product/vehicle APIs | Planned | NO |
 | **P3-PR5** | MA service-client UI | Planned | NO |
 | **P4** | Complete contracts without Rental disruption | Planned | Owner-gated |

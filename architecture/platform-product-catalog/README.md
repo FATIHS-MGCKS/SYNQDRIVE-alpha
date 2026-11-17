@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P3-PR2)
+**Last updated:** 2026-11-17 (P3-PR3)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -76,9 +76,17 @@ See `CHANGE_RECORD_P2_PR5_2026-11-17.md`.
 - **Endpoint:** `POST /api/v1/auth/core-app/token` (`core.app.token.v1`)
 - **Runtime:** `CORE_APP_M2M_ENABLED=false` and `CORE_APP_M2M_PRODUCTION_READY=false` by default; isolated `CORE_APP_M2M_JWT_SECRET` required when enabled
 - **Rental:** co-located routes remain user-JWT; service tokens are not accepted on existing Rental/core user routes
-- **Deferred:** Redis rate limits (P3-PR3), versioned resource APIs (P3-PR4), MA client UI (P3-PR5)
+- **Deferred:** versioned resource APIs (P3-PR4), MA client UI (P3-PR5)
 
 See `CHANGE_RECORD_P3_PR2_2026-11-17.md`.
+
+## P3-PR3 — M2M Redis rate limits
+
+- **Enforcement:** only when `CORE_APP_M2M_ENABLED=true`; Redis required (fail-closed)
+- **Limits:** per-IP and per-client fixed windows; conservative env defaults
+- **Not production-activated:** runtime M2M remains default OFF
+
+See `CHANGE_RECORD_P3_PR3_2026-11-17.md`.
 
 ## Evidence
 
