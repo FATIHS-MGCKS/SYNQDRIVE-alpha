@@ -30,6 +30,9 @@ import type {
 import { applyMasterProductApiResult } from './product-management-mutations';
 import { loadOrgVehiclesForProductGrants } from './product-management-org-vehicles';
 import {
+  formatPostMutationSyncFailure,
+  isSyncRefreshFailure,
+  resolveGuardedMutationError,
   shouldApplyGrantLoadResult,
   syncRefreshFailedError,
 } from './product-management-sync-errors';
@@ -77,8 +80,11 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
   const isMutationActive = (key: string) => mutationInFlight.current.has(key);
 
   const refresh = useCallback(async (opts?: { throwOnFailure?: boolean }) => {
-    setLoading(true);
-    setError(null);
+    const postMutationSync = opts?.throwOnFailure === true;
+    if (!postMutationSync) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const [cat, orgProducts] = await Promise.all([
         api.products.list(),
@@ -88,12 +94,14 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
       setAssignments(Array.isArray(orgProducts) ? orgProducts : []);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Produktdaten konnten nicht geladen werden';
-      setError(msg);
-      if (opts?.throwOnFailure) {
+      if (postMutationSync) {
         throw syncRefreshFailedError(msg);
       }
+      setError(msg);
     } finally {
-      setLoading(false);
+      if (!postMutationSync) {
+        setLoading(false);
+      }
     }
   }, [orgId]);
 
@@ -128,11 +136,11 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
     try {
       await fn();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Aktion fehlgeschlagen';
       if (isStepUpRequiredError(e)) {
+        const msg = e instanceof Error ? e.message : 'Aktion fehlgeschlagen';
         setActionError(classifyMasterProductApiError(403, msg));
       } else {
-        setActionError(msg);
+        setActionError(resolveGuardedMutationError(e));
       }
     } finally {
       mutationInFlight.current.delete(key);
@@ -197,10 +205,12 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
         ) {
           return;
         }
-        const msg = e instanceof Error ? e.message : 'Fahrzeugzugriff konnte nicht geladen werden';
+        const detail = e instanceof Error ? e.message : 'Fahrzeugzugriff konnte nicht geladen werden';
+        const display =
+          isSyncRefreshFailure(e) ? formatPostMutationSyncFailure(e) : detail;
         resetGrantVehicleState();
-        setGrantsLoadError(msg);
-        throw syncRefreshFailedError(msg);
+        setGrantsLoadError(display);
+        throw syncRefreshFailedError(detail);
       } finally {
         if (
           shouldApplyGrantLoadResult(
@@ -510,7 +520,7 @@ export function OrganizationProductsTab({ orgId }: OrganizationProductsTabProps)
                     title="Fahrzeugzugriff"
                     error={grantsLoadError}
                     onRetry={() => {
-                      void loadGrantsAndVehicles(row.productSlug);
+                      void loadGrantsAndVehicles(row.productSlug).catch(() => undefined);
                     }}
                   />
                 ) : grantsLoading || vehiclesLoading ? (
