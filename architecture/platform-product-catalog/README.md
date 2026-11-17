@@ -5,7 +5,9 @@
 
 ## Owner architecture decision (2026-11-16)
 
-**SUPERSEDES (for routing only):** Independent SYNQDRIVE-CORE extraction as the primary platform trajectory — see `architecture/core-extraction/SYNQDRIVE_CORE_EXTRACTION_MASTER_PLAN.md` (**PAUSED**, not deleted).
+**SUPERSEDES (for routing only):** Prior Core-extraction trajectory (Alpha copied into SYNQDRIVE-CORE; Core and Rental intended as separate deployables over M2M) — **PAUSED** 2026-11-16; CORE is a **reference fork** only (no automated merge-back). Details: Master Plan § Historical trajectory.
+
+**Binding plan:** [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) · **Progress:** [`PROGRESS_LEDGER.md`](../platform-reorientation/PROGRESS_LEDGER.md)
 
 **Current binding direction:**
 
