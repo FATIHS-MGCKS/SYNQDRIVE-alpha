@@ -181,6 +181,8 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 **Job booking validation (P4-PR1 — CONFIRMED in repo):** `DrivingIntelligenceJobRepository` resolves rental bookings via `DRIVING_INTELLIGENCE_BOOKING_RESOLUTION_PORT` (`DrivingIntelligenceBookingResolutionPrismaAdapter` under `bookings/`). Core vehicle-intelligence code must not call `prisma.booking` for DI job persist validation.
 
+**Reconciliation rental scan (P4-PR2 — in flight on branch):** `DrivingAnalysisReconciliationService` delegates `BOOKING_WITHOUT_RENTAL_ANALYSIS` scan/remediate to `RENTAL_DRIVING_ANALYSIS_RECONCILIATION_PORT` (`RentalDrivingAnalysisReconciliationPortAdapter` under `rental-driving-analysis/`). Scheduler cadence and non-booking checks unchanged. Full Core/Rental independence **not** claimed — `VehicleIntelligenceModule` still imports Rental adapters via module graph.
+
 **No raw HF time series in Postgres** (CONFIRMED). Optional CH mirror only.
 
 ## API / UI consumers (CONFIRMED)
