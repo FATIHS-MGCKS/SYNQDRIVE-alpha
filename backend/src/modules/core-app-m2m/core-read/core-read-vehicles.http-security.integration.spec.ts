@@ -18,7 +18,7 @@ import { RedisService } from '@shared/redis/redis.service';
 import { CoreEntitlementsReadController } from '@modules/products/entitlements/core-entitlements-read.controller';
 import { EntitlementsQueryService } from '@modules/products/entitlements/entitlements-query.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { CoreAppM2mModule } from '../core-app-m2m.module';
+import { createCoreAppM2mIntegrationModule } from '../testing/core-app-m2m-module.testing';
 import {
   CORE_APP_M2M_JWT_AUDIENCE_DEFAULT,
   CORE_APP_M2M_JWT_ISSUER_DEFAULT,
@@ -192,20 +192,22 @@ describe('Core read vehicles — HTTP security integration', () => {
       },
     );
 
-    const moduleRef = await Test.createTestingModule({
-      imports: [CoreAppM2mModule],
-      controllers: [CoreEntitlementsReadController],
-      providers: [
-        EntitlementsQueryService,
-        Reflector,
-        { provide: APP_GUARD, useClass: AuthGuard },
-      ],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(prisma)
-      .overrideProvider(RedisService)
-      .useValue(new CoreAppM2mRateLimitMemoryRedis())
-      .compile();
+    const moduleRef = await createCoreAppM2mIntegrationModule(
+      (builder) =>
+        builder
+          .overrideProvider(PrismaService)
+          .useValue(prisma)
+          .overrideProvider(RedisService)
+          .useValue(new CoreAppM2mRateLimitMemoryRedis()),
+      {
+        controllers: [CoreEntitlementsReadController],
+        providers: [
+          EntitlementsQueryService,
+          Reflector,
+          { provide: APP_GUARD, useClass: AuthGuard },
+        ],
+      },
+    ).compile();
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');

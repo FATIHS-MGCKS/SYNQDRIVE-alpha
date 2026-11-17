@@ -12,7 +12,7 @@ import {
 import { AuthGuard } from '@shared/auth/auth.guard';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
-import { CoreAppM2mModule } from './core-app-m2m.module';
+import { createCoreAppM2mIntegrationModule } from './testing/core-app-m2m-module.testing';
 import { CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE } from './core-app-m2m-auth.constants';
 import { CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ } from './core-app-m2m.constants';
 import { CoreAppM2mRateLimitMemoryRedis } from './testing/core-app-m2m-rate-limit.memory-redis';
@@ -56,15 +56,15 @@ describe('Core app M2M token — rate limit HTTP integration', () => {
       status: OrgProductStatus.ACTIVE,
     });
 
-    const moduleRef = await Test.createTestingModule({
-      imports: [CoreAppM2mModule],
-      providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(prisma)
-      .overrideProvider(RedisService)
-      .useValue(memoryRedis)
-      .compile();
+    const moduleRef = await createCoreAppM2mIntegrationModule(
+      (builder) =>
+        builder
+          .overrideProvider(PrismaService)
+          .useValue(prisma)
+          .overrideProvider(RedisService)
+          .useValue(memoryRedis),
+      { providers: [{ provide: APP_GUARD, useClass: AuthGuard }] },
+    ).compile();
 
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
@@ -101,18 +101,17 @@ describe('Core app M2M token — rate limit HTTP integration', () => {
       coreAppServiceClient: { findUnique: jest.fn() },
       organizationProduct: { findFirst: jest.fn() },
     };
-    const brokenModule = await Test.createTestingModule({
-      imports: [CoreAppM2mModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(isolatedPrisma)
-      .overrideProvider(RedisService)
-      .useValue({
-        eval: jest.fn(async () => {
-          throw new Error('redis unavailable');
+    const brokenModule = await createCoreAppM2mIntegrationModule((builder) =>
+      builder
+        .overrideProvider(PrismaService)
+        .useValue(isolatedPrisma)
+        .overrideProvider(RedisService)
+        .useValue({
+          eval: jest.fn(async () => {
+            throw new Error('redis unavailable');
+          }),
         }),
-      })
-      .compile();
+    ).compile();
     const brokenApp = brokenModule.createNestApplication();
     brokenApp.setGlobalPrefix('api/v1');
     await brokenApp.init();
