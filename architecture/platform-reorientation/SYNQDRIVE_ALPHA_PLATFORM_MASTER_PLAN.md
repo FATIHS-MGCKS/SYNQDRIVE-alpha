@@ -12,13 +12,15 @@
 1. **SYNQDRIVE-alpha** was **copied into** the **SYNQDRIVE-CORE** repository as a parallel line of development.
 2. **Core** was **intended** to become a **separate central backend** (distinct deployable).
 3. **Rental** was **intended** to become a **separate application**, communicating with Core through **secured APIs / M2M**.
-4. **Owner decision 2026-11-16:** that extraction trajectory is **PAUSED**. Alpha remains the permanent platform repo; Core remains a **reference fork** for selective manual ports only — **no** automated cherry-pick, merge-back, or continuation of the old extraction roadmap.
+4. Planned Core ↔ Rental traffic was **secured API / M2M** between **separate** deployables (historical intent only).
+5. **Owner decision 2026-11-16:** that extraction trajectory is **PAUSED**. Alpha remains the permanent platform repo; Core remains a **reference fork** for selective manual ports only — **no** automated cherry-pick, merge-back, or continuation of the old extraction roadmap; **no** historical automatic merge-back to Alpha is claimed.
+6. **No** historical or binding requirement that **co-located Rental** use M2M — in-process consumption remains the default in Alpha.
 
 ## Owner decision — superseded trajectories (binding)
 
 | Previous trajectory | Current binding |
 |--------------------|-----------------|
-| Core extraction as primary platform path (separate Core backend + separate Rental app over M2M) | **PAUSED** — logical Core/Rental **domains** stay in **one** Alpha deployment; M2M only for **external** product backends (Fleet/VYMOD) |
+| Core extraction as primary platform path (separate Core backend + separate Rental app over M2M) | **PAUSED** — logical Core/Rental **domains** stay in **one** Alpha deployment; M2M for **separately deployed** product backends when gates are armed |
 | Rental as co-located app forced through external M2M to Core | **REJECTED** — Rental is **first-class** and uses **in-process** shared platform services + user JWT |
 | TAXI as operational `ProductSlug` | **RETIRED** — historical rows preserved; `BusinessType.TAXI` and legal scope `TAXI` remain distinct |
 
@@ -53,6 +55,19 @@
 
 Shared governance: Master Admin, `OrganizationProduct`, entitlements policy (`entitlements-policy.ts`), `ProductVehicleAccessService`, `VehicleProductGrantService`, `ProductLicenseGuard` (ACTIVE-only operational).
 
+## Service client product binding (P3-PR1 registry — product-neutral)
+
+Eligible `ProductSlug` values on a service client record (`isEligibleServiceClientProductSlug`): **`RENTAL`**, **`FLEET`**, **`VYMOD`** — same catalog model; retired slugs (e.g. **TAXI**) are excluded.
+
+| Slug | Role in Alpha | M2M when co-located in Alpha | M2M when separate backend |
+|------|---------------|------------------------------|---------------------------|
+| **RENTAL** | First-class operational product | **Not required** — user JWT + existing guards | Allowed binding if a split deploy is introduced later |
+| **FLEET** | In preparation | N/A until external repo ships | **Required** when connected as separate application |
+| **VYMOD** | In preparation | N/A until external repo ships | **Required** when connected as separate application |
+| **TAXI** | **Retired** platform product slug | N/A | N/A — historical rows/grants preserved; no new assigns (P2-PR4C) |
+
+Implementation reference: `backend/src/modules/core-app-m2m/core-app-service-registry.policy.ts` (on `main` post #2415).
+
 ## Core / Rental logical boundaries (same runtime)
 
 | Concern | Core ownership | Rental ownership |
@@ -82,7 +97,7 @@ Shared governance: Master Admin, `OrganizationProduct`, entitlements policy (`en
 | Production ready | `CORE_APP_M2M_PRODUCTION_READY=false` default |
 | Token exchange | **Not implemented** (P3-PR2) |
 | Scopes (canonical) | `core:entitlements:read`, `core:app:vehicle:read` (rejects `core:app:vehicles:read`) |
-| Eligible products | FLEET/VYMOD-style external slugs; **RENTAL not M2M-required** when co-located |
+| Eligible product slugs | `RENTAL`, `FLEET`, `VYMOD` (registry-neutral); **RENTAL not M2M-required** for in-process consumption |
 | Redis rate limits | **Not implemented** (P3-PR3) |
 | Master Admin client UI | **Not implemented** (P3-PR5) |
 | Production deploy | **NOT_CLAIMED** for P3-PR1 merge |

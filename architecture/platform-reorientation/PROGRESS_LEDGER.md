@@ -2,6 +2,8 @@
 
 **Append-only.** New workstreams add rows at the bottom. Do not delete rows; supersede decisions with explicit pointers.
 
+**Frozen rows:** Rows marked _(frozen init snapshot)_ are **immutable** — never change `merge_status`, SHAs, or scope text in place. When lifecycle reconciles, **append** a successor row (e.g. `*-MERGED`) and link from the frozen row.
+
 **Status vocabulary (never conflate):**
 
 | Field | Meaning |
@@ -37,19 +39,29 @@
 
 ---
 
+## Historical platform intent (paused — not claimed as shipped)
+
+| Step | Historical intent (pre-2026-11-16) | Status today |
+|------|-------------------------------------|--------------|
+| 1 | Alpha **copied into** SYNQDRIVE-CORE | CORE = reference fork; **no** auto merge-back to Alpha |
+| 2 | Core as **separate central backend** deployable | **PAUSED** — Core logical domain stays in Alpha monolith |
+| 3 | Rental as **separate application** deployable | **PAUSED** — Rental first-class **in-repo** |
+| 4 | Core ↔ Rental over **secured API / M2M** | **PAUSED** as default for co-located Rental; M2M for **separate** product backends |
+
 ## Superseded decision pointers (historical)
 
 | ID | Superseded claim | Superseded by |
 |----|------------------|---------------|
-| CORE-EXTRACT-TRAJECTORY | SYNQDRIVE-CORE mandatory extraction / auto-merge into Alpha | Owner 2026-11-16 — [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) § Owner decision |
-| RENTAL-M2M-DEFAULT | Co-located Rental must use M2M to Core | Rejected — in-process consumption |
-| TAXI-PRODUCTSLUG | TAXI as assignable platform product | P2-PR4C — slug retired for new assigns |
+| CORE-EXTRACT-TRAJECTORY | Mandatory Core extraction with automated merge-back into Alpha | Owner 2026-11-16 — Alpha permanent platform; selective manual ports from CORE only — [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) § Historical trajectory |
+| RENTAL-M2M-MANDATORY-COLOCATED | Co-located Rental **must** use M2M to Core (incl. historical extraction plan) | **REJECTED** for in-process Rental — user JWT + guards; M2M optional binding slug only |
+| TAXI-PRODUCTSLUG | TAXI as assignable platform product | P2-PR4C — slug retired for new assigns; historical rows preserved |
 
 ---
 
 ## Maintenance
 
 1. Each substantive Alpha workstream: **append one row** with evidence links — do not paste full change records here.
-2. After merge: set `merge_status` only when GitHub shows `MERGED`; record full 40-char SHA from `mergeCommit.oid`.
-3. After owner deploy: set `deploy_status` only with deploy attestation SHA (DSRG/runbook); never from CI merge alone.
+2. After merge: **append** a row with `merge_status` **MERGED** and full 40-char `mergeCommit.oid` — do **not** rewrite frozen init rows.
+3. After owner deploy: update `deploy_status` only in a **new** reconciliation row or documented attestation block — never infer from merge alone.
 4. Reconcile `deploy_status` only from owner-authorized production release records (DSRG/runbook attestation SHA).
+5. Platform architecture or roadmap changes: update [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) in the **same PR** as ledger/authority updates.

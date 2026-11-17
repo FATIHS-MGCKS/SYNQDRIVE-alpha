@@ -13,9 +13,9 @@ alwaysApply: true
 
 ## After every substantive change (same workstream/PR)
 
-- Append a **progress ledger** row when the workstream is platform-scoped (Master Plan / Progress Ledger paths above); link to change records, do not paste them in full; freeze prior rows instead of silently rewriting lifecycle status.
-- Update the **Master Plan** when platform ownership, roadmap, or owner decisions change (same PR).
+- **Same PR (substantive workstreams):** update affected **module authority**, append **progress ledger** row when platform-scoped, and update the **Master Plan** when platform architecture/ownership/roadmap changes — link to change records only; never overwrite frozen ledger snapshots in place.
 - Update the affected **module authority** — only relevant artifacts (`CURRENT_STATE.md`, human/machine graphs, decisions/WHY, evidence, contradictions/gaps, open questions/hypotheses, append-only change ledger, validation records).
+- Follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md); completion reports and registry review remain mandatory (`ARCHITECTURE_GOVERNANCE` below).
 - Never silently rewrite or delete historical decisions, contradictions, failed approaches, or evidence.
 - For **cross-module** changes: inspect and update **every owning authority**.
 - Re-read every affected module’s **overview row** in `SYNQDRIVE_RENTAL_ARCHITECTURE.md`.
