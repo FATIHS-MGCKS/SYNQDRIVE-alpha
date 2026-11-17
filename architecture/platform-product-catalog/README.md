@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P2-PR5)
+**Last updated:** 2026-11-17 (P3-PR1)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -35,6 +35,16 @@
 - Prevent `assignProduct` for a disabled catalog product until a future slice explicitly wires enforcement
 
 Treat `catalogStatus` as lifecycle visibility in the product catalog, separate from org licensing state.
+
+## External applications — service client registry (P3-PR1)
+
+- Tables: `core_app_service_clients`, `core_app_service_org_grants`
+- **RENTAL** is a first-class platform product; co-located Rental uses internal JWT/guards, not M2M
+- M2M foundation is for **separate** application backends (Fleet, VYMOD) consuming versioned Alpha APIs
+- Master Admin control surface and token exchange **not** in PR1
+- Runtime **OFF** unless `CORE_APP_M2M_ENABLED=true` (still not production-ready without `CORE_APP_M2M_PRODUCTION_READY`)
+
+See `CHANGE_RECORD_P3_PR1_2026-11-17.md`.
 
 ## Entitlement policy (P2-PR5)
 
