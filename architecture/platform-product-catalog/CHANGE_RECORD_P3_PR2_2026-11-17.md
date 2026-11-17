@@ -26,6 +26,7 @@
 | F1 JWT domain separation | `AuthGuard` rejects `token_type=core_app_service` before/after verify; `resolveCoreAppM2mJwtSigningSecret` null when secret equals `JWT_SECRET` |
 | F2 Production-ready gate | `isCoreAppM2mTokenIssuanceAllowed` requires `PRODUCTION_READY` in `NODE_ENV=production` |
 | F3 Regression negatives | Foreign org, missing entitlement, invalid scope defs, empty `allowedScopes`, duplicate signing secret |
+| Final closeout | HTTP identical-secret suite bootstraps app with guard-captured secret + proves `jwt.verify` then 401; stored `allowedScopes` validated against `CORE_APP_M2M_KNOWN_SCOPES` (mixed valid/unknown => DENY) |
 
 Evidence: `core-app-m2m-token.http-security.integration.spec.ts`, `auth.guard.ts`, `core-app-m2m-jwt.config.ts`, `core-app-m2m.config.ts`.
 

@@ -71,6 +71,13 @@ export class CoreAppM2mTokenExchangeService {
       this.failClosed();
     }
 
+    const invalidStoredScopes = validateCoreAppM2mScopeDefinitions(
+      client.allowedScopes,
+    );
+    if (invalidStoredScopes.length > 0) {
+      this.failClosed();
+    }
+
     const invalidScopeDefs = validateCoreAppM2mScopeDefinitions(input.scopes);
     if (invalidScopeDefs.length > 0) {
       this.failClosed();

@@ -298,6 +298,23 @@ describe('CoreAppM2mTokenExchangeService', () => {
     );
   });
 
+  it('rejects client when stored allowedScopes mixes valid and unknown scopes', async () => {
+    const { clientSecret } = await seedHappyPath({
+      allowedScopes: [
+        CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ,
+        'core:app:unknown:stored-scope',
+      ],
+    });
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'fleet-app-1',
+        clientSecret,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      }),
+    );
+  });
+
   it('rejects unknown scope definitions and empty allowedScopes configuration', async () => {
     const { clientSecret } = await seedHappyPath();
     await expectAuthFailed(
