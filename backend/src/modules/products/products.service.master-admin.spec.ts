@@ -39,6 +39,31 @@ describe('ProductsService — vehicle access mode', () => {
     });
   });
 
+  describe('retired TAXI platform product', () => {
+    it('rejects new assignment before product lookup', async () => {
+      await expect(
+        service.assignProductForMasterAdmin({
+          orgId: ORG,
+          productSlug: ProductSlug.TAXI,
+          actorUserId: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.product.findUnique).not.toHaveBeenCalled();
+      expect(prisma.organizationProduct.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects reactivation of suspended TAXI assignment', async () => {
+      await expect(
+        service.assignProductForMasterAdmin({
+          orgId: ORG,
+          productSlug: ProductSlug.TAXI,
+          actorUserId: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.organizationProduct.update).not.toHaveBeenCalled();
+    });
+  });
+
   it('creates assignment with explicit vehicleAccessMode', async () => {
     prisma.organizationProduct.findUnique.mockResolvedValue(null);
     prisma.organizationProduct.create.mockResolvedValue({
