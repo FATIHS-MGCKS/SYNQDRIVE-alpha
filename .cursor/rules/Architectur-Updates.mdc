@@ -6,12 +6,14 @@ alwaysApply: true
 ## Before substantive module work
 
 1. Read root [`AGENTS.md`](../../AGENTS.md) and [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../../architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md).
-2. Branch on the module’s **registry coverage status**.
-3. For `AUTHORITY_ACTIVE`: read all mandatory entry documents listed in the registry.
-4. For `NOT_STARTED` or `AUDIT_IN_PROGRESS`: follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md).
+2. For platform, product catalog, entitlements, Master Admin, or M2M work: also read [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) and scan [`architecture/platform-reorientation/PROGRESS_LEDGER.md`](../../architecture/platform-reorientation/PROGRESS_LEDGER.md) for the active phase — without weakening module-authority obligations below.
+3. Branch on the module’s **registry coverage status**.
+4. For `AUTHORITY_ACTIVE`: read all mandatory entry documents listed in the registry.
+5. For `NOT_STARTED` or `AUDIT_IN_PROGRESS`: follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md).
 
 ## After every substantive change (same workstream/PR)
 
+- Append a **progress ledger** row when the workstream is platform-scoped (Master Plan / Progress Ledger paths above); link to change records, do not paste them in full.
 - Update the affected **module authority** — only relevant artifacts (`CURRENT_STATE.md`, human/machine graphs, decisions/WHY, evidence, contradictions/gaps, open questions/hypotheses, append-only change ledger, validation records).
 - Never silently rewrite or delete historical decisions, contradictions, failed approaches, or evidence.
 - For **cross-module** changes: inspect and update **every owning authority**.

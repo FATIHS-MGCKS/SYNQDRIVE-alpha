@@ -37,6 +37,20 @@
 | SSH identity | Existing authorized `~/.ssh/id_ed25519` when present; else `CLOUD_AGENT_SSH_PRIVATE_KEY` (Cursor Secret). Unset secret does **not** prove SSH is impossible when a baked key exists. |
 | Path B (Tailscale / `mein-vps.internal`) | Optional for some operator setups — **not** the documented routine Production deploy transport for Hostinger Path A. |
 
+## SYNQDRIVE platform architecture and progress (mandatory)
+
+Applies to platform, product catalog, entitlements, Master Admin, M2M, and cross-product governance in **SYNQDRIVE-alpha**.
+
+1. **Read first:** [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) and the relevant **module authority** (central registry §2) before substantive platform/product work.
+2. **Core extraction:** **PAUSED** — `SYNQDRIVE-CORE` is a historical reference fork only; **Rental remains first-class** in Alpha (in-process Core services; M2M only for separately deployed consumers such as future Fleet/VYMOD).
+3. **Same-PR authority updates:** Every substantive PR must update affected **registered module authorities** in that PR (per workflow below).
+4. **Progress ledger:** Every substantive SYNQDRIVE-alpha workstream must add a concise, evidence-bound row to [`architecture/platform-reorientation/PROGRESS_LEDGER.md`](architecture/platform-reorientation/PROGRESS_LEDGER.md) in the same PR (link to change records; do not duplicate full bodies).
+5. **Master plan:** When platform architecture, ownership, roadmap, or owner decisions change, update the Master Plan in the **same PR**; preserve superseded text with explicit `SUPERSEDED` pointers (append-only history).
+6. **Status separation:** Keep **planned**, **implemented**, **merged**, **deployed**, and **production-validated** distinct — never equate merge with deploy or production validation.
+7. **Post-merge/deploy:** Reconcile ledger `merge_status` / `deploy_status` only in the next authorized documentation update (verify GitHub and deploy attestation).
+8. **`AUTHORITY_ACTIVE`:** Do not promote modules without [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) gates.
+9. **Completion reports:** Record architecture governance and per-module `REGISTRY_REVIEWED: UPDATED|UNCHANGED` results (see [`.cursor/rules/Architectur-Updates.mdc`](.cursor/rules/Architectur-Updates.mdc)).
+
 ## Mandatory architecture-first workflow
 
 Before inspecting or changing any SynqDrive module, every agent **must** follow this workflow.
