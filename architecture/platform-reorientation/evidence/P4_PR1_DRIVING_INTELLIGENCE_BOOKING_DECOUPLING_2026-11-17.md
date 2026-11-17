@@ -13,6 +13,12 @@
 | Rental boundary | VI module read Rental tables | `DrivingIntelligenceBookingResolutionPrismaAdapter` in `bookings/` |
 | Nest wiring | Repository + Prisma only | `DrivingIntelligenceBookingResolutionModule` imported by `VehicleIntelligenceModule` |
 
+## Boundary scope (not over-claimed)
+
+- **Removed:** Direct `prisma.booking` access inside `DrivingIntelligenceJobRepository` for job persist validation.
+- **Still true:** `VehicleIntelligenceModule` imports `DrivingIntelligenceBookingResolutionModule` (Rental adapter lives under `bookings/`) so Nest can inject the port at runtime — this is **composition**, not full domain isolation.
+- **Not claimed:** Complete Core/Vehicle-Intelligence vs Rental independence, zero cross-module imports, or elimination of all Rental Prisma usage elsewhere in vehicle-intelligence (e.g. trip attribution paths unchanged in P4-PR1).
+
 ## Parity checklist
 
 | Case | Preserved |
