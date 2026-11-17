@@ -301,6 +301,15 @@ nodes:
       - backend/src/modules/vehicle-intelligence/ports/driving-intelligence-booking-resolution.port.ts
       - backend/src/modules/bookings/driving-intelligence-booking-resolution/driving-intelligence-booking-resolution.adapter.ts
 
+  - id: DI-SVC-RENTAL-RECONCILIATION-PORT-001
+    type: service
+    title: RentalDrivingAnalysisReconciliationPort
+    epistemic_status: CONFIRMED
+    summary: Rental supplies BOOKING_WITHOUT_RENTAL_ANALYSIS scan/remediate for driving-analysis reconciliation (P4-PR2).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/ports/rental-driving-analysis-reconciliation.port.ts
+      - backend/src/modules/rental-driving-analysis/reconciliation/rental-driving-analysis-reconciliation.adapter.ts
+
   - id: DI-SCHED-RECONCILE-001
     type: scheduler
     title: DrivingAnalysisReconciliationScheduler
