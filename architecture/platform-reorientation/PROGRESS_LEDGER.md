@@ -11,7 +11,7 @@
 | `deploy_status` | Owner-authorized production release — **unknown unless attested** |
 | `production_validated` | Explicit production evidence record — **not** inferred from merge |
 
-**Binding plan:** [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md)
+**Binding plan:** [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) (pending PR [#2416](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2416); this branch carries ledger rows only)
 
 ---
 
