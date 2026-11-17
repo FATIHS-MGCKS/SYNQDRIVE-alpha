@@ -51,6 +51,76 @@ cleanup() {
   rm -rf "$WORKTREE_ROOT" "$METRICS_ROOT"
 }
 
+# Writes sanitized tail of a log file to stderr (CI-visible even when stdout is redirected).
+emit_sanitized_log_tail() {
+  local log_file="$1"
+  local max_lines="${2:-20}"
+  if [[ ! -f "$log_file" ]]; then
+    echo "LOG_TAIL_MISSING path=$(basename "$log_file")" >&2
+    return 0
+  fi
+  echo "=== sanitized log tail ($(basename "$log_file"), last ${max_lines} lines) ===" >&2
+  sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$log_file" 2>/dev/null |
+    tail -n "$max_lines" |
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line="$(printf '%s' "$line" | sed -E \
+        -e 's#(postgres(ql)?(\+srv)?://)[^ @]+@#\1[REDACTED]@#g' \
+        -e 's#(redis(s)?://)[^ @]+@#\1[REDACTED]@#g' \
+        -e 's#(npm_[A-Za-z0-9_]+=)[^ ]+#\1[REDACTED]#g' \
+        -e 's#/_authToken=[^ ]+#/_authToken=[REDACTED]#g')"
+      if ((${#line} > 320)); then
+        line="${line:0:320}...[truncated]"
+      fi
+      printf '%s\n' "$line" >&2
+    done
+}
+
+report_resource_pressure() {
+  echo "=== resource pressure (df -h) ===" >&2
+  df -h / /tmp "${WORKTREE_ROOT}" 2>/dev/null | sed 's/  */ /g' >&2 || true
+  echo "=== resource pressure (df -i) ===" >&2
+  df -i / /tmp 2>/dev/null | sed 's/  */ /g' >&2 || true
+}
+
+fail_probe_bootstrap() {
+  local label="$1"
+  local phase="$2"
+  local exit_code="$3"
+  local log_file="${4:-}"
+
+  {
+    echo "PROBE_BOOTSTRAP_FAILURE=YES"
+    echo "PROBE_LABEL=${label}"
+    echo "PROBE_BOOTSTRAP_PHASE=${phase}"
+    echo "PROBE_BOOTSTRAP_EXIT=${exit_code}"
+  } >&2
+
+  report_resource_pressure
+  if [[ -n "$log_file" ]]; then
+    emit_sanitized_log_tail "$log_file"
+  fi
+
+  fail_infra "BOOTSTRAP_${label}_${phase}_exit_${exit_code}"
+}
+
+run_bootstrap_step() {
+  local label="$1"
+  local phase="$2"
+  local log_file="$3"
+  shift 3
+
+  echo "=== ${label} bootstrap: ${phase} (start) ===" >&2
+  set +e
+  "$@" >"$log_file" 2>&1
+  local exit_code=$?
+  set -e
+  echo "${label}_BOOTSTRAP_${phase^^}_EXIT=${exit_code}" >&2
+  if [[ "$exit_code" -ne 0 ]]; then
+    fail_probe_bootstrap "$label" "$phase" "$exit_code" "$log_file"
+  fi
+  echo "=== ${label} bootstrap: ${phase} (ok) ===" >&2
+}
+
 if [[ ! -f "$PROBE_SRC" ]]; then
   fail_infra "PROBE_SOURCE_MISSING path=${PROBE_SRC}"
 fi
@@ -111,16 +181,19 @@ install_and_run_probe() {
   local expect="$3"
   local metrics_file="$METRICS_ROOT/${label,,}-metrics.json"
   local log="/tmp/trip-r12-red-probe-${label}.log"
+  local boot_log_dir="$METRICS_ROOT/${label,,}-bootstrap"
 
-  mkdir -p "$(dirname "$dir/$PROBE_REL")"
+  mkdir -p "$(dirname "$dir/$PROBE_REL")" "$boot_log_dir"
   cp "$PROBE_SRC" "$dir/$PROBE_REL"
 
   echo "=== ${label} probe @ ${dir} (TRIP_R12_PROBE_EXPECT=${expect}) ===" >&2
 
+  local prev_cwd="$PWD"
   cd "$dir/backend"
-  npm ci >/dev/null 2>&1
-  npx prisma generate >/dev/null 2>&1
-  npx prisma db push --accept-data-loss --skip-generate >/dev/null 2>&1
+  run_bootstrap_step "$label" npm_ci "$boot_log_dir/npm-ci.log" npm ci
+  run_bootstrap_step "$label" prisma_generate "$boot_log_dir/prisma-generate.log" npx prisma generate
+  run_bootstrap_step "$label" prisma_db_push "$boot_log_dir/prisma-db-push.log" \
+    npx prisma db push --accept-data-loss --skip-generate
 
   set +e
   TRIP_R12_POSTGRES_REDIS_INTEGRATION=1 \
@@ -131,8 +204,15 @@ install_and_run_probe() {
     --runInBand --forceExit --verbose > "$log" 2>&1
   local exit_code=$?
   set -e
+  cd "$prev_cwd"
 
+  echo "${label}_PROBE_EXIT=$exit_code" >&2
   echo "${label}_PROBE_EXIT=$exit_code"
+  if [[ "$exit_code" -ne 0 ]]; then
+    echo "${label}_PROBE_FAILED_PHASE=jest" >&2
+    report_resource_pressure
+    emit_sanitized_log_tail "$log"
+  fi
   echo "${label}_METRICS_FILE=$metrics_file"
   read_metrics "$metrics_file" "$label" || true
 }
