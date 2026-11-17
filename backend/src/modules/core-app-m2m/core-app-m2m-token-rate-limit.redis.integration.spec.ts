@@ -12,6 +12,7 @@ const LIVE = process.env.RUN_CORE_APP_M2M_REDIS_INTEGRATION === '1';
 (LIVE ? describe : describe.skip)(
   'Core app M2M token rate limit — disposable Redis integration',
   () => {
+    jest.setTimeout(30_000);
     let memoryServer: RedisMemoryServer;
     let host: string;
     let port: number;
@@ -60,7 +61,9 @@ const LIVE = process.env.RUN_CORE_APP_M2M_REDIS_INTEGRATION === '1';
       );
     });
 
-    it('allows traffic again after fixed window bucket rolls forward', async () => {
+    it(
+      'allows traffic again after fixed window bucket rolls forward',
+      async () => {
       process.env.CORE_APP_M2M_RATE_LIMIT_WINDOW_SECONDS = '1';
       process.env.CORE_APP_M2M_RATE_LIMIT_MAX_PER_CLIENT = '1';
       const service = new CoreAppM2mTokenRateLimitService(redisA);
@@ -75,7 +78,9 @@ const LIVE = process.env.RUN_CORE_APP_M2M_REDIS_INTEGRATION === '1';
       const waitMs = windowMs - (Date.now() % windowMs) + 50;
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       await expect(service.assertBeforeTokenExchange(input)).resolves.toBeUndefined();
-    });
+      },
+      15_000,
+    );
 
     it('concurrent requests across replicas respect atomic limit', async () => {
       process.env.CORE_APP_M2M_RATE_LIMIT_MAX_PER_CLIENT = '4';

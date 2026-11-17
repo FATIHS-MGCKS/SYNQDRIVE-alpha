@@ -9,7 +9,7 @@
 | Rule | Verification |
 |------|----------------|
 | Alpha = central platform (Core + Rental co-located) | Master Plan § Platform model; M2M for **external** Fleet/VYMOD only |
-| Rental first-class; in-process user JWT | `auth.guard.core-m2m-bypass.spec.ts`; `core-app-m2m-token.http-security.integration.spec.ts` (service JWT rejected on entitlements) |
+| Rental first-class; in-process user JWT | `core-app-m2m-rental-user-jwt.http-security.integration.spec.ts` (rental-health **route shape**); Core entitlements suite = **platform** JWT only (**not** full Rental stack) |
 | SYNQDRIVE-CORE reference only | No Core-repo changes in this certification |
 | M2M runtime default OFF | `core-app-m2m.config.spec.ts`; env not mutated in certification |
 
@@ -40,8 +40,8 @@
 | Old service JWT after scope/credential bump | JWT `credential_version` + scope revalidation (P3-PR4 remediation tests in vehicle read spec) |
 | Redis failure fail-closed | `core-app-m2m-token-rate-limit.http.integration.spec.ts` — Redis unavailable; `core-app-m2m-token-rate-limit.service.spec.ts` |
 | MA MFA step-up | `core-app-service-client.mfa.http-security.spec.ts`; `core-app-service-client.admin.controller.metadata.spec.ts` (`MASTER_API_KEYS`) |
-| Service JWT on Rental user routes | token HTTP spec — service JWT on entitlements 401 |
-| User JWT unchanged | accepts valid user JWT on entitlements (both token + vehicle read suites) |
+| Service JWT on Rental user routes | `core-app-m2m-rental-user-jwt.http-security.integration.spec.ts` — 401 on `.../rental-health`; entitlements spec = core route only |
+| User JWT unchanged | Rental stub route 200 with user JWT; entitlements + vehicle read suites unchanged |
 
 ## Phase 4 — Production readiness (inspect only — **not activated**)
 
@@ -56,11 +56,30 @@
 | Migrations P3 | `20261117133000_p3_pr1_core_app_service_client_registry` on chain |
 | **Fresh-DB blocker** | **PRE_EXISTING** — full chain fails before P3 at `20260413230000_add_composite_indexes_batch_c` ([`P3_PR1_MIGRATION_EVIDENCE_2026-11-17.md`](P3_PR1_MIGRATION_EVIDENCE_2026-11-17.md)) — **not** introduced by P3 |
 
+## Opt-in disposable integration (remediation run 2026-11-17)
+
+### PostgreSQL
+
+| Field | Value |
+|-------|-------|
+| Classification | **DISPOSABLE** — host `127.0.0.1:5433`, database `synqdrive_product_catalog_p2_pr1` (allowlist in `core-app-m2m-disposable-postgres-preflight.ts`) |
+| Command | `CORE_APP_M2M_POSTGRES_INTEGRATION=1 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/synqdrive_product_catalog_p2_pr1 npx jest --runInBand core-app-m2m.postgres.integration.spec.ts` |
+| Result | **PASS** — 3/3 tests |
+| Production DB | **not used** |
+
+### Redis (disposable `redis-memory-server`)
+
+| Field | Value |
+|-------|-------|
+| Command | `RUN_CORE_APP_M2M_REDIS_INTEGRATION=1 npx jest --runInBand core-app-m2m-token-rate-limit.redis.integration.spec.ts` |
+| Result | **PASS** — 4/4 tests (`jest.setTimeout(30_000)` on slow disposable-Redis VMs) |
+| Production Redis | **not used** |
+
 ## Certification test execution (agent run 2026-11-17)
 
 ```text
 backend: npx jest --testPathPatterns='core-app-m2m|core-read-vehicles|auth.guard.core-m2m'
-  → 23 passed, 1 skipped (postgres integration — PG URL not set), 97 tests passed
+  → 24 passed, 0 skipped, 101+ tests passed (includes rental JWT HTTP spec)
 
 frontend: vitest src/master/core-app-service-clients/
   → 10 passed
@@ -77,6 +96,7 @@ P3-PR5 registered `CoreAppServiceClientAdminController` on `CoreAppM2mModule`, b
 **PASS_WITH_BLOCKERS**
 
 - **Pass:** P3 integration and security suites green on representative CI path; architecture rules satisfied; production flags remain OFF.
-- **Blockers (non-P3):** Fresh-DB migration chain; optional postgres integration suite requires disposable PostgreSQL.
+- **Blockers (non-P3):** Fresh-DB full migration chain (`20260413230000_add_composite_indexes_batch_c`).
+- **Rental note:** Representative rental-health **AuthGuard** HTTP stub verified; full `RentalHealthController` + org/permission guards **NOT_DIRECTLY_VERIFIED** in this certification run.
 
 **Production validation:** **NOT_CLAIMED**. **M2M production activation:** **NOT_PERFORMED**.
