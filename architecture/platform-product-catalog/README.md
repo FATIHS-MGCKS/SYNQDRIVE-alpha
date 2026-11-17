@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-16 (P2-PR1)
+**Last updated:** 2026-11-17 (P2-PR4C)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -35,6 +35,13 @@
 - Prevent `assignProduct` for a disabled catalog product until a future slice explicitly wires enforcement
 
 Treat `catalogStatus` as lifecycle visibility in the product catalog, separate from org licensing state.
+
+## TAXI platform product retirement (P2-PR4C)
+
+- **Owner:** TAXI is not a future SYNQDRIVE **ProductSlug**; `BusinessType.TAXI` and legal scope `TAXI` remain.
+- **Backend:** `assertPlatformProductAssignable` rejects TAXI on `assignProduct` / `assignProductForMasterAdmin` before DB writes.
+- **Seed:** TAXI catalog row omitted from `prisma/seed.ts` for new environments.
+- **Enum / row deletion:** deferred until data inventory + migration design (see `CHANGE_RECORD_P2_PR4C_2026-11-17.md`).
 
 ## Backward compatibility
 

@@ -12,10 +12,8 @@ async function main() {
   await prisma.product.create({
     data: { slug: 'FLEET', name: 'SynqDrive Fleet', description: 'Fleet management & tracking module' },
   });
-  await prisma.product.create({
-    data: { slug: 'TAXI', name: 'SynqDrive Taxi', description: 'Taxi dispatch & management module' },
-  });
-  console.log('  Products created');
+  // TAXI platform product retired (P2-PR4C): enum/migration row may remain for historical org assignments.
+  console.log('  Products created (RENTAL, FLEET — TAXI not seeded)');
 
   // ---- INTEGRATIONS (platform-level catalog) ----
   await prisma.integration.create({

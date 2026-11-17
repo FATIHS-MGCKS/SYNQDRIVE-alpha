@@ -278,6 +278,104 @@ describe('VehicleProductGrantService', () => {
     expect(row.grantVersion).toBe(2);
   });
 
+  describe('retired TAXI platform product grants', () => {
+    it('rejects new TAXI grant before organization product lookup and transaction', async () => {
+      const prisma = makePrisma(store);
+      const txSpy = jest.spyOn(prisma, '$transaction');
+      service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
+      await expect(
+        service.grantExplicit({
+          organizationId: ORG,
+          vehicleId: VEH,
+          productSlug: ProductSlug.TAXI,
+          grantedByUserId: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.organizationProduct.findFirst).not.toHaveBeenCalled();
+      expect(txSpy).not.toHaveBeenCalled();
+      expect(store.size).toBe(0);
+    });
+
+    it('rejects reactivating a revoked TAXI grant', async () => {
+      store.set(`${VEH}:TAXI`, {
+        id: 'g-taxi',
+        organizationId: ORG,
+        vehicleId: VEH,
+        productSlug: ProductSlug.TAXI,
+        status: VehicleProductGrantStatus.REVOKED,
+        grantVersion: 2,
+        grantedAt: new Date(),
+        revokedAt: new Date(),
+        grantedByUserId: ADMIN,
+        revokedByUserId: ADMIN,
+      });
+      await expect(
+        service.grantExplicit({
+          organizationId: ORG,
+          vehicleId: VEH,
+          productSlug: ProductSlug.TAXI,
+          grantedByUserId: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(store.get(`${VEH}:TAXI`)?.status).toBe(VehicleProductGrantStatus.REVOKED);
+      expect(store.get(`${VEH}:TAXI`)?.grantVersion).toBe(2);
+    });
+
+    it('allows revoking an active historical TAXI grant', async () => {
+      store.set(`${VEH}:TAXI`, {
+        id: 'g-taxi',
+        organizationId: ORG,
+        vehicleId: VEH,
+        productSlug: ProductSlug.TAXI,
+        status: VehicleProductGrantStatus.ACTIVE,
+        grantVersion: 1,
+        grantedAt: new Date(),
+        revokedAt: null,
+        grantedByUserId: ADMIN,
+        revokedByUserId: null,
+      });
+      const revoked = await service.revokeGrant({
+        organizationId: ORG,
+        vehicleId: VEH,
+        productSlug: ProductSlug.TAXI,
+        revokedByUserId: ADMIN,
+      });
+      expect(revoked.status).toBe(VehicleProductGrantStatus.REVOKED);
+    });
+
+    it('lists historical TAXI grants without mutation', async () => {
+      store.set(`${VEH}:TAXI`, {
+        id: 'g-taxi',
+        organizationId: ORG,
+        vehicleId: VEH,
+        productSlug: ProductSlug.TAXI,
+        status: VehicleProductGrantStatus.ACTIVE,
+        grantVersion: 1,
+        grantedAt: new Date(),
+        revokedAt: null,
+        grantedByUserId: ADMIN,
+        revokedByUserId: null,
+      });
+      const prisma = makePrisma(store);
+      (prisma.vehicleProductGrant.findMany as jest.Mock) = jest
+        .fn()
+        .mockResolvedValue([
+          {
+            vehicleId: VEH,
+            productSlug: ProductSlug.TAXI,
+            status: VehicleProductGrantStatus.ACTIVE,
+            grantVersion: 1,
+            grantedAt: new Date(),
+            revokedAt: null,
+          },
+        ]);
+      service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
+      const rows = await service.listGrantedVehicles(ORG, ProductSlug.TAXI);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].productSlug).toBe(ProductSlug.TAXI);
+    });
+  });
+
   it('audit is not called on idempotent grant', async () => {
     await service.grantExplicit({
       organizationId: ORG,

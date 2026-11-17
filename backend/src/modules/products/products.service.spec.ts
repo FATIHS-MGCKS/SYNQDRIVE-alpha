@@ -1,5 +1,7 @@
+import { BadRequestException } from '@nestjs/common';
 import {
   OrganizationProductVehicleAccessMode,
+  OrgProductPlan,
   OrgProductStatus,
   ProductCatalogStatus,
   ProductSlug,
@@ -87,6 +89,12 @@ describe('ProductsService — catalog foundation', () => {
   });
 
   describe('assignProduct vehicleAccessMode', () => {
+    it('rejects retired TAXI before any database write', async () => {
+      await expect(service.assignProduct('org-1', 'TAXI')).rejects.toThrow(BadRequestException);
+      expect(prisma.product.findUnique).not.toHaveBeenCalled();
+      expect(prisma.organizationProduct.upsert).not.toHaveBeenCalled();
+    });
+
     it('creates RENTAL with ORGANIZATION_WIDE without changing mode on update', async () => {
       prisma.product.findUnique.mockResolvedValue({
         id: 'p-rental',
