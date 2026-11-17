@@ -46,13 +46,13 @@
 | 1 | Alpha **copied into** SYNQDRIVE-CORE | CORE = reference fork; **no** auto merge-back to Alpha |
 | 2 | Core as **separate central backend** deployable | **PAUSED** — Core logical domain stays in Alpha monolith |
 | 3 | Rental as **separate application** deployable | **PAUSED** — Rental first-class **in-repo** |
-| 4 | Core ↔ Rental over **secured API / M2M** | **PAUSED** as default for co-located Rental; M2M for **separate** product backends |
+| 4 | **Secured API / M2M** between **separate** Core and Rental **deployments** (historical plan) | **PAUSED** — co-located Rental in Alpha uses in-process shared services; M2M when separate product backends connect |
 
 ## Superseded decision pointers (historical)
 
 | ID | Superseded claim | Superseded by |
 |----|------------------|---------------|
-| CORE-EXTRACT-TRAJECTORY | Mandatory Core extraction with automated merge-back into Alpha | Owner 2026-11-16 — Alpha permanent platform; selective manual ports from CORE only — [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) § Historical trajectory |
+| CORE-EXTRACT-TRAJECTORY | Post–copy-out extraction as **primary** trajectory: separate Core backend + separate Rental application + secured API/M2M **between separate deployments** (not claimed shipped; **no** automatic merge-back to Alpha claimed) | Owner 2026-11-16 **PAUSED** — Alpha permanent platform; CORE reference fork; selective manual ports only — [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) § Historical trajectory |
 | RENTAL-M2M-MANDATORY-COLOCATED | Co-located Rental **must** use M2M to Core (incl. historical extraction plan) | **REJECTED** for in-process Rental — user JWT + guards; M2M optional binding slug only |
 | TAXI-PRODUCTSLUG | TAXI as assignable platform product | P2-PR4C — slug retired for new assigns; historical rows preserved |
 

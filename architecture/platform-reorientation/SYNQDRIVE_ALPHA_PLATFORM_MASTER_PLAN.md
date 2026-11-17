@@ -11,8 +11,8 @@
 
 1. **SYNQDRIVE-alpha** was **copied into** the **SYNQDRIVE-CORE** repository as a parallel line of development.
 2. **Core** was **intended** to become a **separate central backend** (distinct deployable).
-3. **Rental** was **intended** to become a **separate application**, communicating with Core through **secured APIs / M2M**.
-4. Planned Core ↔ Rental traffic was **secured API / M2M** between **separate** deployables (historical intent only).
+3. **Rental** was **intended** to become a **separate application** deployable.
+4. **Secured API / M2M** was **planned between those separate deployments** (Core backend ↔ Rental application) — historical intent only; not the co-located Alpha default.
 5. **Owner decision 2026-11-16:** that extraction trajectory is **PAUSED**. Alpha remains the permanent platform repo; Core remains a **reference fork** for selective manual ports only — **no** automated cherry-pick, merge-back, or continuation of the old extraction roadmap; **no** historical automatic merge-back to Alpha is claimed.
 6. **No** historical or binding requirement that **co-located Rental** use M2M — in-process consumption remains the default in Alpha.
 
@@ -20,7 +20,7 @@
 
 | Previous trajectory | Current binding |
 |--------------------|-----------------|
-| Core extraction as primary platform path (separate Core backend + separate Rental app over M2M) | **PAUSED** — logical Core/Rental **domains** stay in **one** Alpha deployment; M2M for **separately deployed** product backends when gates are armed |
+| Post–copy-out extraction as primary path: **separate** Core backend + **separate** Rental application + secured API/M2M **between separate deployments** (no automatic merge-back to Alpha claimed) | **PAUSED** — logical Core/Rental **domains** in **one** Alpha deployment; co-located Rental **not** M2M-required; M2M for **other** separately deployed product backends when gates are armed |
 | Rental as co-located app forced through external M2M to Core | **REJECTED** — Rental is **first-class** and uses **in-process** shared platform services + user JWT |
 | TAXI as operational `ProductSlug` | **RETIRED** — historical rows preserved; `BusinessType.TAXI` and legal scope `TAXI` remain distinct |
 
@@ -128,7 +128,7 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 
 ## Non-goals
 
-- Resume full Core extraction merge pipeline.
+- Resume the paused Core-extraction roadmap or claim automatic merge-back from SYNQDRIVE-CORE into Alpha.
 - Force co-located Rental through M2M.
 - New universal Core health aggregator.
 - Remove Rental from Alpha.

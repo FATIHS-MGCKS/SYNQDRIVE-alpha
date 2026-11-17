@@ -13,9 +13,19 @@ alwaysApply: true
 
 ## After every substantive change (same workstream/PR)
 
-- **Same PR (substantive workstreams):** update affected **module authority**, append **progress ledger** row when platform-scoped, and update the **Master Plan** when platform architecture/ownership/roadmap changes — link to change records only; never overwrite frozen ledger snapshots in place.
+### SYNQDRIVE-alpha substantive workstreams (mandatory — mirrors `AGENTS.md`)
+
+Every substantive **SYNQDRIVE-alpha** workstream must, in the **same PR**:
+
+1. Update every affected **registered module authority** (relevant artifacts only — see below).
+2. **Append** progress evidence to [`architecture/platform-reorientation/PROGRESS_LEDGER.md`](../../architecture/platform-reorientation/PROGRESS_LEDGER.md) when the workstream is platform-scoped; link change records; never overwrite frozen ledger snapshots in place.
+3. Update [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) when platform architecture, ownership, roadmap, or **Owner** decisions change.
+
+Follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md); **completion reports** and **registry review** remain mandatory (`ARCHITECTURE_GOVERNANCE` below).
+
+### Module authority artifacts
+
 - Update the affected **module authority** — only relevant artifacts (`CURRENT_STATE.md`, human/machine graphs, decisions/WHY, evidence, contradictions/gaps, open questions/hypotheses, append-only change ledger, validation records).
-- Follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md); completion reports and registry review remain mandatory (`ARCHITECTURE_GOVERNANCE` below).
 - Never silently rewrite or delete historical decisions, contradictions, failed approaches, or evidence.
 - For **cross-module** changes: inspect and update **every owning authority**.
 - Re-read every affected module’s **overview row** in `SYNQDRIVE_RENTAL_ARCHITECTURE.md`.
