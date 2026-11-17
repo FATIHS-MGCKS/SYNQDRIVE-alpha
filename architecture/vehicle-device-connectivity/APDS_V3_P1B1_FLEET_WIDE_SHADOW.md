@@ -36,7 +36,7 @@ Physical fetch id is always `physical-fetch:{jobId}:run:{attemptsMade}` (`DERIVE
 
 ## POSTGRES_CONCURRENCY_CERT
 
-`apds-v3-shadow-concurrency.postgres.integration.spec.ts` (disposable PG, `APDS_V3_SHADOW_PG=1`) — wired in `backend/scripts/test/p25-apd-shadow-postgres-ci.sh`.
+`apds-v3-shadow-concurrency.postgres.integration.spec.ts` (disposable PG, `APDS_V3_SHADOW_PG=1`) — wired in `backend/scripts/test/p25-apd-shadow-postgres-ci.sh`. Conflicting concurrent inserts: **first committed row wins** (either contender may win the race); loser receives `ApdsV3ShadowImmutableConflictError`; test asserts stored row matches the successful insert payload (not a fixed decision ordering).
 
 ## KILL_SWITCH
 

@@ -2,6 +2,7 @@
 
 | Date | Change | Author/workstream |
 |------|--------|-------------------|
+| 2026-11-17 | APDS V3 shadow Postgres concurrency cert — conflicting concurrent insert test asserts first-commit-wins (either `NOT_ASSESSABLE` or `SKIP` contender may win); repository immutability unchanged; test-only (unblocks P25 disposable PG CI) | APDS P25 CI / VDC |
 | 2026-11-11 | APDS V3 P1B1 R2 final closeout — runtime/budget mutex scope, physical-fetch vs enqueue correlation, baseline link fail-closed, P2C strict advance, dual-client Postgres concurrency cert (`apds-v3-shadow-concurrency.postgres.integration.spec.ts`); valid DIMO `DimoVehicle` fixture for `vehicle_data_source_links_provider_reference_check`; SynqDrive Code Changes/Architektur; no deploy (PR #2399) | APDS V3 P1B1 |
 | 2026-11-10 | APDS V3 P1B0 architecture remediation (H1–H5): B2∩B4 intersection semantics, consumer fail-closed gate, causal evidence validator, replay accounting, verified baseline `isSnapshotPollDue` adapter; PR #2396 | APDS V3 P1B0 |
 | 2026-11-10 | APDS V3 P1B0 offline-only consumer demand registry, VSI information-gain heuristic, V3 policy evaluator, replay core + CLI harness; architecture contracts; no production activation (draft PR) | APDS V3 P1B0 |
