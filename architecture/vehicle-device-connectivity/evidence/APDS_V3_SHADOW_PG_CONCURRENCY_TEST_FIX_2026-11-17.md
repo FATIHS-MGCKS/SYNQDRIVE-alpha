@@ -8,4 +8,4 @@
 | Fix | Test-only — assert 1× `inserted`, 1× `ApdsV3ShadowImmutableConflictError`, stored row matches winning payload |
 | Algorithm | **Unchanged** (`apds-v3-shadow.repository.ts`) |
 | CI | `backend/scripts/test/p25-apd-shadow-postgres-ci.sh` — **POSTGRES_INTEGRATION=PASS** (40 tests) on disposable PG |
-| Progress ledger | Row pending central [`PROGRESS_LEDGER`](../../platform-reorientation/PROGRESS_LEDGER.md) until platform foundation merges (#2416); VDC [`research/CHANGE_LEDGER.md`](../research/CHANGE_LEDGER.md) updated |
+| Progress ledger | **Not in this PR** — append `APDS-P25-TEST` row in [PR #2416](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2416) (`architecture/platform-reorientation/PROGRESS_LEDGER.md` on `main` after #2416 merges). VDC [`research/CHANGE_LEDGER.md`](../research/CHANGE_LEDGER.md) updated in this PR |
