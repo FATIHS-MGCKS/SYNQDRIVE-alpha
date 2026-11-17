@@ -18,7 +18,14 @@ export function resolveCoreAppM2mJwtSigningSecret(
     return null;
   }
   const secret = env.CORE_APP_M2M_JWT_SECRET?.trim();
-  return secret ? secret : null;
+  if (!secret) {
+    return null;
+  }
+  const userJwtSecret = env.JWT_SECRET?.trim();
+  if (userJwtSecret && secret === userJwtSecret) {
+    return null;
+  }
+  return secret;
 }
 
 export function resolveCoreAppM2mJwtIssuer(env: NodeJS.ProcessEnv = process.env): string {

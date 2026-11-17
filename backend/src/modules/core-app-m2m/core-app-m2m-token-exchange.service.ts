@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isOrganizationProductOperationallyEntitled } from '@modules/products/entitlements/entitlements-policy';
-import { isCoreAppM2mEnabled } from './core-app-m2m.config';
+import { isCoreAppM2mTokenIssuanceAllowed } from './core-app-m2m.config';
 import { CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE } from './core-app-m2m-auth.constants';
 import {
   resolveCoreAppM2mJwtAudience,
@@ -37,7 +37,7 @@ export class CoreAppM2mTokenExchangeService {
   async exchangeToken(
     input: CoreAppM2mTokenExchangeRequestDto,
   ): Promise<CoreAppM2mTokenExchangeResponse> {
-    if (!isCoreAppM2mEnabled()) {
+    if (!isCoreAppM2mTokenIssuanceAllowed()) {
       this.failClosed();
     }
 

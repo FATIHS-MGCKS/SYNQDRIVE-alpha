@@ -32,6 +32,16 @@ describe('core-app-m2m-jwt.config', () => {
     ).toBe('m2m-only-secret');
   });
 
+  it('rejects M2M signing secret identical to JWT_SECRET', () => {
+    expect(
+      resolveCoreAppM2mJwtSigningSecret({
+        CORE_APP_M2M_ENABLED: 'true',
+        JWT_SECRET: 'shared-accidental-secret',
+        CORE_APP_M2M_JWT_SECRET: 'shared-accidental-secret',
+      }),
+    ).toBeNull();
+  });
+
   it('defaults issuer, audience, ttl', () => {
     expect(
       resolveCoreAppM2mTokenTtlSeconds({ CORE_APP_M2M_TOKEN_TTL_SECONDS: 'not-a-number' }),

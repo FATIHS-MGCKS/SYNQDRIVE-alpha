@@ -132,7 +132,7 @@ describe('Core app M2M token — HTTP security integration', () => {
     expect(res.body.message).toBe(CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE);
   });
 
-  it('user JWT-protected rental/core route rejects service JWT', async () => {
+  it('user JWT-protected rental/core route rejects service JWT when secrets differ', async () => {
     const serviceJwt = jwt.sign(
       {
         sub: 'integration-client',
@@ -155,5 +155,92 @@ describe('Core app M2M token — HTTP security integration', () => {
       .get(entitlementsRoute)
       .set('Authorization', `Bearer ${serviceJwt}`)
       .expect(401);
+  });
+
+  it('rejects service JWT on user routes when signing secrets are accidentally identical', async () => {
+    const sharedSecret = 'accidental-shared-jwt-domain-secret';
+    process.env.JWT_SECRET = sharedSecret;
+    process.env.CORE_APP_M2M_JWT_SECRET = sharedSecret;
+
+    const serviceJwt = jwt.sign(
+      {
+        sub: 'integration-client',
+        token_type: CORE_APP_M2M_TOKEN_TYPE,
+        organizationId: ORG_ID,
+        productSlug: ProductSlug.VYMOD,
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+        credentialVersion: 1,
+        grantVersion: 1,
+      },
+      sharedSecret,
+      {
+        issuer: CORE_APP_M2M_JWT_ISSUER_DEFAULT,
+        audience: CORE_APP_M2M_JWT_AUDIENCE_DEFAULT,
+        expiresIn: 300,
+      },
+    );
+
+    await request(app.getHttpServer())
+      .get(entitlementsRoute)
+      .set('Authorization', `Bearer ${serviceJwt}`)
+      .expect(401);
+
+    process.env.JWT_SECRET = USER_JWT_SECRET;
+    process.env.CORE_APP_M2M_JWT_SECRET = M2M_SECRET;
+  });
+
+  it('token exchange fail-closes when M2M signing secret equals JWT_SECRET', async () => {
+    const sharedSecret = 'shared-secret-denied-for-issuance';
+    process.env.JWT_SECRET = sharedSecret;
+    process.env.CORE_APP_M2M_JWT_SECRET = sharedSecret;
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/core-app/token')
+      .send({
+        clientId: 'integration-client',
+        clientSecret: 'integration-secret',
+        organizationId: ORG_ID,
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe(CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE);
+
+    process.env.JWT_SECRET = USER_JWT_SECRET;
+    process.env.CORE_APP_M2M_JWT_SECRET = M2M_SECRET;
+  });
+
+  it('token exchange fail-closes when M2M signing secret missing', async () => {
+    delete process.env.CORE_APP_M2M_JWT_SECRET;
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/core-app/token')
+      .send({
+        clientId: 'integration-client',
+        clientSecret: 'integration-secret',
+        organizationId: ORG_ID,
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      });
+    process.env.CORE_APP_M2M_JWT_SECRET = M2M_SECRET;
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe(CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE);
+  });
+
+  it('accepts valid user JWT on entitlements route', async () => {
+    const userJwt = jwt.sign(
+      {
+        sub: 'user-integration-1',
+        email: 'admin@test.local',
+        platformRole: 'MASTER_ADMIN',
+        organizationId: ORG_ID,
+      },
+      USER_JWT_SECRET,
+      { expiresIn: 300 },
+    );
+
+    const res = await request(app.getHttpServer())
+      .get(entitlementsRoute)
+      .set('Authorization', `Bearer ${userJwt}`);
+
+    expect(res.status).toBe(200);
   });
 });

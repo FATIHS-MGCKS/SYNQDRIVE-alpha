@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import { CORE_APP_M2M_TOKEN_TYPE } from '@modules/core-app-m2m/core-app-m2m-jwt.config';
 import { sessionClaimsFromJwt } from '@shared/auth/auth-session-claims.types';
 
 /**
@@ -94,8 +95,16 @@ export class AuthGuard implements CanActivate {
   }
 
   private validateJwt(request: any, token: string): boolean {
+    const decodedUnsafe = jwt.decode(token) as jwt.JwtPayload | null;
+    if (decodedUnsafe?.token_type === CORE_APP_M2M_TOKEN_TYPE) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as any;
+      const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
+      if (decoded.token_type === CORE_APP_M2M_TOKEN_TYPE) {
+        throw new UnauthorizedException('Invalid or expired token');
+      }
       request.user = {
         id: decoded.sub,
         email: decoded.email,

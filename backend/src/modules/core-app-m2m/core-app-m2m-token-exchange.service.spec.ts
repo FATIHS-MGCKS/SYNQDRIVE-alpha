@@ -71,6 +71,51 @@ describe('CoreAppM2mTokenExchangeService', () => {
     return { clientSecret };
   }
 
+  it('fail-closes in production when enabled but not production-ready', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CORE_APP_M2M_ENABLED = 'true';
+    process.env.CORE_APP_M2M_PRODUCTION_READY = 'false';
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'x',
+        clientSecret: 'y',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      }),
+    );
+    expect(prisma.coreAppServiceClient.findUnique).not.toHaveBeenCalled();
+    process.env.NODE_ENV = 'test';
+  });
+
+  it('allows issuance in production only when production-ready attestation set', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CORE_APP_M2M_PRODUCTION_READY = 'true';
+    const { clientSecret } = await seedHappyPath();
+    const result = await service.exchangeToken({
+      clientId: 'fleet-app-1',
+      clientSecret,
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+    });
+    expect(result.accessToken).toBeDefined();
+    process.env.NODE_ENV = 'test';
+    delete process.env.CORE_APP_M2M_PRODUCTION_READY;
+  });
+
+  it('fail-closes when M2M JWT secret equals user JWT_SECRET', async () => {
+    process.env.JWT_SECRET = 'duplicate-domain-secret';
+    process.env.CORE_APP_M2M_JWT_SECRET = 'duplicate-domain-secret';
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'fleet-app-1',
+        clientSecret: 'x',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      }),
+    );
+    expect(prisma.coreAppServiceClient.findUnique).not.toHaveBeenCalled();
+  });
+
   it('fail-closes when runtime disabled', async () => {
     process.env.CORE_APP_M2M_ENABLED = 'false';
     await expectAuthFailed(
@@ -210,6 +255,61 @@ describe('CoreAppM2mTokenExchangeService', () => {
     prisma.organizationProduct.findFirst.mockResolvedValue({
       status: OrgProductStatus.ACTIVE,
     });
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'fleet-app-1',
+        clientSecret,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      }),
+    );
+  });
+
+  it('rejects foreign organization without grant and missing entitlement', async () => {
+    const { clientSecret } = await seedHappyPath();
+    const foreignOrg = '22222222-2222-4222-8222-222222222222';
+    prisma.coreAppServiceClient.findUnique.mockResolvedValue({
+      clientId: 'fleet-app-1',
+      credentialHash: (await bcrypt.hash(clientSecret, 4)),
+      credentialVersion: 1,
+      productSlug: ProductSlug.FLEET,
+      status: CoreAppServiceClientStatus.ACTIVE,
+      allowedScopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      orgGrants: [],
+    });
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'fleet-app-1',
+        clientSecret,
+        organizationId: foreignOrg,
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      }),
+    );
+
+    await seedHappyPath();
+    prisma.organizationProduct.findFirst.mockResolvedValue(null);
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'fleet-app-1',
+        clientSecret,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        scopes: [CORE_APP_M2M_SCOPE_ENTITLEMENTS_READ],
+      }),
+    );
+  });
+
+  it('rejects unknown scope definitions and empty allowedScopes configuration', async () => {
+    const { clientSecret } = await seedHappyPath();
+    await expectAuthFailed(
+      service.exchangeToken({
+        clientId: 'fleet-app-1',
+        clientSecret,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        scopes: ['core:app:unknown:scope'],
+      }),
+    );
+
+    await seedHappyPath({ allowedScopes: [] });
     await expectAuthFailed(
       service.exchangeToken({
         clientId: 'fleet-app-1',
