@@ -310,6 +310,16 @@ nodes:
       - backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/ports/rental-driving-analysis-reconciliation.port.ts
       - backend/src/modules/rental-driving-analysis/reconciliation/rental-driving-analysis-reconciliation.adapter.ts
 
+  - id: DI-SVC-RENTAL-RECOMPUTE-JOB-HANDLER-PORT-001
+    type: service
+    title: RentalDrivingAnalysisRecomputeJobHandlerPort
+    epistemic_status: CONFIRMED
+    summary: Rental supplies RENTAL_DRIVING_ANALYSIS_RECOMPUTE dispatch; registry fail-closed without port (P4-PR3).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/ports/rental-driving-analysis-recompute-job-handler.port.ts
+      - backend/src/modules/rental-driving-analysis/rental-driving-analysis-recompute-job-handler.providers.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/driving-intelligence-jobs.handler.registry.ts
+
   - id: DI-SCHED-RECONCILE-001
     type: scheduler
     title: DrivingAnalysisReconciliationScheduler
