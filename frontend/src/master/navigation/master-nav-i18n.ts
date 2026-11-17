@@ -36,6 +36,7 @@ const DE: Record<string, string> = {
   'master.nav.systemStatusOperational': 'Betriebsbereit',
   'master.nav.systemStatusDegraded': 'Eingeschränkt',
   'master.nav.platformIntegrations': 'Integrationen & Plattform',
+  'master.nav.serviceClientManagement': 'Core-App Service Clients',
   'master.nav.account': 'Konto',
   'master.nav.logout': 'Abmelden',
   'master.nav.collapseSidebar': 'Sidebar einklappen',

@@ -16,6 +16,7 @@ export type MasterView =
   | 'platform-health'
   | 'support'
   | 'platform-integrations'
+  | 'service-client-management'
   | 'settings'
   | 'fleet-connection'
   | 'parts-accessories'
