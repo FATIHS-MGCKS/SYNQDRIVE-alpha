@@ -39,6 +39,8 @@ Treat `catalogStatus` as lifecycle visibility in the product catalog, separate f
 ## External applications — service client registry (P3-PR1)
 
 - Tables: `core_app_service_clients`, `core_app_service_org_grants`
+- **RENTAL** is a first-class platform product; co-located Rental uses internal JWT/guards, not M2M
+- M2M foundation is for **separate** application backends (Fleet, VYMOD) consuming versioned Alpha APIs
 - Master Admin control surface and token exchange **not** in PR1
 - Runtime **OFF** unless `CORE_APP_M2M_ENABLED=true` (still not production-ready without `CORE_APP_M2M_PRODUCTION_READY`)
 

@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { isCoreAppM2mEnabled } from './core-app-m2m.config';
 import {
-  isEligibleExternalAppProductSlug,
+  isEligibleServiceClientProductSlug,
   normalizeClientId,
   validateCoreAppM2mScopeDefinitions,
 } from './core-app-service-registry.policy';
@@ -54,7 +54,7 @@ export class CoreAppServiceRegistryService {
       };
     }
 
-    if (!isEligibleExternalAppProductSlug(client.productSlug)) {
+    if (!isEligibleServiceClientProductSlug(client.productSlug)) {
       if (client.productSlug === ProductSlug.TAXI) {
         return {
           ok: false,
