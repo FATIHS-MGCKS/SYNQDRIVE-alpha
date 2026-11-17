@@ -77,14 +77,38 @@
 
 ## Certification test execution (agent run 2026-11-17)
 
+Recorded runs are **separate** — opt-in suites do not run in the default pattern unless env flags are set.
+
+### Default Jest (CI-representative pattern)
+
+| Field | Value |
+|-------|-------|
+| Command | `cd backend && npx jest --testPathPatterns='core-app-m2m\|core-read-vehicles\|auth.guard.core-m2m'` |
+| Suites | **24 passed**, **1 skipped** (`core-app-m2m.postgres.integration.spec.ts` — requires `CORE_APP_M2M_POSTGRES_INTEGRATION=1`) |
+| Tests | **99 passed**, **7 skipped** (opt-in cases inside Redis/Postgres-described files), **106 total** |
+| Includes | Rental JWT HTTP spec (`core-app-m2m-rental-user-jwt.http-security.integration.spec.ts`) — **2 tests** counted here |
+| Redis disposable suite | **Skipped** in default run (requires `RUN_CORE_APP_M2M_REDIS_INTEGRATION=1`) |
+
+### Explicit PostgreSQL opt-in
+
+See § Opt-in disposable integration — PostgreSQL: **3/3 PASS** (not part of default pattern totals).
+
+### Explicit Redis opt-in
+
+See § Opt-in disposable integration — Redis: **4/4 PASS** (not part of default pattern totals).
+
+### Rental JWT HTTP (isolated confirmation)
+
+| Field | Value |
+|-------|-------|
+| Command | `npx jest --runInBand core-app-m2m-rental-user-jwt.http-security.integration.spec.ts` |
+| Result | **2/2 PASS** (subset of default pattern above; listed for evidence cross-reference) |
+
+### Frontend and validators
+
 ```text
-backend: npx jest --testPathPatterns='core-app-m2m|core-read-vehicles|auth.guard.core-m2m'
-  → 24 passed, 0 skipped, 101+ tests passed (includes rental JWT HTTP spec)
-
-frontend: vitest src/master/core-app-service-clients/
-  → 10 passed
-
-validators: validate-module-registry.sh, validate-graph.sh — PASS
+frontend: vitest src/master/core-app-service-clients/ → 10 passed
+validators: validate-module-registry.sh, validate-graph.sh → PASS
 ```
 
 ## Targeted fix in certification branch
