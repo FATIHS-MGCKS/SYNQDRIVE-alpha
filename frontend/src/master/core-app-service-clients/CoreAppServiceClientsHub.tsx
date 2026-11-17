@@ -75,8 +75,10 @@ export function CoreAppServiceClientsHub() {
     [],
   );
 
-  const selectClient = useCallback((id: string) => {
-    setOneTimeSecret(null);
+  const selectClient = useCallback((id: string, opts?: { preserveOneTimeSecret?: boolean }) => {
+    if (!opts?.preserveOneTimeSecret) {
+      setOneTimeSecret(null);
+    }
     setAttachOrgId('');
     setRefreshWarning(null);
     setSelectedId(id);
@@ -89,7 +91,10 @@ export function CoreAppServiceClientsHub() {
   const refreshGrants = grantsState.refresh;
   const refreshAfterMutation = useCallback(async () => {
     try {
-      await Promise.all([refreshGrants(), refresh()]);
+      await Promise.all([
+        refreshGrants({ throwOnFailure: true }),
+        refresh({ throwOnFailure: true }),
+      ]);
       setRefreshWarning(null);
     } catch (e) {
       setRefreshWarning(
@@ -128,8 +133,14 @@ export function CoreAppServiceClientsHub() {
         allowedScopes: createForm.allowedScopes,
       });
       setOneTimeSecret(created.clientSecret);
-      selectClient(created.client.id);
-      await refresh();
+      selectClient(created.client.id, { preserveOneTimeSecret: true });
+      try {
+        await refresh({ throwOnFailure: true });
+      } catch (e) {
+        setRefreshWarning(
+          `${tServiceClients('master.serviceClients.refreshFailed')}: ${(e as Error).message}`,
+        );
+      }
     } catch (e) {
       setMutationError((e as Error).message);
     } finally {

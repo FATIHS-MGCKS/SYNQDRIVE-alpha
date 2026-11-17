@@ -41,3 +41,9 @@
 | F6 MFA | `core-app-service-client.mfa.http-security.spec.ts` (`STEP_UP_REQUIRED` on `MASTER_API_KEYS`) |
 
 Reviewed head before remediation: `41fd57d7256ee72cbf23351ca92700dee398fbce` (#2421).
+
+## Final UI safety closeout (2026-11-17)
+
+- Post-create client selection preserves one-time secret; user switch/dismiss still clears.
+- List/org-grant `refresh({ throwOnFailure: true })` for post-mutation sync; stale in-flight errors ignored.
+- Controller metadata test: `@RequireMasterAdminMfa(MASTER_API_KEYS)` on admin routes.
