@@ -11,3 +11,5 @@
 **P4-PR2 reconciliation port:** `RentalDrivingAnalysisReconciliationPortAdapter` owns Prisma booking scan/remediate for `BOOKING_WITHOUT_RENTAL_ANALYSIS`; exported via `RENTAL_DRIVING_ANALYSIS_RECONCILIATION_PORT`.
 
 **P4-PR3 recompute job handler port:** `RentalDrivingAnalysisRecomputeJobHandler` bound to `RENTAL_DRIVING_ANALYSIS_RECOMPUTE_JOB_HANDLER_PORT` via `useExisting` (no duplicate handler instance).
+
+**P4-PR4 recompute trigger port:** `RentalDrivingAnalysisRecomputeTriggerService` bound to `RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT` via `useExisting`.

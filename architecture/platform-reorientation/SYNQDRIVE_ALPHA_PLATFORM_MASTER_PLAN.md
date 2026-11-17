@@ -122,7 +122,7 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | **P3-PR4** | Versioned vehicle read APIs (`core.read.vehicles.v1`) | **MERGED** #2420 (`0bdaa54f4`) | **NOT_CLAIMED** |
 | **P3-PR5** | MA service-client management UI + admin APIs | **MERGED** #2421 (`b05a2bbd3`) | **NOT_CLAIMED** |
 | **P3 integration cert** | Cross-slice security + harness evidence | **MERGED** #2422 (`19fae93b9`) | **NOT_CLAIMED** |
-| **P4** | Complete contracts without Rental disruption | **P4-PR1 MERGED** #2423; **P4-PR2 MERGED** #2424 (`acb87a29f`); **P4-PR3 OPEN** — rental recompute job handler port | Owner-gated |
+| **P4** | Complete contracts without Rental disruption | **P4-PR1–PR3 MERGED** (#2423–#2425); **P4-PR4 OPEN** — rental recompute trigger port (five VI consumers) | Owner-gated |
 | **P5** | Full MA architecture/security audit | Planned | Owner sign-off |
 | **P6** | Rental product completion | **Blocked on P5** | Owner-gated |
 | **P7** | VYMOD + further products | Owner priority | Owner-gated |
@@ -160,4 +160,4 @@ Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`
 4. After merge/deploy: reconcile ledger `merge_status` / `deploy_status` in the next authorized documentation update only — never infer deploy from merge alone.
 5. Run `bash architecture/scripts/validate-module-registry.sh` when registry metadata changes.
 
-**Last updated:** 2026-11-17 (P4-PR2 merged #2424; P4-PR3 draft — rental recompute job handler port)
+**Last updated:** 2026-11-17 (P4-PR3 merged #2425; P4-PR4 draft — rental recompute trigger port)

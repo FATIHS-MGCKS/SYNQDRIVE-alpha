@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import type { DrivingAnalysisRunStatus } from '@prisma/client';
 import { ClickHouseAnalysisHealthService } from '@modules/clickhouse/clickhouse-analysis-health.service';
 import { canProceedAnalysisStage } from '@modules/clickhouse/clickhouse-analysis-degradation';
@@ -21,8 +21,11 @@ import type {
   InitializeStagesForRunInput,
   InitializeStagesForRunResult,
 } from './driving-analysis-stage.types';
-import { RentalDrivingAnalysisRecomputeTriggerService } from '../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../rental-driving-analysis/rental-driving-analysis.recompute.types';
+import {
+  RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT,
+  type RentalDrivingAnalysisRecomputeTriggerPort,
+} from '../ports/rental-driving-analysis-recompute-trigger.port';
 
 @Injectable()
 export class DrivingAnalysisStageOrchestratorService {
@@ -34,8 +37,8 @@ export class DrivingAnalysisStageOrchestratorService {
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     @Optional() private readonly clickHouseHealth?: ClickHouseAnalysisHealthService,
     @Optional()
-    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
-    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
+    @Inject(RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT)
+    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerPort,
   ) {}
 
   initializeStagesForRun(

@@ -1,9 +1,12 @@
-import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import type { DrivingIntelligenceJob } from '@prisma/client';
 import { MisuseCaseReconcileService } from './misuse-case-reconcile.service';
 import { inferMisuseReconcileTrigger } from './misuse-case-reconcile.trigger';
-import { RentalDrivingAnalysisRecomputeTriggerService } from '../../../rental-driving-analysis/rental-driving-analysis-recompute.trigger';
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '../../../rental-driving-analysis/rental-driving-analysis.recompute.types';
+import {
+  RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT,
+  type RentalDrivingAnalysisRecomputeTriggerPort,
+} from '../../ports/rental-driving-analysis-recompute-trigger.port';
 
 @Injectable()
 export class DrivingMisuseReconcileJobHandler {
@@ -12,8 +15,8 @@ export class DrivingMisuseReconcileJobHandler {
   constructor(
     private readonly reconcile: MisuseCaseReconcileService,
     @Optional()
-    @Inject(forwardRef(() => RentalDrivingAnalysisRecomputeTriggerService))
-    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerService,
+    @Inject(RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT)
+    private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerPort,
   ) {}
 
   async handle(job: DrivingIntelligenceJob): Promise<void> {
