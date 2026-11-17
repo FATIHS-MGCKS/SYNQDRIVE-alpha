@@ -6,22 +6,35 @@ import { CoreAppServiceRegistryService } from './core-app-service-registry.servi
 import { CoreAppM2mTokenExchangeService } from './core-app-m2m-token-exchange.service';
 import { CoreAppM2mTokenRateLimitService } from './core-app-m2m-token-rate-limit.service';
 import { CoreAppM2mTokenController } from './core-app-m2m-token.controller';
+import { CoreAppM2mJwtVerifyService } from './core-app-m2m-jwt-verify.service';
+import { CoreAppM2mResourceAuthorizationService } from './core-app-m2m-resource-authorization.service';
+import { CoreAppM2mJwtAuthGuard } from './core-app-m2m-jwt-auth.guard';
+import { CoreReadVehiclesController } from './core-read/core-read-vehicles.controller';
+import { CoreReadVehiclesService } from './core-read/core-read-vehicles.service';
+import { ProductVehicleAccessModule } from '@modules/products/product-vehicle-access/product-vehicle-access.module';
 
 /**
  * P3-PR2 token exchange + P3-PR3 Redis rate limits (fail-closed when M2M enabled).
  */
 @Module({
-  imports: [PrismaModule, RedisModule],
-  controllers: [CoreAppM2mTokenController],
+  imports: [PrismaModule, RedisModule, ProductVehicleAccessModule],
+  controllers: [CoreAppM2mTokenController, CoreReadVehiclesController],
   providers: [
     CoreAppServiceRegistryService,
     CoreAppM2mTokenExchangeService,
     CoreAppM2mTokenRateLimitService,
+    CoreAppM2mJwtVerifyService,
+    CoreAppM2mResourceAuthorizationService,
+    CoreAppM2mJwtAuthGuard,
+    CoreReadVehiclesService,
   ],
   exports: [
     CoreAppServiceRegistryService,
     CoreAppM2mTokenExchangeService,
     CoreAppM2mTokenRateLimitService,
+    CoreAppM2mJwtVerifyService,
+    CoreAppM2mJwtAuthGuard,
+    CoreReadVehiclesService,
   ],
 })
 export class CoreAppM2mModule implements OnModuleInit {

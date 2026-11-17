@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P3-PR3)
+**Last updated:** 2026-11-17 (P3-PR4)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -87,6 +87,14 @@ See `CHANGE_RECORD_P3_PR2_2026-11-17.md`.
 - **Not production-activated:** runtime M2M remains default OFF
 
 See `CHANGE_RECORD_P3_PR3_2026-11-17.md`.
+
+## P3-PR4 — Core vehicle read APIs (M2M)
+
+- `GET /api/v1/core/read/v1/organizations/:orgId/vehicles`
+- `GET /api/v1/core/read/v1/organizations/:orgId/vehicles/:vehicleId`
+- Service JWT + `core:app:vehicle:read`; reuses `ProductVehicleAccessService`
+
+See `CHANGE_RECORD_P3_PR4_2026-11-17.md`.
 
 ## Evidence
 
