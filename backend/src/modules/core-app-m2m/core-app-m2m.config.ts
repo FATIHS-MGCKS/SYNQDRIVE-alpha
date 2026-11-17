@@ -27,3 +27,10 @@ export function isCoreAppM2mTokenIssuanceAllowed(env: NodeJS.ProcessEnv = proces
   }
   return true;
 }
+
+/** Resource route JWT verification — same production readiness gate as token issuance. */
+export function isCoreAppM2mResourceJwtVerificationAllowed(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isCoreAppM2mTokenIssuanceAllowed(env);
+}

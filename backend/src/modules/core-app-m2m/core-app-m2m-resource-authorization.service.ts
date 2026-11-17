@@ -3,6 +3,7 @@ import { CoreAppServiceGrantStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isOrganizationProductOperationallyEntitled } from '@modules/products/entitlements/entitlements-policy';
 import { CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE } from './core-app-m2m-auth.constants';
+import { validateCoreAppM2mScopeDefinitions } from './core-app-service-registry.policy';
 import { CoreAppServiceRegistryService } from './core-app-service-registry.service';
 import type { CoreAppM2mVerifiedToken } from './core-app-m2m-verified-token.types';
 
@@ -39,7 +40,7 @@ export class CoreAppM2mResourceAuthorizationService {
 
     const client = await this.prisma.coreAppServiceClient.findUnique({
       where: { clientId: token.clientId },
-      select: { id: true, credentialVersion: true, productSlug: true },
+      select: { id: true, credentialVersion: true, productSlug: true, allowedScopes: true },
     });
     const grant = client
       ? await this.prisma.coreAppServiceOrgGrant.findFirst({
@@ -65,6 +66,16 @@ export class CoreAppM2mResourceAuthorizationService {
       grant.grantVersion !== token.grantVersion
     ) {
       this.fail();
+    }
+
+    const storedScopes = Array.isArray(client.allowedScopes) ? client.allowedScopes : [];
+    if (validateCoreAppM2mScopeDefinitions(storedScopes).length > 0) {
+      this.fail();
+    }
+    for (const scope of token.scopes) {
+      if (!storedScopes.includes(scope)) {
+        this.fail();
+      }
     }
 
     const orgProduct = await this.prisma.organizationProduct.findFirst({

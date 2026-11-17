@@ -1,6 +1,7 @@
 import {
   isCoreAppM2mEnabled,
   isCoreAppM2mProductionReady,
+  isCoreAppM2mResourceJwtVerificationAllowed,
   isCoreAppM2mTokenIssuanceAllowed,
 } from './core-app-m2m.config';
 
@@ -46,5 +47,21 @@ describe('core-app-m2m.config', () => {
         CORE_APP_M2M_PRODUCTION_READY: 'false',
       }),
     ).toBe(true);
+  });
+
+  it('resource JWT verification uses the same production gate as issuance', () => {
+    const prodBlocked = {
+      NODE_ENV: 'production',
+      CORE_APP_M2M_ENABLED: 'true',
+      CORE_APP_M2M_PRODUCTION_READY: 'false',
+    };
+    expect(isCoreAppM2mResourceJwtVerificationAllowed(prodBlocked)).toBe(false);
+    expect(isCoreAppM2mTokenIssuanceAllowed(prodBlocked)).toBe(false);
+    const devAllowed = {
+      NODE_ENV: 'test',
+      CORE_APP_M2M_ENABLED: 'true',
+      CORE_APP_M2M_PRODUCTION_READY: 'false',
+    };
+    expect(isCoreAppM2mResourceJwtVerificationAllowed(devAllowed)).toBe(true);
   });
 });

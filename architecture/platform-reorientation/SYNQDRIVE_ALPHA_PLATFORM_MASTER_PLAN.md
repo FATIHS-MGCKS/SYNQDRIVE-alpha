@@ -95,7 +95,7 @@ Implementation reference: `backend/src/modules/core-app-m2m/core-app-service-reg
 | Client default | `DISABLED`; org grant default `REVOKED`; credentials **hash-only** |
 | Runtime enabled | `CORE_APP_M2M_ENABLED=false` default — **fail-closed** |
 | Production ready | `CORE_APP_M2M_PRODUCTION_READY=false` default |
-| Token exchange | **Not implemented** (P3-PR2) |
+| Token exchange | **MERGED** #2418 (`core.app.token.v1`) |
 | Scopes (canonical) | `core:entitlements:read`, `core:app:vehicle:read` (rejects `core:app:vehicles:read`) |
 | Eligible product slugs | `RENTAL`, `FLEET`, `VYMOD` (registry-neutral); **RENTAL not M2M-required** for in-process consumption |
 | Redis rate limits | **MERGED** #2419 (`c9a4042dd`); required when M2M enabled |

@@ -53,6 +53,79 @@ describe('CoreAppM2mJwtVerifyService', () => {
     expect(() => service.verifyBearerToken(userJwt)).toThrow(UnauthorizedException);
   });
 
+  it('rejects missing, malformed, and expired exp claims', () => {
+    const noExp = jwt.sign(
+      {
+        sub: 'fleet-client',
+        token_type: CORE_APP_M2M_TOKEN_TYPE,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        productSlug: ProductSlug.FLEET,
+        scopes: [CORE_APP_M2M_SCOPE_VEHICLE_READ],
+        credentialVersion: 1,
+        grantVersion: 2,
+      },
+      secret,
+      {
+        issuer: CORE_APP_M2M_JWT_ISSUER_DEFAULT,
+        audience: CORE_APP_M2M_JWT_AUDIENCE_DEFAULT,
+        noTimestamp: true,
+      },
+    );
+    expect(() => service.verifyBearerToken(noExp)).toThrow(UnauthorizedException);
+
+    const malformedExp = jwt.sign(
+      {
+        sub: 'fleet-client',
+        token_type: CORE_APP_M2M_TOKEN_TYPE,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        productSlug: ProductSlug.FLEET,
+        scopes: [CORE_APP_M2M_SCOPE_VEHICLE_READ],
+        credentialVersion: 1,
+        grantVersion: 2,
+        exp: NaN,
+      },
+      secret,
+      {
+        issuer: CORE_APP_M2M_JWT_ISSUER_DEFAULT,
+        audience: CORE_APP_M2M_JWT_AUDIENCE_DEFAULT,
+        noTimestamp: true,
+      },
+    );
+    expect(() => service.verifyBearerToken(malformedExp)).toThrow(UnauthorizedException);
+
+    const expired = sign(
+      {
+        sub: 'fleet-client',
+        token_type: CORE_APP_M2M_TOKEN_TYPE,
+        organizationId: '11111111-1111-4111-8111-111111111111',
+        productSlug: ProductSlug.FLEET,
+        scopes: [CORE_APP_M2M_SCOPE_VEHICLE_READ],
+        credentialVersion: 1,
+        grantVersion: 2,
+      },
+      { expiresIn: -60 },
+    );
+    expect(() => service.verifyBearerToken(expired)).toThrow(UnauthorizedException);
+  });
+
+  it('fail-closes resource JWT verification in production without PRODUCTION_READY', () => {
+    const prevNode = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    process.env.CORE_APP_M2M_PRODUCTION_READY = 'false';
+    const token = sign({
+      sub: 'fleet-client',
+      token_type: CORE_APP_M2M_TOKEN_TYPE,
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      productSlug: ProductSlug.FLEET,
+      scopes: [CORE_APP_M2M_SCOPE_VEHICLE_READ],
+      credentialVersion: 1,
+      grantVersion: 2,
+    });
+    expect(() => service.verifyBearerToken(token)).toThrow(UnauthorizedException);
+    process.env.NODE_ENV = prevNode;
+    delete process.env.CORE_APP_M2M_PRODUCTION_READY;
+  });
+
   it('rejects wrong token type and missing scope', () => {
     const badType = sign({
       sub: 'c',

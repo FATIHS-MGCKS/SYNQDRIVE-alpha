@@ -1,7 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { ProductSlug } from '@prisma/client';
-import { isCoreAppM2mEnabled } from './core-app-m2m.config';
+import {
+  isCoreAppM2mEnabled,
+  isCoreAppM2mResourceJwtVerificationAllowed,
+} from './core-app-m2m.config';
 import { CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE } from './core-app-m2m-auth.constants';
 import {
   CORE_APP_M2M_TOKEN_TYPE,
@@ -23,6 +26,10 @@ export class CoreAppM2mJwtVerifyService {
       this.fail();
     }
 
+    if (!isCoreAppM2mResourceJwtVerificationAllowed()) {
+      this.fail();
+    }
+
     const secret = resolveCoreAppM2mJwtSigningSecret();
     if (!secret) {
       this.fail();
@@ -40,6 +47,15 @@ export class CoreAppM2mJwtVerifyService {
     }
 
     if (payload.token_type !== CORE_APP_M2M_TOKEN_TYPE) {
+      this.fail();
+    }
+
+    const exp = payload.exp;
+    if (typeof exp !== 'number' || !Number.isFinite(exp) || !Number.isInteger(exp) || exp <= 0) {
+      this.fail();
+    }
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (exp <= nowSeconds) {
       this.fail();
     }
 

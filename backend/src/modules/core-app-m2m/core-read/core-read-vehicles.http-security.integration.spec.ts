@@ -1,5 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
@@ -49,6 +49,7 @@ describe('Core read vehicles — HTTP security integration', () => {
     grantVersion: number;
     vehicleOrgId: string;
     grantedVehicleIds: Set<string>;
+    allowedScopes: string[];
   } = {
     clientStatus: CoreAppServiceClientStatus.ACTIVE,
     grantStatus: CoreAppServiceGrantStatus.ACTIVE,
@@ -58,6 +59,7 @@ describe('Core read vehicles — HTTP security integration', () => {
     grantVersion: 1,
     vehicleOrgId: ORG_ID,
     grantedVehicleIds: new Set<string>([VEHICLE_ID]),
+    allowedScopes: [CORE_APP_M2M_SCOPE_VEHICLE_READ],
   };
 
   const ORG_PRODUCT_ID = '11111111-1111-4111-8111-111111111111';
@@ -123,7 +125,7 @@ describe('Core read vehicles — HTTP security integration', () => {
       credentialVersion: store.credentialVersion,
       productSlug: ProductSlug.FLEET,
       status: store.clientStatus,
-      allowedScopes: [CORE_APP_M2M_SCOPE_VEHICLE_READ],
+      allowedScopes: store.allowedScopes,
       orgGrants: [
         {
           organizationId: ORG_ID,
@@ -195,6 +197,7 @@ describe('Core read vehicles — HTTP security integration', () => {
       controllers: [CoreEntitlementsReadController],
       providers: [
         EntitlementsQueryService,
+        Reflector,
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     })
@@ -353,9 +356,9 @@ describe('Core read vehicles — HTTP security integration', () => {
     store.orgProductStatus = OrgProductStatus.ACTIVE;
   });
 
-  it('caps page size at 100', async () => {
+  it('accepts pageSize at maximum 100', async () => {
     const res = await request(app.getHttpServer())
-      .get(`${listRoute}?page=1&pageSize=500`)
+      .get(`${listRoute}?page=1&pageSize=100`)
       .set('Authorization', `Bearer ${mintServiceJwt()}`);
     expect(res.status).toBe(200);
     expect(res.body.pageSize).toBe(100);
@@ -368,5 +371,26 @@ describe('Core read vehicles — HTTP security integration', () => {
       .set('Authorization', `Bearer ${mintServiceJwt()}`)
       .expect(404);
     store.vehicleOrgId = ORG_ID;
+  });
+
+  it('rejects pagination query values with HTTP 400', async () => {
+    await request(app.getHttpServer())
+      .get(`${listRoute}?page=-1&pageSize=10`)
+      .set('Authorization', `Bearer ${mintServiceJwt()}`)
+      .expect(400);
+    await request(app.getHttpServer())
+      .get(`${listRoute}?page=1&pageSize=500`)
+      .set('Authorization', `Bearer ${mintServiceJwt()}`)
+      .expect(400);
+  });
+
+  it('rejects vehicle read when stored allowedScopes no longer include JWT scope', async () => {
+    const token = mintServiceJwt();
+    store.allowedScopes = [];
+    await request(app.getHttpServer())
+      .get(listRoute)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+    store.allowedScopes = [CORE_APP_M2M_SCOPE_VEHICLE_READ];
   });
 });
