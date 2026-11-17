@@ -16,6 +16,8 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/password-reset/confirm',
   // Seed-admin bootstrap: still token-gated via SEED_ADMIN_TOKEN + ENABLE_SEED_ADMIN in controller.
   '/api/v1/auth/seed-admin',
+  // Core app M2M client credential exchange (service JWT) — gated inside controller/service; not user JWT.
+  '/api/v1/auth/core-app/token',
   '/api/v1/invites/validate',
   '/api/v1/invites/accept',
   '/api/v1/webhooks/dimo',

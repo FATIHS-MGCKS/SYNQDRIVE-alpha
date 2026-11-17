@@ -87,6 +87,7 @@ import { WorkersModule } from '@workers/workers.module';
 import { SchedulerLeaderElectionModule } from '@shared/scheduler-leader/scheduler-leader-election.module';
 import { ReconciliationExecutionMutexModule } from '@shared/reconciliation-execution-mutex/reconciliation-execution-mutex.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
+import { CoreAppM2mModule } from '@modules/core-app-m2m/core-app-m2m.module';
 import { AccountModule } from '@modules/account/account.module';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
@@ -217,6 +218,7 @@ export class AppModule {
         AuthModule,
         SharedGuardsModule,
         AuthApiModule,
+        CoreAppM2mModule,
         AccountModule,
         IamMfaModule,
         IamDataRetentionModule,

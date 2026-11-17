@@ -117,7 +117,7 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 |-------|--------|---------------------------|-------------------|
 | **P2** | Catalog, entitlements read, vehicle access/grants, MA product UI, TAXI retirement, entitlement alignment | PR #2408–#2414 **MERGED** | **Not claimed** by these PRs alone |
 | **P3-PR1** | Inactive service-client registry (runtime default OFF) | PR #2415 **MERGED** (`7f243d0fe`) | **NOT_CLAIMED** |
-| **P3-PR2** | Token exchange + authZ | Planned | NO |
+| **P3-PR2** | Token exchange + authZ (`core.app.token.v1`) | **OPEN PR** (this slice) | **NOT_CLAIMED** |
 | **P3-PR3** | Redis rate limits | Planned | NO |
 | **P3-PR4** | Versioned product/vehicle APIs | Planned | NO |
 | **P3-PR5** | MA service-client UI | Planned | NO |
