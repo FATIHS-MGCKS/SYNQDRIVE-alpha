@@ -195,15 +195,23 @@ describePg('APDS V3 shadow decision concurrency (PostgreSQL)', () => {
     const physicalRequestId = `physical-fetch:race-conflict:${Date.now()}`;
     const rowA = baseRow(organizationA, vehicleA, linkA, physicalRequestId);
     const rowB = { ...rowA, v3Decision: 'SKIP', v3Reason: 'CONFLICTING_SCIENTIFIC' };
-    const first = repoA.insertPollStartDecision(rowA);
-    const second = repoB.insertPollStartDecision(rowB);
-    const results = await Promise.allSettled([first, second]);
+    const contenders = [rowA, rowB] as const;
+    const results = await Promise.allSettled(
+      contenders.map((c, i) =>
+        (i === 0 ? repoA : repoB).insertPollStartDecision(c),
+      ),
+    );
     const inserted = results.filter((r) => r.status === 'fulfilled' && r.value === 'inserted');
     const conflicts = results.filter(
       (r) => r.status === 'rejected' && r.reason instanceof ApdsV3ShadowImmutableConflictError,
     );
     expect(inserted.length).toBe(1);
     expect(conflicts.length).toBe(1);
+    const winnerIndex = results.findIndex(
+      (r) => r.status === 'fulfilled' && r.value === 'inserted',
+    );
+    expect(winnerIndex).toBeGreaterThanOrEqual(0);
+    const winnerRow = contenders[winnerIndex];
     const stored = await prismaA.apdsV3ShadowDecision.findUnique({
       where: {
         organizationId_vehicleId_physicalRequestId_policyVersion: {
@@ -214,9 +222,14 @@ describePg('APDS V3 shadow decision concurrency (PostgreSQL)', () => {
         },
       },
     });
-    expect(stored?.v3Decision).toBe('NOT_ASSESSABLE');
-    expect(stored?.v3Reason).toBe('PG_CONCURRENCY');
+    expect(stored).not.toBeNull();
+    expect(stored?.v3Decision).toBe(winnerRow.v3Decision);
+    expect(stored?.v3Reason).toBe(winnerRow.v3Reason);
     expect(stored?.decisionAt.toISOString()).toBe(decisionAt.toISOString());
+    const count = await prismaA.apdsV3ShadowDecision.count({
+      where: { organizationId: organizationA, physicalRequestId },
+    });
+    expect(count).toBe(1);
   });
 
   it('distinct physical attempts for same vehicle both persist', async () => {
