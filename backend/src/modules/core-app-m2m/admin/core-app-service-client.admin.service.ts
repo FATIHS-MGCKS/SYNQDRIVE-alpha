@@ -12,8 +12,8 @@ import {
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
-import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
+import { persistCoreAppServiceClientAuditTx } from './core-app-service-client.admin-audit.util';
 import {
   validateCoreAppM2mScopeDefinitions,
 } from '../core-app-service-registry.policy';
@@ -38,10 +38,7 @@ const CREDENTIAL_BYTE_LENGTH = 32;
 
 @Injectable()
 export class CoreAppServiceClientAdminService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly masterAdminAudit: MasterAdminAuditService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async listClients(): Promise<CoreAppServiceClientListV1> {
     const rows = await this.prisma.coreAppServiceClient.findMany({
@@ -91,32 +88,35 @@ export class CoreAppServiceClientAdminService {
     const clientSecret = randomBytes(CREDENTIAL_BYTE_LENGTH).toString('base64url');
     const credentialHash = await bcrypt.hash(clientSecret, BCRYPT_ROUNDS);
 
-    const row = await this.prisma.coreAppServiceClient.create({
-      data: {
-        clientId,
-        displayName,
-        productSlug,
-        credentialHash,
-        credentialVersion: 1,
-        status: CoreAppServiceClientStatus.DISABLED,
-        allowedScopes,
-      },
-      include: { orgGrants: { select: { status: true } } },
-    });
-
-    await this.recordAudit(audit, {
-      description: `Created core app service client ${clientId}`,
-      entityId: row.id,
-      metadata: {
-        domain: 'core_app_service_client',
-        action: 'create',
-        clientId,
-        productSlug,
-        allowedScopes,
-        credentialVersion: 1,
-        credentialFingerprint: fingerprintSecret(clientSecret),
-      },
-      after: this.mapClient(row, this.countActiveGrants(row.orgGrants)),
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.coreAppServiceClient.create({
+        data: {
+          clientId,
+          displayName,
+          productSlug,
+          credentialHash,
+          credentialVersion: 1,
+          status: CoreAppServiceClientStatus.DISABLED,
+          allowedScopes,
+        },
+        include: { orgGrants: { select: { status: true } } },
+      });
+      const after = this.mapClient(created, this.countActiveGrants(created.orgGrants));
+      await persistCoreAppServiceClientAuditTx(tx, this.auditPayload(audit, {
+        description: `Created core app service client ${clientId}`,
+        entityId: created.id,
+        metadata: {
+          domain: 'core_app_service_client',
+          action: 'create',
+          clientId,
+          productSlug,
+          allowedScopes,
+          credentialVersion: 1,
+          credentialFingerprint: fingerprintSecret(clientSecret),
+        },
+        after,
+      }));
+      return created;
     });
 
     return {
@@ -174,18 +174,36 @@ export class CoreAppServiceClientAdminService {
       throw new BadRequestException('No supported fields to update');
     }
 
-    const row = await this.prisma.coreAppServiceClient.update({
-      where: { id },
-      data,
-      include: { orgGrants: { select: { status: true } } },
-    });
+    const bumpCredential =
+      (data.status === CoreAppServiceClientStatus.DISABLED &&
+        before.status !== CoreAppServiceClientStatus.DISABLED) ||
+      (data.allowedScopes !== undefined &&
+        !scopesEqual(data.allowedScopes, [...before.allowedScopes]));
 
-    await this.recordAudit(audit, {
-      description: `Updated core app service client ${row.clientId}`,
-      entityId: row.id,
-      metadata: { domain: 'core_app_service_client', action: 'update', clientId: row.clientId },
-      before: this.mapClient(before, this.countActiveGrants(before.orgGrants)),
-      after: this.mapClient(row, this.countActiveGrants(row.orgGrants)),
+    const row = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.coreAppServiceClient.update({
+        where: { id },
+        data: {
+          ...data,
+          ...(bumpCredential ? { credentialVersion: { increment: 1 } } : {}),
+        },
+        include: { orgGrants: { select: { status: true } } },
+      });
+      const beforeView = this.mapClient(before, this.countActiveGrants(before.orgGrants));
+      const afterView = this.mapClient(updated, this.countActiveGrants(updated.orgGrants));
+      await persistCoreAppServiceClientAuditTx(tx, this.auditPayload(audit, {
+        description: `Updated core app service client ${updated.clientId}`,
+        entityId: updated.id,
+        metadata: {
+          domain: 'core_app_service_client',
+          action: 'update',
+          clientId: updated.clientId,
+          credentialVersionBumped: bumpCredential,
+        },
+        before: beforeView,
+        after: afterView,
+      }));
+      return updated;
     });
 
     return this.mapClient(row, this.countActiveGrants(row.orgGrants));
@@ -199,27 +217,29 @@ export class CoreAppServiceClientAdminService {
     const clientSecret = randomBytes(CREDENTIAL_BYTE_LENGTH).toString('base64url');
     const credentialHash = await bcrypt.hash(clientSecret, BCRYPT_ROUNDS);
 
-    const row = await this.prisma.coreAppServiceClient.update({
-      where: { id },
-      data: {
-        credentialHash,
-        credentialVersion: { increment: 1 },
-      },
-      include: { orgGrants: { select: { status: true } } },
-    });
-
-    await this.recordAudit(audit, {
-      description: `Rotated credential for core app service client ${row.clientId}`,
-      entityId: row.id,
-      metadata: {
-        domain: 'core_app_service_client',
-        action: 'rotate_credential',
-        clientId: row.clientId,
-        credentialVersion: row.credentialVersion,
-        credentialFingerprint: fingerprintSecret(clientSecret),
-      },
-      before: { credentialVersion: before.credentialVersion },
-      after: { credentialVersion: row.credentialVersion },
+    const row = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.coreAppServiceClient.update({
+        where: { id },
+        data: {
+          credentialHash,
+          credentialVersion: { increment: 1 },
+        },
+        include: { orgGrants: { select: { status: true } } },
+      });
+      await persistCoreAppServiceClientAuditTx(tx, this.auditPayload(audit, {
+        description: `Rotated credential for core app service client ${updated.clientId}`,
+        entityId: updated.id,
+        metadata: {
+          domain: 'core_app_service_client',
+          action: 'rotate_credential',
+          clientId: updated.clientId,
+          credentialVersion: updated.credentialVersion,
+          credentialFingerprint: fingerprintSecret(clientSecret),
+        },
+        before: { credentialVersion: before.credentialVersion },
+        after: { credentialVersion: updated.credentialVersion },
+      }));
+      return updated;
     });
 
     return {
@@ -256,32 +276,38 @@ export class CoreAppServiceClientAdminService {
       throw new NotFoundException('Organization not found');
     }
 
-    const row = await this.prisma.coreAppServiceOrgGrant.upsert({
-      where: {
-        serviceClientId_organizationId: { serviceClientId, organizationId },
-      },
-      create: {
-        serviceClientId,
-        organizationId,
-        status: CoreAppServiceGrantStatus.REVOKED,
-        grantVersion: 1,
-      },
-      update: {},
-      include: { serviceClient: { select: { clientId: true } } },
-    });
-
-    await this.recordAudit(audit, {
-      description: `Attached org grant for client ${row.serviceClient.clientId}`,
-      entityId: row.id,
-      targetOrganizationId: organizationId,
-      metadata: {
-        domain: 'core_app_service_org_grant',
-        action: 'attach',
-        serviceClientId,
-        organizationId,
-        grantVersion: row.grantVersion,
-      },
-      after: this.mapGrant(row),
+    const row = await this.prisma.$transaction(async (tx) => {
+      const grant = await tx.coreAppServiceOrgGrant.upsert({
+        where: {
+          serviceClientId_organizationId: { serviceClientId, organizationId },
+        },
+        create: {
+          serviceClientId,
+          organizationId,
+          status: CoreAppServiceGrantStatus.REVOKED,
+          grantVersion: 1,
+        },
+        update: {},
+        include: { serviceClient: { select: { clientId: true } } },
+      });
+      const mapped = this.mapGrant(grant);
+      await persistCoreAppServiceClientAuditTx(
+        tx,
+        this.auditPayload(audit, {
+          description: `Attached org grant for client ${grant.serviceClient.clientId}`,
+          entityId: grant.id,
+          targetOrganizationId: organizationId,
+          metadata: {
+            domain: 'core_app_service_org_grant',
+            action: 'attach',
+            serviceClientId,
+            organizationId,
+            grantVersion: grant.grantVersion,
+          },
+          after: mapped,
+        }),
+      );
+      return grant;
     });
 
     return this.mapGrant(row);
@@ -312,27 +338,32 @@ export class CoreAppServiceClientAdminService {
     }
     const status = statusRaw as CoreAppServiceGrantStatus;
 
-    const row = await this.prisma.coreAppServiceOrgGrant.update({
-      where: { id: grant.id },
-      data: {
-        status,
-        grantVersion: { increment: 1 },
-      },
-    });
-
-    await this.recordAudit(audit, {
-      description: `Updated org grant (${status}) for client ${grant.serviceClient.clientId}`,
-      entityId: row.id,
-      targetOrganizationId: organizationId,
-      metadata: {
-        domain: 'core_app_service_org_grant',
-        action: status === CoreAppServiceGrantStatus.REVOKED ? 'revoke' : 'activate',
-        serviceClientId,
-        organizationId,
-        grantVersion: row.grantVersion,
-      },
-      before: this.mapGrant(grant),
-      after: this.mapGrant(row),
+    const row = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.coreAppServiceOrgGrant.update({
+        where: { id: grant.id },
+        data: {
+          status,
+          grantVersion: { increment: 1 },
+        },
+      });
+      await persistCoreAppServiceClientAuditTx(
+        tx,
+        this.auditPayload(audit, {
+          description: `Updated org grant (${status}) for client ${grant.serviceClient.clientId}`,
+          entityId: updated.id,
+          targetOrganizationId: organizationId,
+          metadata: {
+            domain: 'core_app_service_org_grant',
+            action: status === CoreAppServiceGrantStatus.REVOKED ? 'revoke' : 'activate',
+            serviceClientId,
+            organizationId,
+            grantVersion: updated.grantVersion,
+          },
+          before: this.mapGrant(grant),
+          after: this.mapGrant(updated),
+        }),
+      );
+      return updated;
     });
 
     return this.mapGrant(row);
@@ -418,7 +449,7 @@ export class CoreAppServiceClientAdminService {
     };
   }
 
-  private async recordAudit(
+  private auditPayload(
     audit: MasterAdminAuditContext,
     input: {
       description: string;
@@ -428,8 +459,8 @@ export class CoreAppServiceClientAdminService {
       before?: unknown;
       after?: unknown;
     },
-  ): Promise<void> {
-    await this.masterAdminAudit.record({
+  ) {
+    return {
       auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
       actorUserId: audit.actorUserId,
       actorPlatformRole: 'MASTER_ADMIN',
@@ -444,8 +475,17 @@ export class CoreAppServiceClientAdminService {
       metadata: input.metadata,
       before: input.before,
       after: input.after,
-    });
+    };
   }
+}
+
+function scopesEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const a = [...left].sort();
+  const b = [...right].sort();
+  return a.every((value, index) => value === b[index]);
 }
 
 function fingerprintSecret(secret: string): string {
