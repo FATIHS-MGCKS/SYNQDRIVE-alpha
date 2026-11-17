@@ -10,6 +10,7 @@ export type MasterView =
   | 'device-inventory'
   | 'prospects'
   | 'billing'
+  | 'product-management'
   | 'activity-log'
   | 'platform-ops'
   | 'platform-health'
@@ -82,6 +83,8 @@ export interface MasterNavLocationState {
   view: MasterView;
   settingsTab?: string;
   orgId?: string | null;
+  /** Active tab on organization detail (`orgTab` query param). */
+  orgTab?: string | null;
   archCategory?: string | null;
   hmTab?: string | null;
 }

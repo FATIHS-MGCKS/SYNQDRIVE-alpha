@@ -7643,7 +7643,81 @@ export const api = {
     list: () => get<any[]>('/admin/products'),
     stats: () => get<any>('/admin/products/stats'),
     listByOrg: (orgId: string) => get<any[]>(`/admin/products/org/${orgId}`),
-    assign: (data: any) => post<any>('/admin/products/assign', data),
+    assign: (data: {
+      orgId: string;
+      productSlug: string;
+      plan?: string;
+      vehicleAccessMode?: 'ORGANIZATION_WIDE' | 'SELECTED_VEHICLES';
+    }) => post<any>('/admin/products/assign', data),
+    remove: (orgId: string, productSlug: string) =>
+      del<void>(`/admin/products/${encodeURIComponent(orgId)}/${encodeURIComponent(productSlug)}`),
+    patchVehicleAccessMode: (
+      orgId: string,
+      productSlug: string,
+      body: {
+        vehicleAccessMode: 'ORGANIZATION_WIDE' | 'SELECTED_VEHICLES';
+        ifCurrentVehicleAccessMode: 'ORGANIZATION_WIDE' | 'SELECTED_VEHICLES';
+      },
+    ) =>
+      patch<any>(
+        `/admin/products/org/${encodeURIComponent(orgId)}/${encodeURIComponent(productSlug)}/vehicle-access-mode`,
+        body,
+      ),
+    listVehicleGrants: (orgId: string, productSlug: string) =>
+      get<
+        Array<{
+          vehicleId: string;
+          productSlug: string;
+          status: string;
+          grantVersion: number;
+          grantedAt: string;
+          revokedAt: string | null;
+        }>
+      >(
+        `/admin/organizations/${encodeURIComponent(orgId)}/product-vehicle-grants?productSlug=${encodeURIComponent(productSlug)}`,
+      ),
+    grantVehicleProduct: (orgId: string, vehicleId: string, productSlug: string) =>
+      post<{ vehicleId: string; productSlug: string; status: string }>(
+        `/admin/organizations/${encodeURIComponent(orgId)}/vehicles/${encodeURIComponent(vehicleId)}/product-grants`,
+        { productSlug },
+      ),
+    revokeVehicleProduct: (orgId: string, vehicleId: string, productSlug: string) =>
+      del<void>(
+        `/admin/organizations/${encodeURIComponent(orgId)}/vehicles/${encodeURIComponent(vehicleId)}/product-grants/${encodeURIComponent(productSlug)}`,
+      ),
+    /** Status-aware mutations for Master Admin UI (409/403 discrimination). */
+    assignResult: (data: {
+      orgId: string;
+      productSlug: string;
+      plan?: string;
+      vehicleAccessMode?: 'ORGANIZATION_WIDE' | 'SELECTED_VEHICLES';
+    }) => requestResult('/admin/products/assign', { method: 'POST', body: JSON.stringify(data) }),
+    removeResult: (orgId: string, productSlug: string) =>
+      requestResult(`/admin/products/${encodeURIComponent(orgId)}/${encodeURIComponent(productSlug)}`, {
+        method: 'DELETE',
+      }),
+    patchVehicleAccessModeResult: (
+      orgId: string,
+      productSlug: string,
+      body: {
+        vehicleAccessMode: 'ORGANIZATION_WIDE' | 'SELECTED_VEHICLES';
+        ifCurrentVehicleAccessMode: 'ORGANIZATION_WIDE' | 'SELECTED_VEHICLES';
+      },
+    ) =>
+      requestResult(
+        `/admin/products/org/${encodeURIComponent(orgId)}/${encodeURIComponent(productSlug)}/vehicle-access-mode`,
+        { method: 'PATCH', body: JSON.stringify(body) },
+      ),
+    grantVehicleProductResult: (orgId: string, vehicleId: string, productSlug: string) =>
+      requestResult(
+        `/admin/organizations/${encodeURIComponent(orgId)}/vehicles/${encodeURIComponent(vehicleId)}/product-grants`,
+        { method: 'POST', body: JSON.stringify({ productSlug }) },
+      ),
+    revokeVehicleProductResult: (orgId: string, vehicleId: string, productSlug: string) =>
+      requestResult(
+        `/admin/organizations/${encodeURIComponent(orgId)}/vehicles/${encodeURIComponent(vehicleId)}/product-grants/${encodeURIComponent(productSlug)}`,
+        { method: 'DELETE' },
+      ),
   },
   integrations: {
     listAll: () => get<any[]>('/admin/integrations'),

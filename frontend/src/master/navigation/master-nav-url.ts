@@ -2,6 +2,7 @@ import type { MasterNavLocationState, MasterView } from './master-nav.types';
 
 const CANONICAL_VIEWS: MasterView[] = [
   'dashboard', 'organizations', 'security-access', 'users', 'vehicles', 'device-inventory', 'prospects', 'billing',
+  'product-management',
   'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'platform-integrations',
   'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
@@ -109,9 +110,15 @@ export function buildMasterNavSearch(state: MasterNavLocationState, preserveBill
     params.set('orgId', state.orgId);
   }
   if (state.view === 'organizations') {
-    const current = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const orgTab = current?.get('orgTab');
-    if (orgTab) params.set('orgTab', orgTab);
+    if (state.orgTab) {
+      params.set('orgTab', state.orgTab);
+    } else {
+      const current = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const orgTab = current?.get('orgTab');
+      if (orgTab) params.set('orgTab', orgTab);
+    }
+  } else {
+    params.delete('orgTab');
   }
   if (state.view === 'architektur' && state.archCategory) {
     params.set('archCategory', state.archCategory);

@@ -1,5 +1,5 @@
 import {
-  Building2, CreditCard, ExternalLink, AlertTriangle, RefreshCw,
+  Building2, ExternalLink, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -38,6 +38,7 @@ import {
   writeOrgTabToUrl,
 } from '../organizations/org.utils';
 import type { OrganizationOperationalDetailDto } from '../organizations/types';
+import { OrganizationProductsTab } from './organization-products/OrganizationProductsTab';
 
 interface OrganizationDetailViewProps {
   orgId: string;
@@ -455,6 +456,10 @@ export function OrganizationDetailView({
             />
           )}
         </MasterPageSection>
+      )}
+
+      {activeTab === 'products' && (
+        <OrganizationProductsTab orgId={orgId} />
       )}
 
       {activeTab === 'billing' && (

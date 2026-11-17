@@ -16,6 +16,7 @@ const DE: Record<string, string> = {
   'master.nav.deviceInventory': 'Geräte-Inventar',
   'master.nav.vehicleLogbook': 'Fahrzeug-Logbuch',
   'master.nav.billing': 'Abrechnung & Verträge',
+  'master.nav.productManagement': 'Produktmanagement',
   'master.nav.vehicleConnectivity': 'Fahrzeug-Konnektivität',
   'master.nav.highMobility': 'High Mobility',
   'master.nav.partsAccessories': 'Ersatzteile & Zubehör',
