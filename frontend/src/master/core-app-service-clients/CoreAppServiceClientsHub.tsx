@@ -27,6 +27,7 @@ export function CoreAppServiceClientsHub() {
   const [oneTimeSecret, setOneTimeSecret] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [attachOrgId, setAttachOrgId] = useState('');
 
   const [createForm, setCreateForm] = useState({
     clientId: '',
@@ -239,10 +240,70 @@ export function CoreAppServiceClientsHub() {
             <h3 className="text-xs font-semibold uppercase text-white/40">Organisations-Grants</h3>
             {grantsState.loading ? <p className="text-sm text-white/50">Lade…</p> : null}
             {grantsState.error ? <p className="text-sm text-red-300">{grantsState.error}</p> : null}
+            <div className="mt-3 flex gap-2">
+              <input
+                className="sq-input flex-1"
+                placeholder="Organisation-ID"
+                value={attachOrgId}
+                onChange={(e) => setAttachOrgId(e.target.value)}
+              />
+              <button
+                type="button"
+                className="sq-btn-secondary rounded-lg px-3 py-1.5 text-sm"
+                disabled={busy || !attachOrgId.trim()}
+                onClick={async () => {
+                  if (!selected) return;
+                  setBusy(true);
+                  setMutationError(null);
+                  try {
+                    await api.admin.coreAppServiceClients.attachOrgGrant(
+                      selected.id,
+                      attachOrgId.trim(),
+                    );
+                    setAttachOrgId('');
+                    await grantsState.refresh();
+                    await refresh();
+                  } catch (e) {
+                    setMutationError((e as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Grant anlegen (REVOKED)
+              </button>
+            </div>
             <ul className="mt-2 space-y-1 text-sm text-white/70">
               {grantsState.grants.map((g) => (
-                <li key={g.id}>
-                  {g.organizationId} — {g.status} (v{g.grantVersion})
+                <li key={g.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {g.organizationId} — {g.status} (v{g.grantVersion})
+                  </span>
+                  <button
+                    type="button"
+                    className="sq-btn-secondary rounded px-2 py-0.5 text-xs"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (!selected) return;
+                      setBusy(true);
+                      try {
+                        const next = g.status === 'ACTIVE' ? 'REVOKED' : 'ACTIVE';
+                        await api.admin.coreAppServiceClients.updateOrgGrant(
+                          selected.id,
+                          g.organizationId,
+                          { status: next },
+                        );
+                        await grantsState.refresh();
+                        await refresh();
+                      } catch (e) {
+                        setMutationError((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {g.status === 'ACTIVE' ? 'Widerrufen' : 'Aktivieren'}
+                  </button>
                 </li>
               ))}
             </ul>
