@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  DRIVING_INTELLIGENCE_BOOKING_RESOLUTION_PORT,
+  type DrivingIntelligenceBookingResolutionPort,
+} from '../ports/driving-intelligence-booking-resolution.port';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { validateEnqueueDrivingIntelligenceJobInput } from './driving-intelligence-jobs.contract';
@@ -15,7 +19,11 @@ const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'DEAD_LETTER']);
 
 @Injectable()
 export class DrivingIntelligenceJobRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(DRIVING_INTELLIGENCE_BOOKING_RESOLUTION_PORT)
+    private readonly bookingResolution: DrivingIntelligenceBookingResolutionPort,
+  ) {}
 
   async assertVehicleInOrg(organizationId: string, vehicleId: string): Promise<void> {
     const vehicle = await this.prisma.vehicle.findFirst({
@@ -45,14 +53,10 @@ export class DrivingIntelligenceJobRepository {
     organizationId: string,
     bookingId: string,
   ): Promise<{ vehicleId: string | null }> {
-    const booking = await this.prisma.booking.findFirst({
-      where: { id: bookingId, organizationId },
-      select: { id: true, vehicleId: true },
+    return this.bookingResolution.resolveBookingVehicleForOrganization({
+      organizationId,
+      bookingId,
     });
-    if (!booking) {
-      throw new NotFoundException('Booking not found for organization');
-    }
-    return { vehicleId: booking.vehicleId };
   }
 
   async assertAnalysisRunInOrg(

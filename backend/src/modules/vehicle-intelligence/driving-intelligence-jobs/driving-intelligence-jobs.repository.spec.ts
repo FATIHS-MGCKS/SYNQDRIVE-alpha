@@ -1,5 +1,12 @@
 import { DrivingIntelligenceJobRepository } from './driving-intelligence-jobs.repository';
+import type { DrivingIntelligenceBookingResolutionPort } from '../ports/driving-intelligence-booking-resolution.port';
 import type { PersistDrivingIntelligenceJobInput } from './driving-intelligence-jobs.types';
+
+function makeBookingPort(): DrivingIntelligenceBookingResolutionPort {
+  return {
+    resolveBookingVehicleForOrganization: jest.fn().mockResolvedValue({ vehicleId: null }),
+  };
+}
 
 function makePrisma() {
   return {
@@ -38,7 +45,7 @@ describe('DrivingIntelligenceJobRepository', () => {
 
   beforeEach(() => {
     prisma = makePrisma();
-    repository = new DrivingIntelligenceJobRepository(prisma);
+    repository = new DrivingIntelligenceJobRepository(prisma, makeBookingPort());
     prisma.vehicle.findFirst.mockResolvedValue({ id: 'vehicle-1' });
     prisma.vehicleTrip.findFirst.mockResolvedValue({ id: 'trip-1', vehicleId: 'vehicle-1' });
     prisma.drivingAnalysisRun.findFirst.mockResolvedValue({
