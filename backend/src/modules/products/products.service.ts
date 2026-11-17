@@ -15,7 +15,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
-import { assertPlatformProductAssignable } from './retired-platform-product-slugs';
+import {
+  assertPlatformProductAssignable,
+  assertRetiredPlatformVehicleAccessModeMutation,
+} from './retired-platform-product-slugs';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Active',
@@ -289,6 +292,12 @@ export class ProductsService {
     if (orgProduct.vehicleAccessMode === input.vehicleAccessMode) {
       return orgProduct;
     }
+
+    assertRetiredPlatformVehicleAccessModeMutation({
+      productSlug: input.productSlug,
+      from: orgProduct.vehicleAccessMode,
+      to: input.vehicleAccessMode,
+    });
 
     const updated = await this.prisma.organizationProduct.updateMany({
       where: {

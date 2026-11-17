@@ -247,6 +247,56 @@ describe('ProductsService — vehicle access mode', () => {
     expect(masterAdminAudit.record).not.toHaveBeenCalled();
   });
 
+  describe('retired TAXI vehicle access mode', () => {
+    beforeEach(() => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'prod-taxi',
+        slug: ProductSlug.TAXI,
+        catalogStatus: ProductCatalogStatus.DISABLED,
+      });
+    });
+
+    it('rejects broadening SELECTED_VEHICLES to ORGANIZATION_WIDE', async () => {
+      prisma.organizationProduct.findUnique.mockResolvedValue({
+        id: 'op-taxi',
+        vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+      });
+      await expect(
+        service.updateVehicleAccessMode({
+          orgId: ORG,
+          productSlug: ProductSlug.TAXI,
+          vehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+          ifCurrentVehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+          actorUserId: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.organizationProduct.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('allows narrowing ORGANIZATION_WIDE to SELECTED_VEHICLES', async () => {
+      prisma.organizationProduct.findUnique.mockResolvedValue({
+        id: 'op-taxi',
+        vehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+      });
+      prisma.organizationProduct.updateMany.mockResolvedValue({ count: 1 });
+      prisma.organizationProduct.findUniqueOrThrow.mockResolvedValue({
+        id: 'op-taxi',
+        vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+      });
+
+      const row = await service.updateVehicleAccessMode({
+        orgId: ORG,
+        productSlug: ProductSlug.TAXI,
+        vehicleAccessMode: OrganizationProductVehicleAccessMode.SELECTED_VEHICLES,
+        ifCurrentVehicleAccessMode: OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE,
+        actorUserId: ADMIN,
+      });
+
+      expect(row.vehicleAccessMode).toBe(OrganizationProductVehicleAccessMode.SELECTED_VEHICLES);
+      expect(prisma.organizationProduct.updateMany).toHaveBeenCalled();
+    });
+  });
+
   it('returns 409 when current=WIDE expected=SELECTED target=WIDE (CAS)', async () => {
     prisma.organizationProduct.findUnique.mockResolvedValue({
       id: 'op-1',

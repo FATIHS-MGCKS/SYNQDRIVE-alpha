@@ -39,8 +39,10 @@
 ## Phase 3 — backend retirement (this PR)
 
 - `retired-platform-product-slugs.ts`: `RETIRED_PLATFORM_PRODUCT_SLUGS = { TAXI }`
-- Called at entry of `assignProduct` and `assignProductForMasterAdmin` **before** any Prisma mutation
-- `removeProduct`, `updateVehicleAccessMode`, entitlements **read**, and grant **revoke** paths unchanged for legacy rows
+- **Organization product assign:** `assertPlatformProductAssignable` at entry of `assignProduct` and `assignProductForMasterAdmin` **before** any Prisma mutation
+- **Vehicle grant write:** `assertPlatformProductGrantWritable` at entry of `VehicleProductGrantService.grantExplicit` **before** org-product / vehicle checks and **before** transaction (blocks create + re-grant from `REVOKED`)
+- **Vehicle access mode (legacy TAXI rows):** `assertRetiredPlatformVehicleAccessModeMutation` — rejects broadening `SELECTED_VEHICLES` → `ORGANIZATION_WIDE`; allows narrowing `ORGANIZATION_WIDE` → `SELECTED_VEHICLES`; idempotent no-op unchanged
+- **Unchanged legacy paths:** `removeProduct`, grant `revokeGrant`, `listGrantedVehicles`, `hasActiveGrant`, entitlements **read**
 
 ## Phase 4 — seed
 

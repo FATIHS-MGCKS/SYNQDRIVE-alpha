@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import { assertPlatformProductGrantWritable } from '../retired-platform-product-slugs';
 import type { VehicleProductGrantListItem, VehicleProductGrantRecord } from './vehicle-product-grant.types';
 
 const GRANT_ELIGIBLE_REGISTRY_LIFECYCLES: VehicleRegistryLifecycle[] = [VehicleRegistryLifecycle.ACTIVE];
@@ -31,6 +32,7 @@ export class VehicleProductGrantService {
     grantedByUserId: string;
     audit?: { correlationId: string; route?: string; ipAddress?: string; userAgent?: string };
   }): Promise<VehicleProductGrantRecord> {
+    assertPlatformProductGrantWritable(input.productSlug);
     await this.assertOrganizationProductActive(input.organizationId, input.productSlug);
     await this.loadGrantEligibleVehicle(input.organizationId, input.vehicleId);
 
