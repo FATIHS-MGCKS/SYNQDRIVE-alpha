@@ -39,6 +39,11 @@ Shared governance for all slugs: Master Admin, product catalog, organization ent
 - `CORE_APP_M2M_PRODUCTION_READY` default **false**
 - Validation returns `RUNTIME_DISABLED` when env gate is off
 
+## Scope contract (Core reference)
+
+- `core:entitlements:read`
+- `core:app:vehicle:read` (singular — **not** `core:app:vehicles:read`)
+
 ## Credential policy
 
 - Persist `credential_hash` + `credential_version` only
