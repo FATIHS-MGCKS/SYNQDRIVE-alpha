@@ -9,3 +9,5 @@
 **DS4 target:** Booking-window aggregation over DS4-authority impact rows only; publication gating per `assessmentStatus` (PR-6).
 
 **P4-PR2 reconciliation port:** `RentalDrivingAnalysisReconciliationPortAdapter` owns Prisma booking scan/remediate for `BOOKING_WITHOUT_RENTAL_ANALYSIS`; exported via `RENTAL_DRIVING_ANALYSIS_RECONCILIATION_PORT`.
+
+**P4-PR3 recompute job handler port:** `RentalDrivingAnalysisRecomputeJobHandler` bound to `RENTAL_DRIVING_ANALYSIS_RECOMPUTE_JOB_HANDLER_PORT` via `useExisting` (no duplicate handler instance).
