@@ -96,6 +96,15 @@ See `CHANGE_RECORD_P3_PR3_2026-11-17.md`.
 
 See `CHANGE_RECORD_P3_PR4_2026-11-17.md`.
 
+## P3-PR5 — Master Admin service client management
+
+- Admin API: `/api/v1/admin/core-app-service-clients` (+ org grants, credential rotation)
+- MFA: `MASTER_API_KEYS`; audit on privileged mutations
+- UI: Master `service-client-management` view; one-time secret display
+- **Does not** enable M2M runtime or assign org products automatically
+
+See `CHANGE_RECORD_P3_PR5_2026-11-17.md`.
+
 ## Evidence
 
 - Migrations: `backend/prisma/migrations/20261116153000_p2_pr1_*` through `20261116160000_p2_pr1_*`

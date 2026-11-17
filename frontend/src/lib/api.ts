@@ -4006,6 +4006,44 @@ export const api = {
           errorMessage: string | null;
         }>('/admin/email/test', payload),
     },
+    coreAppServiceClients: {
+      list: () =>
+        get<import('../master/core-app-service-clients/types').CoreAppServiceClientListDto>(
+          '/admin/core-app-service-clients',
+        ),
+      get: (id: string) =>
+        get<import('../master/core-app-service-clients/types').CoreAppServiceClientSummary>(
+          `/admin/core-app-service-clients/${id}`,
+        ),
+      create: (payload: {
+        clientId: string;
+        displayName: string;
+        productSlug: string;
+        allowedScopes: string[];
+      }) =>
+        post<import('../master/core-app-service-clients/types').CoreAppServiceClientCreatedDto>(
+          '/admin/core-app-service-clients',
+          payload,
+        ),
+      update: (id: string, payload: Record<string, unknown>) =>
+        patch<import('../master/core-app-service-clients/types').CoreAppServiceClientSummary>(
+          `/admin/core-app-service-clients/${id}`,
+          payload,
+        ),
+      rotateCredential: (id: string) =>
+        post<import('../master/core-app-service-clients/types').CoreAppServiceClientCreatedDto>(
+          `/admin/core-app-service-clients/${id}/rotate-credential`,
+          {},
+        ),
+      listOrgGrants: (id: string) =>
+        get<import('../master/core-app-service-clients/types').CoreAppServiceOrgGrantListDto>(
+          `/admin/core-app-service-clients/${id}/org-grants`,
+        ),
+      attachOrgGrant: (id: string, organizationId: string) =>
+        post(`/admin/core-app-service-clients/${id}/org-grants`, { organizationId }),
+      updateOrgGrant: (id: string, orgId: string, payload: { status: string }) =>
+        patch(`/admin/core-app-service-clients/${id}/org-grants/${orgId}`, payload),
+    },
     platformIntegrations: {
       directory: () =>
         get<import('../master/platform-integrations/types').PlatformIntegrationsDirectoryDto>(

@@ -11,15 +11,23 @@ import { CoreAppM2mResourceAuthorizationService } from './core-app-m2m-resource-
 import { CoreAppM2mJwtAuthGuard } from './core-app-m2m-jwt-auth.guard';
 import { CoreReadVehiclesController } from './core-read/core-read-vehicles.controller';
 import { CoreReadVehiclesService } from './core-read/core-read-vehicles.service';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ProductVehicleAccessModule } from '@modules/products/product-vehicle-access/product-vehicle-access.module';
+import { CoreAppServiceClientAdminController } from './admin/core-app-service-client.admin.controller';
+import { CoreAppServiceClientAdminService } from './admin/core-app-service-client.admin.service';
 
 /**
- * P3-PR2 token exchange + P3-PR3 Redis rate limits (fail-closed when M2M enabled).
+ * P3-PR2 token exchange + P3-PR3 Redis rate limits + P3-PR5 MA client administration.
  */
 @Module({
-  imports: [PrismaModule, RedisModule, ProductVehicleAccessModule],
-  controllers: [CoreAppM2mTokenController, CoreReadVehiclesController],
+  imports: [PrismaModule, RedisModule, ProductVehicleAccessModule, ActivityLogModule],
+  controllers: [
+    CoreAppM2mTokenController,
+    CoreReadVehiclesController,
+    CoreAppServiceClientAdminController,
+  ],
   providers: [
+    CoreAppServiceClientAdminService,
     CoreAppServiceRegistryService,
     CoreAppM2mTokenExchangeService,
     CoreAppM2mTokenRateLimitService,

@@ -49,6 +49,7 @@ import { MasterAdminShell, PageContainer } from './shell';
 import { MasterMfaGate } from './components/MasterMfaGate';
 import { MfaStepUpDialog } from '../components/mfa/MfaStepUpDialog';
 import { ProductManagementView } from './components/organization-products/ProductManagementView';
+import { CoreAppServiceClientsHub } from './core-app-service-clients/CoreAppServiceClientsHub';
 
 function mapApiOrg(o: any): Organization {
   return {
@@ -504,6 +505,12 @@ export default function App() {
               navigateMaster('organizations', { orgId, orgTab: 'products' });
             }}
           />
+        )}
+
+        {currentView === 'service-client-management' && (
+          <PageContainer variant="wide">
+            <CoreAppServiceClientsHub />
+          </PageContainer>
         )}
 
         {currentView === 'billing' && (
