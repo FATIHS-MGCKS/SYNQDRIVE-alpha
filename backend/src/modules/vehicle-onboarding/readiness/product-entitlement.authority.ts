@@ -1,12 +1,16 @@
 import { OrgProductStatus, ProductSlug, Prisma } from '@prisma/client';
 import type { Prisma as PrismaTypes } from '@prisma/client';
+import {
+  ORGANIZATION_PRODUCT_VEHICLE_ACTIVATION_ENTITLEMENT_STATUSES,
+} from '@modules/products/entitlements/entitlements-policy';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 
 /**
- * Aligns with ProductLicenseGuard: only ACTIVE organization product rows grant access.
- * (TRIAL/SUSPENDED/CANCELLED do not satisfy product license for readiness.)
+ * Aligns with ProductLicenseGuard and `entitlements-policy` operational statuses (ACTIVE only).
  */
-export const READINESS_PRODUCT_ENTITLEMENT_STATUSES: OrgProductStatus[] = [OrgProductStatus.ACTIVE];
+export const READINESS_PRODUCT_ENTITLEMENT_STATUSES: OrgProductStatus[] = [
+  ...ORGANIZATION_PRODUCT_VEHICLE_ACTIVATION_ENTITLEMENT_STATUSES,
+];
 
 /** Row lock mode for activation-time entitlement checks (blocks concurrent UPDATE/DELETE). */
 export const ACTIVATION_PRODUCT_ENTITLEMENT_ROW_LOCK_MODE = 'FOR_UPDATE';

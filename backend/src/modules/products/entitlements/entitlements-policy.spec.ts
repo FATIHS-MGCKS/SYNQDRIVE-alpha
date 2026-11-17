@@ -2,6 +2,7 @@ import { OrgProductStatus } from '@prisma/client';
 import {
   isEntitledForAnyAccess,
   isOrganizationProductLicenseTermExpired,
+  isOrganizationProductOperationallyEntitled,
   resolveEntitlementCapabilities,
 } from './entitlements-policy';
 
@@ -20,6 +21,7 @@ describe('entitlements-policy', () => {
       canActivateVehicles: false,
     });
     expect(isEntitledForAnyAccess(OrgProductStatus.TRIAL)).toBe(true);
+    expect(isOrganizationProductOperationallyEntitled(OrgProductStatus.TRIAL)).toBe(false);
   });
 
   it('SUSPENDED and CANCELLED deny all capabilities', () => {

@@ -1,6 +1,30 @@
 import { OrgProductStatus } from '@prisma/client';
 
 /**
+ * Statuses that satisfy operational / route guards (ProductLicenseGuard, vehicle grants, vehicle access, VO-4 activation).
+ * TRIAL is intentionally excluded — UI preview only via `resolveEntitlementCapabilities`.
+ */
+export const ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES: readonly OrgProductStatus[] = [
+  OrgProductStatus.ACTIVE,
+];
+
+/** Alias for vehicle onboarding readiness / activation row locks (same ACTIVE-only semantics). */
+export const ORGANIZATION_PRODUCT_VEHICLE_ACTIVATION_ENTITLEMENT_STATUSES =
+  ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES;
+
+/** Alias for explicit vehicle product grants (same ACTIVE-only semantics). */
+export const ORGANIZATION_PRODUCT_VEHICLE_GRANT_ENTITLEMENT_STATUSES =
+  ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES;
+
+export function isOrganizationProductOperationallyEntitled(
+  status: OrgProductStatus | null | undefined,
+): boolean {
+  return (
+    status != null && (ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES as OrgProductStatus[]).includes(status)
+  );
+}
+
+/**
  * Central entitlement capability policy for core.entitlements.v1.
  *
  * canAccessProductUi — whether the org may use product-facing UI surfaces for this slug (declared).

@@ -233,9 +233,26 @@ describe('VehicleProductGrantService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.organizationProduct.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: OrgProductStatus.ACTIVE }),
+        where: expect.objectContaining({
+          status: { in: [OrgProductStatus.ACTIVE] },
+        }),
       }),
     );
+  });
+
+  it('rejects grant when organization product is TRIAL (operational fail-closed)', async () => {
+    const prisma = makePrisma(store);
+    (prisma.organizationProduct.findFirst as jest.Mock).mockResolvedValue(null);
+    service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
+    await expect(
+      service.grantExplicit({
+        organizationId: ORG,
+        vehicleId: VEH,
+        productSlug: ProductSlug.RENTAL,
+        grantedByUserId: ADMIN,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(store.size).toBe(0);
   });
 
   it('rejects offboarded vehicle', async () => {

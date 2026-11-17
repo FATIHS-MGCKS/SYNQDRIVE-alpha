@@ -194,6 +194,31 @@ describe('CoreEntitlementsReadController — HTTP security integration', () => {
       .expect(404);
   });
 
+  it('TRIAL reports UI capability without operational vehicle activation', async () => {
+    (prisma.organizationProduct.findFirst as jest.Mock).mockResolvedValueOnce({
+      productId: 'prod-rental',
+      status: OrgProductStatus.TRIAL,
+      plan: OrgProductPlan.STARTER,
+      activatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      expiresAt: null,
+      product: { id: 'prod-rental', slug: ProductSlug.RENTAL, name: 'Rental' },
+    });
+
+    await request(app.getHttpServer())
+      .get(routeSingle)
+      .set('Authorization', bearer({ id: USER_MEMBER, organizationId: ORG_A }))
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.status).toBe(OrgProductStatus.TRIAL);
+        expect(res.body.entitled).toBe(true);
+        expect(res.body.capabilities).toEqual({
+          canAccessProductUi: true,
+          canActivateVehicles: false,
+        });
+        expect(res.body.expiresAtPolicy).toBe('NOT_ENFORCED_STATUS_ONLY_PARITY');
+      });
+  });
+
   it('returns non-entitled record for known unassigned VYMOD', async () => {
     await request(app.getHttpServer())
       .get(routeVymodUnassigned)
