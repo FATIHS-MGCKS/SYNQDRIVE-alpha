@@ -1,7 +1,7 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P3-PR1)
+**Last updated:** 2026-11-17 (P3-PR2)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -71,7 +71,17 @@ See `CHANGE_RECORD_P2_PR5_2026-11-17.md`.
 - Existing `OrganizationProduct` assignments are untouched.
 - Admin API responses add optional `catalogStatus` field; no fields removed.
 
+## P3-PR2 — M2M token exchange (client credentials)
+
+- **Endpoint:** `POST /api/v1/auth/core-app/token` (`core.app.token.v1`)
+- **Runtime:** `CORE_APP_M2M_ENABLED=false` and `CORE_APP_M2M_PRODUCTION_READY=false` by default; isolated `CORE_APP_M2M_JWT_SECRET` required when enabled
+- **Rental:** co-located routes remain user-JWT; service tokens are not accepted on existing Rental/core user routes
+- **Deferred:** Redis rate limits (P3-PR3), versioned resource APIs (P3-PR4), MA client UI (P3-PR5)
+
+See `CHANGE_RECORD_P3_PR2_2026-11-17.md`.
+
 ## Evidence
 
 - Migrations: `backend/prisma/migrations/20261116153000_p2_pr1_*` through `20261116160000_p2_pr1_*`
 - VYMOD row: migration `20261116153100_p2_pr1_product_catalog_vymod_row` (canonical SQL; no runtime overwrite helper in P2-PR1)
+- P3-PR1 registry: `20261117133000_p3_pr1_core_app_service_client_registry`

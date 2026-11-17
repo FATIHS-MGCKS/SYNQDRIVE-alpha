@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import { CORE_APP_M2M_TOKEN_TYPE } from '@modules/core-app-m2m/core-app-m2m-jwt.config';
 import { sessionClaimsFromJwt } from '@shared/auth/auth-session-claims.types';
 
 /**
@@ -16,6 +17,8 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/password-reset/confirm',
   // Seed-admin bootstrap: still token-gated via SEED_ADMIN_TOKEN + ENABLE_SEED_ADMIN in controller.
   '/api/v1/auth/seed-admin',
+  // Core app M2M client credential exchange (service JWT) — gated inside controller/service; not user JWT.
+  '/api/v1/auth/core-app/token',
   '/api/v1/invites/validate',
   '/api/v1/invites/accept',
   '/api/v1/webhooks/dimo',
@@ -92,8 +95,16 @@ export class AuthGuard implements CanActivate {
   }
 
   private validateJwt(request: any, token: string): boolean {
+    const decodedUnsafe = jwt.decode(token) as jwt.JwtPayload | null;
+    if (decodedUnsafe?.token_type === CORE_APP_M2M_TOKEN_TYPE) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as any;
+      const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
+      if (decoded.token_type === CORE_APP_M2M_TOKEN_TYPE) {
+        throw new UnauthorizedException('Invalid or expired token');
+      }
       request.user = {
         id: decoded.sub,
         email: decoded.email,

@@ -10,3 +10,20 @@ export function isCoreAppM2mProductionReady(env: NodeJS.ProcessEnv = process.env
   }
   return env.CORE_APP_M2M_PRODUCTION_READY?.trim().toLowerCase() === 'true';
 }
+
+export function isCoreAppM2mProductionNodeEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env.NODE_ENV ?? 'development').toLowerCase() === 'production';
+}
+
+/**
+ * Token issuance gate: enabled flag always required; in production also requires PRODUCTION_READY.
+ */
+export function isCoreAppM2mTokenIssuanceAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!isCoreAppM2mEnabled(env)) {
+    return false;
+  }
+  if (isCoreAppM2mProductionNodeEnv(env)) {
+    return isCoreAppM2mProductionReady(env);
+  }
+  return true;
+}
