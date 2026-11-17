@@ -3,6 +3,7 @@ import { isCoreAppM2mEnabled } from './core-app-m2m.config';
 export const CORE_APP_M2M_RATE_LIMIT_WINDOW_SECONDS_DEFAULT = 60;
 export const CORE_APP_M2M_RATE_LIMIT_MAX_PER_IP_DEFAULT = 30;
 export const CORE_APP_M2M_RATE_LIMIT_MAX_PER_CLIENT_DEFAULT = 20;
+export const CORE_APP_M2M_RATE_LIMIT_REDIS_TIMEOUT_MS_DEFAULT = 250;
 
 /** Default ON — cannot be turned off while M2M runtime is enabled. */
 export function isCoreAppM2mRateLimitEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -58,6 +59,20 @@ function resolveBoundedLimit(
     return fallback;
   }
   return Math.min(max, Math.max(min, n));
+}
+
+export function resolveCoreAppM2mRateLimitRedisTimeoutMs(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const raw = env.CORE_APP_M2M_RATE_LIMIT_REDIS_TIMEOUT_MS?.trim();
+  if (!raw) {
+    return CORE_APP_M2M_RATE_LIMIT_REDIS_TIMEOUT_MS_DEFAULT;
+  }
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 50 || n > 5_000) {
+    return CORE_APP_M2M_RATE_LIMIT_REDIS_TIMEOUT_MS_DEFAULT;
+  }
+  return n;
 }
 
 /** Fail fast at bootstrap when operator arms M2M without rate limiting. */

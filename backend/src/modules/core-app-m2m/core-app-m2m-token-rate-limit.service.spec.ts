@@ -76,6 +76,28 @@ describe('CoreAppM2mTokenRateLimitService', () => {
     ).rejects.toBeInstanceOf(CoreAppM2mRateLimitedException);
   });
 
+  it('fail-closes when client IP cannot be resolved', async () => {
+    process.env.CORE_APP_M2M_ENABLED = 'true';
+    const service = buildService();
+    await expect(
+      service.assertBeforeTokenExchange({ clientId: 'client-a', clientIp: null }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('fail-closes when Redis eval never resolves (bounded timeout)', async () => {
+    process.env.CORE_APP_M2M_ENABLED = 'true';
+    process.env.CORE_APP_M2M_RATE_LIMIT_REDIS_TIMEOUT_MS = '40';
+    const hangingRedis = {
+      eval: jest.fn(() => new Promise<number>(() => {})),
+    };
+    const service = new CoreAppM2mTokenRateLimitService(hangingRedis as never);
+    await expect(
+      service.assertBeforeTokenExchange({ clientId: 'hang-client', clientIp: '203.0.113.88' }),
+    ).rejects.toMatchObject({
+      response: { message: CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE },
+    });
+  });
+
   it('fail-closes when Redis is unavailable', async () => {
     process.env.CORE_APP_M2M_ENABLED = 'true';
     const service = new CoreAppM2mTokenRateLimitService({

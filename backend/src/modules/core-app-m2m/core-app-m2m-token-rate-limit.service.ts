@@ -8,26 +8,15 @@ import {
   isCoreAppM2mRateLimitEnabled,
   resolveCoreAppM2mRateLimitMaxPerClient,
   resolveCoreAppM2mRateLimitMaxPerIp,
+  resolveCoreAppM2mRateLimitRedisTimeoutMs,
   resolveCoreAppM2mRateLimitWindowMs,
 } from './core-app-m2m-rate-limit.config';
+import {
+  CORE_APP_M2M_CONSUME_FIXED_WINDOW_SCRIPT,
+  CORE_APP_M2M_RATE_LIMIT_REDIS_KEY_PREFIX,
+} from './core-app-m2m-rate-limit.redis-script';
+import { runWithBoundedTimeout } from './core-app-m2m-redis-eval-timeout';
 import { normalizeClientId } from './core-app-service-registry.policy';
-
-const RATE_KEY_PREFIX = 'synqdrive:core-app-m2m:rl:v1';
-
-/** Atomic fixed-window consume — returns 1 when allowed, 0 when limit exceeded. */
-const CONSUME_FIXED_WINDOW_SCRIPT = `
-local limit = tonumber(ARGV[1])
-local ttl_ms = tonumber(ARGV[2])
-local current = tonumber(redis.call('GET', KEYS[1]) or '0')
-if current + 1 > limit then
-  return 0
-end
-local new_count = redis.call('INCR', KEYS[1])
-if new_count == 1 then
-  redis.call('PEXPIRE', KEYS[1], ttl_ms)
-end
-return 1
-`;
 
 export type CoreAppM2mTokenRateLimitInput = {
   clientId: string;
@@ -54,6 +43,11 @@ export class CoreAppM2mTokenRateLimitService {
       );
     }
 
+    const trustBoundaryIp = input.clientIp?.trim();
+    if (!trustBoundaryIp) {
+      this.failClosed();
+    }
+
     const windowMs = resolveCoreAppM2mRateLimitWindowMs();
     const bucket = Math.floor(Date.now() / windowMs);
     const ttlMs = windowMs + 5_000;
@@ -61,16 +55,15 @@ export class CoreAppM2mTokenRateLimitService {
       1,
       Math.ceil((windowMs - (Date.now() % windowMs)) / 1000),
     );
+    const redisTimeoutMs = resolveCoreAppM2mRateLimitRedisTimeoutMs();
 
-    const scopes: Array<{ dimension: 'ip' | 'client'; keyId: string; limit: number }> = [];
-
-    if (input.clientIp) {
-      scopes.push({
+    const scopes: Array<{ dimension: 'ip' | 'client'; keyId: string; limit: number }> = [
+      {
         dimension: 'ip',
-        keyId: hashRateLimitKeyPart(input.clientIp),
+        keyId: hashRateLimitKeyPart(trustBoundaryIp),
         limit: resolveCoreAppM2mRateLimitMaxPerIp(),
-      });
-    }
+      },
+    ];
 
     const normalizedClientId = normalizeClientId(input.clientId);
     if (normalizedClientId) {
@@ -82,15 +75,19 @@ export class CoreAppM2mTokenRateLimitService {
     }
 
     for (const scope of scopes) {
-      const redisKey = `${RATE_KEY_PREFIX}:${scope.dimension}:${scope.keyId}:${bucket}`;
+      const redisKey = `${CORE_APP_M2M_RATE_LIMIT_REDIS_KEY_PREFIX}:${scope.dimension}:${scope.keyId}:${bucket}`;
       try {
-        const allowed = (await this.redis.eval(
-          CONSUME_FIXED_WINDOW_SCRIPT,
-          1,
-          redisKey,
-          String(scope.limit),
-          String(ttlMs),
-        )) as number;
+        const allowed = await runWithBoundedTimeout(
+          () =>
+            this.redis.eval(
+              CORE_APP_M2M_CONSUME_FIXED_WINDOW_SCRIPT,
+              1,
+              redisKey,
+              String(scope.limit),
+              String(ttlMs),
+            ) as Promise<number>,
+          redisTimeoutMs,
+        );
         if (allowed !== 1) {
           throw new CoreAppM2mRateLimitedException(retryAfterSeconds);
         }
@@ -106,6 +103,10 @@ export class CoreAppM2mTokenRateLimitService {
         throw new UnauthorizedException(CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE);
       }
     }
+  }
+
+  private failClosed(): never {
+    throw new UnauthorizedException(CORE_APP_M2M_AUTHENTICATION_FAILED_MESSAGE);
   }
 }
 
