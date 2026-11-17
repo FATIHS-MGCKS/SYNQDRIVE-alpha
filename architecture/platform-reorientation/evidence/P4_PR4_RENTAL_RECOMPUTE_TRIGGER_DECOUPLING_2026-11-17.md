@@ -1,6 +1,7 @@
 # P4-PR4 — Rental recompute trigger port (five VI consumers)
 
-**Date:** 2026-11-17 (Europe/Berlin)  
+**Date:** 2026-11-17 (Europe/Berlin)
+
 **Base `origin/main`:** `f3368419f2db2c86ac157831d418aaf484587653` (P4-PR3 merged #2425)
 
 ## Change

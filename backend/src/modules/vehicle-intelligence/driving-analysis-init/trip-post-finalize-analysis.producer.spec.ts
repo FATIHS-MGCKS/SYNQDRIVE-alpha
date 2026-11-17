@@ -3,6 +3,13 @@ import { TripPostFinalizeAnalysisProducer } from './trip-post-finalize-analysis.
 import { DrivingAnalysisInitService } from './driving-analysis-init.service';
 import type { RentalDrivingAnalysisRecomputeTriggerPort } from '../ports/rental-driving-analysis-recompute-trigger.port';
 
+function mockRentalRecomputeTriggerPort(): jest.Mocked<RentalDrivingAnalysisRecomputeTriggerPort> {
+  return {
+    enqueueForBooking: jest.fn().mockResolvedValue({ enqueued: true }),
+    enqueueForTrip: jest.fn().mockResolvedValue({ enqueued: true }),
+  };
+}
+
 describe('TripPostFinalizeAnalysisProducer', () => {
   it('awaits durable init and returns null when organizationId is missing', async () => {
     const analysisInit = {
@@ -53,11 +60,7 @@ describe('TripPostFinalizeAnalysisProducer', () => {
         queueErrors: [],
       }),
     };
-    const rentalRecomputeTrigger: jest.Mocked<
-      Pick<RentalDrivingAnalysisRecomputeTriggerPort, 'enqueueForTrip'>
-    > = {
-      enqueueForTrip: jest.fn().mockResolvedValue({ enqueued: true }),
-    };
+    const rentalRecomputeTrigger = mockRentalRecomputeTriggerPort();
     const producer = new TripPostFinalizeAnalysisProducer(
       analysisInit as unknown as DrivingAnalysisInitService,
       rentalRecomputeTrigger,
