@@ -16,6 +16,13 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PartsAccessoriesService } from './parts-accessories.service';
+import {
+  catalogMutationFieldNames,
+  MasterCatalogAdminAuditService,
+  type CatalogAdminAuditRequest,
+} from '@modules/activity-log/master-catalog-admin-audit.service';
+
+type AdminAuthedRequest = CatalogAdminAuditRequest;
 
 // ─── Organization-Facing Endpoints ───────────────────────────
 @Controller('parts-accessories')
@@ -121,7 +128,10 @@ export class PartsAccessoriesController {
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
 @Roles('MASTER_ADMIN')
 export class PartsAccessoriesAdminController {
-  constructor(private readonly service: PartsAccessoriesService) {}
+  constructor(
+    private readonly service: PartsAccessoriesService,
+    private readonly catalogAudit: MasterCatalogAdminAuditService,
+  ) {}
 
   @Get('providers')
   async listProviders() {
@@ -129,18 +139,44 @@ export class PartsAccessoriesAdminController {
   }
 
   @Post('providers')
-  async createProvider(@Body() body: any) {
-    return this.service.createProvider(body);
+  async createProvider(@Body() body: any, @Req() req: AdminAuthedRequest) {
+    const created = await this.service.createProvider(body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'PARTS',
+      operation: 'CREATE',
+      resource: 'parts_provider',
+      entityId: created.id,
+    });
+    return created;
   }
 
   @Patch('providers/:id')
-  async updateProvider(@Param('id') id: string, @Body() body: any) {
-    return this.service.updateProvider(id, body);
+  async updateProvider(@Param('id') id: string, @Body() body: any, @Req() req: AdminAuthedRequest) {
+    const updated = await this.service.updateProvider(id, body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'PARTS',
+      operation: 'UPDATE',
+      resource: 'parts_provider',
+      entityId: updated.id,
+      updatedFieldNames: catalogMutationFieldNames(body),
+    });
+    return updated;
   }
 
   @Post('providers/:id/test')
-  async testConnection(@Param('id') id: string) {
-    return this.service.testProviderConnection(id);
+  async testConnection(@Param('id') id: string, @Req() req: AdminAuthedRequest) {
+    const result = await this.service.testProviderConnection(id);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'PARTS',
+      operation: 'CONNECTION_TEST',
+      resource: 'parts_provider',
+      entityId: id,
+      outcome: result.success ? 'TEST_SUCCEEDED' : 'TEST_FAILED',
+    });
+    return result;
   }
 
   @Get('disclosures')
@@ -152,13 +188,33 @@ export class PartsAccessoriesAdminController {
   }
 
   @Post('disclosures')
-  async createDisclosure(@Body() body: any, @Req() req: any) {
-    return this.service.createDisclosure({ ...body, createdById: req.user?.id });
+  async createDisclosure(@Body() body: any, @Req() req: AdminAuthedRequest) {
+    const created = await this.service.createDisclosure({
+      ...body,
+      createdById: req.user?.id,
+    });
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'PARTS',
+      operation: 'CREATE',
+      resource: 'parts_disclosure',
+      entityId: created.id,
+    });
+    return created;
   }
 
   @Patch('disclosures/:id')
-  async updateDisclosure(@Param('id') id: string, @Body() body: any) {
-    return this.service.updateDisclosure(id, body);
+  async updateDisclosure(@Param('id') id: string, @Body() body: any, @Req() req: AdminAuthedRequest) {
+    const updated = await this.service.updateDisclosure(id, body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'PARTS',
+      operation: 'UPDATE',
+      resource: 'parts_disclosure',
+      entityId: updated.id,
+      updatedFieldNames: catalogMutationFieldNames(body),
+    });
+    return updated;
   }
 
   @Get('authorization-logs')

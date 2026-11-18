@@ -46,4 +46,56 @@ describe('MasterAdminAuditService', () => {
       }),
     );
   });
+
+  describe('catalog semantic audit ActivityAction mapping', () => {
+    const audit = { record: jest.fn().mockResolvedValue('log-1') };
+    const service = new MasterAdminAuditService(audit as never);
+
+    beforeEach(() => jest.clearAllMocks());
+
+    async function recordCatalog(operation: string) {
+      await service.record({
+        auditAction: MasterAdminAuditAction.MASTER_PROSPECT_CATALOG_MUTATION,
+        actorUserId: 'actor-1',
+        actorPlatformRole: 'MASTER_ADMIN',
+        correlationId: 'corr-cat',
+        description: 'catalog mutation',
+        metadata: { operation },
+      });
+    }
+
+    it('maps CREATE to ActivityAction.CREATE', async () => {
+      await recordCatalog('CREATE');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: ActivityAction.CREATE }),
+      );
+    });
+
+    it('maps UPDATE to ActivityAction.UPDATE', async () => {
+      await recordCatalog('UPDATE');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: ActivityAction.UPDATE }),
+      );
+    });
+
+    it('maps DELETE to ActivityAction.DELETE', async () => {
+      await recordCatalog('DELETE');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: ActivityAction.DELETE }),
+      );
+    });
+
+    it('leaves ORG_DELETED classification unchanged', async () => {
+      await service.record({
+        auditAction: MasterAdminAuditAction.ORG_DELETED,
+        actorUserId: 'actor-1',
+        correlationId: 'corr-org',
+        description: 'delete org',
+        metadata: { operation: 'CREATE' },
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: ActivityAction.DELETE }),
+      );
+    });
+  });
 });

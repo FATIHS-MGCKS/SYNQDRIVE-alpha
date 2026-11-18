@@ -38,6 +38,64 @@ const SEMANTIC_PRIVILEGED_SUCCESS_SKIP: Array<{ methods: string[]; pathRegex: Re
     methods: ['PATCH'],
     pathRegex: /^\/api\/v1\/admin\/business-insights\/policy\/[^/]+$/,
   },
+  { methods: ['POST'], pathRegex: /^\/api\/v1\/admin\/prospects$/ },
+  { methods: ['POST'], pathRegex: /^\/api\/v1\/admin\/prospects\/import$/ },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/prospects\/[^/]+\/convert$/,
+  },
+  { methods: ['PATCH'], pathRegex: /^\/api\/v1\/admin\/prospects\/[^/]+$/ },
+  { methods: ['DELETE'], pathRegex: /^\/api\/v1\/admin\/prospects\/[^/]+$/ },
+  { methods: ['POST'], pathRegex: /^\/api\/v1\/admin\/insurances\/partners$/ },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/partners\/[^/]+$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/partners\/[^/]+\/test$/,
+  },
+  { methods: ['POST'], pathRegex: /^\/api\/v1\/admin\/insurances\/partner-contacts$/ },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/partner-contacts\/[^/]+$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/disclosure-templates$/,
+  },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/disclosure-templates\/[^/]+$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/inquiry-templates$/,
+  },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\/inquiry-templates\/[^/]+$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/parts-accessories\/providers$/,
+  },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/parts-accessories\/providers\/[^/]+$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/parts-accessories\/providers\/[^/]+\/test$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/parts-accessories\/disclosures$/,
+  },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/parts-accessories\/disclosures\/[^/]+$/,
+  },
 ];
 
 export function shouldSkipGenericPrivilegedSuccessAudit(method: string, path: string): boolean {

@@ -14,7 +14,7 @@ describe('master-admin-audit.policy', () => {
     expect(masterAdminReasonRequired('PATCH', '/api/v1/admin/organizations/org-1')).toBe(false);
   });
 
-  it('skips generic success audit for security session revocation routes', () => {
+  it('skips generic success audit for dedicated semantic privileged routes', () => {
     expect(
       shouldSkipGenericPrivilegedSuccessAudit(
         'POST',
@@ -29,6 +29,9 @@ describe('master-admin-audit.policy', () => {
     ).toBe(true);
     expect(
       shouldSkipGenericPrivilegedSuccessAudit('POST', '/api/v1/admin/prospects'),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit('POST', '/api/v1/admin/billing/invoices'),
     ).toBe(false);
     expect(
       shouldSkipGenericPrivilegedSuccessAudit(
@@ -42,6 +45,27 @@ describe('master-admin-audit.policy', () => {
         '/api/v1/admin/business-insights/policy/org-1',
       ),
     ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit('POST', '/api/v1/admin/prospects/import'),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit('PATCH', '/api/v1/admin/insurances/partners/p1'),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/parts-accessories/providers/p1/test',
+      ),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/prospects/uninstrumented-action',
+      ),
+    ).toBe(false);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit('GET', '/api/v1/admin/prospects/p1/contacts'),
+    ).toBe(false);
   });
 
   it('derives structured audit actions from route patterns', () => {

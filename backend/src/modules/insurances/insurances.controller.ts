@@ -16,6 +16,13 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { InsurancesService } from './insurances.service';
+import {
+  catalogMutationFieldNames,
+  MasterCatalogAdminAuditService,
+  type CatalogAdminAuditRequest,
+} from '@modules/activity-log/master-catalog-admin-audit.service';
+
+type AdminAuthedRequest = CatalogAdminAuditRequest;
 
 // ─── Organization-Facing Endpoints ───────────────────────────
 @Controller('insurances')
@@ -138,7 +145,10 @@ export class InsurancesController {
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
 @Roles('MASTER_ADMIN')
 export class InsurancesAdminController {
-  constructor(private readonly service: InsurancesService) {}
+  constructor(
+    private readonly service: InsurancesService,
+    private readonly catalogAudit: MasterCatalogAdminAuditService,
+  ) {}
 
   @Get('partners')
   async listPartners() {
@@ -146,18 +156,44 @@ export class InsurancesAdminController {
   }
 
   @Post('partners')
-  async createPartner(@Body() body: any) {
-    return this.service.createPartner(body);
+  async createPartner(@Body() body: any, @Req() req: AdminAuthedRequest) {
+    const created = await this.service.createPartner(body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'CREATE',
+      resource: 'insurance_partner',
+      entityId: created.id,
+    });
+    return created;
   }
 
   @Patch('partners/:id')
-  async updatePartner(@Param('id') id: string, @Body() body: any) {
-    return this.service.updatePartner(id, body);
+  async updatePartner(@Param('id') id: string, @Body() body: any, @Req() req: AdminAuthedRequest) {
+    const updated = await this.service.updatePartner(id, body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'UPDATE',
+      resource: 'insurance_partner',
+      entityId: updated.id,
+      updatedFieldNames: catalogMutationFieldNames(body),
+    });
+    return updated;
   }
 
   @Post('partners/:id/test')
-  async testPartner(@Param('id') id: string) {
-    return this.service.testPartnerConnection(id);
+  async testPartner(@Param('id') id: string, @Req() req: AdminAuthedRequest) {
+    const result = await this.service.testPartnerConnection(id);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'CONNECTION_TEST',
+      resource: 'insurance_partner',
+      entityId: id,
+      outcome: result.success ? 'TEST_SUCCEEDED' : 'TEST_FAILED',
+    });
+    return result;
   }
 
   @Get('partner-contacts')
@@ -166,13 +202,31 @@ export class InsurancesAdminController {
   }
 
   @Post('partner-contacts')
-  async createContact(@Body() body: any) {
-    return this.service.createContact(body);
+  async createContact(@Body() body: any, @Req() req: AdminAuthedRequest) {
+    const created = await this.service.createContact(body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'CREATE',
+      resource: 'insurance_partner_contact',
+      entityId: created.id,
+      extraMetadata: { insurancePartnerId: created.insurancePartnerId ?? null },
+    });
+    return created;
   }
 
   @Patch('partner-contacts/:id')
-  async updateContact(@Param('id') id: string, @Body() body: any) {
-    return this.service.updateContact(id, body);
+  async updateContact(@Param('id') id: string, @Body() body: any, @Req() req: AdminAuthedRequest) {
+    const updated = await this.service.updateContact(id, body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'UPDATE',
+      resource: 'insurance_partner_contact',
+      entityId: updated.id,
+      updatedFieldNames: catalogMutationFieldNames(body),
+    });
+    return updated;
   }
 
   @Get('disclosure-templates')
@@ -184,13 +238,37 @@ export class InsurancesAdminController {
   }
 
   @Post('disclosure-templates')
-  async createDisclosureTemplate(@Body() body: any, @Req() req: any) {
-    return this.service.createDisclosureTemplate({ ...body, createdById: req.user?.id });
+  async createDisclosureTemplate(@Body() body: any, @Req() req: AdminAuthedRequest) {
+    const created = await this.service.createDisclosureTemplate({
+      ...body,
+      createdById: req.user?.id,
+    });
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'CREATE',
+      resource: 'insurance_disclosure_template',
+      entityId: created.id,
+    });
+    return created;
   }
 
   @Patch('disclosure-templates/:id')
-  async updateDisclosureTemplate(@Param('id') id: string, @Body() body: any) {
-    return this.service.updateDisclosureTemplate(id, body);
+  async updateDisclosureTemplate(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req: AdminAuthedRequest,
+  ) {
+    const updated = await this.service.updateDisclosureTemplate(id, body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'UPDATE',
+      resource: 'insurance_disclosure_template',
+      entityId: updated.id,
+      updatedFieldNames: catalogMutationFieldNames(body),
+    });
+    return updated;
   }
 
   @Get('inquiry-templates')
@@ -202,13 +280,37 @@ export class InsurancesAdminController {
   }
 
   @Post('inquiry-templates')
-  async createInquiryTemplate(@Body() body: any, @Req() req: any) {
-    return this.service.createInquiryTemplate({ ...body, createdById: req.user?.id });
+  async createInquiryTemplate(@Body() body: any, @Req() req: AdminAuthedRequest) {
+    const created = await this.service.createInquiryTemplate({
+      ...body,
+      createdById: req.user?.id,
+    });
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'CREATE',
+      resource: 'insurance_inquiry_template',
+      entityId: created.id,
+    });
+    return created;
   }
 
   @Patch('inquiry-templates/:id')
-  async updateInquiryTemplate(@Param('id') id: string, @Body() body: any) {
-    return this.service.updateInquiryTemplate(id, body);
+  async updateInquiryTemplate(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req: AdminAuthedRequest,
+  ) {
+    const updated = await this.service.updateInquiryTemplate(id, body);
+    this.catalogAudit.recordMutation({
+      req,
+      domain: 'INSURANCE',
+      operation: 'UPDATE',
+      resource: 'insurance_inquiry_template',
+      entityId: updated.id,
+      updatedFieldNames: catalogMutationFieldNames(body),
+    });
+    return updated;
   }
 
   @Get('inquiries')

@@ -29,6 +29,9 @@ import { VoiceProtectionOverrideService } from '@modules/voice-protection/voice-
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { VoiceBudgetWarningService } from '@modules/voice-protection/voice-budget-warning.service';
 import { VoiceProtectionAuditService } from '@modules/voice-protection/voice-protection-audit.service';
+import { MasterCatalogAdminAuditService } from '@modules/activity-log/master-catalog-admin-audit.service';
+
+const noopCatalogAudit = { recordMutation: jest.fn() };
 
 function expectMfaGuardsOnController(controller: object): void {
   const guards = Reflect.getMetadata(GUARDS_METADATA, controller) ?? [];
@@ -101,7 +104,10 @@ describe('P5-B2 remaining admin MFA coverage — HTTP (real guard)', () => {
     const prospects = { create: jest.fn() };
     const harness = await createMasterAdminMfaHttpHarness({
       controller: ProspectsController,
-      providers: [{ provide: ProspectsService, useValue: prospects }],
+      providers: [
+        { provide: ProspectsService, useValue: prospects },
+        { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
+      ],
     });
     try {
       const res = await request(harness.app.getHttpServer())
@@ -343,7 +349,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       const service = { updatePartner: jest.fn() };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: InsurancesAdminController,
-        providers: [{ provide: InsurancesService, useValue: service }],
+        providers: [
+          { provide: InsurancesService, useValue: service },
+          { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
+        ],
       });
       try {
         const res = await request(harness.app.getHttpServer())
@@ -365,7 +374,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       const service = { updatePartner: jest.fn() };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: InsurancesAdminController,
-        providers: [{ provide: InsurancesService, useValue: service }],
+        providers: [
+          { provide: InsurancesService, useValue: service },
+          { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
+        ],
       });
       try {
         await request(harness.app.getHttpServer())
@@ -388,7 +400,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       const service = { updateProvider: jest.fn() };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: PartsAccessoriesAdminController,
-        providers: [{ provide: PartsAccessoriesService, useValue: service }],
+        providers: [
+          { provide: PartsAccessoriesService, useValue: service },
+          { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
+        ],
       });
       try {
         const res = await request(harness.app.getHttpServer())
@@ -410,7 +425,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       const service = { updateProvider: jest.fn() };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: PartsAccessoriesAdminController,
-        providers: [{ provide: PartsAccessoriesService, useValue: service }],
+        providers: [
+          { provide: PartsAccessoriesService, useValue: service },
+          { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
+        ],
       });
       try {
         await request(harness.app.getHttpServer())
