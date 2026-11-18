@@ -154,8 +154,8 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | **P3-PR5** | MA service-client management UI + admin APIs | **MERGED** #2421 (`b05a2bbd3`) | **NOT_CLAIMED** |
 | **P3 integration cert** | Cross-slice security + harness evidence | **MERGED** #2422 (`19fae93b9`) | **NOT_CLAIMED** |
 | **P4** | Reviewed Core↔Rental **service** boundary (ports; not all future decoupling) | **P4-PR1–PR4 MERGED** (#2423–#2426); boundary audit **COMPLETE** — [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) | Owner-gated |
-| **P5** | Full MA architecture/security audit | **IN_PROGRESS** — P5-B2 MFA [#2428](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2428) `57df0449b`, [#2429](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2429) `e1d332a2f`; P5-B3 semantic/failure audit [#2430](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2430)–[#2433](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2433) merged to `0a20ccb8f` (PR5 voice slice [#2434](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2434) open at doc time); evidence under [`evidence/`](evidence/) `P5_B2_*`, `P5_B3_*` | Owner sign-off |
-| **P6** | Rental product completion | **Blocked on P5** (sequencing unchanged) | Owner-gated |
+| **P5** | Full MA architecture/security audit | **CLOSEOUT_SUFFICIENT** @ `59182a9de` — B1 attestation recorded; B2 [#2428](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2428)–[#2429](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2429); B3 [#2430](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2430)–[#2434](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2434); B3-PR6 dedup **NOT_REQUIRED**; B4 [#2436](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2436) **DRAFT DEFERRED**; MFA/M2M Production **UNSET** (deferred risk — not security PASS); [`P5_CLOSEOUT_P6_READINESS_2026-11-18.md`](evidence/P5_CLOSEOUT_P6_READINESS_2026-11-18.md) | Owner P6 slice |
+| **P6** | Rental product completion | **UNBLOCKED** (P5 sufficient per owner 2026-11-18) — co-located Rental, no M2M mandate | Owner-gated |
 | **P7** | VYMOD + further products | Owner priority (sequencing unchanged) | Owner-gated |
 
 ## Non-goals
@@ -191,4 +191,6 @@ Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`
 4. After merge/deploy: reconcile ledger `merge_status` / `deploy_status` in the next authorized documentation update only — never infer deploy from merge alone.
 5. Run `bash architecture/scripts/validate-module-registry.sh` when registry metadata changes.
 
-**Last updated:** 2026-11-18 (binding monorepo documentation alignment; P5 **IN_PROGRESS** on `0a20ccb8f`; P4 scope clarification)
+**Owner 2026-11-18:** MFA implementation/activation **deferred** until after Core/Rental workstream; M2M production activation **not authorized**; physical Core extraction **SUPERSEDED**.
+
+**Last updated:** 2026-11-18 (P5 closeout + P6 readiness on `59182a9de`)
