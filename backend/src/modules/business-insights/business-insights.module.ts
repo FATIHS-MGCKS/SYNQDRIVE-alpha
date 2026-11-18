@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BusinessInsightsService } from './business-insights.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
@@ -25,12 +26,14 @@ import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-asse
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
+import { InternalBusinessInsightsAdminAuditService } from './internal-business-insights-admin-audit.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
 
 @Module({
   imports: [
+    ActivityLogModule,
     TasksModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => VehicleIntelligenceModule),
@@ -47,6 +50,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
+    InternalBusinessInsightsAdminAuditService,
     TightHandoverDetector,
     ReturnNeedsInspectionDetector,
     StationShortageDetector,

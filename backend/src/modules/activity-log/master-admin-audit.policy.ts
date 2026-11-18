@@ -13,17 +13,39 @@ export const MASTER_ADMIN_REASON_REQUIRED_PATTERNS: Array<{
 ];
 
 /** Routes that emit dedicated semantic MasterAdminAuditService records (skip generic HTTP success audit). */
-const SEMANTIC_PRIVILEGED_SUCCESS_SKIP: RegExp[] = [
-  /^\/api\/v1\/admin\/security\/users\/[^/]+\/sessions\/[^/]+\/revoke$/,
-  /^\/api\/v1\/admin\/security\/users\/[^/]+\/sessions\/revoke-all$/,
+const SEMANTIC_PRIVILEGED_SUCCESS_SKIP: Array<{ methods: string[]; pathRegex: RegExp }> = [
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/security\/users\/[^/]+\/sessions\/[^/]+\/revoke$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/security\/users\/[^/]+\/sessions\/revoke-all$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/business-insights\/run-all$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/business-insights\/run\/[^/]+$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/business-insights\/trigger\/[^/]+$/,
+  },
+  {
+    methods: ['PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/business-insights\/policy\/[^/]+$/,
+  },
 ];
 
 export function shouldSkipGenericPrivilegedSuccessAudit(method: string, path: string): boolean {
-  if (method.toUpperCase() !== 'POST') {
-    return false;
-  }
   const normalized = path.split('?')[0];
-  return SEMANTIC_PRIVILEGED_SUCCESS_SKIP.some((rx) => rx.test(normalized));
+  const verb = method.toUpperCase();
+  return SEMANTIC_PRIVILEGED_SUCCESS_SKIP.some(
+    (rule) => rule.methods.includes(verb) && rule.pathRegex.test(normalized),
+  );
 }
 
 export function masterAdminReasonRequired(method: string, path: string): boolean {
