@@ -37,7 +37,7 @@ describe('rental-driving-analysis API publish gate (F4)', () => {
     expect(gated?.vehicleStressSummary?.drivingStressScore).toBeNull();
     expect(gated?.vehicleStressSummary?.longitudinalStressScore).toBeNull();
     expect(gated?.vehicleStressSummary?.stressLevel).toBeNull();
-    expect(gated?.vehicleStressSummary?.summary).toBe('kept');
+    expect(gated?.vehicleStressSummary?.summary).toBeNull();
   });
 
   it('leaves payload unchanged for COMPLETE', () => {
@@ -71,5 +71,85 @@ describe('findAll / findById contract (via mapRecord gate helpers)', () => {
     expect(
       (apiPayload as typeof samplePayload)?.vehicleStressSummary?.drivingStressScore,
     ).toBeNull();
+  });
+});
+
+describe('rental-driving-analysis API publish gate (F6 text leak)', () => {
+  const richPayload = {
+    vehicleStressSummary: {
+      drivingStressScore: 77,
+      summary: 'Vehicle stress classified as high for the rental period.',
+    },
+    overallAssessment: {
+      level: 'high_stress',
+      title: 'High vehicle stress',
+      shortSummary: 'Vehicle stress classified as high for the rental period.',
+    },
+    watchpoints: [
+      'Elevated vehicle stress (77) during rental period.',
+      'Elevated harsh event rate (8 per 100 km).',
+      'At least one error code was recorded during the rental period.',
+    ],
+    recommendations: [
+      'Review tire wear — high overall vehicle stress.',
+      'Preliminary analysis only — await complete trip analysis before operational decisions.',
+    ],
+    eventSummary: {
+      drivingEventsCount: 12,
+      abuseDetectionCount: 1,
+      errorCodeOccurred: true,
+      eventHighlights: [
+        'High braking stress — inspect brake condition after rental.',
+        'Elevated harsh event rate (8 per 100 km).',
+      ],
+    },
+    wearImpactAssessment: {
+      overallWearImpact: 'high',
+      summary: 'Elevated wear impact from normalized vehicle load and driver conduct.',
+      affectedAreas: [
+        {
+          area: 'general_vehicle_stress',
+          impact: 'high',
+          reason: 'Distance-weighted vehicle stress load',
+        },
+      ],
+    },
+  };
+
+  const pristine = JSON.parse(JSON.stringify(richPayload));
+
+  it.each(['COMPLETE', 'PARTIAL'] as const)('preserves payload content for %s', (status) => {
+    expect(gateRentalAnalysisPayloadForApi(richPayload, status)).toEqual(richPayload);
+  });
+
+  it.each(['PROVISIONAL', 'NOT_ASSESSABLE', 'FAILED'] as const)(
+    'strips score-derived text for %s',
+    (status) => {
+      const gated = gateRentalAnalysisPayloadForApi(richPayload, status) as typeof richPayload;
+      expect(gated.watchpoints).toEqual([
+        'Elevated harsh event rate (8 per 100 km).',
+        'At least one error code was recorded during the rental period.',
+      ]);
+      expect(gated.recommendations).toEqual([
+        'Preliminary analysis only — await complete trip analysis before operational decisions.',
+      ]);
+      expect(gated.eventSummary?.eventHighlights).toEqual([
+        'Elevated harsh event rate (8 per 100 km).',
+      ]);
+      expect(gated.eventSummary?.drivingEventsCount).toBe(12);
+      expect(gated.eventSummary?.abuseDetectionCount).toBe(1);
+      expect(gated.overallAssessment?.title).toBeNull();
+      expect(gated.overallAssessment?.shortSummary).toBeNull();
+      expect(gated.wearImpactAssessment?.summary).toBeNull();
+      expect(gated.wearImpactAssessment?.affectedAreas).toEqual([]);
+      expect(gated.vehicleStressSummary?.summary).toBeNull();
+      expect(gated.watchpoints.join(' ')).not.toMatch(/\(\d+\)/);
+    },
+  );
+
+  it('does not mutate persisted payload object', () => {
+    gateRentalAnalysisPayloadForApi(richPayload, 'FAILED');
+    expect(richPayload).toEqual(pristine);
+    expect(richPayload.watchpoints[0]).toContain('(77)');
   });
 });

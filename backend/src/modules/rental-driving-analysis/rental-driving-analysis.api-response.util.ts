@@ -1,5 +1,9 @@
 import type { RentalDrivingAnalysisAssessmentStatus, Prisma } from '@prisma/client';
 import { publishesRentalDrivingStressScore } from './rental-driving-analysis.assessment';
+import {
+  filterScoreDerivedRecommendationTexts,
+  filterScoreDerivedWatchpointTexts,
+} from './rental-driving-analysis.api-response.publish-text';
 
 const VEHICLE_STRESS_SCORE_KEYS = [
   'drivingStressScore',
@@ -31,6 +35,43 @@ function redactVehicleStressSummaryNumericScores(
   if ('stressLevel' in next) {
     next.stressLevel = null;
   }
+  if ('summary' in next && typeof next.summary === 'string') {
+    next.summary = null;
+  }
+  return next;
+}
+
+function redactStressDerivedOverallAssessment(
+  assessment: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...assessment,
+    level: null,
+    title: null,
+    shortSummary: null,
+  };
+}
+
+function redactStressDerivedWearImpact(
+  wear: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...wear,
+    overallWearImpact: null,
+    summary: null,
+    affectedAreas: [],
+  };
+}
+
+function redactStressDerivedEventSummary(
+  eventSummary: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...eventSummary };
+  if (Array.isArray(next.eventHighlights)) {
+    next.eventHighlights = filterScoreDerivedWatchpointTexts(
+      next.eventHighlights as string[],
+    );
+  }
   return next;
 }
 
@@ -50,5 +91,34 @@ export function gateRentalAnalysisPayloadForApi(
       vss as Record<string, unknown>,
     );
   }
+
+  const overall = root.overallAssessment;
+  if (overall && typeof overall === 'object' && !Array.isArray(overall)) {
+    root.overallAssessment = redactStressDerivedOverallAssessment(
+      overall as Record<string, unknown>,
+    );
+  }
+
+  const wear = root.wearImpactAssessment;
+  if (wear && typeof wear === 'object' && !Array.isArray(wear)) {
+    root.wearImpactAssessment = redactStressDerivedWearImpact(wear as Record<string, unknown>);
+  }
+
+  if (Array.isArray(root.watchpoints)) {
+    root.watchpoints = filterScoreDerivedWatchpointTexts(root.watchpoints as string[]);
+  }
+  if (Array.isArray(root.recommendations)) {
+    root.recommendations = filterScoreDerivedRecommendationTexts(
+      root.recommendations as string[],
+    );
+  }
+
+  const eventSummary = root.eventSummary;
+  if (eventSummary && typeof eventSummary === 'object' && !Array.isArray(eventSummary)) {
+    root.eventSummary = redactStressDerivedEventSummary(
+      eventSummary as Record<string, unknown>,
+    );
+  }
+
   return root as Prisma.JsonValue;
 }
