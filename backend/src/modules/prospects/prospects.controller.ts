@@ -12,12 +12,16 @@ import {
 import { ProspectsService } from './prospects.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { PaginationParams } from '@shared/utils/pagination';
 import { ProspectStatus, ProspectPriority, BusinessType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
 @Controller('admin/prospects')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
 @Roles('MASTER_ADMIN')
 export class ProspectsController {
   constructor(private readonly prospectsService: ProspectsService) {}

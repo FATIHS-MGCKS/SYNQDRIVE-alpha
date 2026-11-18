@@ -10,6 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
   ElevenLabsTwilioDeactivateDto,
@@ -19,7 +22,8 @@ import {
 import { ElevenLabsTwilioImportProvisioningService } from './elevenlabs-twilio-import-provisioning.service';
 
 @Controller('admin/voice-assistant/organizations/:orgId/elevenlabs')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class ElevenLabsTwilioImportController {
   constructor(private readonly provisioning: ElevenLabsTwilioImportProvisioningService) {}

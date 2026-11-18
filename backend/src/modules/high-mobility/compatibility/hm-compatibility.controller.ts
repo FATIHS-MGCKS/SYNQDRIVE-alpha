@@ -6,6 +6,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { HighMobilityCompatibilityService } from './hm-compatibility.service';
 import type {
@@ -21,7 +22,7 @@ import type {
  * compatibility checker and onboarding flow.
  */
 @Controller('admin/high-mobility/compatibility')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 export class HighMobilityCompatibilityController {
   constructor(
