@@ -70,12 +70,17 @@ describe('master-admin-privileged-audit.recorder', () => {
   });
 
   it('records success only below HTTP 400', () => {
-    recordPrivilegedMutationSuccess(masterAdminAudit, baseReq, 201);
+    const genericSuccessReq = {
+      ...baseReq,
+      originalUrl: '/api/v1/admin/billing/invoices',
+      url: '/api/v1/admin/billing/invoices',
+    };
+    recordPrivilegedMutationSuccess(masterAdminAudit, genericSuccessReq, 201);
     expect(masterAdminAudit.record).toHaveBeenCalledWith(
       expect.objectContaining({ auditAction: expect.not.stringMatching(/DENIED/) }),
     );
     jest.clearAllMocks();
-    recordPrivilegedMutationSuccess(masterAdminAudit, baseReq, 422);
+    recordPrivilegedMutationSuccess(masterAdminAudit, genericSuccessReq, 422);
     expect(masterAdminAudit.record).not.toHaveBeenCalled();
   });
 });

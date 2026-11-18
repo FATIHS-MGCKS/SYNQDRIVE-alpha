@@ -62,12 +62,18 @@
 | P5-B3-PR4 | 2026-11-18 | P5 | [#2433](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2433) | `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e` | **MERGED** | **NOT_RECORDED** | **NOT_CLAIMED** | Catalog semantic audit (GAP-H1/H2) | [`P5_B3_PR4_CATALOG_PROSPECTS_SEMANTIC_AUDIT_2026-11-18.md`](evidence/P5_B3_PR4_CATALOG_PROSPECTS_SEMANTIC_AUDIT_2026-11-18.md) | CI #2433 | P5-B3 PR5 voice (open #2434 at doc baseline) |
 | P5-ROADMAP | 2026-11-18 | P5 | — | `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e` (status baseline) | **IN_PROGRESS** | **NO** | **NOT_CLAIMED** | Master plan P5 **IN_PROGRESS** (was PLANNED); P6/P7 sequencing unchanged | Master plan § Roadmap | Docs validation | P5 completion + owner sign-off |
 | MONO-ARCH-DOC | 2026-11-18 | Governance | _pending_ | _pending merge_ | **OPEN** | **NO** | **NOT_CLAIMED** | Binding monorepo architecture documentation alignment (docs-only) | [`MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT_2026-11-18.md`](evidence/MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT_2026-11-18.md) | `validate-module-registry.sh` + `git diff --check` | Await merge |
+| P5-B3-PR5-MERGED | 2026-11-18 | P5 | [#2434](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2434) | `59182a9dec80b35d805cf64dd6252172c2fc4ba9` | **MERGED** | **NOT_RECORDED** | **NOT_CLAIMED** | Voice provisioning semantic audit | [`P5_B3_PR5_VOICE_PROVISIONING_SEMANTIC_AUDIT_2026-11-18.md`](evidence/P5_B3_PR5_VOICE_PROVISIONING_SEMANTIC_AUDIT_2026-11-18.md) | CI #2434 | P5 closeout |
+| MONO-ARCH-DOC-MERGED | 2026-11-18 | Governance | [#2435](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2435) | `31f83eb81025ccbf9039cb36393801cd9593c412` | **MERGED** | **NOT_RECORDED** | **NOT_CLAIMED** | Binding monorepo architecture documentation alignment (docs-only) | [`MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT_2026-11-18.md`](evidence/MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT_2026-11-18.md) | CI #2435 | Supersedes **MONO-ARCH-DOC** OPEN snapshot |
+| P5-B4-PR1-DRAFT | 2026-11-18 | P5 | [#2436](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2436) | _draft branch_ | **DRAFT** | **NO** | **NOT_CLAIMED** | IAM MFA authority bootstrap — **DEFERRED** (owner; do not merge) | [`P5_B4_PR1_IAM_MFA_AUTHORITY_AUDIT_2026-11-18.md`](evidence/P5_B4_PR1_IAM_MFA_AUTHORITY_AUDIT_2026-11-18.md) on draft branch only | — | Post–Core/Rental workstream |
+| P5-CLOSEOUT | 2026-11-18 | P5 | [#2437](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2437) | `59182a9dec80b35d805cf64dd6252172c2fc4ba9` (audit baseline) | **OPEN** | **NO** | **NOT_CLAIMED** | P5 closeout + P6 readiness; B1 attestation; PR6 NOT_REQUIRED; recorder test hygiene | [`P5_CLOSEOUT_P6_READINESS_2026-11-18.md`](evidence/P5_CLOSEOUT_P6_READINESS_2026-11-18.md) | Focused security Jest | **P6 GO** pending #2437; supersedes **P5-ROADMAP** remaining-work text |
 
 **Verified `origin/main` at ledger init (2026-11-17):** `01a7ea3ee984518a587c00f0ba37f8a5151ec996` (P2 complete; P3-PR1 not yet merged).
 
 **Verified `origin/main` after P3-PR1 merge (2026-11-17):** `7f243d0fe30ba87e9225f5b3a454d901d5fef934` (includes #2415, #2417 APDS test fix; **excludes** #2416 until merged).
 
 **Verified `origin/main` after P5-B3-PR4 merge (2026-11-18):** `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e` (P5 **IN_PROGRESS**; P5-B3 PR5 #2434 not yet on `main` at this baseline).
+
+**Verified `origin/main` at P5 closeout audit (2026-11-18):** `59182a9dec80b35d805cf64dd6252172c2fc4ba9` (includes P5-B3 PR5 #2434; **excludes** #2435–#2437 until merged).
 
 ---
 
