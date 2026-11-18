@@ -15,6 +15,7 @@ METRICS_ROOT="${TMPDIR:-/tmp}/trip-r12-retry-budget-metrics-$$"
 
 fail_infra() {
   local reason="$1"
+  TRIP_R12_BH_SUPPRESS_EXIT_TRAP=1
   cat <<EOF
 BASE_SHA=${BASE_SHA}
 HEAD_SHA=${HEAD_SHA}
@@ -32,7 +33,11 @@ source "$ROOT/backend/scripts/test/lib/trip-r12-base-head-red-proof-db-isolation
 trip_r12_bh_db_isolation_init "$ROOT" "test_trip_r12_cusum_retry_budget" "${GITHUB_RUN_ID:-local}"
 
 cleanup() {
-  trip_r12_bh_release_all_probe_databases || true
+  TRIP_R12_BH_SUPPRESS_EXIT_TRAP=1
+  if ! trip_r12_bh_finalize_all_probe_cleanup; then
+    echo "PROBE_DB_CLEANUP_FAILED=during_script_cleanup" >&2
+    exit 2
+  fi
   git -C "$ROOT" worktree remove --force "$BASE_DIR" 2>/dev/null || true
   git -C "$ROOT" worktree remove --force "$HEAD_DIR" 2>/dev/null || true
   rm -rf "$WORKTREE_ROOT" "$METRICS_ROOT"
@@ -105,7 +110,7 @@ install_and_run_probe() {
   echo "${label}_DATABASE_ISOLATED=YES"
   echo "${label}_DATABASE_NAME=${probe_db_name}"
   read_metrics "$metrics_file" "$label" || true
-  trip_r12_bh_probe_scope_leave || echo "${label}_PROBE_DB_CLEANUP_FAILED=YES" >&2
+  trip_r12_bh_probe_scope_leave
 }
 
 BASE_METRICS_JSON="$METRICS_ROOT/base-metrics.json"

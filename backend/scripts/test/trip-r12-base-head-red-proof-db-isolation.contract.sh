@@ -85,6 +85,14 @@ assert_f1_accepts "CI localhost hostname parent" \
 assert_f1_accepts "CI probe name" \
   "postgresql://synqdrive:synqdrive@127.0.0.1:5432/test_trip_r12_contract_base_contract_1?schema=public" probe
 
+# F2 — registered-only drop (no live Postgres)
+assert_rejects "unregistered valid-prefix database drop" bash -c '
+  fail_infra() { exit 99; }
+  source "'"${SCRIPT_DIR}"'/lib/trip-r12-base-head-red-proof-db-isolation.lib.sh"
+  trip_r12_bh_db_isolation_init "'"${SCRIPT_DIR}"'/../.." "test_trip_r12_contract" "contract"
+  trip_r12_bh_release_probe_database "test_trip_r12_contract_base_contract_unregistered"
+'
+
 # F2 — drop refused (no mutations)
 assert_rejects "foreign probe database drop" bash -c '
   fail_infra() { exit 99; }
@@ -122,6 +130,34 @@ fi
 
 # F2 — idempotent leave without active scope
 assert_accepts "probe_scope_leave idempotent" trip_r12_bh_probe_scope_leave
+
+# F2 — no RETURN trap; EXIT trap for abnormal termination
+assert_accepts "scope enter installs EXIT not RETURN" bash -c '
+  fail_infra() { echo "INFRA:$*"; exit 2; }
+  source "'"${SCRIPT_DIR}"'/lib/trip-r12-base-head-red-proof-db-isolation.lib.sh"
+  trip_r12_bh_db_isolation_init "'"${SCRIPT_DIR}"'/../.." "test_trip_r12_contract" "contract"
+  trip_r12_bh_allocate_probe_database() {
+    local _label="$1"
+    local -n _out="$2"
+    _out="postgresql://u:p@127.0.0.1:5432/test_trip_r12_contract_base_contract_trap?schema=public"
+    TRIP_R12_BH_CREATED_DB_NAMES+=("test_trip_r12_contract_base_contract_trap")
+    trip_r12_bh_lifecycle_note "CREATE label=base db=test_trip_r12_contract_base_contract_trap"
+  }
+  trip_r12_bh_release_probe_database() {
+    trip_r12_bh_lifecycle_note "DROP db=$1"
+    TRIP_R12_BH_CREATED_DB_NAMES=()
+    return 0
+  }
+  url=""
+  trip_r12_bh_probe_scope_enter base url ""
+  if trap -p RETURN 2>/dev/null | grep -q .; then exit 1; fi
+  if ! trap -p EXIT 2>/dev/null | grep -q _trip_r12_bh_on_process_exit; then exit 1; fi
+  trip_r12_bh_probe_scope_leave
+  [[ "${TRIP_R12_BH_LIFECYCLE_LOG[0]}" == CREATE* ]] || exit 1
+  [[ "${TRIP_R12_BH_LIFECYCLE_LOG[1]}" == SCOPE_ENTER* ]] || exit 1
+  [[ "${TRIP_R12_BH_LIFECYCLE_LOG[2]}" == SCOPE_LEAVE* ]] || exit 1
+  [[ "${TRIP_R12_BH_LIFECYCLE_LOG[3]}" == DROP* ]] || exit 1
+'
 
 if [[ "$failures" -gt 0 ]]; then
   echo "trip-r12-base-head-red-proof-db-isolation contract: ${failures} failure(s)" >&2

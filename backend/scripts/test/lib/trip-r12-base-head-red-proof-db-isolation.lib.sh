@@ -13,6 +13,9 @@ TRIP_R12_BH_PG_ADMIN_PASSWORD=""
 TRIP_R12_BH_CREATED_DB_NAMES=()
 TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME=""
 TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE=""
+TRIP_R12_BH_EXIT_TRAP_INSTALLED=0
+TRIP_R12_BH_SUPPRESS_EXIT_TRAP=0
+TRIP_R12_BH_LIFECYCLE_LOG=()
 
 trip_r12_bh_db_isolation_init() {
   TRIP_R12_BH_REPO_ROOT="$1"
@@ -193,6 +196,7 @@ trip_r12_bh_allocate_probe_database() {
   fi
 
   TRIP_R12_BH_CREATED_DB_NAMES+=("$db_name")
+  trip_r12_bh_lifecycle_note "CREATE label=${label} db=${db_name}"
   probe_url_out="postgresql://${TRIP_R12_BH_PG_ADMIN_USER}:${TRIP_R12_BH_PG_ADMIN_PASSWORD}@${TRIP_R12_BH_PG_ADMIN_HOST}:${TRIP_R12_BH_PG_ADMIN_PORT}/${db_name}?schema=public"
   if ! trip_r12_bh_assert_ci_local_postgres_url "$probe_url_out" "PROBE_DATABASE_URL" probe; then
     fail_infra "PROBE_DATABASE_URL_GUARD_FAILED label=${label}"
@@ -211,6 +215,64 @@ trip_r12_bh_database_name_from_url() {
   printf '%s' "$db"
 }
 
+trip_r12_bh_lifecycle_note() {
+  TRIP_R12_BH_LIFECYCLE_LOG+=("$1")
+  echo "PROBE_DB_LIFECYCLE=${1}" >&2
+}
+
+trip_r12_bh_is_registered_probe_database() {
+  local db_name="$1"
+  local name
+  for name in "${TRIP_R12_BH_CREATED_DB_NAMES[@]}"; do
+    if [[ "$name" == "$db_name" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+trip_r12_bh_ensure_exit_cleanup_trap() {
+  if [[ "$TRIP_R12_BH_EXIT_TRAP_INSTALLED" == 1 ]]; then
+    return 0
+  fi
+  trap '_trip_r12_bh_on_process_exit' EXIT
+  TRIP_R12_BH_EXIT_TRAP_INSTALLED=1
+}
+
+_trip_r12_bh_on_process_exit() {
+  local exit_rc=$?
+  if [[ "${TRIP_R12_BH_SUPPRESS_EXIT_TRAP:-0}" == 1 ]]; then
+    return
+  fi
+  if ! trip_r12_bh_finalize_all_probe_cleanup; then
+    exit 2
+  fi
+  exit "$exit_rc"
+}
+
+trip_r12_bh_restore_parent_database_url() {
+  if [[ -n "${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE:-}" ]]; then
+    export DATABASE_URL="${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE}"
+  else
+    unset DATABASE_URL || true
+  fi
+}
+
+trip_r12_bh_finalize_all_probe_cleanup() {
+  local had_failure=0
+  if [[ -n "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}" ]]; then
+    if ! trip_r12_bh_release_probe_database "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}"; then
+      had_failure=1
+    fi
+    TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME=""
+    trip_r12_bh_restore_parent_database_url
+  fi
+  if ! trip_r12_bh_release_all_probe_databases; then
+    had_failure=1
+  fi
+  return "$had_failure"
+}
+
 trip_r12_bh_release_probe_database() {
   local db_name="$1"
   if [[ -z "$db_name" ]]; then
@@ -218,6 +280,10 @@ trip_r12_bh_release_probe_database() {
   fi
   if ! trip_r12_bh_assert_probe_database_name "$db_name"; then
     echo "PROBE_DB_DROP_REFUSED name=${db_name}" >&2
+    return 1
+  fi
+  if ! trip_r12_bh_is_registered_probe_database "$db_name"; then
+    echo "PROBE_DB_DROP_REFUSED not_registered name=${db_name}" >&2
     return 1
   fi
   trip_r12_bh_bootstrap_parent_ci_database_context
@@ -238,6 +304,7 @@ trip_r12_bh_release_probe_database() {
     fi
   done
   TRIP_R12_BH_CREATED_DB_NAMES=("${remaining[@]}")
+  trip_r12_bh_lifecycle_note "DROP db=${db_name}"
   return 0
 }
 
@@ -256,35 +323,28 @@ trip_r12_bh_release_all_probe_databases() {
 }
 
 trip_r12_bh_probe_scope_leave() {
-  local cleanup_rc=0
-  if [[ -n "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}" ]]; then
-    if ! trip_r12_bh_release_probe_database "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}"; then
-      cleanup_rc=1
-    fi
-    TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME=""
+  if [[ -z "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}" ]]; then
+    return 0
   fi
-  if [[ -n "${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE:-}" ]]; then
-    export DATABASE_URL="${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE}"
-  else
-    unset DATABASE_URL || true
+  local active_db="${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}"
+  trip_r12_bh_lifecycle_note "SCOPE_LEAVE db=${active_db}"
+  if ! trip_r12_bh_release_probe_database "$active_db"; then
+    fail_infra "PROBE_DB_CLEANUP_FAILED name=${active_db}"
   fi
-  trap - RETURN
-  return "$cleanup_rc"
+  TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME=""
+  trip_r12_bh_restore_parent_database_url
 }
 
-_trip_r12_bh_probe_scope_return_trap() {
-  trip_r12_bh_probe_scope_leave || true
-}
-
-# Begin isolated probe DB scope; releases only on trip_r12_bh_probe_scope_leave (or RETURN trap).
+# Begin isolated probe DB scope; release explicitly via trip_r12_bh_probe_scope_leave (no RETURN trap).
 trip_r12_bh_probe_scope_enter() {
   local label="$1"
   local -n probe_url_var="$2"
   local parent_url_snapshot="${3-}"
 
+  trip_r12_bh_ensure_exit_cleanup_trap
   TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE="${parent_url_snapshot}"
   trip_r12_bh_allocate_probe_database "$label" probe_url_var
   TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME="$(trip_r12_bh_database_name_from_url "$probe_url_var")"
   export DATABASE_URL="$probe_url_var"
-  trap _trip_r12_bh_probe_scope_return_trap RETURN
+  trip_r12_bh_lifecycle_note "SCOPE_ENTER label=${label} db=${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}"
 }
