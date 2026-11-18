@@ -12,6 +12,20 @@ export const MASTER_ADMIN_REASON_REQUIRED_PATTERNS: Array<{
   { method: 'DELETE', pathRegex: /^\/api\/v1\/admin\/high-mobility\/vehicles\/[^/]+$/ },
 ];
 
+/** Routes that emit dedicated semantic MasterAdminAuditService records (skip generic HTTP success audit). */
+const SEMANTIC_PRIVILEGED_SUCCESS_SKIP: RegExp[] = [
+  /^\/api\/v1\/admin\/security\/users\/[^/]+\/sessions\/[^/]+\/revoke$/,
+  /^\/api\/v1\/admin\/security\/users\/[^/]+\/sessions\/revoke-all$/,
+];
+
+export function shouldSkipGenericPrivilegedSuccessAudit(method: string, path: string): boolean {
+  if (method.toUpperCase() !== 'POST') {
+    return false;
+  }
+  const normalized = path.split('?')[0];
+  return SEMANTIC_PRIVILEGED_SUCCESS_SKIP.some((rx) => rx.test(normalized));
+}
+
 export function masterAdminReasonRequired(method: string, path: string): boolean {
   const normalized = path.split('?')[0];
   return MASTER_ADMIN_REASON_REQUIRED_PATTERNS.some(

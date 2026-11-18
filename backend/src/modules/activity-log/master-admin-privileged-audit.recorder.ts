@@ -5,6 +5,7 @@ import {
 } from './master-admin-audit.contract';
 import {
   deriveMasterAdminAuditAction,
+  shouldSkipGenericPrivilegedSuccessAudit,
 } from './master-admin-audit.policy';
 import { MFA_ERROR } from '@modules/iam-mfa/iam-mfa.policy';
 import {
@@ -131,6 +132,9 @@ export function recordPrivilegedMutationSuccess(
   }
 
   const path = (req.originalUrl ?? req.url ?? '').split('?')[0];
+  if (shouldSkipGenericPrivilegedSuccessAudit(req.method, path)) {
+    return;
+  }
   const correlationId = resolveCorrelationId(req as never);
   const auditAction = deriveMasterAdminAuditAction(req.method, path);
   const mfa = resolveMfaAuditFields(req as never);
