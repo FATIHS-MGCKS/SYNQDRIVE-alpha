@@ -1,0 +1,21 @@
+invariants:
+  - id: IAM-MFA-INV-FLAGS-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Default-off feature flags
+    statement: When IAM_MFA_* env vars are unset, resolver treats enrollment and step-up enforcement as disabled.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa-feature-flags.resolver.ts
+    evidence:
+      - IAM-MFA-EVID-CODE-FLAGS-001
+
+  - id: IAM-MFA-INV-STEPUP-001
+    kind: CONDITIONAL_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Step-up grant single-use and TTL
+    statement: When step-up enforced, grants expire and consume-on-use per IAM-MFA-STEP-UP policy.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa-step-up.service.ts
+      - backend/src/modules/iam-mfa/iam-mfa.policy.ts
+    evidence:
+      - IAM-MFA-TEST-SECURITY-001

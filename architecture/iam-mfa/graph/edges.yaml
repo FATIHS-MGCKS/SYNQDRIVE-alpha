@@ -1,0 +1,25 @@
+edges:
+  - from: IAM-MFA-EVID-CODE-MODULE-001
+    relation: supports
+    to: IAM-MFA-API-ACCOUNT-001
+  - from: IAM-MFA-EVID-CODE-FLAGS-001
+    relation: supports
+    to: IAM-MFA-POL-FLAGS-001
+  - from: IAM-MFA-EVID-CODE-FLAGS-001
+    relation: supports
+    to: IAM-MFA-DEC-FLAGS-001
+  - from: IAM-MFA-TEST-SECURITY-001
+    relation: supports
+    to: IAM-MFA-API-ACCOUNT-001
+  - from: IAM-MFA-EVID-PROD-001
+    relation: supports
+    to: IAM-MFA-GAP-001
+  - from: IAM-MFA-EVID-PROD-001
+    relation: contradicts
+    to: IAM-MFA-CX-001
+  - from: IAM-MFA-POL-FLAGS-001
+    relation: governs
+    to: IAM-MFA-AUTH-STEPUP-001
+  - from: IAM-MFA-POL-FLAGS-001
+    relation: governs
+    to: IAM-MFA-AUTH-MA-001
