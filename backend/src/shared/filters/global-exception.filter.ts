@@ -4,10 +4,18 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
+import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import {
+  privilegedFailureFromHttpException,
+  recordPrivilegedMutationFailure,
+} from '@modules/activity-log/master-admin-privileged-audit.recorder';
 
+@Injectable()
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -20,6 +28,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     10,
   );
   private readonly lastStackLogAt = new Map<string, number>();
+
+  constructor(
+    @Optional() private readonly masterAdminAudit?: MasterAdminAuditService,
+  ) {}
 
   private shouldLogStack(signature: string): boolean {
     const now = Date.now();
@@ -41,6 +53,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
+      this.maybeRecordPrivilegedFailure(request, exception);
       const exResponse = exception.getResponse();
       if (typeof exResponse === 'object' && exResponse !== null) {
         response.status(status).json({
@@ -51,6 +64,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         return;
       }
       message = typeof exResponse === 'string' ? exResponse : (exResponse as any).message;
+    } else if (this.masterAdminAudit) {
+      recordPrivilegedMutationFailure(this.masterAdminAudit, request as never, {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        responseBody: { code: 'INTERNAL_ERROR' },
+        failureCategory: 'SERVER_ERROR',
+      });
     }
 
     if (status >= 500) {
@@ -69,6 +88,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message,
       timestamp: new Date().toISOString(),
       path: request.url,
+    });
+  }
+
+  private maybeRecordPrivilegedFailure(request: Request, exception: HttpException): void {
+    if (!this.masterAdminAudit) {
+      return;
+    }
+    const { statusCode, responseBody } = privilegedFailureFromHttpException(exception);
+    if (statusCode < 400) {
+      return;
+    }
+    recordPrivilegedMutationFailure(this.masterAdminAudit, request as never, {
+      statusCode,
+      responseBody,
     });
   }
 }

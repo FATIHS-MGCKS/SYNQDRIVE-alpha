@@ -11,7 +11,6 @@ import * as compression from 'compression';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { SpaFallbackController } from './spa-fallback.controller';
-import { GlobalExceptionFilter } from '@shared/filters/global-exception.filter';
 import { RequestLoggingInterceptor } from '@shared/interceptors/request-logging.interceptor';
 
 /**
@@ -132,7 +131,7 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // GlobalExceptionFilter is registered via APP_FILTER in AppModule (DI + privileged failure audit).
   app.useGlobalInterceptors(new RequestLoggingInterceptor());
 
   const swaggerEnabled = configService.get<boolean>('app.swaggerEnabled', false);
