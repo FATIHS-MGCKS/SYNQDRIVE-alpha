@@ -57,6 +57,15 @@ describe('master-admin-audit.policy', () => {
         '/api/v1/admin/parts-accessories/providers/p1/test',
       ),
     ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/prospects/uninstrumented-action',
+      ),
+    ).toBe(false);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit('GET', '/api/v1/admin/prospects/p1/contacts'),
+    ).toBe(false);
   });
 
   it('derives structured audit actions from route patterns', () => {

@@ -22,7 +22,11 @@ Metadata: `catalogDomain`, `operation`, `resource`, `outcome`, `entityId` (top-l
 
 ## Dedup
 
-`shouldSkipGenericPrivilegedSuccessAudit` extended for `/admin/prospects`, `/admin/insurances/`, `/admin/parts-accessories/` mutating methods.
+`shouldSkipGenericPrivilegedSuccessAudit` lists **exact** route/method pairs with semantic hooks (not broad `/admin/prospects/*` prefixes).
+
+## ActivityLog action mapping (F1)
+
+For the three `MASTER_*_CATALOG_MUTATION` actions only, `metadata.operation` drives `ActivityAction`: `CREATE`/`IMPORT` → `CREATE`, `DELETE` → `DELETE`, `UPDATE` → `UPDATE`, `CONVERT`/`CONNECTION_TEST` → `UPDATE`.
 
 ## Limitations
 

@@ -16,7 +16,7 @@ export class MasterAdminAuditService {
   constructor(private readonly audit: AuditService) {}
 
   async record(input: MasterAdminAuditRecordInput): Promise<void> {
-    const action = this.resolveActivityAction(input.auditAction);
+    const action = this.resolveActivityAction(input.auditAction, input.metadata);
     const level = input.level ?? this.defaultLevel(input.auditAction);
 
     await this.audit.record({
@@ -90,7 +90,18 @@ export class MasterAdminAuditService {
     });
   }
 
-  private resolveActivityAction(code: MasterAdminAuditActionCode): ActivityAction {
+  private resolveActivityAction(
+    code: MasterAdminAuditActionCode,
+    metadata?: Record<string, unknown>,
+  ): ActivityAction {
+    if (
+      code === MasterAdminAuditAction.MASTER_PROSPECT_CATALOG_MUTATION ||
+      code === MasterAdminAuditAction.MASTER_INSURANCE_CATALOG_MUTATION ||
+      code === MasterAdminAuditAction.MASTER_PARTS_CATALOG_MUTATION
+    ) {
+      return this.resolveCatalogMutationActivityAction(metadata?.operation);
+    }
+
     switch (code) {
       case MasterAdminAuditAction.ORG_DELETED:
       case MasterAdminAuditAction.PLATFORM_USER_DELETED:
@@ -104,6 +115,23 @@ export class MasterAdminAuditService {
       case MasterAdminAuditAction.MFA_STEP_UP_DENIED:
       case MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED:
         return ActivityAction.AUTH_FAIL;
+      default:
+        return ActivityAction.UPDATE;
+    }
+  }
+
+  private resolveCatalogMutationActivityAction(operation: unknown): ActivityAction {
+    switch (operation) {
+      case 'CREATE':
+      case 'IMPORT':
+        return ActivityAction.CREATE;
+      case 'DELETE':
+        return ActivityAction.DELETE;
+      case 'UPDATE':
+        return ActivityAction.UPDATE;
+      case 'CONVERT':
+      case 'CONNECTION_TEST':
+        return ActivityAction.UPDATE;
       default:
         return ActivityAction.UPDATE;
     }
