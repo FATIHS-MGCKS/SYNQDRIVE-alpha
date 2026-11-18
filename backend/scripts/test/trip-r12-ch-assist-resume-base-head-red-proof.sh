@@ -28,7 +28,12 @@ EOF
   exit 2
 }
 
+# shellcheck disable=SC1091
+source "$ROOT/backend/scripts/test/lib/trip-r12-base-head-red-proof-db-isolation.lib.sh"
+trip_r12_bh_db_isolation_init "$ROOT" "test_trip_r12_ch_assist_resume" "${GITHUB_RUN_ID:-local}"
+
 cleanup() {
+  trip_r12_bh_release_all_probe_databases || true
   git -C "$ROOT" worktree remove --force "$BASE_DIR" 2>/dev/null || true
   git -C "$ROOT" worktree remove --force "$HEAD_DIR" 2>/dev/null || true
   rm -rf "$WORKTREE_ROOT" "$METRICS_ROOT"
@@ -74,12 +79,20 @@ install_and_run_probe() {
   mkdir -p "$(dirname "$dir/$PROBE_REL")"
   cp "$PROBE_SRC" "$dir/$PROBE_REL"
 
+  local probe_database_url probe_db_name
+  probe_database_url="$(trip_r12_bh_allocate_probe_database "$label")"
+  probe_db_name="$(trip_r12_bh_database_name_from_url "$probe_database_url")"
+  export DATABASE_URL="$probe_database_url"
+  trip_r12_bh_register_probe_db_return_trap "$probe_db_name"
+
+  local prev_cwd="$PWD"
   cd "$dir/backend"
-  npm ci >/dev/null 2>&1
-  npx prisma generate >/dev/null 2>&1
-  npx prisma db push --accept-data-loss --skip-generate >/dev/null 2>&1
+  env DATABASE_URL="$probe_database_url" npm ci >/dev/null 2>&1
+  env DATABASE_URL="$probe_database_url" npx prisma generate >/dev/null 2>&1
+  env DATABASE_URL="$probe_database_url" npx prisma db push --accept-data-loss --skip-generate >/dev/null 2>&1
 
   set +e
+  DATABASE_URL="$probe_database_url" \
   TRIP_R12_POSTGRES_REDIS_INTEGRATION=1 \
   TRIP_R12_POSTGRES_REDIS_REQUIRED=1 \
   TRIP_R12_CH_SKIP_RESUME_METRICS_FILE="$metrics_file" \
@@ -89,9 +102,12 @@ install_and_run_probe() {
     --runInBand --forceExit --verbose > "$log" 2>&1
   local exit_code=$?
   set -e
+  cd "$prev_cwd"
 
   echo "${label}_PROBE_EXIT=$exit_code"
   echo "${label}_METRICS_FILE=$metrics_file"
+  echo "${label}_DATABASE_ISOLATED=YES"
+  echo "${label}_DATABASE_NAME=${probe_db_name}"
   read_metrics "$metrics_file" "$label" || true
 }
 
