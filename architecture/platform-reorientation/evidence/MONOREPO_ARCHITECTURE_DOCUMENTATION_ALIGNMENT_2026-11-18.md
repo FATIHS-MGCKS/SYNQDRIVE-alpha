@@ -1,8 +1,11 @@
 # Monorepo architecture — documentation alignment
 
 **Date:** 2026-11-18 (Europe/Berlin)
+
 **Operation:** `SYNQDRIVE_ALPHA_MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT`
+
 **Mode:** `DOCUMENTATION_ONLY` — **no** product logic, schema, or registry row changes
+
 **Owner decision:** **CONFIRMED** — architecture **not** redesigned
 
 ## Documents updated
@@ -11,7 +14,7 @@
 |----------|--------|
 | [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) | § Binding monorepo architecture; P4 scope clarification; P5 **IN_PROGRESS** |
 | [`PROGRESS_LEDGER.md`](../PROGRESS_LEDGER.md) | Appended P5-B2/B3 merge rows + governance alignment row |
-| [`AGENTS.md`](../../../AGENTS.md) | Binding monorepo invariants for agents |
+| [`AGENTS.md`](../../../AGENTS.md) | **Unchanged** — `AGENTS.md` is i18n governance authority (`i18n-authority-protection`); binding invariants are normative in Master Plan § (existing AGENTS item 1 already routes agents there) |
 | [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../../SYNQDRIVE_RENTAL_ARCHITECTURE.md) | Registry synopsis § (overview rows unchanged) |
 
 ## Validated invariants (documented)
@@ -41,5 +44,6 @@
 | `bash architecture/scripts/validate-module-registry.sh` | PASS |
 | `git diff --check` | PASS |
 | Application source changes | **NONE** |
+| `i18n-authority-protection` | **PASS** expected after AGENTS.md left on `main` (no governance authority diff) |
 
 **REGISTRY_REVIEWED:** UNCHANGED
