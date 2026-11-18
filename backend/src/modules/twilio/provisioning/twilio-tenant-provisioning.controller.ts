@@ -21,13 +21,24 @@ import {
   TwilioSubaccountProvisionDto,
 } from './dto/twilio-provisioning.dto';
 import { TwilioTenantProvisioningService } from './twilio-tenant-provisioning.service';
+import type { TwilioCredentialRegistrationResult } from './twilio-provisioning.types';
+import {
+  deriveVoiceProvisioningJobOutcome,
+  MasterVoiceProvisioningAdminAuditService,
+  type VoiceProvisioningAuditRequest,
+} from '@modules/activity-log/master-voice-provisioning-admin-audit.service';
+
+type AuthedRequest = VoiceProvisioningAuditRequest & { user?: { id?: string } };
 
 @Controller('admin/voice-assistant/organizations/:orgId/twilio')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class TwilioTenantProvisioningController {
-  constructor(private readonly provisioning: TwilioTenantProvisioningService) {}
+  constructor(
+    private readonly provisioning: TwilioTenantProvisioningService,
+    private readonly voiceAudit: MasterVoiceProvisioningAdminAuditService,
+  ) {}
 
   @Post('provisioning/preview')
   async preview(
@@ -44,9 +55,9 @@ export class TwilioTenantProvisioningController {
     @Param('orgId') orgId: string,
     @Body() body: TwilioSubaccountProvisionDto,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: AuthedRequest,
   ) {
-    return this.provisioning.provisionSubaccount({
+    const result = await this.provisioning.provisionSubaccount({
       organizationId: orgId,
       friendlyName: body.friendlyName,
       actor: {
@@ -56,6 +67,20 @@ export class TwilioTenantProvisioningController {
         dryRun: body.dryRun,
       },
     });
+    this.voiceAudit.recordProvisioningMutation({
+      req,
+      domain: 'TWILIO',
+      operation: 'SUBACCOUNT_PROVISION',
+      targetOrganizationId: orgId,
+      entityId: result.job?.id ?? orgId,
+      outcome: deriveVoiceProvisioningJobOutcome(result),
+      extraMetadata: {
+        jobStatus: result.job?.status ?? null,
+        dryRun: result.dryRun ?? false,
+        mutating: result.mutating ?? null,
+      },
+    });
+    return result;
   }
 
   @Post('credentials/register')
@@ -63,14 +88,30 @@ export class TwilioTenantProvisioningController {
     @Param('orgId') orgId: string,
     @Body() body: TwilioCredentialRegisterDto,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: AuthedRequest,
   ) {
-    return this.provisioning.registerRuntimeCredentials(orgId, {
-      userId: req.user?.id,
-      idempotencyKey: idempotencyKey ?? '',
-      confirm: body.confirm,
-      dryRun: body.dryRun,
+    const result: TwilioCredentialRegistrationResult =
+      await this.provisioning.registerRuntimeCredentials(orgId, {
+        userId: req.user?.id,
+        idempotencyKey: idempotencyKey ?? '',
+        confirm: body.confirm,
+        dryRun: body.dryRun,
+      });
+    this.voiceAudit.recordProvisioningMutation({
+      req,
+      domain: 'TWILIO',
+      operation: 'CREDENTIALS_REGISTER',
+      targetOrganizationId: orgId,
+      entityId: orgId,
+      outcome: deriveVoiceProvisioningJobOutcome(result),
+      extraMetadata: {
+        dryRun: result.dryRun ?? false,
+        mutating: result.mutating ?? null,
+        rotationPrepared: result.rotationPrepared ?? null,
+        secretRefRegistered: result.secretRef != null,
+      },
     });
+    return result;
   }
 
   @Post('phone-numbers/search')
@@ -92,9 +133,9 @@ export class TwilioTenantProvisioningController {
     @Param('orgId') orgId: string,
     @Body() body: TwilioPhoneNumberPurchaseDto,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: AuthedRequest,
   ) {
-    return this.provisioning.purchasePhoneNumber({
+    const result = await this.provisioning.purchasePhoneNumber({
       organizationId: orgId,
       phoneNumber: body.phoneNumber,
       actor: {
@@ -104,6 +145,20 @@ export class TwilioTenantProvisioningController {
         dryRun: body.dryRun,
       },
     });
+    this.voiceAudit.recordProvisioningMutation({
+      req,
+      domain: 'TWILIO',
+      operation: 'PHONE_NUMBER_PURCHASE',
+      targetOrganizationId: orgId,
+      entityId: result.job?.id ?? result.phoneNumberId ?? orgId,
+      outcome: deriveVoiceProvisioningJobOutcome(result),
+      extraMetadata: {
+        jobStatus: result.job?.status ?? null,
+        phoneNumberId: result.phoneNumberId ?? null,
+        dryRun: result.dryRun ?? false,
+      },
+    });
+    return result;
   }
 
   @Get('regulatory-status')

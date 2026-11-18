@@ -10,6 +10,11 @@ import { RequireCommunicationPermission } from '@shared/decorators/require-commu
 import { RequireVoiceAssistantPermission } from '@shared/decorators/require-voice-assistant-permission.decorator';
 import { VoiceAssistantService } from './voice-assistant.service';
 import {
+  deriveVoiceProvisioningJobOutcome,
+  MasterVoiceProvisioningAdminAuditService,
+  type VoiceProvisioningAuditRequest,
+} from '@modules/activity-log/master-voice-provisioning-admin-audit.service';
+import {
   UpdateVoiceAssistantDto,
   ListVoiceConversationsQueryDto,
   AssignPhoneNumberDto,
@@ -167,7 +172,10 @@ export class VoiceAssistantController {
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 export class VoiceAssistantAdminController {
-  constructor(private readonly service: VoiceAssistantService) {}
+  constructor(
+    private readonly service: VoiceAssistantService,
+    private readonly voiceAudit: MasterVoiceProvisioningAdminAuditService,
+  ) {}
 
   @Get('overview')
   async overview() {
@@ -181,7 +189,29 @@ export class VoiceAssistantAdminController {
 
   @Post('organizations/:orgId/sync')
   @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
-  async syncOrganization(@Param('orgId') orgId: string) {
-    return this.service.adminSyncOrganization(orgId);
+  async syncOrganization(
+    @Param('orgId') orgId: string,
+    @Req() req: VoiceProvisioningAuditRequest,
+  ) {
+    const result = await this.service.adminSyncOrganization(orgId);
+    const synced =
+      typeof (result as { synced?: number }).synced === 'number'
+        ? (result as { synced: number }).synced
+        : undefined;
+    this.voiceAudit.recordProvisioningMutation({
+      req,
+      domain: 'VOICE_ASSISTANT',
+      operation: 'ORGANIZATION_SYNC',
+      targetOrganizationId: orgId,
+      entityId: orgId,
+      outcome: deriveVoiceProvisioningJobOutcome({
+        synced: synced ?? 0,
+        message: (result as { message?: string }).message,
+      }),
+      extraMetadata: {
+        syncedCount: synced ?? null,
+      },
+    });
+    return result;
   }
 }

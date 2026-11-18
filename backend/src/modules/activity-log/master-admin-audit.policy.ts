@@ -96,6 +96,35 @@ const SEMANTIC_PRIVILEGED_SUCCESS_SKIP: Array<{ methods: string[]; pathRegex: Re
     methods: ['PATCH'],
     pathRegex: /^\/api\/v1\/admin\/parts-accessories\/disclosures\/[^/]+$/,
   },
+  {
+    methods: ['POST'],
+    pathRegex:
+      /^\/api\/v1\/admin\/voice-assistant\/organizations\/[^/]+\/twilio\/subaccount\/provision$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex:
+      /^\/api\/v1\/admin\/voice-assistant\/organizations\/[^/]+\/twilio\/credentials\/register$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex:
+      /^\/api\/v1\/admin\/voice-assistant\/organizations\/[^/]+\/twilio\/phone-numbers\/purchase$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex:
+      /^\/api\/v1\/admin\/voice-assistant\/organizations\/[^/]+\/elevenlabs\/phone-numbers\/[^/]+\/import-and-assign$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex:
+      /^\/api\/v1\/admin\/voice-assistant\/organizations\/[^/]+\/elevenlabs\/phone-numbers\/[^/]+\/deactivate$/,
+  },
+  {
+    methods: ['POST'],
+    pathRegex: /^\/api\/v1\/admin\/voice-assistant\/organizations\/[^/]+\/sync$/,
+  },
 ];
 
 export function shouldSkipGenericPrivilegedSuccessAudit(method: string, path: string): boolean {

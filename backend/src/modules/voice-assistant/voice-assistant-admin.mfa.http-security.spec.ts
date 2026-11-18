@@ -18,6 +18,9 @@ import {
 } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 import { VoiceAssistantAdminController } from './voice-assistant.controller';
 import { VoiceAssistantService } from './voice-assistant.service';
+import { MasterVoiceProvisioningAdminAuditService } from '@modules/activity-log/master-voice-provisioning-admin-audit.service';
+
+const noopVoiceAudit = { recordProvisioningMutation: jest.fn() };
 
 describe('VoiceAssistantAdminController — MFA HTTP security', () => {
   const service = { adminSyncOrganization: jest.fn().mockResolvedValue({ synced: true }) };
@@ -49,6 +52,7 @@ describe('VoiceAssistantAdminController — MFA HTTP security', () => {
         controllers: [VoiceAssistantAdminController],
         providers: [
           { provide: VoiceAssistantService, useValue: service },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
           { provide: APP_GUARD, useValue: createMasterAdminAuthGuard() },
           MasterAdminMfaGuard,
           { provide: PrismaService, useValue: { userMfaFactor: { findFirst: jest.fn() } } },
@@ -86,7 +90,10 @@ describe('VoiceAssistantAdminController — MFA HTTP security', () => {
     it('rejects non–MASTER_ADMIN on sync', async () => {
       const harness = await createMasterAdminMfaHttpHarness({
         controller: VoiceAssistantAdminController,
-        providers: [{ provide: VoiceAssistantService, useValue: service }],
+        providers: [
+          { provide: VoiceAssistantService, useValue: service },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       try {
         await request(harness.app.getHttpServer())
@@ -102,7 +109,10 @@ describe('VoiceAssistantAdminController — MFA HTTP security', () => {
     it('returns STEP_UP_REQUIRED without step-up when MFA enforced', async () => {
       const harness = await createMasterAdminMfaHttpHarness({
         controller: VoiceAssistantAdminController,
-        providers: [{ provide: VoiceAssistantService, useValue: service }],
+        providers: [
+          { provide: VoiceAssistantService, useValue: service },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       try {
         const res = await request(harness.app.getHttpServer())
@@ -124,7 +134,10 @@ describe('VoiceAssistantAdminController — MFA HTTP security', () => {
     it('returns STEP_UP_EXPIRED for invalid step-up token', async () => {
       const harness = await createMasterAdminMfaHttpHarness({
         controller: VoiceAssistantAdminController,
-        providers: [{ provide: VoiceAssistantService, useValue: service }],
+        providers: [
+          { provide: VoiceAssistantService, useValue: service },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       harness.validateGrant.mockResolvedValue(false);
       try {
@@ -152,7 +165,10 @@ describe('VoiceAssistantAdminController — MFA HTTP security', () => {
     it('allows sync with valid step-up and passes MASTER_INTEGRATIONS to validation', async () => {
       const harness = await createMasterAdminMfaHttpHarness({
         controller: VoiceAssistantAdminController,
-        providers: [{ provide: VoiceAssistantService, useValue: service }],
+        providers: [
+          { provide: VoiceAssistantService, useValue: service },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       harness.validateGrant.mockResolvedValue(true);
       try {

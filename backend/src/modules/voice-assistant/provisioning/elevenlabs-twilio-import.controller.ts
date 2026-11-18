@@ -20,13 +20,23 @@ import {
   ElevenLabsTwilioImportReadinessDto,
 } from './dto/elevenlabs-twilio-import.dto';
 import { ElevenLabsTwilioImportProvisioningService } from './elevenlabs-twilio-import-provisioning.service';
+import {
+  deriveVoiceProvisioningJobOutcome,
+  MasterVoiceProvisioningAdminAuditService,
+  type VoiceProvisioningAuditRequest,
+} from '@modules/activity-log/master-voice-provisioning-admin-audit.service';
+
+type AuthedRequest = VoiceProvisioningAuditRequest & { user?: { id?: string } };
 
 @Controller('admin/voice-assistant/organizations/:orgId/elevenlabs')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class ElevenLabsTwilioImportController {
-  constructor(private readonly provisioning: ElevenLabsTwilioImportProvisioningService) {}
+  constructor(
+    private readonly provisioning: ElevenLabsTwilioImportProvisioningService,
+    private readonly voiceAudit: MasterVoiceProvisioningAdminAuditService,
+  ) {}
 
   @Get('phone-numbers/:phoneNumberId/import-readiness')
   async readiness(
@@ -43,9 +53,9 @@ export class ElevenLabsTwilioImportController {
     @Param('phoneNumberId') phoneNumberId: string,
     @Body() body: ElevenLabsTwilioImportAndAssignDto,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: AuthedRequest,
   ) {
-    return this.provisioning.importAndAssign({
+    const result = await this.provisioning.importAndAssign({
       organizationId: orgId,
       phoneNumberId,
       deploymentId: body.deploymentId,
@@ -56,6 +66,21 @@ export class ElevenLabsTwilioImportController {
         dryRun: body.dryRun,
       },
     });
+    this.voiceAudit.recordProvisioningMutation({
+      req,
+      domain: 'ELEVENLABS',
+      operation: 'IMPORT_AND_ASSIGN',
+      targetOrganizationId: orgId,
+      entityId: phoneNumberId,
+      outcome: deriveVoiceProvisioningJobOutcome(result),
+      extraMetadata: {
+        jobStatus: result.job?.status ?? null,
+        importStatus: result.importStatus ?? null,
+        deploymentId: result.deploymentId ?? null,
+        dryRun: result.dryRun ?? false,
+      },
+    });
+    return result;
   }
 
   @Post('phone-numbers/:phoneNumberId/deactivate')
@@ -63,11 +88,24 @@ export class ElevenLabsTwilioImportController {
     @Param('orgId') orgId: string,
     @Param('phoneNumberId') phoneNumberId: string,
     @Body() body: ElevenLabsTwilioDeactivateDto,
-    @Req() req: { user?: { id?: string } },
+    @Req() req: AuthedRequest,
   ) {
-    return this.provisioning.deactivateAssignment(orgId, phoneNumberId, {
+    const result = await this.provisioning.deactivateAssignment(orgId, phoneNumberId, {
       userId: req.user?.id,
       confirm: body.confirm,
     });
+    this.voiceAudit.recordProvisioningMutation({
+      req,
+      domain: 'ELEVENLABS',
+      operation: 'DEACTIVATE_ASSIGNMENT',
+      targetOrganizationId: orgId,
+      entityId: phoneNumberId,
+      outcome: deriveVoiceProvisioningJobOutcome(result),
+      extraMetadata: {
+        importStatus: result.importStatus ?? null,
+        deactivated: result.deactivated,
+      },
+    });
+    return result;
   }
 }
