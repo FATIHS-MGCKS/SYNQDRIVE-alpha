@@ -83,7 +83,7 @@ Legend: **PROTECTED** = `MasterAdminMfaGuard` on class and/or step-up on mutatio
 ## Tests
 
 - PR #2428: `voice-assistant-admin.mfa.http-security.spec.ts`, `internal-business-insights.mfa.http-security.spec.ts`
-- Remaining slice: `master-admin-remaining-mfa.coverage.spec.ts` (metadata + HTTP regression for Prospects, Twilio preview, VoiceProtection override)
+- Remaining slice: `master-admin-remaining-mfa.coverage.spec.ts` (metadata + HTTP regression incl. F1 high-risk mutations: Twilio purchase, ElevenLabs import-and-assign, Insurances partner PATCH, PartsAccessories provider PATCH)
 
 ## Registry
 
