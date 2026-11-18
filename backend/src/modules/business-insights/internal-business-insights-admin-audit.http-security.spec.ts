@@ -79,7 +79,7 @@ describe('InternalBusinessInsightsController — semantic admin audit HTTP', () 
     return app;
   }
 
-  it('records run-all semantic audit with PARTIAL outcome and no generic success audit', async () => {
+  it('records run-all semantic audit with FINISHED outcome and observable counts', async () => {
     const app = await createApp();
     try {
       const res = await request(app.getHttpServer())
@@ -91,7 +91,12 @@ describe('InternalBusinessInsightsController — semantic admin audit HTTP', () 
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           auditAction: MasterAdminAuditAction.MASTER_BUSINESS_INSIGHTS_RUN_ALL,
-          metadata: expect.objectContaining({ outcome: 'PARTIAL', totalPublished: 2 }),
+          httpStatus: 201,
+          metadata: expect.objectContaining({
+            outcome: 'FINISHED',
+            totalPublished: 2,
+            orgsWithZeroPublished: 1,
+          }),
         }),
       );
       expect(
@@ -117,6 +122,7 @@ describe('InternalBusinessInsightsController — semantic admin audit HTTP', () 
         expect.objectContaining({
           auditAction: MasterAdminAuditAction.MASTER_BUSINESS_INSIGHTS_RUN_ORG,
           targetOrganizationId: orgId,
+          httpStatus: 201,
           metadata: expect.objectContaining({ outcome: 'EXECUTED', publishedCount: 3 }),
         }),
       );
@@ -136,6 +142,7 @@ describe('InternalBusinessInsightsController — semantic admin audit HTTP', () 
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           auditAction: MasterAdminAuditAction.MASTER_BUSINESS_INSIGHTS_TRIGGER_QUEUED,
+          httpStatus: 201,
           metadata: expect.objectContaining({ outcome: 'QUEUED' }),
         }),
       );
@@ -158,6 +165,7 @@ describe('InternalBusinessInsightsController — semantic admin audit HTTP', () 
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           auditAction: MasterAdminAuditAction.MASTER_BUSINESS_INSIGHTS_POLICY_UPDATED,
+          httpStatus: 200,
           changeSummary: 'Updated fields: enabled',
           metadata: expect.objectContaining({
             updatedFieldNames: ['enabled'],

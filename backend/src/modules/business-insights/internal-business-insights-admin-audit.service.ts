@@ -37,14 +37,8 @@ export class InternalBusinessInsightsAdminAuditService {
     totalPublished: number;
     orgsWithZeroPublished: number;
   }): void {
-    const partial =
-      input.organizationCount > 0 &&
-      input.orgsWithZeroPublished > 0 &&
-      input.orgsWithZeroPublished < input.organizationCount;
-    const outcome = partial ? 'PARTIAL' : 'FINISHED';
-    const description = partial
-      ? 'Master admin manual business insights run-all finished with partial organization results'
-      : 'Master admin manual business insights run-all finished';
+    const description =
+      'Master admin manual business insights run-all reported aggregate results (per-org zero publish counts are not classified as confirmed failures)';
 
     this.fireRecord(input.req, {
       auditAction: MasterAdminAuditAction.MASTER_BUSINESS_INSIGHTS_RUN_ALL,
@@ -55,7 +49,7 @@ export class InternalBusinessInsightsAdminAuditService {
       metadata: {
         domain: 'business_insights',
         operation: 'RUN_ALL',
-        outcome,
+        outcome: 'FINISHED',
         organizationCount: input.organizationCount,
         totalPublished: input.totalPublished,
         orgsWithZeroPublished: input.orgsWithZeroPublished,
@@ -71,12 +65,19 @@ export class InternalBusinessInsightsAdminAuditService {
     published: number;
   }): void {
     const insightsDisabled = !input.runId && input.published === 0;
-    const outcome = insightsDisabled ? 'INSIGHTS_DISABLED' : 'EXECUTED';
-    const description = insightsDisabled
-      ? `Master admin business insights run skipped (insights disabled) for org ${input.targetOrganizationId}`
-      : input.published === 0
-        ? `Master admin business insights run executed with zero publications for org ${input.targetOrganizationId}`
-        : `Master admin business insights run executed for org ${input.targetOrganizationId}`;
+    const executionUncertain = Boolean(input.runId) && input.published === 0;
+    let outcome: 'INSIGHTS_DISABLED' | 'EXECUTION_UNCERTAIN' | 'EXECUTED';
+    let description: string;
+    if (insightsDisabled) {
+      outcome = 'INSIGHTS_DISABLED';
+      description = `Master admin business insights run skipped (insights disabled) for org ${input.targetOrganizationId}`;
+    } else if (executionUncertain) {
+      outcome = 'EXECUTION_UNCERTAIN';
+      description = `Master admin business insights run returned runId with zero publications for org ${input.targetOrganizationId} (execution success not established from response alone)`;
+    } else {
+      outcome = 'EXECUTED';
+      description = `Master admin business insights run reported publications for org ${input.targetOrganizationId}`;
+    }
 
     this.fireRecord(input.req, {
       auditAction: MasterAdminAuditAction.MASTER_BUSINESS_INSIGHTS_RUN_ORG,
@@ -168,7 +169,7 @@ export class InternalBusinessInsightsAdminAuditService {
         correlationId,
         route: buildPrivilegedRouteLabel(req as never),
         httpMethod: req.method ?? 'POST',
-        httpStatus: 200,
+        httpStatus: this.resolveHttpStatus(req),
         ipAddress: req.ip ?? req.connection?.remoteAddress,
         userAgent: req.headers?.['user-agent'] as string | undefined,
         mfaStepUpAction: mfa.mfaStepUpAction ?? input.mfaStepUpAction,
@@ -180,6 +181,13 @@ export class InternalBusinessInsightsAdminAuditService {
         metadata: input.metadata,
       })
       .catch(() => undefined);
+  }
+
+  private resolveHttpStatus(req: BusinessInsightsAuditRequest): number {
+    const method = (req.method ?? 'POST').toUpperCase();
+    if (method === 'POST') return 201;
+    if (method === 'PATCH' || method === 'PUT') return 200;
+    return 200;
   }
 }
 
