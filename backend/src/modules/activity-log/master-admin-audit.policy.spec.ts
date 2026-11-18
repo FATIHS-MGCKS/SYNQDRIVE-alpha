@@ -30,6 +30,18 @@ describe('master-admin-audit.policy', () => {
     expect(
       shouldSkipGenericPrivilegedSuccessAudit('POST', '/api/v1/admin/prospects'),
     ).toBe(false);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/business-insights/run-all',
+      ),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'PATCH',
+        '/api/v1/admin/business-insights/policy/org-1',
+      ),
+    ).toBe(true);
   });
 
   it('derives structured audit actions from route patterns', () => {

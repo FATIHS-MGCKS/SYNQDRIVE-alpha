@@ -21,6 +21,14 @@ import { BusinessInsightsService } from './business-insights.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
+import { InternalBusinessInsightsAdminAuditService } from './internal-business-insights-admin-audit.service';
+
+const noopBusinessInsightsAudit = {
+  recordManualRunAll: jest.fn(),
+  recordManualRunOrg: jest.fn(),
+  recordDebouncedTriggerQueued: jest.fn(),
+  recordPolicyUpdate: jest.fn(),
+};
 
 const providers = (deps: {
   insights: object;
@@ -32,6 +40,10 @@ const providers = (deps: {
   { provide: DashboardInsightsRepository, useValue: deps.repo },
   { provide: TenantInsightPolicyService, useValue: deps.policy },
   { provide: BusinessInsightsTriggerService, useValue: deps.trigger },
+  {
+    provide: InternalBusinessInsightsAdminAuditService,
+    useValue: noopBusinessInsightsAudit,
+  },
 ];
 
 describe('InternalBusinessInsightsController — MFA HTTP security', () => {
