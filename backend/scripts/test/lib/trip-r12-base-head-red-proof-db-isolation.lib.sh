@@ -11,6 +11,8 @@ TRIP_R12_BH_PG_ADMIN_PORT=""
 TRIP_R12_BH_PG_ADMIN_USER=""
 TRIP_R12_BH_PG_ADMIN_PASSWORD=""
 TRIP_R12_BH_CREATED_DB_NAMES=()
+TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME=""
+TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE=""
 
 trip_r12_bh_db_isolation_init() {
   TRIP_R12_BH_REPO_ROOT="$1"
@@ -20,6 +22,50 @@ trip_r12_bh_db_isolation_init() {
     echo "trip_r12_bh_db_isolation_init: repo_root and db_prefix required" >&2
     return 1
   fi
+}
+
+# Prints: scheme<TAB>hostname<TAB>port<TAB>database<TAB>schema
+trip_r12_bh_parse_postgres_url_fields() {
+  local url="$1"
+  node --input-type=module -e "
+const u = new URL(process.argv[1]);
+const scheme = u.protocol.replace(/:$/, '').toLowerCase();
+const host = (u.hostname || '').toLowerCase();
+const port = u.port || '5432';
+const db = decodeURIComponent((u.pathname || '/').replace(/^\\//, '').split('/')[0] || '');
+const schema = (u.searchParams.get('schema') || 'public').toLowerCase();
+if (!['postgres', 'postgresql'].includes(scheme)) {
+  process.exit(2);
+}
+process.stdout.write([scheme, host, port, db, schema].join('\\t'));
+" "$url"
+}
+
+trip_r12_bh_assert_hostname_ci_local() {
+  local host="${1,,}"
+  case "$host" in
+    127.0.0.1 | localhost | ::1) return 0 ;;
+    *)
+      echo "hostname must be 127.0.0.1, localhost, or ::1 (got '${host}')" >&2
+      return 1
+      ;;
+  esac
+}
+
+trip_r12_bh_assert_disposable_parent_database_name() {
+  local db_name="$1"
+  local db_lower="${db_name,,}"
+  case "${db_lower}" in
+    synqdrive | production | prod | postgres | template0 | template1)
+      echo "Refusing production-like parent database name '${db_name}'" >&2
+      return 1
+      ;;
+  esac
+  if [[ "$db_name" =~ ^test_ ]] || [[ "$db_name" =~ ^synqdrive_ci_ephemeral ]]; then
+    return 0
+  fi
+  echo "Parent database name must be disposable CI (test_* or synqdrive_ci_ephemeral*), got '${db_name}'" >&2
+  return 1
 }
 
 trip_r12_bh_assert_probe_database_name() {
@@ -39,46 +85,72 @@ trip_r12_bh_assert_probe_database_name() {
   return 0
 }
 
+# url_role: parent | probe
 trip_r12_bh_assert_ci_local_postgres_url() {
   local url="$1"
   local label="${2:-DATABASE_URL}"
+  local url_role="${3:-parent}"
+
   if [[ -z "$url" ]]; then
     echo "${label} is required for isolated probe bootstrap" >&2
     return 1
   fi
+
   local lower="${url,,}"
-  case "$lower" in
-    *127.0.0.1*|*localhost*) ;;
-    *)
-      echo "${label} must target CI-local PostgreSQL (127.0.0.1 or localhost)" >&2
-      return 1
-      ;;
-  esac
   case "$lower" in
     *srv1374778*|*app.synqdrive*|*hstgr.cloud*|*mein-vps*|*synqdrive.eu*)
       echo "${label} must not reference production hosts" >&2
       return 1
       ;;
   esac
-  return 0
+
+  local fields scheme host port db schema
+  if ! fields="$(trip_r12_bh_parse_postgres_url_fields "$url" 2>/dev/null)"; then
+    echo "${label} is not a valid postgres/postgresql URL" >&2
+    return 1
+  fi
+  IFS=$'\t' read -r scheme host port db schema <<<"$fields"
+
+  if ! trip_r12_bh_assert_hostname_ci_local "$host"; then
+    echo "${label}: strict host validation failed for parsed host='${host}'" >&2
+    return 1
+  fi
+
+  if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+    echo "${label} has invalid port '${port}'" >&2
+    return 1
+  fi
+
+  if [[ "$schema" != "public" ]]; then
+    echo "${label} must use schema=public for CI probe harness" >&2
+    return 1
+  fi
+
+  if [[ -z "$db" ]]; then
+    echo "${label} must include a database name" >&2
+    return 1
+  fi
+
+  if [[ "$url_role" == "probe" ]]; then
+    trip_r12_bh_assert_probe_database_name "$db"
+  else
+    trip_r12_bh_assert_disposable_parent_database_name "$db"
+  fi
 }
 
 trip_r12_bh_parse_postgres_admin_from_url() {
   local url="$1"
+  local fields scheme host port db _schema
+  fields="$(trip_r12_bh_parse_postgres_url_fields "$url")"
+  IFS=$'\t' read -r scheme host port db _schema <<<"$fields"
   local base="${url%%\?*}"
   local rest="${base#postgresql://}"
   rest="${rest#postgres://}"
   local userpass="${rest%%@*}"
-  local hostdb="${rest#*@}"
-  local hostport="${hostdb%%/*}"
-
   TRIP_R12_BH_PG_ADMIN_USER="${userpass%%:*}"
   TRIP_R12_BH_PG_ADMIN_PASSWORD="${userpass#*:}"
-  TRIP_R12_BH_PG_ADMIN_HOST="${hostport%%:*}"
-  TRIP_R12_BH_PG_ADMIN_PORT="${hostport#*:}"
-  if [[ "$TRIP_R12_BH_PG_ADMIN_PORT" == "$TRIP_R12_BH_PG_ADMIN_HOST" ]]; then
-    TRIP_R12_BH_PG_ADMIN_PORT="5432"
-  fi
+  TRIP_R12_BH_PG_ADMIN_HOST="$host"
+  TRIP_R12_BH_PG_ADMIN_PORT="$port"
 }
 
 trip_r12_bh_bootstrap_parent_ci_database_context() {
@@ -91,14 +163,16 @@ trip_r12_bh_bootstrap_parent_ci_database_context() {
     source "${TRIP_R12_BH_REPO_ROOT}/backend/scripts/test/ci-ephemeral-database-url.sh"
     TRIP_R12_BH_PARENT_CI_DATABASE_URL="${DATABASE_URL}"
   fi
-  if ! trip_r12_bh_assert_ci_local_postgres_url "$TRIP_R12_BH_PARENT_CI_DATABASE_URL" "PARENT_CI_DATABASE_URL"; then
+  if ! trip_r12_bh_assert_ci_local_postgres_url "$TRIP_R12_BH_PARENT_CI_DATABASE_URL" "PARENT_CI_DATABASE_URL" parent; then
     fail_infra "PARENT_DATABASE_URL_NOT_CI_LOCAL"
   fi
   trip_r12_bh_parse_postgres_admin_from_url "$TRIP_R12_BH_PARENT_CI_DATABASE_URL"
 }
 
+# Writes probe DATABASE_URL into the caller-named variable (nameref). No command substitution.
 trip_r12_bh_allocate_probe_database() {
   local label="$1"
+  local -n probe_url_out="$2"
   local label_lower="${label,,}"
   trip_r12_bh_bootstrap_parent_ci_database_context
 
@@ -119,23 +193,22 @@ trip_r12_bh_allocate_probe_database() {
   fi
 
   TRIP_R12_BH_CREATED_DB_NAMES+=("$db_name")
-  local probe_url="postgresql://${TRIP_R12_BH_PG_ADMIN_USER}:${TRIP_R12_BH_PG_ADMIN_PASSWORD}@${TRIP_R12_BH_PG_ADMIN_HOST}:${TRIP_R12_BH_PG_ADMIN_PORT}/${db_name}?schema=public"
-  if ! trip_r12_bh_assert_ci_local_postgres_url "$probe_url" "PROBE_DATABASE_URL"; then
+  probe_url_out="postgresql://${TRIP_R12_BH_PG_ADMIN_USER}:${TRIP_R12_BH_PG_ADMIN_PASSWORD}@${TRIP_R12_BH_PG_ADMIN_HOST}:${TRIP_R12_BH_PG_ADMIN_PORT}/${db_name}?schema=public"
+  if ! trip_r12_bh_assert_ci_local_postgres_url "$probe_url_out" "PROBE_DATABASE_URL" probe; then
     fail_infra "PROBE_DATABASE_URL_GUARD_FAILED label=${label}"
   fi
 
   echo "PROBE_DATABASE_ISOLATED=YES" >&2
   echo "PROBE_LABEL=${label}" >&2
   echo "PROBE_DATABASE_NAME=${db_name}" >&2
-
-  printf '%s' "$probe_url"
 }
 
 trip_r12_bh_database_name_from_url() {
-  node --input-type=module -e "
-const u = new URL(process.argv[1]);
-process.stdout.write(u.pathname.replace(/^\\//, '').split('?')[0] ?? '');
-" "$1"
+  local url="$1"
+  local fields _scheme host _port db _schema
+  fields="$(trip_r12_bh_parse_postgres_url_fields "$url")"
+  IFS=$'\t' read -r _scheme host _port db _schema <<<"$fields"
+  printf '%s' "$db"
 }
 
 trip_r12_bh_release_probe_database() {
@@ -144,7 +217,7 @@ trip_r12_bh_release_probe_database() {
     return 0
   fi
   if ! trip_r12_bh_assert_probe_database_name "$db_name"; then
-    echo "Refusing to drop non-probe database '${db_name}'" >&2
+    echo "PROBE_DB_DROP_REFUSED name=${db_name}" >&2
     return 1
   fi
   trip_r12_bh_bootstrap_parent_ci_database_context
@@ -153,7 +226,10 @@ trip_r12_bh_release_probe_database() {
   psql "${admin_url}" -v ON_ERROR_STOP=1 -c \
     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${db_name}' AND pid <> pg_backend_pid();" \
     >/dev/null 2>&1 || true
-  psql "${admin_url}" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\";" >/dev/null 2>&1 || true
+  if ! psql "${admin_url}" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db_name}\";" >/dev/null 2>&1; then
+    echo "PROBE_DB_CLEANUP_FAILED name=${db_name}" >&2
+    return 1
+  fi
   local -a remaining=()
   local name
   for name in "${TRIP_R12_BH_CREATED_DB_NAMES[@]}"; do
@@ -162,30 +238,53 @@ trip_r12_bh_release_probe_database() {
     fi
   done
   TRIP_R12_BH_CREATED_DB_NAMES=("${remaining[@]}")
+  return 0
 }
 
 trip_r12_bh_release_all_probe_databases() {
   if ((${#TRIP_R12_BH_CREATED_DB_NAMES[@]} == 0)); then
     return 0
   fi
+  local had_failure=0
   local db_name
   for db_name in "${TRIP_R12_BH_CREATED_DB_NAMES[@]}"; do
-    trip_r12_bh_release_probe_database "$db_name" || true
+    if ! trip_r12_bh_release_probe_database "$db_name"; then
+      had_failure=1
+    fi
   done
+  return "$had_failure"
 }
 
-trip_r12_bh_register_probe_db_return_trap() {
-  local probe_db_name="$1"
-  # bash RETURN traps do not reliably close over outer `local` vars with `set -u`.
-  TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE="${2-}"
-  TRIP_R12_BH_RETURN_PROBE_DB_NAME="${probe_db_name}"
-  _trip_r12_bh_release_on_return() {
-    trip_r12_bh_release_probe_database "${TRIP_R12_BH_RETURN_PROBE_DB_NAME}" || true
-    if [[ -n "${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE:-}" ]]; then
-      export DATABASE_URL="${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE}"
-    else
-      unset DATABASE_URL || true
+trip_r12_bh_probe_scope_leave() {
+  local cleanup_rc=0
+  if [[ -n "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}" ]]; then
+    if ! trip_r12_bh_release_probe_database "${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}"; then
+      cleanup_rc=1
     fi
-  }
-  trap _trip_r12_bh_release_on_return RETURN
+    TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME=""
+  fi
+  if [[ -n "${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE:-}" ]]; then
+    export DATABASE_URL="${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE}"
+  else
+    unset DATABASE_URL || true
+  fi
+  trap - RETURN
+  return "$cleanup_rc"
+}
+
+_trip_r12_bh_probe_scope_return_trap() {
+  trip_r12_bh_probe_scope_leave || true
+}
+
+# Begin isolated probe DB scope; releases only on trip_r12_bh_probe_scope_leave (or RETURN trap).
+trip_r12_bh_probe_scope_enter() {
+  local label="$1"
+  local -n probe_url_var="$2"
+  local parent_url_snapshot="${3-}"
+
+  TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE="${parent_url_snapshot}"
+  trip_r12_bh_allocate_probe_database "$label" probe_url_var
+  TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME="$(trip_r12_bh_database_name_from_url "$probe_url_var")"
+  export DATABASE_URL="$probe_url_var"
+  trap _trip_r12_bh_probe_scope_return_trap RETURN
 }

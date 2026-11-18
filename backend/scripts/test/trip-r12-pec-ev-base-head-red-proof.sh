@@ -196,10 +196,8 @@ install_and_run_probe() {
 
   echo "=== ${label} probe @ ${dir} (TRIP_R12_PROBE_EXPECT=${expect}) ===" >&2
 
-  probe_database_url="$(trip_r12_bh_allocate_probe_database "$label")"
-  probe_db_name="$(trip_r12_bh_database_name_from_url "$probe_database_url")"
-  export DATABASE_URL="$probe_database_url"
-  trip_r12_bh_register_probe_db_return_trap "$probe_db_name" "$saved_database_url"
+  trip_r12_bh_probe_scope_enter "$label" probe_database_url "$saved_database_url"
+  probe_db_name="${TRIP_R12_BH_SCOPE_ACTIVE_PROBE_DB_NAME}"
 
   local prev_cwd="$PWD"
   cd "$dir/backend"
@@ -232,6 +230,7 @@ install_and_run_probe() {
   echo "${label}_DATABASE_ISOLATED=YES"
   echo "${label}_DATABASE_NAME=${probe_db_name}"
   read_metrics "$metrics_file" "$label" || true
+  trip_r12_bh_probe_scope_leave || echo "${label}_PROBE_DB_CLEANUP_FAILED=YES" >&2
 }
 
 BASE_METRICS_JSON="$METRICS_ROOT/base-metrics.json"
