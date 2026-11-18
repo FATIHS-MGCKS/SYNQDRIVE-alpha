@@ -22,6 +22,11 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
 import { ProspectsController } from '@modules/prospects/prospects.controller';
+import { MasterCatalogAdminAuditService } from '@modules/activity-log/master-catalog-admin-audit.service';
+
+const noopCatalogAudit = {
+  recordMutation: jest.fn(),
+};
 import { ProspectsService } from '@modules/prospects/prospects.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { MFA_ERROR } from '@modules/iam-mfa/iam-mfa.policy';
@@ -238,6 +243,7 @@ describe('Master admin privileged failure audit — HTTP security', () => {
           },
           { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn() } },
           { provide: ProspectsService, useValue: prospects },
+          { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
         ],
       })
         .overrideGuard(RolesGuard)
@@ -285,6 +291,7 @@ describe('Master admin privileged failure audit — HTTP security', () => {
           },
           { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn() } },
           { provide: ProspectsService, useValue: prospects },
+          { provide: MasterCatalogAdminAuditService, useValue: noopCatalogAudit },
         ],
       })
         .overrideGuard(RolesGuard)

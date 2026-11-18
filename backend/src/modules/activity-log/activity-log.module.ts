@@ -4,6 +4,7 @@ import { ActivityLogService } from './activity-log.service';
 import { ActivityLogExportService } from './activity-log-export.service';
 import { AuditService } from './audit.service';
 import { MasterAdminAuditService } from './master-admin-audit.service';
+import { MasterCatalogAdminAuditService } from './master-catalog-admin-audit.service';
 import { PrismaModule } from '@shared/database/prisma.module';
 
 /**
@@ -15,7 +16,19 @@ import { PrismaModule } from '@shared/database/prisma.module';
 @Module({
   imports: [PrismaModule],
   controllers: [ActivityLogController],
-  providers: [ActivityLogService, ActivityLogExportService, AuditService, MasterAdminAuditService],
-  exports: [ActivityLogService, ActivityLogExportService, AuditService, MasterAdminAuditService],
+  providers: [
+    ActivityLogService,
+    ActivityLogExportService,
+    AuditService,
+    MasterAdminAuditService,
+    MasterCatalogAdminAuditService,
+  ],
+  exports: [
+    ActivityLogService,
+    ActivityLogExportService,
+    AuditService,
+    MasterAdminAuditService,
+    MasterCatalogAdminAuditService,
+  ],
 })
 export class ActivityLogModule {}

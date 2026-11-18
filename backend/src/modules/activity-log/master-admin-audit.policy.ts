@@ -38,6 +38,18 @@ const SEMANTIC_PRIVILEGED_SUCCESS_SKIP: Array<{ methods: string[]; pathRegex: Re
     methods: ['PATCH'],
     pathRegex: /^\/api\/v1\/admin\/business-insights\/policy\/[^/]+$/,
   },
+  {
+    methods: ['POST', 'PATCH', 'DELETE'],
+    pathRegex: /^\/api\/v1\/admin\/prospects(\/.*)?$/,
+  },
+  {
+    methods: ['POST', 'PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/insurances\//,
+  },
+  {
+    methods: ['POST', 'PATCH'],
+    pathRegex: /^\/api\/v1\/admin\/parts-accessories\//,
+  },
 ];
 
 export function shouldSkipGenericPrivilegedSuccessAudit(method: string, path: string): boolean {
