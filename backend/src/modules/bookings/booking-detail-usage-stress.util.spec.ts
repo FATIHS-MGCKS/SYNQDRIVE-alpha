@@ -70,6 +70,21 @@ describe('booking-detail usage driving stress gate (P6 P2-2)', () => {
     ).toBeNull();
   });
 
+  it('does not publish non-finite scores (F3)', () => {
+    expect(
+      resolveBookingDetailDrivingStressScore({
+        assessmentStatus: 'COMPLETE',
+        drivingScore: Number.NaN,
+      }),
+    ).toBeNull();
+    expect(
+      resolveBookingDetailDrivingStressScore({
+        assessmentStatus: 'PARTIAL',
+        drivingScore: Number.POSITIVE_INFINITY,
+      }),
+    ).toBeNull();
+  });
+
   it('exposes assessmentStatus on usage when analysis exists', () => {
     expect(
       resolveBookingDetailUsageAssessmentStatus({

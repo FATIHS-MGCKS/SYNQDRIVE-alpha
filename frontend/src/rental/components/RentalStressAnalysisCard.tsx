@@ -9,7 +9,6 @@ import {
   type DataConfidence,
 } from '../lib/scoreFormat';
 import {
-  mapRentalAssessmentToDrivingImpactStatus,
   rentalAssessmentStatusI18nKey,
   resolveRentalAnalysisStressScore,
 } from '../lib/rental-assessment-score';
@@ -54,22 +53,29 @@ export function RentalStressAnalysisCard({
   return (
     <div className="space-y-4">
       {assessmentLabelKey && (
-        <div className="flex flex-wrap items-center gap-2 px-1">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-            {t('misuseStress.stress.assessmentStatus.label')}
-          </span>
-          <StatusChip
-            tone={
-              assessmentStatus === 'COMPLETE'
-                ? 'success'
-                : assessmentStatus === 'PARTIAL'
-                  ? 'info'
-                  : 'neutral'
-            }
-            className="text-[9px]"
-          >
-            {t(assessmentLabelKey)}
-          </StatusChip>
+        <div className="flex flex-col gap-1 px-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+              {t('misuseStress.stress.assessmentStatus.label')}
+            </span>
+            <StatusChip
+              tone={
+                assessmentStatus === 'COMPLETE'
+                  ? 'success'
+                  : assessmentStatus === 'PARTIAL'
+                    ? 'info'
+                    : 'neutral'
+              }
+              className="text-[9px]"
+            >
+              {t(assessmentLabelKey)}
+            </StatusChip>
+          </div>
+          {!scorePublishable && (
+            <p className="text-[11px] text-muted-foreground">
+              {t('misuseStress.stress.scoreNotPublished')}
+            </p>
+          )}
         </div>
       )}
 
@@ -80,7 +86,6 @@ export function RentalStressAnalysisCard({
         components={scorePublishable ? (stress ?? undefined) : undefined}
         hasEnoughData={scorePublishable && (meta?.dataConfidence !== 'low' || stressScore != null)}
         dataConfidence={(meta?.dataConfidence as DataConfidence) ?? null}
-        drivingImpactAnalysisStatus={mapRentalAssessmentToDrivingImpactStatus(assessmentStatus)}
         footnote={t('misuseStress.stress.footnote')}
       />
 

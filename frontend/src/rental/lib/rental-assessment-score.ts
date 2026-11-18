@@ -14,22 +14,11 @@ export function publishesRentalDrivingStressScore(
   return status === 'COMPLETE' || status === 'PARTIAL';
 }
 
-/** Map RDA assessment status to trip Driving Impact quality hints (P2-1 / no new algorithm). */
-export function mapRentalAssessmentToDrivingImpactStatus(
-  status: RentalDrivingAnalysisAssessmentStatus | string | null | undefined,
-): string | null {
-  switch (status) {
-    case 'PARTIAL':
-      return 'PARTIAL';
-    case 'PROVISIONAL':
-      return 'STALE';
-    case 'FAILED':
-      return 'FAILED';
-    case 'NOT_ASSESSABLE':
-      return 'UNSUPPORTED';
-    default:
-      return null;
-  }
+export function normalizePublishedRentalStressScore(
+  score: number | null | undefined,
+): number | null {
+  if (score == null || !Number.isFinite(score)) return null;
+  return score;
 }
 
 export type RentalAssessmentStatusI18nKey =
@@ -64,9 +53,13 @@ export function resolveRentalAnalysisStressScore(
   if (!analysis) return null;
   if (!publishesRentalDrivingStressScore(analysis.assessmentStatus)) return null;
   const payloadScore = analysis.payload?.vehicleStressSummary?.drivingStressScore;
-  if (typeof payloadScore === 'number') return payloadScore;
-  return resolveDrivingStressScore({
-    drivingScore: analysis.drivingScore,
-    drivingStressScore: analysis.drivingStressScore,
-  });
+  if (typeof payloadScore === 'number') {
+    return normalizePublishedRentalStressScore(payloadScore);
+  }
+  return normalizePublishedRentalStressScore(
+    resolveDrivingStressScore({
+      drivingScore: analysis.drivingScore,
+      drivingStressScore: analysis.drivingStressScore,
+    }),
+  );
 }

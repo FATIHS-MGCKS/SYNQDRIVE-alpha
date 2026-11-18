@@ -12,7 +12,7 @@ export function resolveBookingDetailDrivingStressScore(
   if (!analysis) return null;
   if (!publishesRentalDrivingStressScore(analysis.assessmentStatus)) return null;
   const score = analysis.drivingScore;
-  if (score == null || Number.isNaN(score)) return null;
+  if (score == null || !Number.isFinite(score)) return null;
   return score;
 }
 

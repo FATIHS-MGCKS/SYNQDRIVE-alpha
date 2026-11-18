@@ -52,6 +52,8 @@ export const rentalMisuseStressDe = {
   'misuseStress.stress.meta.distanceKm': '{km} km',
   'misuseStress.stress.footnote':
     'SynqDrive bewertet hier die technische Fahrzeugbelastung — nicht moralisch den Fahrer. Speeding/Safety-Compliance wird im Rental nicht bewertet.',
+  'misuseStress.stress.scoreNotPublished':
+    'Numerischer Belastungswert wird bei diesem Bewertungsstatus nicht angezeigt.',
   'misuseStress.stress.assessmentStatus.label': 'Bewertungsstatus',
   'misuseStress.stress.assessmentStatus.COMPLETE': 'Vollständig',
   'misuseStress.stress.assessmentStatus.PARTIAL': 'Teilweise',

@@ -5,10 +5,12 @@ import { MisuseCasesPanel } from '../MisuseCasesPanel';
 import { RentalStressAnalysisCard } from '../RentalStressAnalysisCard';
 import { VehicleStressPanel } from '../VehicleStressPanel';
 import { EM_DASH } from './bookingDetailUtils';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { StatusChip } from '../../../components/patterns';
 import { formatStressScore } from '../../lib/scoreFormat';
 import {
-  mapRentalAssessmentToDrivingImpactStatus,
   publishesRentalDrivingStressScore,
+  rentalAssessmentStatusI18nKey,
 } from '../../lib/rental-assessment-score';
 import { bd } from './booking-detail-ui';
 
@@ -25,7 +27,9 @@ export function BookingUsageMisuseTab({
   rentalAnalysis: rentalAnalysisProp,
   analysisLoading: analysisLoadingProp,
 }: BookingUsageMisuseTabProps) {
+  const { t } = useLanguage();
   const u = detail.usage;
+  const usageAssessmentKey = rentalAssessmentStatusI18nKey(u.assessmentStatus);
   const [rentalAnalysis, setRentalAnalysis] = useState<RentalDrivingAnalysisItem | null>(
     rentalAnalysisProp ?? null,
   );
@@ -70,6 +74,26 @@ export function BookingUsageMisuseTab({
 
   return (
     <div className="space-y-4">
+      {usageAssessmentKey && (
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+            {t('misuseStress.stress.assessmentStatus.label')}
+          </span>
+          <StatusChip
+            tone={
+              u.assessmentStatus === 'COMPLETE'
+                ? 'success'
+                : u.assessmentStatus === 'PARTIAL'
+                  ? 'info'
+                  : 'neutral'
+            }
+            className="text-[9px]"
+          >
+            {t(usageAssessmentKey)}
+          </StatusChip>
+        </div>
+      )}
+
       <VehicleStressPanel
         title="Fahrbelastung dieser Buchung"
         stressScore={u.drivingStressScore}
@@ -77,7 +101,6 @@ export function BookingUsageMisuseTab({
         hasEnoughData={
           publishesRentalDrivingStressScore(u.assessmentStatus) && u.drivingStressScore != null
         }
-        drivingImpactAnalysisStatus={mapRentalAssessmentToDrivingImpactStatus(u.assessmentStatus)}
         compact
       />
 

@@ -1,5 +1,21 @@
 /** P6 PR1 — rental stress assessment gate UI (all official locales). */
+const scoreNotPublishedPl =
+  'Wartość obciążenia liczbowa nie jest pokazywana przy tym statusie oceny.';
+const scoreNotPublishedFr =
+  'Le score de charge numérique n’est pas affiché pour ce statut d’évaluation.';
+const scoreNotPublishedCs =
+  'Číselné skóre zatížení se u tohoto stavu hodnocení nezobrazuje.';
+const scoreNotPublishedNl =
+  'Numerieke belastingsscore wordt niet getoond bij deze beoordelingsstatus.';
+const scoreNotPublishedEs =
+  'La puntuación numérica de carga no se muestra con este estado de evaluación.';
+const scoreNotPublishedTr =
+  'Bu değerlendirme durumunda sayısal yük skoru gösterilmez.';
+const scoreNotPublishedIt =
+  'Il punteggio di carico numerico non viene mostrato per questo stato di valutazione.';
+
 export const rentalMisuseStressStressGatePl = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedPl,
   'misuseStress.stress.footnote':
     'SynqDrive ocenia tutaj techniczne obciążenie pojazdu — nie moralnie kierowcę. Przekroczenia prędkości nie są oceniane w Rental.',
   'misuseStress.stress.assessmentStatus.label': 'Status oceny',
@@ -15,6 +31,7 @@ export const rentalMisuseStressStressGatePl = {
 } as const;
 
 export const rentalMisuseStressStressGateFr = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedFr,
   'misuseStress.stress.footnote':
     'SynqDrive mesure ici la charge technique du véhicule — pas un jugement moral du conducteur. Les excès de vitesse ne sont pas évalués en location.',
   'misuseStress.stress.assessmentStatus.label': "Statut d'évaluation",
@@ -30,6 +47,7 @@ export const rentalMisuseStressStressGateFr = {
 } as const;
 
 export const rentalMisuseStressStressGateCs = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedCs,
   'misuseStress.stress.footnote':
     'SynqDrive zde hodnotí technické zatížení vozidla — ne morální hodnocení řidiče. Překročení rychlosti se v Rental nehodnotí.',
   'misuseStress.stress.assessmentStatus.label': 'Stav hodnocení',
@@ -45,6 +63,7 @@ export const rentalMisuseStressStressGateCs = {
 } as const;
 
 export const rentalMisuseStressStressGateNl = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedNl,
   'misuseStress.stress.footnote':
     'SynqDrive beoordeelt hier de technische voertuigbelasting — geen morele beoordeling van de bestuurder. Snelheidsovertredingen worden in Rental niet beoordeeld.',
   'misuseStress.stress.assessmentStatus.label': 'Beoordelingsstatus',
@@ -60,6 +79,7 @@ export const rentalMisuseStressStressGateNl = {
 } as const;
 
 export const rentalMisuseStressStressGateEs = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedEs,
   'misuseStress.stress.footnote':
     'SynqDrive evalúa aquí la carga técnica del vehículo — no un juicio moral del conductor. El exceso de velocidad no se evalúa en Rental.',
   'misuseStress.stress.assessmentStatus.label': 'Estado de evaluación',
@@ -75,6 +95,7 @@ export const rentalMisuseStressStressGateEs = {
 } as const;
 
 export const rentalMisuseStressStressGateTr = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedTr,
   'misuseStress.stress.footnote':
     'SynqDrive burada teknik araç yükünü değerlendirir — sürücüye ahlaki yargı değil. Hız aşımı Rental bağlamında puanlanmaz.',
   'misuseStress.stress.assessmentStatus.label': 'Değerlendirme durumu',
@@ -90,6 +111,7 @@ export const rentalMisuseStressStressGateTr = {
 } as const;
 
 export const rentalMisuseStressStressGateIt = {
+  'misuseStress.stress.scoreNotPublished': scoreNotPublishedIt,
   'misuseStress.stress.footnote':
     'SynqDrive valuta qui il carico tecnico del veicolo — non un giudizio morale del conducente. Gli eccessi di velocità non sono valutati in Rental.',
   'misuseStress.stress.assessmentStatus.label': 'Stato della valutazione',
