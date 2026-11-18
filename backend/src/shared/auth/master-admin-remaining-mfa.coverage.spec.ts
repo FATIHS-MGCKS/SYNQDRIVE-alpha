@@ -30,8 +30,10 @@ import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-b
 import { VoiceBudgetWarningService } from '@modules/voice-protection/voice-budget-warning.service';
 import { VoiceProtectionAuditService } from '@modules/voice-protection/voice-protection-audit.service';
 import { MasterCatalogAdminAuditService } from '@modules/activity-log/master-catalog-admin-audit.service';
+import { MasterVoiceProvisioningAdminAuditService } from '@modules/activity-log/master-voice-provisioning-admin-audit.service';
 
 const noopCatalogAudit = { recordMutation: jest.fn() };
+const noopVoiceAudit = { recordProvisioningMutation: jest.fn() };
 
 function expectMfaGuardsOnController(controller: object): void {
   const guards = Reflect.getMetadata(GUARDS_METADATA, controller) ?? [];
@@ -128,7 +130,10 @@ describe('P5-B2 remaining admin MFA coverage — HTTP (real guard)', () => {
     const provisioning = { previewProvisioning: jest.fn() };
     const harness = await createMasterAdminMfaHttpHarness({
       controller: TwilioTenantProvisioningController,
-      providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+      providers: [
+        { provide: TwilioTenantProvisioningService, useValue: provisioning },
+        { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+      ],
     });
     try {
       const res = await request(harness.app.getHttpServer())
@@ -228,7 +233,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       const provisioning = { purchasePhoneNumber: jest.fn() };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: TwilioTenantProvisioningController,
-        providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+        providers: [
+          { provide: TwilioTenantProvisioningService, useValue: provisioning },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       try {
         const res = await request(harness.app.getHttpServer())
@@ -250,7 +258,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       const provisioning = { purchasePhoneNumber: jest.fn() };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: TwilioTenantProvisioningController,
-        providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+        providers: [
+          { provide: TwilioTenantProvisioningService, useValue: provisioning },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       try {
         await request(harness.app.getHttpServer())
@@ -270,7 +281,10 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
       };
       const harness = await createMasterAdminMfaHttpHarness({
         controller: TwilioTenantProvisioningController,
-        providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+        providers: [
+          { provide: TwilioTenantProvisioningService, useValue: provisioning },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
+        ],
       });
       harness.validateGrant.mockResolvedValue(true);
       try {
@@ -302,6 +316,7 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
         controller: ElevenLabsTwilioImportController,
         providers: [
           { provide: ElevenLabsTwilioImportProvisioningService, useValue: provisioning },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
         ],
       });
       try {
@@ -326,6 +341,7 @@ describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
         controller: ElevenLabsTwilioImportController,
         providers: [
           { provide: ElevenLabsTwilioImportProvisioningService, useValue: provisioning },
+          { provide: MasterVoiceProvisioningAdminAuditService, useValue: noopVoiceAudit },
         ],
       });
       try {

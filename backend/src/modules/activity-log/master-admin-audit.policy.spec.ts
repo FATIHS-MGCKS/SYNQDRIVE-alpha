@@ -66,6 +66,24 @@ describe('master-admin-audit.policy', () => {
     expect(
       shouldSkipGenericPrivilegedSuccessAudit('GET', '/api/v1/admin/prospects/p1/contacts'),
     ).toBe(false);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/voice-assistant/organizations/org-1/twilio/subaccount/provision',
+      ),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/voice-assistant/organizations/org-1/sync',
+      ),
+    ).toBe(true);
+    expect(
+      shouldSkipGenericPrivilegedSuccessAudit(
+        'POST',
+        '/api/v1/admin/voice-assistant/organizations/org-1/twilio/provisioning/preview',
+      ),
+    ).toBe(false);
   });
 
   it('derives structured audit actions from route patterns', () => {

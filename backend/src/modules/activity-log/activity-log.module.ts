@@ -5,6 +5,7 @@ import { ActivityLogExportService } from './activity-log-export.service';
 import { AuditService } from './audit.service';
 import { MasterAdminAuditService } from './master-admin-audit.service';
 import { MasterCatalogAdminAuditService } from './master-catalog-admin-audit.service';
+import { MasterVoiceProvisioningAdminAuditService } from './master-voice-provisioning-admin-audit.service';
 import { PrismaModule } from '@shared/database/prisma.module';
 
 /**
@@ -22,6 +23,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
     AuditService,
     MasterAdminAuditService,
     MasterCatalogAdminAuditService,
+    MasterVoiceProvisioningAdminAuditService,
   ],
   exports: [
     ActivityLogService,
@@ -29,6 +31,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
     AuditService,
     MasterAdminAuditService,
     MasterCatalogAdminAuditService,
+    MasterVoiceProvisioningAdminAuditService,
   ],
 })
 export class ActivityLogModule {}
