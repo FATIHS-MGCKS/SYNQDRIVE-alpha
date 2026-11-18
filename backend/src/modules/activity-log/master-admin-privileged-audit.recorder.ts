@@ -81,11 +81,7 @@ export function shouldSkipPrivilegedFailureAudit(
   if (!code) {
     return false;
   }
-  if (
-    code === MFA_ERROR.STEP_UP_REQUIRED ||
-    code === MFA_ERROR.STEP_UP_EXPIRED ||
-    code === MFA_ERROR.ENROLLMENT_REQUIRED
-  ) {
+  if (code === MFA_ERROR.STEP_UP_REQUIRED || code === MFA_ERROR.STEP_UP_EXPIRED) {
     return true;
   }
   return false;

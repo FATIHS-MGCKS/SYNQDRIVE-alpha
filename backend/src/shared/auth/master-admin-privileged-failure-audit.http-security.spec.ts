@@ -268,6 +268,59 @@ describe('Master admin privileged failure audit — HTTP security', () => {
         await app.close();
       }
     });
+
+    it('records exactly one privileged failure audit when MFA enrollment is missing', async () => {
+      const prospects = { create: jest.fn() };
+      const moduleRef = await Test.createTestingModule({
+        controllers: [ProspectsController],
+        providers: [
+          { provide: MasterAdminAuditService, useValue: masterAdminAudit },
+          { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+          { provide: APP_INTERCEPTOR, useClass: MasterAdminPrivilegedAuditInterceptor },
+          { provide: APP_GUARD, useValue: createMasterAdminAuthGuard() },
+          MasterAdminMfaGuard,
+          {
+            provide: PrismaService,
+            useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue(null) } },
+          },
+          { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn() } },
+          { provide: ProspectsService, useValue: prospects },
+        ],
+      })
+        .overrideGuard(RolesGuard)
+        .useValue({
+          canActivate: (ctx: {
+            switchToHttp: () => { getRequest: () => { user?: { platformRole?: string } } };
+          }) => ctx.switchToHttp().getRequest().user?.platformRole === UserPlatformRole.MASTER_ADMIN,
+        })
+        .compile();
+
+      const app = moduleRef.createNestApplication();
+      app.setGlobalPrefix('api/v1');
+      await app.init();
+      try {
+        const res = await request(app.getHttpServer())
+          .post('/api/v1/admin/prospects')
+          .set('Authorization', 'Bearer master-token')
+          .send({ name: 'Acme' })
+          .expect(403);
+        expect(res.body.code).toBe(MFA_ERROR.ENROLLMENT_REQUIRED);
+        expect(masterAdminAudit.recordMfaStepUp).not.toHaveBeenCalled();
+        expect(masterAdminAudit.record).toHaveBeenCalledTimes(1);
+        expect(masterAdminAudit.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            auditAction: MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED,
+            permissionGranted: true,
+            metadata: expect.objectContaining({
+              responseCode: MFA_ERROR.ENROLLMENT_REQUIRED,
+            }),
+          }),
+        );
+        expect(prospects.create).not.toHaveBeenCalled();
+      } finally {
+        await app.close();
+      }
+    });
   });
 
   it('records server-side failure without leaking exception message', async () => {

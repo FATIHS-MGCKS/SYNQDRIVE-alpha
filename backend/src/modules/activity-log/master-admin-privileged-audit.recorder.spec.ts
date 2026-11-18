@@ -25,16 +25,19 @@ describe('master-admin-privileged-audit.recorder', () => {
     requestId: 'req-deny-1',
   };
 
-  it('skips MFA step-up denial duplicates', () => {
+  it('skips MFA step-up denial duplicates audited by MasterAdminMfaGuard', () => {
     expect(
       shouldSkipPrivilegedFailureAudit(403, { code: MFA_ERROR.STEP_UP_REQUIRED }),
     ).toBe(true);
     expect(
       shouldSkipPrivilegedFailureAudit(403, { code: MFA_ERROR.STEP_UP_EXPIRED }),
     ).toBe(true);
+  });
+
+  it('does not skip MFA enrollment required (not audited by recordMfaStepUp)', () => {
     expect(
       shouldSkipPrivilegedFailureAudit(403, { code: MFA_ERROR.ENROLLMENT_REQUIRED }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('records privileged mutation denial with sanitized metadata', () => {
