@@ -122,7 +122,7 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | **P3-PR4** | Versioned vehicle read APIs (`core.read.vehicles.v1`) | **MERGED** #2420 (`0bdaa54f4`) | **NOT_CLAIMED** |
 | **P3-PR5** | MA service-client management UI + admin APIs | **MERGED** #2421 (`b05a2bbd3`) | **NOT_CLAIMED** |
 | **P3 integration cert** | Cross-slice security + harness evidence | **MERGED** #2422 (`19fae93b9`) | **NOT_CLAIMED** |
-| **P4** | Complete contracts without Rental disruption | **P4-PR1–PR4 MERGED** (#2423–#2426); boundary audit **COMPLETE** — [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](platform-reorientation/evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) | Owner-gated |
+| **P4** | Complete contracts without Rental disruption | **P4-PR1–PR4 MERGED** (#2423–#2426); boundary audit **COMPLETE** — [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) | Owner-gated |
 | **P5** | Full MA architecture/security audit | Planned | Owner sign-off |
 | **P6** | Rental product completion | **Blocked on P5** | Owner-gated |
 | **P7** | VYMOD + further products | Owner priority | Owner-gated |
