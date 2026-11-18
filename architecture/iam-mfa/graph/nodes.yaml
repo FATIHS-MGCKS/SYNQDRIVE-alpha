@@ -1,0 +1,126 @@
+# IAM MFA — Knowledge Graph Nodes (bootstrap P5-B4 PR1)
+
+nodes:
+  - id: IAM-MFA-DOM-001
+    type: domain
+    title: IAM MFA domain
+    epistemic_status: CONFIRMED
+    summary: TOTP enrollment/challenge, recovery, step-up grants, org admin reset, feature-flag rollout.
+    source_paths:
+      - architecture/iam-mfa/README.md
+
+  - id: IAM-MFA-API-ACCOUNT-001
+    type: api
+    title: Account MFA self-service API
+    epistemic_status: CONFIRMED
+    summary: /api/v1/account/mfa — status, TOTP enroll, challenge, self reset.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa-account.controller.ts
+    evidence:
+      - IAM-MFA-EVID-CODE-MODULE-001
+
+  - id: IAM-MFA-POL-FLAGS-001
+    type: policy
+    title: IAM MFA feature flags resolver
+    epistemic_status: CONFIRMED
+    summary: Env-driven enrollment, step-up, MA mode; defaults false when unset.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa-feature-flags.resolver.ts
+    evidence:
+      - IAM-MFA-EVID-CODE-FLAGS-001
+
+  - id: IAM-MFA-AUTH-STEPUP-001
+    type: authority
+    title: StepUpGuard
+    epistemic_status: CONFIRMED
+    summary: Org-privileged mutations require fresh step-up when mfaStepUpEnforced.
+    source_paths:
+      - backend/src/shared/auth/step-up.guard.ts
+
+  - id: IAM-MFA-AUTH-MA-001
+    type: authority
+    title: MasterAdminMfaGuard
+    epistemic_status: CONFIRMED
+    summary: Master Admin enrollment + step-up when IAM_MFA_MASTER_ADMIN_ENABLED.
+    source_paths:
+      - backend/src/shared/auth/master-admin-mfa.guard.ts
+
+  - id: IAM-MFA-PERSIST-001
+    type: persist
+    title: MFA persistence models
+    epistemic_status: CONFIRMED
+    summary: UserMfaFactor, UserMfaRecoveryCode, UserMfaStepUpGrant.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: IAM-MFA-EVID-CODE-MODULE-001
+    type: evidence
+    title: IamMfaModule implementation
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Global Nest module on origin/main @ 59182a9de.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa.module.ts
+
+  - id: IAM-MFA-EVID-CODE-FLAGS-001
+    type: evidence
+    title: Feature flag defaults false
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Resolver returns false for rollout flags when env unset.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa-feature-flags.resolver.ts
+
+  - id: IAM-MFA-EVID-PROD-001
+    type: evidence
+    title: Production env read blocked
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: UNKNOWN
+    summary: SSH grep IAM_MFA_* on VPS .env permission denied 2026-11-18.
+    source_paths:
+      - architecture/iam-mfa/evidence/PRODUCTION_BASELINE.md
+
+  - id: IAM-MFA-TEST-SECURITY-001
+    type: test_evidence
+    title: iam-mfa.security.spec.ts
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: Unit security coverage for enrollment, challenge, step-up policy.
+    source_paths:
+      - backend/src/modules/iam-mfa/iam-mfa.security.spec.ts
+
+  - id: IAM-MFA-DEC-FLAGS-001
+    type: decision
+    title: Default-off MFA rollout
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: MFA enforcement inactive until explicit IAM_MFA_* env activation.
+    source_paths:
+      - backend/.env.example
+      - architecture/IAM_MFA_STEP_UP_2026-07-21.md
+    evidence:
+      - IAM-MFA-EVID-CODE-FLAGS-001
+
+  - id: IAM-MFA-GAP-001
+    type: gap
+    title: Production IAM MFA flag attestation
+    epistemic_status: UNKNOWN
+    summary: Cannot read Production .env; runtime enforcement state unverified.
+    source_paths:
+      - architecture/iam-mfa/evidence/PRODUCTION_BASELINE.md
+
+  - id: IAM-MFA-GAP-002
+    type: gap
+    title: WebAuthn enrollment path
+    epistemic_status: INFERRED
+    summary: Schema supports WebAuthn fields; TOTP is primary shipped path.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: IAM-MFA-CX-001
+    type: contradiction
+    title: Implementation merged vs Production activation unknown
+    epistemic_status: CONTRADICTED
+    summary: Complete codebase on main does not imply Production MFA enforced — flags UNKNOWN.
+    source_paths:
+      - architecture/iam-mfa/contradictions/OPEN_CONTRADICTIONS.md

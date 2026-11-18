@@ -66,7 +66,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Fines | Traffic and parking fine record management for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
 | High Mobility Integration | HM telemetry ingestion, vehicle registration, compatibility intelligence, and webhooks. | `NOT_STARTED` | N/A — inventory only | — |
 | IAM Data Retention | GDPR user deletion, IAM retention policies, and master-admin deletion workflows. | `NOT_STARTED` | N/A — inventory only | — |
-| IAM MFA | Multi-factor authentication enrollment, step-up grants, and MFA administration. | `NOT_STARTED` | N/A — inventory only | — |
+| IAM MFA | Multi-factor authentication enrollment, step-up grants, and MFA administration. | `AUDIT_IN_PROGRESS` | Bootstrap audit V1 (2026-11-18) · Production MFA flags **UNKNOWN** | [`architecture/iam-mfa/`](iam-mfa/) |
 | Insurances | Vehicle insurance policy management and insurance partner channel adapters. | `NOT_STARTED` | N/A — inventory only | — |
 | Integrations Hub | Tenant integrations configuration and connection management surface. | `NOT_STARTED` | N/A — inventory only | — |
 | Internationalization (i18n) | Owns locale selection, translation catalogs, runtime translation delivery, Rental UI localization, fallback behavior, translation coverage, hardcoded-copy prevention, and i18n governance/CI. | `AUTHORITY_ACTIVE` | Bootstrap audit V1 (2026-09-10) · Gate A satisfied · runtime-bearing frontend module · product migration debt documented | [`architecture/internationalization/`](internationalization/) |
@@ -532,6 +532,19 @@ Update this file when:
 | **Entry documents** or graph entry points change | Update mandatory entry document links |
 | **Validation commands** change | Update validation column |
 | **Ownership boundaries** change | Update boundary text; ensure both sides of cross-graph contracts updated |
+
+---
+
+## IAM MFA — authority entry (AUDIT_IN_PROGRESS)
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage** | `AUDIT_IN_PROGRESS` |
+| **Scope** | TOTP enrollment/challenge, recovery codes, step-up grants, org admin MFA reset, feature-flag rollout, Master Admin + org `StepUpGuard` integration |
+| **Boundaries** | Clerk primary login (Auth API); VO5C owner MFA exception (Vehicle Onboarding); IAM Data Retention — not owned here |
+| **Mandatory entry documents** | [`README.md`](iam-mfa/README.md), [`CURRENT_STATE.md`](iam-mfa/CURRENT_STATE.md), [`AUDIT_MANIFEST.md`](iam-mfa/AUDIT_MANIFEST.md), [`evidence/PRODUCTION_BASELINE.md`](iam-mfa/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/iam-mfa/scripts/validate-graph.sh`; `cd backend && npx jest --testPathPatterns=iam-mfa` |
+| **Production** | MFA enforcement **NOT_PRODUCTION_VALIDATED** — env read blocked 2026-11-18; do **not** infer activation from merge |
 
 ---
 
