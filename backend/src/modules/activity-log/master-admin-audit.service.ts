@@ -102,6 +102,7 @@ export class MasterAdminAuditService {
       case MasterAdminAuditAction.TEMP_MASTER_ADMIN_CREATED:
         return ActivityAction.CREATE;
       case MasterAdminAuditAction.MFA_STEP_UP_DENIED:
+      case MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED:
         return ActivityAction.AUTH_FAIL;
       default:
         return ActivityAction.UPDATE;
@@ -116,7 +117,10 @@ export class MasterAdminAuditService {
     ) {
       return 'CRITICAL';
     }
-    if (code === MasterAdminAuditAction.MFA_STEP_UP_DENIED) {
+    if (
+      code === MasterAdminAuditAction.MFA_STEP_UP_DENIED ||
+      code === MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED
+    ) {
       return 'WARN';
     }
     return 'INFO';

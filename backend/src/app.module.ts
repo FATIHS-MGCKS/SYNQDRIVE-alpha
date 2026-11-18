@@ -2,7 +2,8 @@ import { Module, DynamicModule, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { GlobalExceptionFilter } from '@shared/filters/global-exception.filter';
 import { AuditInterceptor } from '@shared/interceptors/audit.interceptor';
 import { MasterAdminPrivilegedAuditInterceptor } from '@shared/interceptors/master-admin-privileged-audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -159,6 +160,10 @@ export class AppModule {
         {
           provide: APP_INTERCEPTOR,
           useClass: MasterAdminPrivilegedAuditInterceptor,
+        },
+        {
+          provide: APP_FILTER,
+          useClass: GlobalExceptionFilter,
         },
         {
           provide: APP_INTERCEPTOR,

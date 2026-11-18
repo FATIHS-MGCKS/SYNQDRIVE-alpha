@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import { of, throwError } from 'rxjs';
 import { MasterAdminPrivilegedAuditInterceptor } from './master-admin-privileged-audit.interceptor';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
@@ -73,6 +74,35 @@ describe('MasterAdminPrivilegedAuditInterceptor', () => {
           done();
         },
         error: done.fail,
+      });
+  });
+
+  it('records privileged mutation denial for handler HttpException', (done) => {
+    const req = {
+      method: 'POST',
+      originalUrl: '/api/v1/admin/prospects',
+      url: '/api/v1/admin/prospects',
+      user: { id: 'admin-1', platformRole: 'MASTER_ADMIN' },
+      body: {},
+      headers: {},
+    };
+
+    interceptor
+      .intercept(contextFor(req), {
+        handle: () => throwError(() => new BadRequestException({ code: 'VALIDATION_FAILED' })),
+      })
+      .subscribe({
+        error: () => {
+          expect(masterAdminAudit.record).toHaveBeenCalledWith(
+            expect.objectContaining({
+              auditAction: MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED,
+              httpStatus: 400,
+              after: null,
+            }),
+          );
+          done();
+        },
+        next: () => done.fail('expected error'),
       });
   });
 

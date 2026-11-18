@@ -2,26 +2,20 @@ import {
   BadRequestException,
   CallHandler,
   ExecutionContext,
+  HttpException,
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import { masterAdminReasonRequired } from '@modules/activity-log/master-admin-audit.policy';
+import { isMasterPrivilegedRequest, resolvePrivilegedReason } from '@modules/activity-log/master-admin-audit.util';
 import {
-  deriveMasterAdminAuditAction,
-  masterAdminReasonRequired,
-} from '@modules/activity-log/master-admin-audit.policy';
-import {
-  buildPrivilegedRouteLabel,
-  isMasterPrivilegedRequest,
-  resolveCorrelationId,
-  resolveEntityId,
-  resolveMfaAuditFields,
-  resolvePrivilegedReason,
-  resolveTargetOrganizationId,
-  sanitizePrivilegedAuditPayload,
-} from '@modules/activity-log/master-admin-audit.util';
+  privilegedFailureFromHttpException,
+  recordPrivilegedMutationFailure,
+  recordPrivilegedMutationSuccess,
+} from '@modules/activity-log/master-admin-privileged-audit.recorder';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -60,52 +54,23 @@ export class MasterAdminPrivilegedAuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: () => this.record(req, res.statusCode ?? 200),
+        next: () => recordPrivilegedMutationSuccess(this.masterAdminAudit, req, res.statusCode ?? 200),
         error: (err) => {
-          const status = err?.status ?? err?.getStatus?.() ?? 500;
-          if (status < 500) {
-            this.record(req, status, String(err?.message ?? 'failed'));
+          if (err instanceof HttpException) {
+            const { statusCode, responseBody } = privilegedFailureFromHttpException(err);
+            recordPrivilegedMutationFailure(this.masterAdminAudit, req, {
+              statusCode,
+              responseBody,
+            });
+            return;
           }
+          recordPrivilegedMutationFailure(this.masterAdminAudit, req, {
+            statusCode: 500,
+            responseBody: { code: 'INTERNAL_ERROR' },
+            failureCategory: 'SERVER_ERROR',
+          });
         },
       }),
     );
-  }
-
-  private record(req: any, statusCode: number, errorMessage?: string): void {
-    if (statusCode >= 400) {
-      return;
-    }
-
-    const path = (req.originalUrl ?? req.url ?? '').split('?')[0];
-    const correlationId = resolveCorrelationId(req);
-    const auditAction = deriveMasterAdminAuditAction(req.method, path);
-    const mfa = resolveMfaAuditFields(req);
-
-    const afterPayload = sanitizePrivilegedAuditPayload(req.body);
-
-    void this.masterAdminAudit.record({
-      auditAction,
-      actorUserId: req.user?.id,
-      actorPlatformRole: req.user?.platformRole ?? null,
-      actorPermissions: req.user?.platformPermissions ?? [],
-      targetOrganizationId: resolveTargetOrganizationId(req),
-      entityId: resolveEntityId(req),
-      description: errorMessage
-        ? `${req.method} ${path} failed: ${errorMessage}`
-        : `${req.method} ${path} completed`,
-      reasonCode: resolvePrivilegedReason(req),
-      correlationId,
-      route: buildPrivilegedRouteLabel(req),
-      httpMethod: req.method,
-      httpStatus: statusCode,
-      ipAddress: req.ip ?? req.connection?.remoteAddress,
-      userAgent: req.headers?.['user-agent'],
-      mfaStepUpAction: mfa.mfaStepUpAction,
-      mfaAssuranceLevel: mfa.mfaAssuranceLevel,
-      mfaStepUpUsed: mfa.mfaStepUpUsed,
-      permissionGranted: true,
-      before: null,
-      after: afterPayload,
-    });
   }
 }
