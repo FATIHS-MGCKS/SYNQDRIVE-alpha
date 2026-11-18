@@ -320,6 +320,15 @@ nodes:
       - backend/src/modules/rental-driving-analysis/rental-driving-analysis-recompute-job-handler.providers.ts
       - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/driving-intelligence-jobs.handler.registry.ts
 
+  - id: DI-SVC-RENTAL-RECOMPUTE-TRIGGER-PORT-001
+    type: service
+    title: RentalDrivingAnalysisRecomputeTriggerPort
+    epistemic_status: CONFIRMED
+    summary: Rental supplies enqueueForBooking/Trip for five VI consumers (P4-PR4).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/ports/rental-driving-analysis-recompute-trigger.port.ts
+      - backend/src/modules/rental-driving-analysis/rental-driving-analysis-recompute-trigger.providers.ts
+
   - id: DI-SCHED-RECONCILE-001
     type: scheduler
     title: DrivingAnalysisReconciliationScheduler

@@ -183,7 +183,9 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 **Reconciliation rental scan (P4-PR2 — CONFIRMED in repo):** `DrivingAnalysisReconciliationService` delegates `BOOKING_WITHOUT_RENTAL_ANALYSIS` scan/remediate to `RENTAL_DRIVING_ANALYSIS_RECONCILIATION_PORT` (`RentalDrivingAnalysisReconciliationPortAdapter` under `rental-driving-analysis/`). Scheduler cadence and non-booking checks unchanged.
 
-**DI job handler registry (P4-PR3 — in flight on branch):** `DrivingIntelligenceJobHandlerRegistry` dispatches `RENTAL_DRIVING_ANALYSIS_RECOMPUTE` via `RENTAL_DRIVING_ANALYSIS_RECOMPUTE_JOB_HANDLER_PORT` (`useExisting` → `RentalDrivingAnalysisRecomputeJobHandler`). Missing port is **fail-closed** (no silent stub completion). Full Core/Rental independence **not** claimed — `VehicleIntelligenceModule` still imports Rental adapters via module graph.
+**DI job handler registry (P4-PR3 — CONFIRMED in repo):** `DrivingIntelligenceJobHandlerRegistry` dispatches `RENTAL_DRIVING_ANALYSIS_RECOMPUTE` via `RENTAL_DRIVING_ANALYSIS_RECOMPUTE_JOB_HANDLER_PORT` (`useExisting` → `RentalDrivingAnalysisRecomputeJobHandler`). Missing port is **fail-closed** (no silent stub completion).
+
+**Rental recompute trigger (P4-PR4 — in flight on branch):** Five VI consumers enqueue via `RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT` (`useExisting` → `RentalDrivingAnalysisRecomputeTriggerService`). Await vs fire-and-forget call sites unchanged. Full Core/Rental independence **not** claimed — `VehicleIntelligenceModule` still imports Rental adapters via module graph; `bookings.service` still uses concrete trigger.
 
 **No raw HF time series in Postgres** (CONFIRMED). Optional CH mirror only.
 
