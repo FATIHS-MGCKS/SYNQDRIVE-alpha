@@ -176,11 +176,13 @@ trip_r12_bh_release_all_probe_databases() {
 
 trip_r12_bh_register_probe_db_return_trap() {
   local probe_db_name="$1"
-  local saved_database_url="${DATABASE_URL:-}"
+  # bash RETURN traps do not reliably close over outer `local` vars with `set -u`.
+  TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE="${2-}"
+  TRIP_R12_BH_RETURN_PROBE_DB_NAME="${probe_db_name}"
   _trip_r12_bh_release_on_return() {
-    trip_r12_bh_release_probe_database "$probe_db_name" || true
-    if [[ -n "$saved_database_url" ]]; then
-      export DATABASE_URL="$saved_database_url"
+    trip_r12_bh_release_probe_database "${TRIP_R12_BH_RETURN_PROBE_DB_NAME}" || true
+    if [[ -n "${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE:-}" ]]; then
+      export DATABASE_URL="${TRIP_R12_BH_PARENT_DATABASE_URL_RESTORE}"
     else
       unset DATABASE_URL || true
     fi

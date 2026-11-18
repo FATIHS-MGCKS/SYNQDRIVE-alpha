@@ -78,11 +78,11 @@ install_and_run_probe() {
   mkdir -p "$(dirname "$dir/$PROBE_REL")"
   cp "$PROBE_SRC" "$dir/$PROBE_REL"
 
-  local probe_database_url probe_db_name
+  local probe_database_url probe_db_name saved_database_url="${DATABASE_URL:-}"
   probe_database_url="$(trip_r12_bh_allocate_probe_database "$label")"
   probe_db_name="$(trip_r12_bh_database_name_from_url "$probe_database_url")"
   export DATABASE_URL="$probe_database_url"
-  trip_r12_bh_register_probe_db_return_trap "$probe_db_name"
+  trip_r12_bh_register_probe_db_return_trap "$probe_db_name" "$saved_database_url"
 
   local prev_cwd="$PWD"
   cd "$dir/backend"
