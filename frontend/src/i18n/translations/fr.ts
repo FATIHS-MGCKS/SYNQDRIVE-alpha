@@ -15,6 +15,7 @@ import { masterVehicleIdentityFr } from './master.vehicleIdentity.fr';
 import { masterOneAutoFr } from './master.oneAuto.fr';
 import { masterCvTechnicalSpecsFr } from './master.cv.technicalSpecs.fr';
 import { masterCvOemSpecsFr } from './master.cv.oemSpecs.fr';
+import { rentalMisuseStressStressGateFr } from './rental.misuseStress.stressGate.i18n';
 
 export const fr = {
   'dashboard.welcomeBack': 'Bon retour, {name}',
@@ -966,4 +967,5 @@ export const fr = {
   ...batteryV2HvInspectionFR,
   ...tireWearV3Fr,
   ...serviceIntelligenceFr,
+  ...rentalMisuseStressStressGateFr,
 } satisfies PartialTranslationDictionary;

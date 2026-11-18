@@ -6,6 +6,10 @@ import { RentalStressAnalysisCard } from '../RentalStressAnalysisCard';
 import { VehicleStressPanel } from '../VehicleStressPanel';
 import { EM_DASH } from './bookingDetailUtils';
 import { formatStressScore } from '../../lib/scoreFormat';
+import {
+  mapRentalAssessmentToDrivingImpactStatus,
+  publishesRentalDrivingStressScore,
+} from '../../lib/rental-assessment-score';
 import { bd } from './booking-detail-ui';
 
 interface BookingUsageMisuseTabProps {
@@ -61,6 +65,7 @@ export function BookingUsageMisuseTab({
 
   const stressDisplay = formatStressScore(u.drivingStressScore, {
     level: u.stressLevel ?? undefined,
+    hasEnoughData: publishesRentalDrivingStressScore(u.assessmentStatus),
   });
 
   return (
@@ -69,7 +74,10 @@ export function BookingUsageMisuseTab({
         title="Fahrbelastung dieser Buchung"
         stressScore={u.drivingStressScore}
         stressLevel={u.stressLevel}
-        hasEnoughData={u.hasAnalysis || stressDisplay.isMissing === false}
+        hasEnoughData={
+          publishesRentalDrivingStressScore(u.assessmentStatus) && u.drivingStressScore != null
+        }
+        drivingImpactAnalysisStatus={mapRentalAssessmentToDrivingImpactStatus(u.assessmentStatus)}
         compact
       />
 

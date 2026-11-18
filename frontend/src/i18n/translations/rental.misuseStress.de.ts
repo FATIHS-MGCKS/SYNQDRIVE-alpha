@@ -50,4 +50,16 @@ export const rentalMisuseStressDe = {
   'misuseStress.stress.watchpoints': 'Hinweise',
   'misuseStress.stress.meta.scoredTrips': '{count} bewertete Fahrten',
   'misuseStress.stress.meta.distanceKm': '{km} km',
+  'misuseStress.stress.footnote':
+    'SynqDrive bewertet hier die technische Fahrzeugbelastung — nicht moralisch den Fahrer. Speeding/Safety-Compliance wird im Rental nicht bewertet.',
+  'misuseStress.stress.assessmentStatus.label': 'Bewertungsstatus',
+  'misuseStress.stress.assessmentStatus.COMPLETE': 'Vollständig',
+  'misuseStress.stress.assessmentStatus.PARTIAL': 'Teilweise',
+  'misuseStress.stress.assessmentStatus.PROVISIONAL': 'Vorläufig',
+  'misuseStress.stress.assessmentStatus.NOT_ASSESSABLE': 'Nicht bewertbar',
+  'misuseStress.stress.assessmentStatus.FAILED': 'Fehlgeschlagen',
+  'misuseStress.stress.wearImpact.low': 'Gering',
+  'misuseStress.stress.wearImpact.medium': 'Mittel',
+  'misuseStress.stress.wearImpact.medium_to_high': 'Mittel bis hoch',
+  'misuseStress.stress.wearImpact.high': 'Hoch',
 } as const;

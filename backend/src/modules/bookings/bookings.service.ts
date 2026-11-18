@@ -45,6 +45,10 @@ import type {
   BookingStationContext,
   HandoverSideSummary,
 } from './booking-detail.types';
+import {
+  resolveBookingDetailDrivingStressScore,
+  resolveBookingDetailUsageAssessmentStatus,
+} from './booking-detail-usage-stress.util';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
@@ -1367,8 +1371,9 @@ export class BookingsService {
         warningWarnings,
       },
       usage: {
-        drivingStressScore: analysis?.drivingScore ?? null,
+        drivingStressScore: resolveBookingDetailDrivingStressScore(analysis),
         stressLevel: null,
+        assessmentStatus: resolveBookingDetailUsageAssessmentStatus(analysis),
         drivingEventsCount: Number(eventSummary.drivingEventsCount ?? analysis?.drivingEventsCount) || null,
         abuseDetectionCount: Number(eventSummary.abuseDetectionCount ?? analysis?.abuseDetectionCount) || null,
         misuseCaseCount: misuseCount,

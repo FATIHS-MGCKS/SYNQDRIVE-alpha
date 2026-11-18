@@ -223,6 +223,7 @@ function buildBookingDetail(
     usage: {
       drivingStressScore: null,
       stressLevel: null,
+      assessmentStatus: null,
       drivingEventsCount: null,
       abuseDetectionCount: null,
       roadDistribution: null,

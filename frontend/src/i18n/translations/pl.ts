@@ -15,6 +15,7 @@ import { masterVehicleIdentityPl } from './master.vehicleIdentity.pl';
 import { masterOneAutoPl } from './master.oneAuto.pl';
 import { masterCvTechnicalSpecsPl } from './master.cv.technicalSpecs.pl';
 import { masterCvOemSpecsPl } from './master.cv.oemSpecs.pl';
+import { rentalMisuseStressStressGatePl } from './rental.misuseStress.stressGate.i18n';
 
 export const pl = {
   'dashboard.welcomeBack': 'Witaj ponownie, {name}',
@@ -215,4 +216,5 @@ export const pl = {
   ...batteryV2HvInspectionPL,
   ...tireWearV3Pl,
   ...serviceIntelligencePl,
+  ...rentalMisuseStressStressGatePl,
 } satisfies PartialTranslationDictionary;

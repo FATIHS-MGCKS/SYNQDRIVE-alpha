@@ -6,6 +6,7 @@ import { masterCvOemSpecsTr } from './master.cv.oemSpecs.tr';
 import { masterIntelligenceTr } from './master.intelligence.tr';
 import { tireWearV3Tr } from './tire.wearV3.tr';
 import { serviceIntelligenceTr } from './service-intelligence.tr';
+import { rentalMisuseStressStressGateTr } from './rental.misuseStress.stressGate.i18n';
 
 /**
  * Turkish product-copy dictionary (partial).
@@ -49,4 +50,5 @@ export const tr = {
     'AI spesifikasyon kimliği kurulum veya istek ile eşleşmiyor.',
   ...tireWearV3Tr,
   ...serviceIntelligenceTr,
+  ...rentalMisuseStressStressGateTr,
 } satisfies PartialTranslationDictionary;
