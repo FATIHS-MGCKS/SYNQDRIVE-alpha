@@ -17,10 +17,14 @@ import {
   MFA_HTTP_ORG,
   closeMasterAdminMfaHttpHarness,
   createMasterAdminMfaHttpHarness,
+  expectStepUpValidation,
   installMfaEnforcedEnvForSuite,
 } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 import { ProspectsService } from '@modules/prospects/prospects.service';
 import { TwilioTenantProvisioningService } from '@modules/twilio/provisioning/twilio-tenant-provisioning.service';
+import { ElevenLabsTwilioImportProvisioningService } from '@modules/voice-assistant/provisioning/elevenlabs-twilio-import-provisioning.service';
+import { InsurancesService } from '@modules/insurances/insurances.service';
+import { PartsAccessoriesService } from '@modules/parts-accessories/parts-accessories.service';
 import { VoiceProtectionOverrideService } from '@modules/voice-protection/voice-protection-override.service';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
 import { VoiceBudgetWarningService } from '@modules/voice-protection/voice-budget-warning.service';
@@ -200,5 +204,224 @@ describe('P5-B2 remaining admin MFA coverage — HTTP (real guard)', () => {
     } finally {
       await closeMasterAdminMfaHttpHarness(harness);
     }
+  });
+});
+
+describe('P5-B2 PR2429 F1 — high-risk mutation HTTP security', () => {
+  installMfaEnforcedEnvForSuite();
+
+  const twilioBase = `/admin/voice-assistant/organizations/${MFA_HTTP_ORG}/twilio`;
+  const elevenLabsBase = `/admin/voice-assistant/organizations/${MFA_HTTP_ORG}/elevenlabs`;
+  const phoneNumberId = 'pn-test-1';
+
+  describe('Twilio POST phone-numbers/purchase', () => {
+    const purchasePath = `${twilioBase}/phone-numbers/purchase`;
+    const purchaseBody = { phoneNumber: '+15551234567', confirm: true, dryRun: true };
+
+    it('STEP_UP_REQUIRED without token; purchase not executed', async () => {
+      const provisioning = { purchasePhoneNumber: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: TwilioTenantProvisioningController,
+        providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+      });
+      try {
+        const res = await request(harness.app.getHttpServer())
+          .post(purchasePath)
+          .set('Authorization', 'Bearer master-token')
+          .send(purchaseBody)
+          .expect(403);
+        expect(res.body).toMatchObject({
+          code: 'STEP_UP_REQUIRED',
+          action: STEP_UP_ACTION.MASTER_INTEGRATIONS,
+        });
+        expect(provisioning.purchasePhoneNumber).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('rejects non–MASTER_ADMIN; purchase not executed', async () => {
+      const provisioning = { purchasePhoneNumber: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: TwilioTenantProvisioningController,
+        providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+      });
+      try {
+        await request(harness.app.getHttpServer())
+          .post(purchasePath)
+          .set('Authorization', 'Bearer member-token')
+          .send(purchaseBody)
+          .expect(403);
+        expect(provisioning.purchasePhoneNumber).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('allows purchase with valid MASTER_INTEGRATIONS step-up', async () => {
+      const provisioning = {
+        purchasePhoneNumber: jest.fn().mockResolvedValue({ purchased: true }),
+      };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: TwilioTenantProvisioningController,
+        providers: [{ provide: TwilioTenantProvisioningService, useValue: provisioning }],
+      });
+      harness.validateGrant.mockResolvedValue(true);
+      try {
+        await request(harness.app.getHttpServer())
+          .post(purchasePath)
+          .set('Authorization', 'Bearer master-token')
+          .set('x-step-up-token', 'step-up-token-valid')
+          .send(purchaseBody)
+          .expect(201);
+        expectStepUpValidation(
+          harness.validateGrant,
+          STEP_UP_ACTION.MASTER_INTEGRATIONS,
+          'step-up-token-valid',
+        );
+        expect(provisioning.purchasePhoneNumber).toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+  });
+
+  describe('ElevenLabs POST import-and-assign', () => {
+    const importPath = `${elevenLabsBase}/phone-numbers/${phoneNumberId}/import-and-assign`;
+    const importBody = { confirm: true, dryRun: true };
+
+    it('STEP_UP_REQUIRED without token; import not executed', async () => {
+      const provisioning = { importAndAssign: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: ElevenLabsTwilioImportController,
+        providers: [
+          { provide: ElevenLabsTwilioImportProvisioningService, useValue: provisioning },
+        ],
+      });
+      try {
+        const res = await request(harness.app.getHttpServer())
+          .post(importPath)
+          .set('Authorization', 'Bearer master-token')
+          .send(importBody)
+          .expect(403);
+        expect(res.body).toMatchObject({
+          code: 'STEP_UP_REQUIRED',
+          action: STEP_UP_ACTION.MASTER_INTEGRATIONS,
+        });
+        expect(provisioning.importAndAssign).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('rejects non–MASTER_ADMIN; import not executed', async () => {
+      const provisioning = { importAndAssign: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: ElevenLabsTwilioImportController,
+        providers: [
+          { provide: ElevenLabsTwilioImportProvisioningService, useValue: provisioning },
+        ],
+      });
+      try {
+        await request(harness.app.getHttpServer())
+          .post(importPath)
+          .set('Authorization', 'Bearer member-token')
+          .send(importBody)
+          .expect(403);
+        expect(provisioning.importAndAssign).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+  });
+
+  describe('Insurances PATCH partners/:id', () => {
+    const partnerId = 'partner-1';
+    const patchPath = `/admin/insurances/partners/${partnerId}`;
+
+    it('STEP_UP_REQUIRED without token; update not executed', async () => {
+      const service = { updatePartner: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: InsurancesAdminController,
+        providers: [{ provide: InsurancesService, useValue: service }],
+      });
+      try {
+        const res = await request(harness.app.getHttpServer())
+          .patch(patchPath)
+          .set('Authorization', 'Bearer master-token')
+          .send({ displayName: 'Updated' })
+          .expect(403);
+        expect(res.body).toMatchObject({
+          code: 'STEP_UP_REQUIRED',
+          action: STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS,
+        });
+        expect(service.updatePartner).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('rejects non–MASTER_ADMIN; update not executed', async () => {
+      const service = { updatePartner: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: InsurancesAdminController,
+        providers: [{ provide: InsurancesService, useValue: service }],
+      });
+      try {
+        await request(harness.app.getHttpServer())
+          .patch(patchPath)
+          .set('Authorization', 'Bearer member-token')
+          .send({ displayName: 'Updated' })
+          .expect(403);
+        expect(service.updatePartner).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+  });
+
+  describe('PartsAccessories PATCH providers/:id', () => {
+    const providerId = 'provider-1';
+    const patchPath = `/admin/parts-accessories/providers/${providerId}`;
+
+    it('STEP_UP_REQUIRED without token; update not executed', async () => {
+      const service = { updateProvider: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: PartsAccessoriesAdminController,
+        providers: [{ provide: PartsAccessoriesService, useValue: service }],
+      });
+      try {
+        const res = await request(harness.app.getHttpServer())
+          .patch(patchPath)
+          .set('Authorization', 'Bearer master-token')
+          .send({ displayName: 'Updated' })
+          .expect(403);
+        expect(res.body).toMatchObject({
+          code: 'STEP_UP_REQUIRED',
+          action: STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS,
+        });
+        expect(service.updateProvider).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('rejects non–MASTER_ADMIN; update not executed', async () => {
+      const service = { updateProvider: jest.fn() };
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: PartsAccessoriesAdminController,
+        providers: [{ provide: PartsAccessoriesService, useValue: service }],
+      });
+      try {
+        await request(harness.app.getHttpServer())
+          .patch(patchPath)
+          .set('Authorization', 'Bearer member-token')
+          .send({ displayName: 'Updated' })
+          .expect(403);
+        expect(service.updateProvider).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
   });
 });
