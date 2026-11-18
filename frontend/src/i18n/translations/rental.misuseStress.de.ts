@@ -45,6 +45,18 @@ export const rentalMisuseStressDe = {
   'misuseStress.stress.empty.title': 'Noch keine Fahrbelastungsauswertung',
   'misuseStress.stress.empty.description':
     'Nach abgeschlossener Miete mit Telemetrie erscheint hier das Belastungsprofil für Reifen, Bremsen und Fahrzeug.',
+  'misuseStress.stress.empty.payloadUnavailable':
+    'Detaillierte Belastungsdaten sind für diesen Bewertungsstatus noch nicht verfügbar.',
+  'misuseStress.stress.bookingUsage.panelTitle': 'Fahrbelastung dieser Buchung',
+  'misuseStress.stress.bookingUsage.stat.stress': 'Fahrbelastung',
+  'misuseStress.stress.bookingUsage.stat.drivingEvents': 'Fahrereignisse',
+  'misuseStress.stress.bookingUsage.stat.abuseEvents': 'Missbrauchsereignisse',
+  'misuseStress.stress.bookingUsage.stat.misuseHints': 'Verdachtshinweise',
+  'misuseStress.stress.bookingUsage.stat.kmDriven': 'Km gefahren',
+  'misuseStress.stress.bookingUsage.pendingHint':
+    'Nutzungsanalyse steht nach oder während der Vermietung zur Verfügung, sobald Fahrdaten vorliegen.',
+  'misuseStress.stress.bookingUsage.misusePanelTitle':
+    'Missbrauchs-/Schadensverdacht während dieser Buchung',
   'misuseStress.stress.overallAssessment': 'Gesamteinschätzung',
   'misuseStress.stress.wearRelevance': 'Verschleißrelevanz',
   'misuseStress.stress.watchpoints': 'Hinweise',

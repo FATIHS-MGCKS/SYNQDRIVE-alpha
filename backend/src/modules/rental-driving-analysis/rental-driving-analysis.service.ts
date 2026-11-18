@@ -32,6 +32,10 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import {
+  gateRentalAnalysisPayloadForApi,
+  resolvePublishedRentalApiDrivingStressScore,
+} from './rental-driving-analysis.api-response.util';
+import {
   buildRentalDrivingAnalysisInputFingerprint,
   resolveRentalDrivingAnalysisCompleteness,
 } from './rental-driving-analysis.fingerprint';
@@ -1229,7 +1233,10 @@ export class RentalDrivingAnalysisService {
       overallLevel: r.overallLevel,
       driverStyleCategory: r.driverStyleCategory,
       riskLevel: r.riskLevel,
-      drivingStressScore: r.drivingScore,
+      drivingStressScore: resolvePublishedRentalApiDrivingStressScore(
+        r.assessmentStatus,
+        r.drivingScore,
+      ),
       drivingEventsCount: r.drivingEventsCount,
       abuseDetectionCount: r.abuseDetectionCount,
       wearImpact: r.wearImpact,
@@ -1246,7 +1253,7 @@ export class RentalDrivingAnalysisService {
       supersedesAnalysisId: r.supersedesAnalysisId,
       recomputeReason: r.recomputeReason,
       attributionSummary: r.attributionSummary,
-      payload: r.payload,
+      payload: gateRentalAnalysisPayloadForApi(r.payload, r.assessmentStatus),
       vehicle: r.vehicle,
       bookingCustomer: r.bookingCustomer,
       assignedDriver: r.assignedDriver,

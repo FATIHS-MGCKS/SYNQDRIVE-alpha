@@ -95,7 +95,7 @@ export function BookingUsageMisuseTab({
       )}
 
       <VehicleStressPanel
-        title="Fahrbelastung dieser Buchung"
+        title={t('misuseStress.stress.bookingUsage.panelTitle')}
         stressScore={u.drivingStressScore}
         stressLevel={u.stressLevel}
         hasEnoughData={
@@ -105,12 +105,24 @@ export function BookingUsageMisuseTab({
       />
 
       <div className={`${bd.card} grid grid-cols-2 sm:grid-cols-4 gap-4`}>
-        <Stat label="Fahrbelastung" value={stressDisplay.isMissing ? EM_DASH : stressDisplay.label} />
-        <Stat label="Fahrereignisse" value={u.drivingEventsCount ?? EM_DASH} />
-        <Stat label="Missbrauchsereignisse" value={u.abuseDetectionCount ?? EM_DASH} />
-        <Stat label="Verdachtshinweise" value={u.misuseCaseCount} />
         <Stat
-          label="Km gefahren"
+          label={t('misuseStress.stress.bookingUsage.stat.stress')}
+          value={stressDisplay.isMissing ? EM_DASH : stressDisplay.label}
+        />
+        <Stat
+          label={t('misuseStress.stress.bookingUsage.stat.drivingEvents')}
+          value={u.drivingEventsCount ?? EM_DASH}
+        />
+        <Stat
+          label={t('misuseStress.stress.bookingUsage.stat.abuseEvents')}
+          value={u.abuseDetectionCount ?? EM_DASH}
+        />
+        <Stat
+          label={t('misuseStress.stress.bookingUsage.stat.misuseHints')}
+          value={u.misuseCaseCount}
+        />
+        <Stat
+          label={t('misuseStress.stress.bookingUsage.stat.kmDriven')}
           value={detail.core.kmDriven != null ? `${detail.core.kmDriven} km` : EM_DASH}
         />
       </div>
@@ -124,14 +136,14 @@ export function BookingUsageMisuseTab({
 
       {!u.hasAnalysis && u.misuseCaseCount === 0 && !rentalAnalysis && !analysisLoading && (
         <p className="text-xs text-muted-foreground px-1">
-          Nutzungsanalyse steht nach oder während der Vermietung zur Verfügung, sobald Fahrdaten vorliegen.
+          {t('misuseStress.stress.bookingUsage.pendingHint')}
         </p>
       )}
 
       <MisuseCasesPanel
         orgId={orgId}
         bookingId={detail.core.bookingId}
-        title="Missbrauchs-/Schadensverdacht während dieser Buchung"
+        title={t('misuseStress.stress.bookingUsage.misusePanelTitle')}
         limit={15}
       />
     </div>

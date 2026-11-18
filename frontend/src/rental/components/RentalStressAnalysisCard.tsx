@@ -31,13 +31,61 @@ export function RentalStressAnalysisCard({
     return <div className=" surface-premium p-4 animate-pulse h-32" />;
   }
 
-  if (!analysis?.payload) {
+  if (!analysis) {
     return (
       <EmptyState
         icon={<Icon name="activity" className="w-6 h-6" />}
         title={t('misuseStress.stress.empty.title')}
         description={t('misuseStress.stress.empty.description')}
       />
+    );
+  }
+
+  const assessmentStatusEarly = analysis.assessmentStatus ?? null;
+  const assessmentLabelKeyEarly = rentalAssessmentStatusI18nKey(assessmentStatusEarly);
+
+  if (!analysis.payload) {
+    if (!assessmentLabelKeyEarly) {
+      return (
+        <EmptyState
+          icon={<Icon name="activity" className="w-6 h-6" />}
+          title={t('misuseStress.stress.empty.title')}
+          description={t('misuseStress.stress.empty.description')}
+        />
+      );
+    }
+    const stressScoreEarly = resolveRentalAnalysisStressScore(analysis);
+    const scorePublishableEarly = stressScoreEarly != null;
+    return (
+      <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+              {t('misuseStress.stress.assessmentStatus.label')}
+            </span>
+            <StatusChip
+              tone={
+                assessmentStatusEarly === 'COMPLETE'
+                  ? 'success'
+                  : assessmentStatusEarly === 'PARTIAL'
+                    ? 'info'
+                    : 'neutral'
+              }
+              className="text-[9px]"
+            >
+              {t(assessmentLabelKeyEarly)}
+            </StatusChip>
+          </div>
+          {!scorePublishableEarly && (
+            <p className="text-[11px] text-muted-foreground">
+              {t('misuseStress.stress.scoreNotPublished')}
+            </p>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t('misuseStress.stress.empty.payloadUnavailable')}
+        </p>
+      </div>
     );
   }
 
