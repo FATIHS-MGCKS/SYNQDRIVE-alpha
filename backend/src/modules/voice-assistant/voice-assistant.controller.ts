@@ -2,6 +2,9 @@ import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req } from
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RequireCommunicationPermission } from '@shared/decorators/require-communication-permission.decorator';
 import { RequireVoiceAssistantPermission } from '@shared/decorators/require-voice-assistant-permission.decorator';
@@ -161,7 +164,7 @@ export class VoiceAssistantController {
 }
 
 @Controller('admin/voice-assistant')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 export class VoiceAssistantAdminController {
   constructor(private readonly service: VoiceAssistantService) {}
@@ -177,6 +180,7 @@ export class VoiceAssistantAdminController {
   }
 
   @Post('organizations/:orgId/sync')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
   async syncOrganization(@Param('orgId') orgId: string) {
     return this.service.adminSyncOrganization(orgId);
   }
