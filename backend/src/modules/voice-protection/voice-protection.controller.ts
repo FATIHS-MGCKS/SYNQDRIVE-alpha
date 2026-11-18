@@ -100,9 +100,12 @@ export class VoiceProtectionController {
 }
 
 import { VoiceProtectionOverrideService } from './voice-protection-override.service';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin/voice-assistant/protection')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 export class VoiceProtectionAdminController {
   constructor(
@@ -123,6 +126,7 @@ export class VoiceProtectionAdminController {
   }
 
   @Post('organizations/:orgId/overrides')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
   async createOverride(
     @Param('orgId') orgId: string,
     @Body()

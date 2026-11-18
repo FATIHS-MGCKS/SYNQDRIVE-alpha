@@ -1,10 +1,11 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { VoiceBillingService } from './voice-billing.service';
 
 @Controller('admin/voice-assistant/billing')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 export class VoiceBillingAdminController {
   constructor(private readonly billing: VoiceBillingService) {}

@@ -11,6 +11,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PartsAccessoriesService } from './parts-accessories.service';
 
@@ -114,7 +117,8 @@ export class PartsAccessoriesController {
 
 // ─── Master Admin Endpoints ──────────────────────────────────
 @Controller('admin/parts-accessories')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
 @Roles('MASTER_ADMIN')
 export class PartsAccessoriesAdminController {
   constructor(private readonly service: PartsAccessoriesService) {}
