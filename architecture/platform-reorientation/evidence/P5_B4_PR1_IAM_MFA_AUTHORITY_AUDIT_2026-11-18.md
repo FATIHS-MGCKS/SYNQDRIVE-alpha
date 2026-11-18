@@ -45,6 +45,15 @@
 - Production SQL confirmation of MFA tables (optional; migration on main only)
 - End-to-end Production UX validation when flags enabled
 
+## CI (branch head)
+
+| Field | Value |
+|-------|-------|
+| **SHA** | `fb0f4defddaeec5697c2a475bdbb7cf1cc1f5490` |
+| **Branch** | `cursor/p5-b4-pr1-iam-mfa-authority-audit-7037` |
+| **PR** | [#2436](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2436) |
+| **Outcome** | **7/7 checks success** (recorded 2026-11-18 Europe/Berlin) |
+
 ## Independent review
 
-Awaiting architecture/security review on documentation PR; CI validators required.
+Awaiting architecture/security review on documentation PR.
