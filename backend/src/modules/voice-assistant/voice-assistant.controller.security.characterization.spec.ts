@@ -2,6 +2,9 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
 import {
@@ -61,9 +64,16 @@ describe('VoiceAssistantController security characterization', () => {
   });
 
   describe('admin controller', () => {
-    it('applies RolesGuard on admin controller class', () => {
+    it('applies RolesGuard and MasterAdminMfaGuard on admin controller class', () => {
       const guards = Reflect.getMetadata(GUARDS_METADATA, VoiceAssistantAdminController) ?? [];
-      expect(guards).toEqual(expect.arrayContaining([RolesGuard]));
+      expect(guards).toEqual(expect.arrayContaining([RolesGuard, MasterAdminMfaGuard]));
+    });
+
+    it('requires MASTER_INTEGRATIONS step-up on org sync mutation', () => {
+      const sync = VoiceAssistantAdminController.prototype.syncOrganization;
+      expect(Reflect.getMetadata(MASTER_ADMIN_MFA_ACTION_KEY, sync)).toBe(
+        STEP_UP_ACTION.MASTER_INTEGRATIONS,
+      );
     });
 
     it('requires MASTER_ADMIN at controller class level (not per handler)', () => {

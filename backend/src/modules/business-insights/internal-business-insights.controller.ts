@@ -1,6 +1,9 @@
 import { Controller, Post, Get, Patch, Param, Body, Query, UseGuards, NotFoundException } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { BusinessInsightsService } from './business-insights.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
@@ -8,7 +11,7 @@ import { BusinessInsightsTriggerService } from './business-insights-trigger.serv
 import { PolicyUpdatePayload } from './insight.types';
 
 @Controller('admin/business-insights')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
 @Roles('MASTER_ADMIN')
 export class InternalBusinessInsightsController {
   constructor(
@@ -21,6 +24,7 @@ export class InternalBusinessInsightsController {
   // ─── Run triggers ──────────────────────────────────────────────────
 
   @Post('run-all')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async runAll() {
     const results = await this.insightsService.runForAllActiveOrganizations('manual_admin');
     return {
@@ -32,6 +36,7 @@ export class InternalBusinessInsightsController {
   }
 
   @Post('run/:orgId')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
   async runForOrg(
     @Param('orgId') orgId: string,
     @Query('force') force?: string,
@@ -42,6 +47,7 @@ export class InternalBusinessInsightsController {
   }
 
   @Post('trigger/:orgId')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
   async triggerDebouncedRerun(@Param('orgId') orgId: string) {
     await this.triggerService.requestDebouncedRerun(orgId, 'manual_debounced_trigger');
     return { status: 'queued', message: 'Debounced rerun requested, will execute after debounce window' };
@@ -80,6 +86,7 @@ export class InternalBusinessInsightsController {
   }
 
   @Patch('policy/:orgId')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
   async updatePolicy(
     @Param('orgId') orgId: string,
     @Body() payload: PolicyUpdatePayload,
