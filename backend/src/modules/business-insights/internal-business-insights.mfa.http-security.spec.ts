@@ -1,4 +1,4 @@
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { UserPlatformRole } from '@prisma/client';
 import * as request from 'supertest';
@@ -6,39 +6,42 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
-import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { STEP_UP_ACTION, type StepUpActionCode } from '@modules/iam-mfa/iam-mfa.policy';
 import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
+import {
+  MFA_HTTP_ORG,
+  closeMasterAdminMfaHttpHarness,
+  createMasterAdminAuthGuard,
+  createMasterAdminMfaHttpHarness,
+  expectStepUpValidation,
+  installMfaEnforcedEnvForSuite,
+} from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { BusinessInsightsService } from './business-insights.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
 
-const ORG = '11111111-1111-1111-1111-111111111111';
-const MASTER = 'master-admin-1';
+const providers = (deps: {
+  insights: object;
+  repo: object;
+  policy: object;
+  trigger: object;
+}) => [
+  { provide: BusinessInsightsService, useValue: deps.insights },
+  { provide: DashboardInsightsRepository, useValue: deps.repo },
+  { provide: TenantInsightPolicyService, useValue: deps.policy },
+  { provide: BusinessInsightsTriggerService, useValue: deps.trigger },
+];
 
 describe('InternalBusinessInsightsController — MFA HTTP security', () => {
   const insights = {
     runForAllActiveOrganizations: jest.fn().mockResolvedValue([{ published: 1 }]),
-    runForOrganization: jest.fn().mockResolvedValue({ published: 1, orgId: ORG }),
+    runForOrganization: jest.fn().mockResolvedValue({ published: 1, orgId: MFA_HTTP_ORG }),
   };
   const repo = {};
-  const policy = { updatePolicy: jest.fn().mockResolvedValue({ orgId: ORG }) };
+  const policy = { updatePolicy: jest.fn().mockResolvedValue({ orgId: MFA_HTTP_ORG }) };
   const trigger = { requestDebouncedRerun: jest.fn().mockResolvedValue(undefined) };
-
-  const authGuard = {
-    canActivate: (ctx: { switchToHttp: () => { getRequest: () => Record<string, unknown> } }) => {
-      const req = ctx.switchToHttp().getRequest() as {
-        headers?: { authorization?: string };
-        user?: { id: string; platformRole: UserPlatformRole };
-      };
-      if (String(req.headers?.authorization ?? '').startsWith('Bearer master-')) {
-        req.user = { id: MASTER, platformRole: UserPlatformRole.MASTER_ADMIN };
-        return true;
-      }
-      return false;
-    },
-  };
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -59,108 +62,177 @@ describe('InternalBusinessInsightsController — MFA HTTP security', () => {
     expect(Reflect.getMetadata(MASTER_ADMIN_MFA_ACTION_KEY, proto.getPolicy)).toBeUndefined();
   });
 
-  it('allows run-all when MFA flags are off (default)', async () => {
-    const originalEnv = process.env;
-    process.env = { ...originalEnv };
-    delete process.env.IAM_MFA_MASTER_ADMIN_ENABLED;
+  describe('MFA disabled (default env)', () => {
+    let savedEnv: NodeJS.ProcessEnv;
 
-    const moduleRef = await Test.createTestingModule({
-      controllers: [InternalBusinessInsightsController],
-      providers: [
-        { provide: BusinessInsightsService, useValue: insights },
-        { provide: DashboardInsightsRepository, useValue: repo },
-        { provide: TenantInsightPolicyService, useValue: policy },
-        { provide: BusinessInsightsTriggerService, useValue: trigger },
-        { provide: APP_GUARD, useValue: authGuard },
-        MasterAdminMfaGuard,
-        { provide: PrismaService, useValue: { userMfaFactor: { findFirst: jest.fn() } } },
-        { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn() } },
-      ],
-    })
-      .overrideGuard(RolesGuard)
-      .useValue({
-        canActivate: (ctx: {
-          switchToHttp: () => { getRequest: () => { user?: { platformRole?: string } } };
-        }) => ctx.switchToHttp().getRequest().user?.platformRole === UserPlatformRole.MASTER_ADMIN,
-      })
-      .compile();
-
-    const app = moduleRef.createNestApplication();
-    await app.init();
-
-    await request(app.getHttpServer())
-      .post('/admin/business-insights/run-all')
-      .set('Authorization', 'Bearer master-token')
-      .expect(201);
-
-    process.env = originalEnv;
-    await app.close();
-  });
-
-  it('rejects non–MASTER_ADMIN on run-all', async () => {
-    const moduleRef = await Test.createTestingModule({
-      controllers: [InternalBusinessInsightsController],
-      providers: [
-        { provide: BusinessInsightsService, useValue: insights },
-        { provide: DashboardInsightsRepository, useValue: repo },
-        { provide: TenantInsightPolicyService, useValue: policy },
-        { provide: BusinessInsightsTriggerService, useValue: trigger },
-        { provide: APP_GUARD, useValue: authGuard },
-      ],
-    })
-      .overrideGuard(RolesGuard)
-      .useValue({ canActivate: () => false })
-      .overrideGuard(MasterAdminMfaGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
-
-    const app = moduleRef.createNestApplication();
-    await app.init();
-
-    await request(app.getHttpServer())
-      .post('/admin/business-insights/run-all')
-      .expect(403);
-
-    await app.close();
-  });
-
-  it('real MasterAdminMfaGuard denies run-all POST without step-up when enforced', async () => {
-    const originalEnv = process.env;
-    process.env = {
-      ...originalEnv,
-      IAM_MFA_MASTER_ADMIN_ENABLED: 'true',
-      IAM_MFA_STEP_UP_ENFORCED: 'true',
-    };
-
-    const reflector = {
-      getAllAndOverride: jest.fn().mockReturnValue(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS),
-    };
-    const prisma = {
-      userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'mfa-1' }) },
-    };
-    const stepUp = { validateGrant: jest.fn().mockResolvedValue(false) };
-    const guard = new MasterAdminMfaGuard(
-      reflector as never,
-      prisma as unknown as PrismaService,
-      stepUp as unknown as IamMfaStepUpService,
-    );
-
-    const ctx = {
-      getHandler: () => ({}),
-      getClass: () => ({}),
-      switchToHttp: () => ({
-        getRequest: () => ({
-          method: 'POST',
-          user: { id: MASTER, platformRole: UserPlatformRole.MASTER_ADMIN },
-          headers: {},
-        }),
-      }),
-    };
-
-    await expect(guard.canActivate(ctx as never)).rejects.toMatchObject({
-      response: { code: 'STEP_UP_REQUIRED' },
+    beforeEach(() => {
+      savedEnv = process.env;
+      process.env = { ...savedEnv };
+      delete process.env.IAM_MFA_MASTER_ADMIN_ENABLED;
     });
 
-    process.env = originalEnv;
+    afterEach(() => {
+      process.env = savedEnv;
+    });
+
+    it('allows run-all without step-up', async () => {
+      const moduleRef = await Test.createTestingModule({
+        controllers: [InternalBusinessInsightsController],
+        providers: [
+          ...providers({ insights, repo, policy, trigger }),
+          { provide: APP_GUARD, useValue: createMasterAdminAuthGuard() },
+          Reflector,
+          MasterAdminMfaGuard,
+          { provide: PrismaService, useValue: { userMfaFactor: { findFirst: jest.fn() } } },
+          { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn() } },
+        ],
+      })
+        .overrideGuard(RolesGuard)
+        .useValue({
+          canActivate: (ctx: {
+            switchToHttp: () => { getRequest: () => { user?: { platformRole?: string } } };
+          }) => ctx.switchToHttp().getRequest().user?.platformRole === UserPlatformRole.MASTER_ADMIN,
+        })
+        .compile();
+
+      const app = moduleRef.createNestApplication();
+      await app.init();
+      try {
+        await request(app.getHttpServer())
+          .post('/admin/business-insights/run-all')
+          .set('Authorization', 'Bearer master-token')
+          .expect(201);
+      } finally {
+        await app.close();
+      }
+    });
+  });
+
+  describe('HTTP — real MasterAdminMfaGuard + route metadata', () => {
+    installMfaEnforcedEnvForSuite();
+
+    const cases: Array<{
+      name: string;
+      method: 'post' | 'patch';
+      path: string;
+      expectedAction: StepUpActionCode;
+      body?: object;
+    }> = [
+      {
+        name: 'run-all',
+        method: 'post',
+        path: '/admin/business-insights/run-all',
+        expectedAction: STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS,
+      },
+      {
+        name: 'run/:orgId',
+        method: 'post',
+        path: `/admin/business-insights/run/${MFA_HTTP_ORG}`,
+        expectedAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+      },
+      {
+        name: 'trigger/:orgId',
+        method: 'post',
+        path: `/admin/business-insights/trigger/${MFA_HTTP_ORG}`,
+        expectedAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+      },
+      {
+        name: 'patch policy/:orgId',
+        method: 'patch',
+        path: `/admin/business-insights/policy/${MFA_HTTP_ORG}`,
+        expectedAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+        body: { enabled: true },
+      },
+    ];
+
+    it.each(cases)(
+      '$name — STEP_UP_REQUIRED without step-up (action=$expectedAction)',
+      async ({ method, path, expectedAction }) => {
+        const harness = await createMasterAdminMfaHttpHarness({
+          controller: InternalBusinessInsightsController,
+          providers: providers({ insights, repo, policy, trigger }),
+        });
+        try {
+          const res = await request(harness.app.getHttpServer())
+            [method](path)
+            .set('Authorization', 'Bearer master-token')
+            .expect(403);
+
+          expect(res.body).toMatchObject({
+            code: 'STEP_UP_REQUIRED',
+            action: expectedAction,
+          });
+          expect(harness.validateGrant).not.toHaveBeenCalled();
+        } finally {
+          await closeMasterAdminMfaHttpHarness(harness);
+        }
+      },
+    );
+
+    it.each(cases)(
+      '$name — STEP_UP_EXPIRED on invalid token (action=$expectedAction)',
+      async ({ method, path, expectedAction, body }) => {
+        const harness = await createMasterAdminMfaHttpHarness({
+          controller: InternalBusinessInsightsController,
+          providers: providers({ insights, repo, policy, trigger }),
+        });
+        harness.validateGrant.mockResolvedValue(false);
+        try {
+          const res = await request(harness.app.getHttpServer())
+            [method](path)
+            .set('Authorization', 'Bearer master-token')
+            .set('x-step-up-token', 'expired-token')
+            .send(body ?? {})
+            .expect(403);
+
+          expect(res.body).toMatchObject({
+            code: 'STEP_UP_EXPIRED',
+            action: expectedAction,
+          });
+          expectStepUpValidation(harness.validateGrant, expectedAction, 'expired-token');
+        } finally {
+          await closeMasterAdminMfaHttpHarness(harness);
+        }
+      },
+    );
+
+    it.each(cases)(
+      '$name — accepts valid step-up (action=$expectedAction)',
+      async ({ method, path, expectedAction, body }) => {
+        const harness = await createMasterAdminMfaHttpHarness({
+          controller: InternalBusinessInsightsController,
+          providers: providers({ insights, repo, policy, trigger }),
+        });
+        harness.validateGrant.mockResolvedValue(true);
+        try {
+          await request(harness.app.getHttpServer())
+            [method](path)
+            .set('Authorization', 'Bearer master-token')
+            .set('x-step-up-token', 'step-up-token-valid')
+            .send(body ?? {})
+            .expect((method === 'post' ? 201 : 200) as number);
+
+          expectStepUpValidation(harness.validateGrant, expectedAction, 'step-up-token-valid');
+        } finally {
+          await closeMasterAdminMfaHttpHarness(harness);
+        }
+      },
+    );
+
+    it('rejects non–MASTER_ADMIN on run-all', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: InternalBusinessInsightsController,
+        providers: providers({ insights, repo, policy, trigger }),
+      });
+      try {
+        await request(harness.app.getHttpServer())
+          .post('/admin/business-insights/run-all')
+          .set('Authorization', 'Bearer member-token')
+          .expect(403);
+        expect(insights.runForAllActiveOrganizations).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
   });
 });
