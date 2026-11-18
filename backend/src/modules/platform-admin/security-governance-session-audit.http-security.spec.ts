@@ -91,11 +91,47 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
         .expect(200);
       expect(res.body).toEqual({ revoked: true });
       expect(refreshTokens.revokeSessionById).toHaveBeenCalledWith(targetUserId, sessionId);
+      expect(refreshTokens.findSessionOrganizationId).toHaveBeenCalledWith(
+        targetUserId,
+        sessionId,
+      );
       expect(masterAdminAudit.record).toHaveBeenCalledTimes(1);
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
+          targetOrganizationId: 'org-target',
           metadata: expect.objectContaining({ outcome: 'SUCCESS', sessionId }),
+        }),
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('revokes session before org lookup and succeeds when org lookup fails', async () => {
+    const callOrder: string[] = [];
+    refreshTokens.revokeSessionById.mockImplementation(async () => {
+      callOrder.push('revoke');
+      return true;
+    });
+    refreshTokens.findSessionOrganizationId.mockImplementation(async () => {
+      callOrder.push('findOrg');
+      throw new Error('db_read_failed');
+    });
+    const app = await createApp();
+    try {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/admin/security/users/${targetUserId}/sessions/${sessionId}/revoke`)
+        .set('Authorization', 'Bearer master-token')
+        .expect(200);
+      expect(res.body).toEqual({ revoked: true });
+      expect(callOrder).toEqual(['revoke', 'findOrg']);
+      expect(masterAdminAudit.record).toHaveBeenCalledTimes(1);
+      expect(masterAdminAudit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
+          targetOrganizationId: null,
+          metadata: expect.objectContaining({ outcome: 'SUCCESS' }),
         }),
       );
     } finally {

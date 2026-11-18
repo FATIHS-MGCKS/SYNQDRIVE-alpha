@@ -78,11 +78,16 @@ export class SecurityGovernanceController {
     @Param('sessionId') sessionId: string,
     @Req() req: AuthedRequest,
   ) {
-    const targetOrganizationId = await this.refreshTokens.findSessionOrganizationId(
-      userId,
-      sessionId,
-    );
     const ok = await this.refreshTokens.revokeSessionById(userId, sessionId);
+    let targetOrganizationId: string | null = null;
+    try {
+      targetOrganizationId = await this.refreshTokens.findSessionOrganizationId(
+        userId,
+        sessionId,
+      );
+    } catch {
+      targetOrganizationId = null;
+    }
     this.sessionAudit.recordSingleSessionRevocation({
       req,
       targetUserId: userId,

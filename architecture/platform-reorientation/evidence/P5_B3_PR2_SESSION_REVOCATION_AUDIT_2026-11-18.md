@@ -16,6 +16,10 @@ Metadata: `targetUserId`, `sessionId` (single), `outcome` (`SUCCESS` / `NO_OP`),
 
 `shouldSkipGenericPrivilegedSuccessAudit` suppresses generic interceptor success rows on session-revocation routes. Unauthorized attempts still emit a single `PRIVILEGED_MUTATION_DENIED` via the exception filter.
 
+## F1 remediation (independent review)
+
+Single-session revoke runs `revokeSessionById` **before** optional `findSessionOrganizationId`. Org lookup failures are caught and recorded as `targetOrganizationId: null`; they never block revocation or change `{ revoked: boolean }`.
+
 ## Remaining limitations
 
 - Revoke-all does not attach per-tenant organization context (platform-scoped operation).
