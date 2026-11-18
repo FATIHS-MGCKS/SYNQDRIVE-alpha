@@ -7,6 +7,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
 import { PlatformAdminController } from './platform-admin.controller';
 import { SecurityGovernanceController } from './security-governance.controller';
 import { SecurityGovernanceService } from './security-governance.service';
+import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
 import { PlatformAdminService } from './platform-admin.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import {
@@ -54,6 +55,7 @@ import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-web
   controllers: [PlatformAdminController, SecurityGovernanceController, PlatformIntegrationsController],
   providers: [
     SecurityGovernanceService,
+    SecurityGovernanceSessionAuditService,
     PlatformIntegrationsService,
     PlatformAdminService,
     VehicleLogbookService,

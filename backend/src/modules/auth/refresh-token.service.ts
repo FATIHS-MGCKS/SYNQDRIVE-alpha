@@ -348,6 +348,17 @@ export class RefreshTokenService {
     return active[0]?.id ?? null;
   }
 
+  async findSessionOrganizationId(
+    userId: string,
+    sessionId: string,
+  ): Promise<string | null> {
+    const row = await this.prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+      select: { organizationId: true },
+    });
+    return row?.organizationId ?? null;
+  }
+
   async revokeSessionById(userId: string, sessionId: string): Promise<boolean> {
     const result = await this.prisma.refreshToken.updateMany({
       where: { id: sessionId, userId, revokedAt: null },

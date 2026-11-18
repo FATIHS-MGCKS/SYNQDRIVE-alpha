@@ -21,10 +21,12 @@ import { IamMfaService } from '@modules/iam-mfa/iam-mfa.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { PaginationParams } from '@shared/utils/pagination';
 import { SecurityGovernanceService } from './security-governance.service';
+import {
+  SecurityGovernanceSessionAuditService,
+  type SessionRevocationAuditRequest,
+} from './security-governance-session-audit.service';
 
-type AuthedRequest = {
-  user?: { id?: string };
-};
+type AuthedRequest = SessionRevocationAuditRequest;
 
 @Controller('admin/security')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -34,6 +36,7 @@ export class SecurityGovernanceController {
     private readonly governance: SecurityGovernanceService,
     private readonly mfa: IamMfaService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly sessionAudit: SecurityGovernanceSessionAuditService,
   ) {}
 
   @Get('attention-summary')
@@ -73,8 +76,20 @@ export class SecurityGovernanceController {
   async revokeSession(
     @Param('userId') userId: string,
     @Param('sessionId') sessionId: string,
+    @Req() req: AuthedRequest,
   ) {
+    const targetOrganizationId = await this.refreshTokens.findSessionOrganizationId(
+      userId,
+      sessionId,
+    );
     const ok = await this.refreshTokens.revokeSessionById(userId, sessionId);
+    this.sessionAudit.recordSingleSessionRevocation({
+      req,
+      targetUserId: userId,
+      sessionId,
+      outcome: ok ? 'SUCCESS' : 'NO_OP',
+      targetOrganizationId,
+    });
     return { revoked: ok };
   }
 
@@ -83,8 +98,13 @@ export class SecurityGovernanceController {
   @UseGuards(StepUpGuard)
   @RequireStepUp(STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS)
   @HttpCode(HttpStatus.OK)
-  async revokeAllSessions(@Param('userId') userId: string) {
-    await this.refreshTokens.revokeAllForUser(userId);
+  async revokeAllSessions(@Param('userId') userId: string, @Req() req: AuthedRequest) {
+    const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUser(userId);
+    this.sessionAudit.recordRevokeAllSessions({
+      req,
+      targetUserId: userId,
+      revokedSessionCount,
+    });
     return { revoked: true };
   }
 
