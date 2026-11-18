@@ -153,3 +153,52 @@ describe('rental-driving-analysis API publish gate (F6 text leak)', () => {
     expect(richPayload.watchpoints[0]).toContain('(77)');
   });
 });
+
+describe('rental-driving-analysis API publish gate (F7 rentalMetrics.vehicleLoad)', () => {
+  const metricsPayload = {
+    rentalMetrics: {
+      version: 'rental-driving-metrics-v1',
+      totals: { totalDistanceKm: 120, totalDurationHours: 2, tripCount: 3, assessableTripCount: 2 },
+      harshEvents: { totalCount: 4, per100Km: { value: 3.2, reliability: 'RELIABLE', reasonCodes: [] } },
+      driverConduct: {
+        level: 'moderate',
+        harshPer100Km: 3.2,
+        abusePer100Km: 0,
+        reliability: 'RELIABLE',
+        reasons: ['SUFFICIENT_DISTANCE'],
+      },
+      vehicleLoad: {
+        level: 'high',
+        stressScore: 82,
+        reliability: 'RELIABLE',
+        reasons: ['SUFFICIENT_DISTANCE'],
+      },
+    },
+  };
+
+  it.each(['COMPLETE', 'PARTIAL'] as const)('preserves vehicleLoad for %s', (status) => {
+    expect(gateRentalAnalysisPayloadForApi(metricsPayload, status)).toEqual(metricsPayload);
+  });
+
+  it.each(['PROVISIONAL', 'NOT_ASSESSABLE', 'FAILED'] as const)(
+    'redacts vehicleLoad stress fields for %s',
+    (status) => {
+      const source = JSON.parse(JSON.stringify(metricsPayload));
+      const gated = gateRentalAnalysisPayloadForApi(source, status) as typeof metricsPayload;
+      expect(gated.rentalMetrics?.vehicleLoad?.stressScore).toBeNull();
+      expect(gated.rentalMetrics?.vehicleLoad?.level).toBeNull();
+      expect(gated.rentalMetrics?.vehicleLoad?.reliability).toBe('RELIABLE');
+      expect(gated.rentalMetrics?.vehicleLoad?.reasons).toEqual(['SUFFICIENT_DISTANCE']);
+      expect(gated.rentalMetrics?.driverConduct?.level).toBe('moderate');
+      expect(gated.rentalMetrics?.harshEvents?.totalCount).toBe(4);
+    },
+  );
+
+  it('does not mutate source rentalMetrics when gating', () => {
+    const source = JSON.parse(JSON.stringify(metricsPayload));
+    const pristine = JSON.parse(JSON.stringify(metricsPayload));
+    gateRentalAnalysisPayloadForApi(source, 'PROVISIONAL');
+    expect(source).toEqual(pristine);
+    expect(source.rentalMetrics.vehicleLoad.stressScore).toBe(82);
+  });
+});

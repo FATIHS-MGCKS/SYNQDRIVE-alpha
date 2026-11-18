@@ -75,6 +75,25 @@ function redactStressDerivedEventSummary(
   return next;
 }
 
+function redactRentalMetricsVehicleLoadStress(
+  metrics: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...metrics };
+  const vehicleLoad = next.vehicleLoad;
+  if (!vehicleLoad || typeof vehicleLoad !== 'object' || Array.isArray(vehicleLoad)) {
+    return next;
+  }
+  const vl = { ...(vehicleLoad as Record<string, unknown>) };
+  if ('stressScore' in vl) {
+    vl.stressScore = null;
+  }
+  if ('level' in vl) {
+    vl.level = null;
+  }
+  next.vehicleLoad = vl;
+  return next;
+}
+
 /** API response gate — does not mutate persisted payload; shallow-copies for outbound JSON only. */
 export function gateRentalAnalysisPayloadForApi(
   payload: Prisma.JsonValue | null | undefined,
@@ -117,6 +136,13 @@ export function gateRentalAnalysisPayloadForApi(
   if (eventSummary && typeof eventSummary === 'object' && !Array.isArray(eventSummary)) {
     root.eventSummary = redactStressDerivedEventSummary(
       eventSummary as Record<string, unknown>,
+    );
+  }
+
+  const rentalMetrics = root.rentalMetrics;
+  if (rentalMetrics && typeof rentalMetrics === 'object' && !Array.isArray(rentalMetrics)) {
+    root.rentalMetrics = redactRentalMetricsVehicleLoadStress(
+      rentalMetrics as Record<string, unknown>,
     );
   }
 
