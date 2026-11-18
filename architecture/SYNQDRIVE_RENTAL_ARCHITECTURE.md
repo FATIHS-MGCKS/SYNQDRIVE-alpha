@@ -6,7 +6,27 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-11-16 (Platform product catalog P2-PR1 → `AUDIT_IN_PROGRESS`; VYMOD slug + catalog status foundation on Alpha central platform)
+**Last updated:** 2026-11-18 (binding monorepo synopsis — registry rows unchanged)
+
+---
+
+## Binding platform monorepo (synopsis)
+
+**Normative detail:** [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) § Binding monorepo architecture.
+
+| Topic | Binding fact |
+|-------|----------------|
+| Repository | **SYNQDRIVE-alpha** — central active platform repo (this registry) |
+| Runtime | Single NestJS modular monolith + SPA(s); one documented production deployment |
+| Core vs Rental | **Logical** ownership domains in the **same** codebase and deployment |
+| Core scope | Master Admin, IAM/entitlements, vehicles/trips, Trip FSM, DS4/DBI, vehicle intelligence (tire/battery/service), shared platform infrastructure |
+| Rental scope | Bookings, rental customers, rental payments/contracts, rental rules/workflows, rental product analysis and UI |
+| Dependency rule | Core intelligence **must not** depend on Rental **business-logic services**; Rental consumes Core via ports/DI/guards |
+| Co-located Rental | **In-process** — M2M **not required** |
+| External products | VYMOD, Fleet, logbook, school transport, etc. → versioned Core APIs + auth/grants/scope when separate |
+| Extraction | Physical Core/Rental repo split **PAUSED/SUPERSEDED** — do not restart without owner decision |
+
+**P4 note:** P4 completed the **reviewed service-boundary** port scope for VI ↔ rental-driving-analysis — not every possible future decoupling ([`platform-reorientation/evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](platform-reorientation/evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md)).
 
 ---
 

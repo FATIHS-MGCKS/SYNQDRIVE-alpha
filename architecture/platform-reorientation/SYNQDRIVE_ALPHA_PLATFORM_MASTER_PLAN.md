@@ -24,7 +24,34 @@
 | Rental as co-located app forced through external M2M to Core | **REJECTED** — Rental is **first-class** and uses **in-process** shared platform services + user JWT |
 | TAXI as operational `ProductSlug` | **RETIRED** — historical rows preserved; `BusinessType.TAXI` and legal scope `TAXI` remain distinct |
 
-## Current architecture (verified on `origin/main` — `7f243d0fe30ba87e9225f5b3a454d901d5fef934`)
+## Binding monorepo architecture (owner confirmed — no redesign)
+
+**Epistemic:** **CONFIRMED** owner decision (2026-11-18 documentation alignment). This section **documents** the binding shape; it does **not** introduce a new architecture or restart physical Core/Rental repository extraction.
+
+1. **SYNQDRIVE-alpha** remains the **central active platform repository** (single deployable application runtime + documented VPS production path).
+2. **Core** and **Rental** are **separate logical ownership and dependency domains** within the **same** repository, NestJS application runtime, and deployment — not separate production deployables in Alpha today.
+3. **Core owns:** Master Admin; IAM and entitlements; canonical vehicles and trips; Trip FSM; DS4 and DBI; tire/battery/service intelligence; shared platform infrastructure (workers, cross-cutting modules registered at composition root).
+4. **Rental owns:** bookings; rental customers; rental payments and contracts; rental-specific rules and workflows; product-specific analysis and UI (`frontend/src/rental`, rental backend modules).
+5. **Core remains product-neutral:** Core intelligence and platform services **must not** take **direct dependencies** on Rental **business-logic services** (see P4 boundary evidence for the reviewed decoupling scope).
+6. **Rental consumes Core** through defined **internal contracts**, **ports**, **NestJS DI**, and **authorized guards**. **External M2M is not required** for co-located Rental in Alpha.
+7. **Other independent applications** (VYMOD, Fleet, digital logbook, school transport, etc.) consume **versioned Core APIs** when deployed separately.
+8. **External API access** requires the appropriate **authentication, authorization, product grants, organization scope**, and **vehicle permissions** — respect existing activation and security gates (`CORE_APP_M2M_*` defaults remain fail-closed unless explicitly armed).
+9. Do **not** claim all external/M2M APIs are **production-ready**; merged code ≠ production validation (see P3 ledger rows).
+10. Do **not** restart the former **physical Core/Rental repository extraction** — historical intent is **PAUSED/SUPERSEDED** (§ Historical trajectory).
+
+**Dependency invariants (binding):**
+
+| Invariant | Rule |
+|-----------|------|
+| Core → Rental business services | **Forbidden** (intelligence/platform must use ports or Rental implements Core-defined interfaces) |
+| Rental → Core platform/intelligence | **Allowed** via DI, guards, internal read contracts |
+| Co-located Rental ↔ Core | **In-process** — user JWT + org scoping; **not** M2M-mandatory |
+| Separate product backends | **M2M + registry grants** when security gates enabled — not required for in-repo Rental |
+| Physical split of Core/Rental repos | **PAUSED** — `SYNQDRIVE-CORE` is a **reference fork** only |
+
+Central registry synopsis: [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../SYNQDRIVE_RENTAL_ARCHITECTURE.md) (module inventory; Core/Rental ownership per module row).
+
+## Current architecture (verified on `origin/main` — `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e`)
 
 **Epistemic:** Repository layout and module inventory are **CONFIRMED** from tree + registry. Production runtime details for new platform slices require separate Production read-only evidence per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md).
 
@@ -79,6 +106,10 @@ Implementation reference: `backend/src/modules/core-app-m2m/core-app-service-reg
 
 **Invariant:** Preserve all current Rental endpoints and runtime behavior unless an owner-approved PR explicitly changes them.
 
+### P4 completion scope (not every future decoupling)
+
+**P4 (merged #2423–#2426 + boundary audit)** completed the **reviewed service-boundary scope**: Core vehicle-intelligence modules must not inject Rental **business-logic services**; VI ↔ rental-driving-analysis coupling uses **explicit ports** and composition-root wiring. **P4 does not** close every possible future decoupling (e.g. broader `prisma.booking` persistence reads in VI, additional port slices, or hypothetical split deployables). See [`evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) § Out of P4 violation scope.
+
 ## Entitlements and vehicle access (P2 baseline — merged)
 
 - Declared capabilities: `core.entitlements.v1` (JWT; `m2mProductionReady=false` until P3).
@@ -122,10 +153,10 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | **P3-PR4** | Versioned vehicle read APIs (`core.read.vehicles.v1`) | **MERGED** #2420 (`0bdaa54f4`) | **NOT_CLAIMED** |
 | **P3-PR5** | MA service-client management UI + admin APIs | **MERGED** #2421 (`b05a2bbd3`) | **NOT_CLAIMED** |
 | **P3 integration cert** | Cross-slice security + harness evidence | **MERGED** #2422 (`19fae93b9`) | **NOT_CLAIMED** |
-| **P4** | Complete contracts without Rental disruption | **P4-PR1–PR4 MERGED** (#2423–#2426); boundary audit **COMPLETE** — [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) | Owner-gated |
-| **P5** | Full MA architecture/security audit | Planned | Owner sign-off |
-| **P6** | Rental product completion | **Blocked on P5** | Owner-gated |
-| **P7** | VYMOD + further products | Owner priority | Owner-gated |
+| **P4** | Reviewed Core↔Rental **service** boundary (ports; not all future decoupling) | **P4-PR1–PR4 MERGED** (#2423–#2426); boundary audit **COMPLETE** — [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) | Owner-gated |
+| **P5** | Full MA architecture/security audit | **IN_PROGRESS** — P5-B2 MFA [#2428](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2428) `57df0449b`, [#2429](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2429) `e1d332a2f`; P5-B3 semantic/failure audit [#2430](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2430)–[#2433](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2433) merged to `0a20ccb8f` (PR5 voice slice [#2434](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2434) open at doc time); evidence under [`evidence/`](evidence/) `P5_B2_*`, `P5_B3_*` | Owner sign-off |
+| **P6** | Rental product completion | **Blocked on P5** (sequencing unchanged) | Owner-gated |
+| **P7** | VYMOD + further products | Owner priority (sequencing unchanged) | Owner-gated |
 
 ## Non-goals
 
@@ -160,4 +191,4 @@ Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`
 4. After merge/deploy: reconcile ledger `merge_status` / `deploy_status` in the next authorized documentation update only — never infer deploy from merge alone.
 5. Run `bash architecture/scripts/validate-module-registry.sh` when registry metadata changes.
 
-**Last updated:** 2026-11-18 (P4-PR4 merged #2426; P4 boundary final audit complete — `539d7705e`)
+**Last updated:** 2026-11-18 (binding monorepo documentation alignment; P5 **IN_PROGRESS** on `0a20ccb8f`; P4 scope clarification)
