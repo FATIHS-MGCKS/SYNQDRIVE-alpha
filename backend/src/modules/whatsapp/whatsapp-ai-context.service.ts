@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  WHATSAPP_BOOKING_OPERATIONAL_READ_PORT,
+  type WhatsAppBookingOperationalReadPort,
+} from './ports/whatsapp-booking-operational-read.port';
 import type { WhatsAppAiContextSnapshot } from './whatsapp-ai.types';
 
 const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
@@ -14,7 +17,8 @@ const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
 export class WhatsAppAiContextService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly bookings: BookingsService,
+    @Inject(WHATSAPP_BOOKING_OPERATIONAL_READ_PORT)
+    private readonly bookingRead: WhatsAppBookingOperationalReadPort,
   ) {}
 
   async load(
@@ -81,7 +85,7 @@ export class WhatsAppAiContextService {
     let station: WhatsAppAiContextSnapshot['station'] = null;
 
     if (bookingId) {
-      const detail = await this.bookings.findDetail(orgId, bookingId);
+      const detail = await this.bookingRead.getOperationalRead(orgId, bookingId);
       if (detail) {
         hasActiveBooking = ACTIVE_BOOKING_STATUSES.includes(detail.core.statusEnum as BookingStatus);
         vehicleId = detail.vehicle?.vehicleId ?? vehicleId;

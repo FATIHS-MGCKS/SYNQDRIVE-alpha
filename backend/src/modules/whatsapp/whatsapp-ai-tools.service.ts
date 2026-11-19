@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  WHATSAPP_BOOKING_OPERATIONAL_READ_PORT,
+  type WhatsAppBookingOperationalReadPort,
+} from './ports/whatsapp-booking-operational-read.port';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
@@ -14,7 +17,8 @@ const STALE_GPS_MS = 2 * 60 * 60 * 1000;
 export class WhatsAppAiToolsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly bookings: BookingsService,
+    @Inject(WHATSAPP_BOOKING_OPERATIONAL_READ_PORT)
+    private readonly bookingRead: WhatsAppBookingOperationalReadPort,
     private readonly documentBundle: BookingDocumentBundleService,
     private readonly vehicles: VehiclesService,
     private readonly damages: DamagesService,
@@ -28,7 +32,7 @@ export class WhatsAppAiToolsService {
     if (!ctx.booking) {
       return { tool: 'getBookingSummary', ok: false, summary: 'Keine Buchung verknüpft' };
     }
-    const detail = await this.bookings.findDetail(orgId, ctx.booking.id);
+    const detail = await this.bookingRead.getOperationalRead(orgId, ctx.booking.id);
     if (!detail) {
       return { tool: 'getBookingSummary', ok: false, summary: 'Buchung nicht gefunden' };
     }
@@ -54,7 +58,7 @@ export class WhatsAppAiToolsService {
     if (!ctx.booking) {
       return { tool: 'getPickupInstructions', ok: false, summary: 'Keine Buchung verknüpft' };
     }
-    const detail = await this.bookings.findDetail(orgId, ctx.booking.id);
+    const detail = await this.bookingRead.getOperationalRead(orgId, ctx.booking.id);
     const station = detail?.stations.pickup;
     if (!station) {
       return {
@@ -81,7 +85,7 @@ export class WhatsAppAiToolsService {
     if (!ctx.booking) {
       return { tool: 'getReturnInstructions', ok: false, summary: 'Keine Buchung verknüpft' };
     }
-    const detail = await this.bookings.findDetail(orgId, ctx.booking.id);
+    const detail = await this.bookingRead.getOperationalRead(orgId, ctx.booking.id);
     const station = detail?.stations.return ?? detail?.stations.pickup;
     if (!station) {
       return { tool: 'getReturnInstructions', ok: false, summary: 'Keine Rückgabestation hinterlegt' };
@@ -133,7 +137,7 @@ export class WhatsAppAiToolsService {
     if (!ctx.booking) {
       return { tool: 'getPaymentDepositStatus', ok: false, summary: 'Keine Buchung verknüpft' };
     }
-    const detail = await this.bookings.findDetail(orgId, ctx.booking.id);
+    const detail = await this.bookingRead.getOperationalRead(orgId, ctx.booking.id);
     const finance = detail?.finance;
     if (!finance) {
       return { tool: 'getPaymentDepositStatus', ok: false, summary: 'Keine Zahlungsdaten verfügbar' };

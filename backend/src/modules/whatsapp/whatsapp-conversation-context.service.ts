@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { BookingStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  WHATSAPP_BOOKING_OPERATIONAL_READ_PORT,
+  type WhatsAppBookingOperationalReadPort,
+} from './ports/whatsapp-booking-operational-read.port';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { WhatsAppConsentService } from './whatsapp-consent.service';
@@ -22,7 +25,8 @@ const ACTIVE_BOOKING: BookingStatus[] = [
 export class WhatsAppConversationContextService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly bookings: BookingsService,
+    @Inject(WHATSAPP_BOOKING_OPERATIONAL_READ_PORT)
+    private readonly bookingRead: WhatsAppBookingOperationalReadPort,
     private readonly documentBundle: BookingDocumentBundleService,
     private readonly damages: DamagesService,
     private readonly consent: WhatsAppConsentService,
@@ -96,7 +100,9 @@ export class WhatsAppConversationContextService {
     let tasks: WhatsAppConversationContextDto['tasks'] = null;
     let handover: WhatsAppConversationContextDto['handover'] = null;
 
-    const detail = bookingId ? await this.bookings.findDetail(orgId, bookingId) : null;
+    const detail = bookingId
+      ? await this.bookingRead.getOperationalRead(orgId, bookingId)
+      : null;
 
     if (detail) {
       booking = {
@@ -130,10 +136,14 @@ export class WhatsAppConversationContextService {
 
       documents = {
         bundleStatus: detail.documents.bundleStatus,
-        missingCount: detail.documents.legalMissing.length + detail.documents.slots.filter((s) => s.status === 'missing').length,
+        missingCount:
+          detail.documents.legalMissing.length +
+          detail.documents.slots.filter((s) => s.status === 'missing').length,
         missingLabels: [
           ...detail.documents.legalMissing,
-          ...detail.documents.slots.filter((s) => s.status === 'missing').map((s) => s.documentType),
+          ...detail.documents.slots
+            .filter((s) => s.status === 'missing')
+            .map((s) => s.documentType),
         ],
         warnings: detail.documents.warnings,
       };
@@ -152,9 +162,9 @@ export class WhatsAppConversationContextService {
 
       const frontendBase = process.env.FRONTEND_URL?.trim()?.replace(/\/$/, '') ?? '';
       handover = {
-        pickupCompleted: Boolean(detail.handover.pickup),
+        pickupCompleted: detail.handover.pickup != null,
         pickupCompletedAt: detail.handover.pickup?.completedAt ?? null,
-        returnCompleted: Boolean(detail.handover.return),
+        returnCompleted: detail.handover.return != null,
         returnCompletedAt: detail.handover.return?.completedAt ?? null,
         operatorBookingUrl: frontendBase
           ? `${frontendBase}/operator/bookings/${detail.core.bookingId}`
