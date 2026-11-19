@@ -53,32 +53,33 @@ Legend — **EVIDENCE_LEVEL:** `CI_POSTGRES` = disposable Postgres + opt-in env;
 | Single-spec wizard→return Postgres E2E | **D** | Useful hardening; P6 scope explicitly modular (PR5B vs PR5C/E/D). |
 | Live Didit verification sessions | **C** | Rental production launch / KYC; PR5E covers DB+manual path only. |
 | Stripe capture, webhooks, settlement | **C** | Production payments; PR5D covers persistence + mocked checkout. |
-| Redis/Bull queue durability & document workers | **C** / **D** | Launch gates vs hardening; mocked in certification harnesses. |
+| Redis/Bull queue durability in certification harness | **D** | Test harness mocks queues; durable worker behavior not part of P6 Postgres scope. |
+| Document generation/delivery workers (Production) | **C** | Rental launch — async bundle generation not verified in disposable CI. |
 | Outbound transactional email delivery | **C** | Payment email mocked in PR5C/D/E harness. |
 | Real `RentalHealthService` deep dependencies | **D** | Mocked open in Postgres HTTP harnesses; production health separate. |
 | Production deployed SHA workflow validation | **C** | Repo/CI certified; Production drift documented in `AUDIT_MANIFEST.md`. |
-| `AUTHORITY_ACTIVE` promotion | **A** (bookings audit) | Separate complete authority audit — **not** P6 Postgres certification. |
+| `AUTHORITY_ACTIVE` promotion (bookings module) | **D** | Separate governance audit / promotion gate — **not** a P6 disposable-Postgres certification blocker. |
 | Core/Rental code boundary extraction (STEP 1) | **B** | Blocks SYNQDRIVE-CORE independence — **not** solved by more PR5 Postgres tests. |
-| M2M / service-client activation at scale | **B** | Core platform workstream (P3+ in extraction plan). |
-| Rental rules module authority (`NOT_STARTED` registry row) | **B** / **D** | Documentation inventory; Core separation does not require rental-rules AUTHORITY_ACTIVE first. |
+| Rental rules module authority (`NOT_STARTED` registry row) | **D** | Documentation inventory only; not required for Core STEP 1 operability. |
+| M2M / `CORE_APP_M2M_ENABLED` production activation between **separate** Core and Rental deployments | **C** | **STEP 3** integration gate after standalone apps exist; Alpha already ships M2M **default OFF** for in-monolith operation. |
 
 ### Remaining P6 certification blockers (category A)
 
-**None** for the **declared** P6 disposable-Postgres + workflow harness scope. Open items are **audit promotion** (`AUTHORITY_ACTIVE`) and **explicit non-goals** (full lifecycle single spec, Production).
+**None** for the **declared** P6 disposable-Postgres + workflow harness scope. Category **D** governance items and explicit non-goals (full lifecycle single spec, Production) do **not** reopen P6.
 
 ## Architectural decision (STEP 1 / 2 / 3)
 
 Owner sequence preserved:
 
-1. **STEP 1:** SYNQDRIVE-CORE operational **without** Rental — extraction, IAM/products/M2M, vehicle intelligence in Core per master plan.  
-2. **STEP 2:** Standalone Rental from SYNQDRIVE-alpha **after** Core independence.  
-3. **STEP 3:** Rental↔Core via approved versioned APIs / M2M.
+1. **STEP 1:** SYNQDRIVE-CORE repository **operational without Rental modules** — physical extraction, Core platform IAM/products, vehicle intelligence; co-located in-process coupling in Alpha is **not** STEP 1.
+2. **STEP 2:** Standalone Rental from SYNQDRIVE-alpha **after** Core independence.
+3. **STEP 3:** Rental↔Core via approved versioned APIs; **M2M live activation** (`CORE_APP_M2M_ENABLED`, distributed rate limits) is an inter-app **production** gate — **not** required for STEP 1 Core to run Rental-free.
 
-**Determination:** P6 Rental Postgres certification **does not block STEP 1**. Mocked Didit/Stripe/email in Rental E2E harnesses are **not** Core separation blockers. **Recommend returning to SYNQDRIVE-CORE independence workstream** as the smallest next executable operation.
+**Determination:** P6 Rental Postgres certification **does not block STEP 1**. Mocked Didit/Stripe/email in Rental E2E harnesses are **not** Core separation blockers. **M2M “at scale”** is **not** classified as a STEP 1 blocker (Alpha P3 M2M merged, default OFF). **Recommend returning to SYNQDRIVE-CORE independence workstream** as the smallest next executable operation.
 
 ## Smallest next executable operation
 
-**`SYNQDRIVE-CORE_P3+_EXTRACTION_CONTINUATION`** — resume platform extraction journal on `SYNQDRIVE-CORE` `main` (service-client registry, M2M, entitlements APIs per master plan), with Rental certification artifacts treated as **frozen evidence** on alpha `8b8a6e3d3`.
+**`SYNQDRIVE-CORE_P3+_EXTRACTION_CONTINUATION`** — resume platform extraction journal on `SYNQDRIVE-CORE` `main` (Core domain extraction, vehicle/platform APIs per master plan — **not** Rental Postgres certification), with Rental certification artifacts treated as **frozen evidence** on alpha `8b8a6e3d3`.
 
 Optional Rental follow-ups (category D, not blocking): compose wizard→handover in one disposable spec; Production read-only workflow sample; rental-rules module audit.
 

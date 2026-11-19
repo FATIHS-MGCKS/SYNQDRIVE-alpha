@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | P6-PR6 independent review F1–F4 doc remediation | P6-PR6 | Progress ledger DRAFT restore; immutable `ORIGIN_MAIN_SHA`; gap single-category; M2M STEP 3 not STEP 1 |
 | 2026-11-19 | P6 certification closeout report + gap classification | P6-PR6 | `BKG-EVID-P6-CERTIFICATION-CLOSEOUT-2026-11-19`; main `8b8a6e3d3`; GO for agreed scope; CORE STEP 1 next |
 | 2026-11-19 | P6-PR5E rental category/override policy enum @map closeout | P6-PR5E | foreign/additional/young driver policy columns on two models |
 | 2026-11-19 | P6-PR5E org rental rules Prisma @map + ephemeral schema preflight | P6-PR5E | CI column credit_card_required; disposable parity SELECT guard |
