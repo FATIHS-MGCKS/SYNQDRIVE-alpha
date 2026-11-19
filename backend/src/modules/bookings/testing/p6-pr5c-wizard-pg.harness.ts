@@ -16,7 +16,7 @@ import { DepositResolverService } from '@modules/deposit/deposit-resolver.servic
 import { PricingMigrationService } from '@modules/pricing/pricing-migration.service';
 import { PricingQuoteService } from '@modules/pricing/pricing-quote.service';
 import { PricingService } from '@modules/pricing/pricing.service';
-import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
+import { createP6Pr5cRentalEffectiveRulesStub } from './p6-pr5c-rental-rules.stub';
 import { ensureOrganizationProductEntitlement } from '@modules/vehicle-onboarding/testing/org-product-test.harness';
 import { insertP6Pr5bTestUser } from './rental-booking-lifecycle-pg.harness';
 
@@ -194,8 +194,8 @@ export async function createP6Pr5cPricingQuote(
 ): Promise<{ quoteId: string; simulation: Awaited<ReturnType<PricingService['simulateBookingPrice']>> }> {
   const prismaSvc = prisma as unknown as PrismaService;
   const migration = new PricingMigrationService(prismaSvc);
-  const rentalRules = new RentalEffectiveRulesService(prismaSvc);
-  const depositResolver = new DepositResolverService(prismaSvc, rentalRules);
+  const rentalRules = createP6Pr5cRentalEffectiveRulesStub();
+  const depositResolver = new DepositResolverService(prismaSvc, rentalRules as never);
   const depositSnapshot = new BookingDepositSnapshotService(prismaSvc);
   const pricing = new PricingService(prismaSvc, migration, depositResolver, depositSnapshot);
   const quotes = new PricingQuoteService(prisma as unknown as PrismaService, pricing);

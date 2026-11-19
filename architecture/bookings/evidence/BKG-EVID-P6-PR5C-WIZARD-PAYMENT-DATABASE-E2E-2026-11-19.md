@@ -45,6 +45,7 @@ P6-PR5B **handover** certification (`DATABASE_HANDOVER_E2E_VERIFIED`) remains un
 | RDA / tasks / email | No-op mocks |
 | Document bundle | `generateInitialBundle` mocked (persistence focus: booking, quote, invoice) |
 | Stripe | `P6_PR5C_STRIPE_CHECKOUT_BOUNDARY_MOCK` |
+| Rental effective rules | `createP6Pr5cRentalEffectiveRulesStub()` — permissive org-layer rules without `vehicle_rental_requirement_overrides` reads (wizard/deposit focus, not rental-rules revision depth) |
 
 ## CI
 

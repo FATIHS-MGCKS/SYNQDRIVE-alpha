@@ -24,6 +24,7 @@ import { PricingQuoteService } from '@modules/pricing/pricing-quote.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
+import { createP6Pr5cRentalEffectiveRulesStub } from './p6-pr5c-rental-rules.stub';
 import { BookingPaymentRequestRepository } from '@modules/payments/repositories/booking-payment-request.repository';
 import { OrganizationPaymentAccountRepository } from '@modules/payments/repositories/organization-payment-account.repository';
 import { PaymentTransactionRepository } from '@modules/payments/repositories/payment-transaction.repository';
@@ -155,7 +156,10 @@ export async function createP6Pr5cWizardHttpApp(
       StationsV2ConfigService,
       StationRuleEngineService,
       StationValidationService,
-      RentalEffectiveRulesService,
+      {
+        provide: RentalEffectiveRulesService,
+        useValue: createP6Pr5cRentalEffectiveRulesStub(),
+      },
       DepositResolverService,
       BookingDepositSnapshotService,
       PricingMigrationService,
