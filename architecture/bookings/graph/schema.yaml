@@ -1,0 +1,162 @@
+# Bookings Knowledge Graph — Schema
+
+version: "0.1"
+description: >
+  Schema for the Bookings living architecture authority (bootstrap, AUDIT_IN_PROGRESS).
+  Structural reference: architecture/tankstellenerkennung/graph/schema.yaml.
+
+node_types:
+  - domain
+  - orchestrator
+  - pipeline
+  - policy
+  - queue
+  - worker
+  - authority
+  - persist
+  - api
+  - consumer
+  - port
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - DOMAIN_REASONING
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - input_to
+  - persists
+  - enqueues
+  - processes
+  - governs
+  - gates
+  - projects_to
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - rejected_in_favour_of
+  - owned_by
+  - depends_on
+  - must_not_influence
+  - implements
+
+relation_semantics_doc: architecture/bookings/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: BKG-DOM-
+  orchestrator: BKG-ORCH-
+  pipeline: BKG-PIPE-
+  policy: BKG-POL-
+  queue: BKG-QUEUE-
+  worker: BKG-WORK-
+  authority: BKG-AUTH-
+  persist: BKG-PERSIST-
+  api: BKG-API-
+  consumer: BKG-CONS-
+  port: BKG-PORT-
+  decision: BKG-DEC-
+  evidence: BKG-EVID-
+  test_evidence: BKG-TEST-
+  hypothesis: BKG-HYP-
+  invariant: BKG-INV-
+  gap: BKG-GAP-
+  contradiction: BKG-CONTRA-
+  failed_approach: BKG-FAIL-
+  rejected_approach: BKG-REJECT-
+  superseded_approach: BKG-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - owner_module
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes
+
+invariant_fields:
+  required:
+    - id
+    - kind
+    - title
+    - statement
+    - epistemic_status
+  optional:
+    - evidence
+    - notes

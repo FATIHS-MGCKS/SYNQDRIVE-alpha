@@ -43,7 +43,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Automatic Trip Enrichment (ATE) | Orchestrates post-finalize trip behavior enrichment, hardware routing, and reconciliation-driven enrichment chains. | `AUTHORITY_ACTIVE` | `CANONICAL` (per [GRAPH.yaml](knowledge-graphs/automatic-trip-enrichment/GRAPH.yaml)) | [`architecture/knowledge-graphs/automatic-trip-enrichment/`](knowledge-graphs/automatic-trip-enrichment/) |
 | Battery V2 | Documents Battery V2 health model, signal authority, lifecycle, execution, persistence, and consumer contracts. | `AUTHORITY_ACTIVE` | Phase 4 resolution planning · gaps remain open | [`architecture/battery-v2/`](battery-v2/) |
 | Billing (SynqDrive SaaS) | Tenant subscription billing, Stripe SaaS catalog, usage metering, and master billing reconciliation. | `NOT_STARTED` | N/A — inventory only | — |
-| Bookings | Rental booking lifecycle from wizard through handover, eligibility gates, pickup gate, and payment coupling. | `NOT_STARTED` | N/A — inventory only | — |
+| Bookings | Rental booking lifecycle from wizard through handover, eligibility gates, pickup gate, and payment coupling. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · P6-PR4 authority reconstruction 2026-11-19 | [`architecture/bookings/`](bookings/) |
 | Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 migration consumer (PR-8) · Production audit not started | [`architecture/brakes-health/`](brakes-health/) |
 | Business Audit | Durable business-event audit outbox with scheduled processing for operational audit records. | `NOT_STARTED` | N/A — inventory only | — |
 | Business Insights | Detector-based dashboard insight signals such as utilization, shortages, and fleet operational patterns. | `NOT_STARTED` | N/A — inventory only | — |
@@ -424,6 +424,20 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Repository audit + read-only Production baseline complete for P1 scope; V2 ↔ DS4 comparison and target architecture documented; promotion gate open (setup-count reconciliation, DI graph DS4 node, post-adapter Production baseline). |
 | **Mandatory entry documents (partial)** | [README.md](tires/README.md) · [AUDIT_MANIFEST.md](tires/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](tires/CURRENT_STATE.md) · [integration/DS4_MOTION_INTEGRATION_AUDIT.md](tires/integration/DS4_MOTION_INTEGRATION_AUDIT.md) · [AGENT_CONTRACT.md](tires/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](tires/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](tires/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](tires/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](tires/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](tires/contradictions/KNOWLEDGE_GAPS.md) · [contradictions/OPEN_CONTRADICTIONS.md](tires/contradictions/OPEN_CONTRADICTIONS.md) |
 | **Validation** | `bash architecture/tires/scripts/validate-graph.sh` |
+
+---
+
+### Bookings
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap 2026-11-19 (P6-PR4); **not** promoted |
+| **Scope** | Wizard draft/confirm, eligibility gatekeeper and recheck, pickup gate, handover, allowed drivers, booking HTTP API, payment coupling, RDA/DI integration hooks, rental/operator UI consumers. |
+| **Authority directory** | [`architecture/bookings/`](bookings/) |
+| **Authority-native status** | Bootstrap V0.1 · repository audit substantial · Production baseline partial (`VERIFIED_READ_ONLY`) |
+| **Ownership boundary** | **Owns** booking aggregate lifecycle and `BookingsController`. **Does NOT own** trip/DS4/DI detection, Stripe webhooks, Master Admin product catalog. **Hosts** P4 DI booking resolution adapter only. |
+| **Mandatory entry documents** | [README.md](bookings/README.md) · [AUDIT_MANIFEST.md](bookings/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](bookings/CURRENT_STATE.md) · [AGENT_CONTRACT.md](bookings/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](bookings/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](bookings/decisions/DECISION_REGISTER.md) · [evidence/PRODUCTION_BASELINE.md](bookings/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/bookings/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 
 ---
 
