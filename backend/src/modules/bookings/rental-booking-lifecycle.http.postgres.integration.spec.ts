@@ -128,6 +128,9 @@ function bookingsBase(orgId: string): string {
   it('blocks pickup handover when document bundle is missing prerequisites', async () => {
     const fixture = await seedP6Pr5bPickupReadyBooking(prisma);
     await prisma.bookingDocumentBundle.delete({ where: { bookingId: fixture.bookingId } });
+    await prisma.generatedDocument.deleteMany({
+      where: { organizationId: fixture.orgId, bookingId: fixture.bookingId },
+    });
     try {
       await request(app.getHttpServer())
         .post(`${bookingsBase(fixture.orgId)}/${fixture.bookingId}/handover/pickup`)
