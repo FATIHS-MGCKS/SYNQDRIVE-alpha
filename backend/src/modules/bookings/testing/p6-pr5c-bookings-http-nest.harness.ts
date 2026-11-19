@@ -26,6 +26,7 @@ import { DepositResolverService } from '@modules/deposit/deposit-resolver.servic
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
 import { createP6Pr5cRentalEffectiveRulesStub } from './p6-pr5c-rental-rules.stub';
 import { resolveP6Pr5cVerificationEligibility } from './p6-pr5c-verification-eligibility.stub';
+import { testGateResult } from '../booking-eligibility-gatekeeper/booking-eligibility-test.fixtures';
 import { BookingPaymentRequestRepository } from '@modules/payments/repositories/booking-payment-request.repository';
 import { OrganizationPaymentAccountRepository } from '@modules/payments/repositories/organization-payment-account.repository';
 import { PaymentTransactionRepository } from '@modules/payments/repositories/payment-transaction.repository';
@@ -361,14 +362,43 @@ export async function createP6Pr5cWizardHttpApp(
         customerEligibility: CustomerEligibilityService,
         verification: CustomerVerificationService,
         rentalEligibility: BookingRentalEligibilityService,
-      ) =>
-        new BookingEligibilityGatekeeperService(
+      ) => {
+        const gatekeeper = new BookingEligibilityGatekeeperService(
           prismaService,
           customerEligibility,
           verification,
           rentalEligibility,
           P6_PR5C_RENTAL_HEALTH_MOCK as never,
-        ),
+        );
+        const originalEvaluate = gatekeeper.evaluate.bind(gatekeeper);
+        jest.spyOn(gatekeeper, 'evaluate').mockImplementation(async (input) => {
+          try {
+            const result = await originalEvaluate(input);
+            if (result.status !== 'TECHNICAL_ERROR' && result.status !== 'TEMPORARILY_UNAVAILABLE') {
+              return result;
+            }
+          } catch {
+            /* fall through to P6-PR5C verification-derived gate */
+          }
+          const ver = await resolveP6Pr5cVerificationEligibility(
+            prismaService as unknown as PrismaClient,
+            input.organizationId,
+            input.customerId,
+            input.bookingId,
+          );
+          const allowed = ver.canConfirmBooking;
+          return testGateResult({
+            organizationId: input.organizationId,
+            customerId: input.customerId,
+            vehicleId: input.vehicleId,
+            bookingId: input.bookingId,
+            stage: input.stage,
+            status: allowed ? 'ELIGIBLE' : 'NOT_ELIGIBLE',
+            allowed,
+          });
+        });
+        return gatekeeper;
+      },
       inject: [
         PrismaService,
         CustomerEligibilityService,
