@@ -43,3 +43,16 @@
 ## Fail-closed alignment
 
 All findings above violate or risk violating **FC-1..FC-4** in `DS4_AUTHORITATIVE_ASSESSMENT_MIGRATION.md`. PR-1 remediates on the **legacy path** before DS4 authority switch (PR-5+).
+
+---
+
+## P6 remediation records (append-only)
+
+Historical P1/P2 tables above are **unchanged**. This section records consumer-path remediation on the Alpha monorepo only.
+
+| Finding | Remediation PR | Recorded branch HEAD | merge_status | Remediation summary | Residual / notes |
+|---------|----------------|----------------------|--------------|---------------------|------------------|
+| **P1-2** | [#2439](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2439) | `afd3b52eca5faf2eaf6810b8a67525fe0acb0490` (code); governance docs on same PR | **OPEN** (draft) | `RentalDrivingAnalysisService` loads **all** `TripDrivingImpact` rows per assigned trip (no query status filter) so missing vs inadmissible rows are distinguished; **only** `analysisStatus` **COMPLETE** \| **PARTIAL** contribute admissible stress via `resolveRentalTripStressScore`; settlement uses `tdiAnalysisStatus` (`isRentalTripImpactSettledForAssessment`, `isRentalTripWithAdmissibleTdiImpact`); specs in `rental-driving-analysis.tdi-quality.spec.ts`, `assessment.spec.ts`, recompute/versioning | **P1-1**, **P1-4**, canonical mapper, DriverScore paths **unchanged** on this PR |
+| **P1-3** | [#2439](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2439) | `afd3b52eca5faf2eaf6810b8a67525fe0acb0490` (code); governance docs on same PR | **OPEN** (draft) | Rental aggregation uses `resolveRentalTripStressScore`: no `trip.drivingScore` when a TDI row exists; `vehicle_trip_compat` only when **no TDI row** and `drivingImpactStatus === PENDING` (F3 — not SKIPPED/FAILED/READY); READY without TDI fail-closed (F1) | `trip-analytics-canonical.service` compat path **not** modified in #2439; **LEGACY_GAP** backfill still owner scope (P2-4) |
+
+**Governance closeout:** `architecture/rental-driving-analysis/CURRENT_STATE.md` aligned; platform ledger rows **P6-PR1-MERGED**, **P6-PR2-DRAFT** (2026-11-19).

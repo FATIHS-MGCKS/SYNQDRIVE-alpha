@@ -2,7 +2,7 @@
 
 **Code:** `backend/src/modules/rental-driving-analysis/`  
 **Persist:** `rental_driving_analyses` (drivingScore, riskLevel, payload, assessmentStatus)  
-**Reads:** `TripDrivingImpact` without analysisStatus filter; fallback `trip.drivingScore` (Consumer Audit V1 P1-2, P1-3)
+**Reads:** `TripDrivingImpact` rows for assigned trips are loaded **including inadmissible** `analysisStatus` values (STALE, PENDING, FAILED, …) so missing rows vs invalid rows are distinguished; **only** `COMPLETE` \| `PARTIAL` contribute admissible stress scores. `trip.drivingScore` (`vehicle_trip_compat`) only when **no TDI row** and `drivingImpactStatus === PENDING` (P6 F3). READY/SKIPPED/FAILED without TDI: no legacy stress score.
 
 **Production (Consumer Audit V1 @ `51adb234…`):** 2 non-superseded analyses, both PROVISIONAL/INSUFFICIENT, unscored.
 

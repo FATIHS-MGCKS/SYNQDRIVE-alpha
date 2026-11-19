@@ -4,6 +4,10 @@ import type {
   RentalDrivingAnalysisCompleteness,
 } from '@prisma/client';
 import type { AnalysisAssessability } from '../vehicle-intelligence/trips/trip-analysis-status';
+import {
+  isRentalTripImpactSettledForAssessment,
+  isRentalTripWithAdmissibleTdiImpact,
+} from './rental-driving-analysis.tdi-quality';
 
 export type RentalAssessmentMissingComponent =
   | 'BOOKING_NOT_COMPLETED'
@@ -24,6 +28,8 @@ export type RentalAssessmentTripSnapshot = {
   tripStatus: string;
   tripAnalysisStatus: string | null;
   drivingImpactStatus: string | null;
+  /** Authoritative TripDrivingImpact analysis status when a row exists. */
+  tdiAnalysisStatus?: string | null;
   analysisAssessability: AnalysisAssessability;
   analysisRunStatus:
     | 'COMPLETED'
@@ -171,7 +177,13 @@ export function assessRentalDrivingAnalysis(
     if (trip.misuseReconciled) {
       tripsWithReconciledMisuse += 1;
     }
-    if (trip.drivingImpactStatus === 'READY') {
+    if (
+      isRentalTripWithAdmissibleTdiImpact({
+        tripStatus: trip.tripStatus,
+        drivingImpactStatus: trip.drivingImpactStatus,
+        tdiAnalysisStatus: trip.tdiAnalysisStatus,
+      })
+    ) {
       tripsWithReadyImpact += 1;
     }
     if (trip.drivingImpactStatus === 'SKIPPED') {
@@ -284,6 +296,7 @@ export function buildRentalAssessmentTripSnapshot(input: {
   tripStatus: string;
   tripAnalysisStatus?: string | null;
   drivingImpactStatus?: string | null;
+  tdiAnalysisStatus?: string | null;
   analysisAssessability: AnalysisAssessability;
   analysisRunStatus?:
     | 'COMPLETED'
@@ -296,8 +309,10 @@ export function buildRentalAssessmentTripSnapshot(input: {
   misuseStage?: 'pending' | 'done' | 'skipped' | 'failed' | null;
 }): RentalAssessmentTripSnapshot {
   const drivingImpactStatus = input.drivingImpactStatus ?? null;
-  const drivingImpactSettled =
-    drivingImpactStatus === 'READY' || drivingImpactStatus === 'SKIPPED';
+  const drivingImpactSettled = isRentalTripImpactSettledForAssessment({
+    drivingImpactStatus,
+    tdiAnalysisStatus: input.tdiAnalysisStatus,
+  });
 
   const misuseReconciled =
     input.misuseStage === 'done' ||
@@ -309,6 +324,7 @@ export function buildRentalAssessmentTripSnapshot(input: {
     tripStatus: input.tripStatus,
     tripAnalysisStatus: input.tripAnalysisStatus ?? null,
     drivingImpactStatus,
+    tdiAnalysisStatus: input.tdiAnalysisStatus ?? null,
     analysisAssessability: input.analysisAssessability,
     analysisRunStatus: input.analysisRunStatus ?? 'MISSING',
     hasAttribution: input.hasAttribution,

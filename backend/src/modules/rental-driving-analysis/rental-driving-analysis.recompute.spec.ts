@@ -1,6 +1,7 @@
 import { BookingStatus, DrivingAnalysisMaturity } from '@prisma/client';
 import { RentalDrivingAnalysisService } from './rental-driving-analysis.service';
 import { RENTAL_DRIVING_ANALYSIS_CALCULATION_VERSION } from './rental-driving-analysis.versioning';
+import { mockAdmissibleTripDrivingImpactRow } from './rental-driving-analysis.test-helpers';
 
 function makeService(deps: {
   prisma: Record<string, any>;
@@ -101,6 +102,10 @@ function assessmentTripRow(trip: (typeof assignedTrips)[number]) {
 function withAssessmentPrisma(prisma: Record<string, any>) {
   return {
     ...prisma,
+    rentalDrivingAnalysis: {
+      findMany: jest.fn().mockResolvedValue([]),
+      ...(prisma.rentalDrivingAnalysis ?? {}),
+    },
     drivingIntelligenceJob: {
       count: jest.fn().mockResolvedValue(0),
       ...(prisma.drivingIntelligenceJob ?? {}),
@@ -137,16 +142,7 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
       },
       tripDrivingImpact: {
         findMany: jest.fn().mockResolvedValue(
-          assignedTrips.map((trip) => ({
-            tripId: trip.id,
-            drivingStressScore: trip.drivingScore,
-            distanceKm: trip.distanceKm,
-            longitudinalStressScore: null,
-            brakingStressScore: null,
-            stopGoStressScore: null,
-            highSpeedStressScore: null,
-            thermalBrakeStressScore: null,
-          })),
+          assignedTrips.map((trip) => mockAdmissibleTripDrivingImpactRow(trip)),
         ),
       },
       rentalDrivingAnalysis: {
@@ -184,16 +180,7 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
       },
       tripDrivingImpact: {
         findMany: jest.fn().mockResolvedValue(
-          assignedTrips.map((trip) => ({
-            tripId: trip.id,
-            drivingStressScore: trip.drivingScore,
-            distanceKm: trip.distanceKm,
-            longitudinalStressScore: null,
-            brakingStressScore: null,
-            stopGoStressScore: null,
-            highSpeedStressScore: null,
-            thermalBrakeStressScore: null,
-          })),
+          assignedTrips.map((trip) => mockAdmissibleTripDrivingImpactRow(trip)),
         ),
       },
       rentalDrivingAnalysis: {
@@ -268,16 +255,7 @@ describe('RentalDrivingAnalysisService recompute (P60)', () => {
       },
       tripDrivingImpact: {
         findMany: jest.fn().mockResolvedValue(
-          assignedTrips.map((trip) => ({
-            tripId: trip.id,
-            drivingStressScore: trip.drivingScore,
-            distanceKm: trip.distanceKm,
-            longitudinalStressScore: null,
-            brakingStressScore: null,
-            stopGoStressScore: null,
-            highSpeedStressScore: null,
-            thermalBrakeStressScore: null,
-          })),
+          assignedTrips.map((trip) => mockAdmissibleTripDrivingImpactRow(trip)),
         ),
       },
       rentalDrivingAnalysis: {

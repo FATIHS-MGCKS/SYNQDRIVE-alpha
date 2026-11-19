@@ -1,4 +1,5 @@
 import {
+  gateRentalAnalysisListQualitativeFields,
   gateRentalAnalysisPayloadForApi,
   resolvePublishedRentalApiDrivingStressScore,
 } from './rental-driving-analysis.api-response.util';
@@ -201,4 +202,32 @@ describe('rental-driving-analysis API publish gate (F7 rentalMetrics.vehicleLoad
     expect(source).toEqual(pristine);
     expect(source.rentalMetrics.vehicleLoad.stressScore).toBe(82);
   });
+});
+
+describe('rental-driving-analysis API list qualitative gate (F2)', () => {
+  const row = {
+    overallLevel: 'moderate',
+    riskLevel: 'elevated',
+    driverStyleCategory: 'sporty',
+    wearImpact: 'high',
+  };
+
+  it.each(['COMPLETE', 'PARTIAL'] as const)(
+    'preserves qualitative fields when %s',
+    (status) => {
+      expect(gateRentalAnalysisListQualitativeFields(status, row)).toEqual(row);
+    },
+  );
+
+  it.each(['PROVISIONAL', 'NOT_ASSESSABLE', 'FAILED'] as const)(
+    'nulls qualitative fields when %s',
+    (status) => {
+      expect(gateRentalAnalysisListQualitativeFields(status, row)).toEqual({
+        overallLevel: null,
+        riskLevel: null,
+        driverStyleCategory: null,
+        wearImpact: null,
+      });
+    },
+  );
 });

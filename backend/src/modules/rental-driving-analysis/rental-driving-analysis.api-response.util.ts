@@ -148,3 +148,27 @@ export function gateRentalAnalysisPayloadForApi(
 
   return root as Prisma.JsonValue;
 }
+
+/** F2 — suppress stress-derived list-row labels when assessment blocks numeric publish. */
+export function gateRentalAnalysisListQualitativeFields<
+  T extends {
+    overallLevel: string | null;
+    riskLevel: string | null;
+    driverStyleCategory: string | null;
+    wearImpact: string | null;
+  },
+>(
+  assessmentStatus: RentalDrivingAnalysisAssessmentStatus | null | undefined,
+  fields: T,
+): T {
+  if (publishesRentalDrivingStressScore(assessmentStatus)) {
+    return fields;
+  }
+  return {
+    ...fields,
+    overallLevel: null,
+    riskLevel: null,
+    driverStyleCategory: null,
+    wearImpact: null,
+  };
+}
