@@ -1,8 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CustomersService } from '@modules/customers/customers.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  VOICE_BOOKING_READ_PORT,
+  type VoiceBookingReadPort,
+} from './ports/voice-booking-read.port';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { InvoiceListReadService } from '@modules/invoices/invoice-list-read.service';
 import { StationsService } from '@modules/stations/stations.service';
@@ -169,7 +172,8 @@ export class VoiceMcpAuditService {
 export class VoiceMcpToolsService {
   constructor(
     private readonly customersService: CustomersService,
-    private readonly bookingsService: BookingsService,
+    @Inject(VOICE_BOOKING_READ_PORT)
+    private readonly bookingRead: VoiceBookingReadPort,
     private readonly vehiclesService: VehiclesService,
     private readonly invoiceListReadService: InvoiceListReadService,
     private readonly stationsService: StationsService,
@@ -270,32 +274,28 @@ export class VoiceMcpToolsService {
     args: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const search = this.pickString(args, ['search', 'licensePlate']) ?? '';
-    const result = await this.bookingsService.findAll(context.organizationId, {
+    const result = await this.bookingRead.searchBookings(context.organizationId, {
       search: search || undefined,
       page: 1,
       limit: 5,
-    } as never);
+    });
 
-    const bookings = Array.isArray(result.data) ? result.data : [];
+    const bookings = result.data;
     if (!bookings.length) {
       throw new VoiceMcpError('DataUnavailable', 'No matching booking was found.');
     }
 
     return {
       matchCount: bookings.length,
-      bookings: bookings.slice(0, 5).map((booking) => {
-        const row = booking as Record<string, unknown>;
-        const bookingId = String(row.id ?? '');
-        return {
-          bookingRef: toBookingReference(bookingId),
-          status: row.status ?? row.statusEnum ?? null,
-          customerName: row.customerName ?? null,
-          vehicleLicense: row.vehicleLicense ?? null,
-          pickupStationName: row.pickupStationName ?? row.station ?? null,
-          startDate: row.startDate ?? null,
-          endDate: row.endDate ?? null,
-        };
-      }),
+      bookings: bookings.slice(0, 5).map((booking) => ({
+        bookingRef: toBookingReference(booking.id),
+        status: booking.status ?? booking.statusEnum ?? null,
+        customerName: booking.customerName ?? null,
+        vehicleLicense: booking.vehicleLicense ?? null,
+        pickupStationName: booking.pickupStationName ?? booking.station ?? null,
+        startDate: booking.startDate ?? null,
+        endDate: booking.endDate ?? null,
+      })),
     };
   }
 
@@ -309,7 +309,7 @@ export class VoiceMcpToolsService {
     }
 
     return {
-      bookingRef: toBookingReference(String(booking.id)),
+      bookingRef: toBookingReference(booking.id),
       status: booking.status,
       statusEnum: booking.statusEnum ?? null,
       customerName: booking.customerName ?? null,
@@ -317,8 +317,8 @@ export class VoiceMcpToolsService {
       vehicleLicense: booking.vehicleLicense ?? null,
       pickupStationName: booking.pickupStationName ?? booking.station ?? null,
       returnStationName: booking.returnStationName ?? null,
-      startDate: booking.startDate ?? null,
-      endDate: booking.endDate ?? null,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
     };
   }
 
@@ -336,14 +336,14 @@ export class VoiceMcpToolsService {
       search.trim(),
     );
     if (!vehicleId) {
-      const bookingMatches = await this.bookingsService.findAll(context.organizationId, {
+      const bookingMatches = await this.bookingRead.searchBookings(context.organizationId, {
         search: search.trim(),
         page: 1,
         limit: 2,
-      } as never);
-      const bookingRows = Array.isArray(bookingMatches.data) ? bookingMatches.data : [];
+      });
+      const bookingRows = bookingMatches.data;
       if (bookingRows.length === 1) {
-        const bookingVehicleId = String((bookingRows[0] as { vehicleId?: string }).vehicleId ?? '');
+        const bookingVehicleId = bookingRows[0].vehicleId;
         if (bookingVehicleId) {
           const vehicle = await this.vehiclesService.findOne(context.organizationId, bookingVehicleId);
           if (vehicle) {
@@ -551,7 +551,7 @@ export class VoiceMcpToolsService {
         bookingRef,
       );
       if (bookingId) {
-        return this.bookingsService.findById(context.organizationId, bookingId);
+        return this.bookingRead.getBookingById(context.organizationId, bookingId);
       }
     }
 
@@ -560,16 +560,16 @@ export class VoiceMcpToolsService {
       return null;
     }
 
-    const result = await this.bookingsService.findAll(context.organizationId, {
+    const result = await this.bookingRead.searchBookings(context.organizationId, {
       search,
       page: 1,
       limit: 2,
-    } as never);
-    const rows = Array.isArray(result.data) ? result.data : [];
+    });
+    const rows = result.data;
     if (rows.length !== 1) {
       return null;
     }
-    return this.bookingsService.findById(context.organizationId, String((rows[0] as { id: string }).id));
+    return this.bookingRead.getBookingById(context.organizationId, rows[0].id);
   }
 
   private async resolveStation(

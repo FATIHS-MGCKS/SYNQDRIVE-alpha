@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { SupportService } from '@modules/support/support.service';
@@ -6,7 +6,10 @@ import { CustomerTimelineService } from '@modules/customers/customer-timeline.se
 import { CustomersService } from '@modules/customers/customers.service';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  VOICE_BOOKING_READ_PORT,
+  type VoiceBookingReadPort,
+} from './ports/voice-booking-read.port';
 import { voiceConversationTaskDedupKey } from '@modules/tasks/automation/task-automation-rule.util';
 import { isEmailSendableDocumentStatus } from '@modules/documents/documents.constants';
 import { VoiceMcpEntityResolverService } from './voice-mcp-entity-resolver.service';
@@ -22,7 +25,8 @@ export class VoiceMcpWriteToolsService {
     private readonly supportService: SupportService,
     private readonly customerTimelineService: CustomerTimelineService,
     private readonly customersService: CustomersService,
-    private readonly bookingsService: BookingsService,
+    @Inject(VOICE_BOOKING_READ_PORT)
+    private readonly bookingRead: VoiceBookingReadPort,
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
     private readonly generatedDocumentsService: GeneratedDocumentsService,
     private readonly entityResolver: VoiceMcpEntityResolverService,
@@ -184,7 +188,7 @@ export class VoiceMcpWriteToolsService {
       throw new VoiceMcpError('DataUnavailable', 'A matching booking is required for a change request.');
     }
 
-    const booking = await this.bookingsService.findById(context.organizationId, bookingId);
+    const booking = await this.bookingRead.getBookingById(context.organizationId, bookingId);
     const changeDetails = sanitizeShortText(args.changeDetails, 2000) ?? 'Booking change requested during voice call.';
 
     const task = await this.tasksService.createManualTask(
@@ -221,7 +225,7 @@ export class VoiceMcpWriteToolsService {
       throw new VoiceMcpError('DataUnavailable', 'A matching booking is required to resend documents.');
     }
 
-    const booking = await this.bookingsService.findById(context.organizationId, bookingId);
+    const booking = await this.bookingRead.getBookingById(context.organizationId, bookingId);
     const customer = booking?.customerId
       ? await this.customersService.findById(context.organizationId, booking.customerId)
       : null;
@@ -288,15 +292,14 @@ export class VoiceMcpWriteToolsService {
     if (!search) {
       return null;
     }
-    const result = await this.bookingsService.findAll(context.organizationId, {
+    const result = await this.bookingRead.searchBookings(context.organizationId, {
       search,
       page: 1,
       limit: 2,
-    } as never);
-    const rows = Array.isArray(result.data) ? result.data : [];
-    if (rows.length !== 1) {
+    });
+    if (result.data.length !== 1) {
       return null;
     }
-    return String((rows[0] as { id: string }).id);
+    return result.data[0].id;
   }
 }

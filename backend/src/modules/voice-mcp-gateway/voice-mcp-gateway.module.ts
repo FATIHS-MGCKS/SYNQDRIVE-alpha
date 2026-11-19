@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
 import { CustomersModule } from '@modules/customers/customers.module';
-import { BookingsModule } from '@modules/bookings/bookings.module';
+import { VoiceBookingReadModule } from '@modules/bookings/voice-booking-read/voice-booking-read.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { StationsModule } from '@modules/stations/stations.module';
@@ -47,7 +47,7 @@ import {
     RedisModule,
     SharedGuardsModule,
     CustomersModule,
-    BookingsModule,
+    VoiceBookingReadModule,
     VehiclesModule,
     InvoicesModule,
     StationsModule,
