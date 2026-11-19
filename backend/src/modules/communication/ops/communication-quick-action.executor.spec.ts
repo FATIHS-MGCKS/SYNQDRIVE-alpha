@@ -14,7 +14,10 @@ import { WhatsAppMessagePolicyService } from '@modules/whatsapp/whatsapp-message
 import { WhatsAppAiRouterService } from '@modules/whatsapp/whatsapp-ai-router.service';
 import { WhatsAppAiContextService } from '@modules/whatsapp/whatsapp-ai-context.service';
 import { WhatsAppAiToolsService } from '@modules/whatsapp/whatsapp-ai-tools.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT,
+  type CommunicationBookingSnapshotReadPort,
+} from '../ports/communication-booking-snapshot-read.port';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { TaskPermissionService } from '@modules/tasks/task-permission.service';
@@ -47,7 +50,9 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
     getPickupInstructions: jest.fn(),
     getReturnInstructions: jest.fn(),
   };
-  const bookings = { findDetail: jest.fn() };
+  const bookingSnapshotRead: CommunicationBookingSnapshotReadPort = {
+    getSnapshot: jest.fn(),
+  };
   const documentBundle = { getBundleView: jest.fn() };
   const tasks = { createManualTask: jest.fn() };
   const taskPermissions = { assert: jest.fn() };
@@ -83,7 +88,10 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
         { provide: WhatsAppAiRouterService, useValue: aiRouter },
         { provide: WhatsAppAiContextService, useValue: aiContext },
         { provide: WhatsAppAiToolsService, useValue: aiTools },
-        { provide: BookingsService, useValue: bookings },
+        {
+          provide: COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT,
+          useValue: bookingSnapshotRead,
+        },
         { provide: BookingDocumentBundleService, useValue: documentBundle },
         { provide: TasksService, useValue: tasks },
         { provide: TaskPermissionService, useValue: taskPermissions },
@@ -109,6 +117,50 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
     });
     expect(aiTools.getPickupInstructions).toHaveBeenCalledTimes(1);
     expect(tasks.createManualTask).not.toHaveBeenCalled();
+  });
+
+  it('request_missing_documents uses booking snapshot port for bookingNumber', async () => {
+    documentBundle.getBundleView.mockResolvedValue({
+      missingLegalDocuments: ['ID'],
+      legal: { missing: [] },
+    });
+    (bookingSnapshotRead.getSnapshot as jest.Mock).mockResolvedValue({
+      bookingNumber: 'B-MD',
+      depositStatus: null,
+      paymentStatus: null,
+    });
+    prisma.whatsAppTemplate.findFirst.mockResolvedValue(null);
+
+    const result = await service.execute(
+      orgId,
+      canonicalId,
+      nativeId,
+      'request_missing_documents',
+      actor,
+    );
+
+    expect(bookingSnapshotRead.getSnapshot).toHaveBeenCalledWith(orgId, 'booking-1');
+    expect(result.actionType).toBe('COMPOSER_PREFILL');
+    expect(result.text).toContain('B-MD');
+    expect(result.text).toContain('ID');
+  });
+
+  it('request_missing_documents throws NotFound when snapshot is null', async () => {
+    documentBundle.getBundleView.mockResolvedValue({
+      missingLegalDocuments: ['ID'],
+      legal: { missing: [] },
+    });
+    (bookingSnapshotRead.getSnapshot as jest.Mock).mockResolvedValue(null);
+    prisma.whatsAppTemplate.findFirst.mockResolvedValue({
+      id: 'tpl-md',
+      language: 'de',
+      bodyTemplate: 'Hi',
+      providerStatus: WhatsAppTemplateProviderStatus.APPROVED,
+    });
+
+    await expect(
+      service.execute(orgId, canonicalId, nativeId, 'request_missing_documents', actor),
+    ).rejects.toMatchObject({ message: 'Booking not found' });
   });
 
   it('send_return_instructions returns COMPOSER_PREFILL without provider send', async () => {
@@ -139,9 +191,10 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
       bodyTemplate: 'Hello {{name}}',
       providerStatus: WhatsAppTemplateProviderStatus.APPROVED,
     });
-    bookings.findDetail.mockResolvedValue({
-      core: { bookingNumber: 'B-1' },
-      finance: { depositStatus: 'REQUESTED', paymentStatus: 'OPEN' },
+    (bookingSnapshotRead.getSnapshot as jest.Mock).mockResolvedValue({
+      bookingNumber: 'B-1',
+      depositStatus: 'REQUESTED',
+      paymentStatus: 'OPEN',
     });
 
     const result = await service.execute(
@@ -154,7 +207,7 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
 
     expect(result.actionType).toBe('TEMPLATE_PREFILL');
     expect(result.template?.templateId).toBe('tpl-1');
-    expect(bookings.findDetail).toHaveBeenCalled();
+    expect(bookingSnapshotRead.getSnapshot).toHaveBeenCalledWith(orgId, 'booking-1');
   });
 
   it('close_conversation uses canonical resolve authority', async () => {

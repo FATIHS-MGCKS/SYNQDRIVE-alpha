@@ -47,7 +47,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 migration consumer (PR-8) · Production audit not started | [`architecture/brakes-health/`](brakes-health/) |
 | Business Audit | Durable business-event audit outbox with scheduled processing for operational audit records. | `NOT_STARTED` | N/A — inventory only | — |
 | Business Insights | Detector-based dashboard insight signals such as utilization, shortages, and fleet operational patterns. | `NOT_STARTED` | N/A — inventory only | — |
-| Communication Center | **Core platform:** omnichannel conversation persistence and operator inbox across WhatsApp, SMS, and voice projections (owner domain 2026-11-19; authority audit not started). | `NOT_STARTED` | N/A — inventory only | — |
+| Communication Center | **Core platform:** omnichannel conversation persistence and operator inbox across WhatsApp, SMS, and voice projections (owner domain 2026-11-19). | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · POST-P6 boundary PR1 port slice · Production **NOT_STARTED** | [`architecture/communication/`](communication/) |
 | Customer Verification (Didit) | Identity verification workflows and Didit webhook handling for rental eligibility. | `NOT_STARTED` | N/A — inventory only | — |
 | Customers | Org-scoped rental customer records, profiles, and customer management APIs. | `NOT_STARTED` | N/A — inventory only | — |
 | Damages | Structured vehicle damage records with pin and image semantics and org-facing damage management. | `NOT_STARTED` | N/A — inventory only | — |

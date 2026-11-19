@@ -8,7 +8,7 @@ import { DocumentsModule } from '@modules/documents/documents.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { StationsModule } from '@modules/stations/stations.module';
-import { BookingsModule } from '@modules/bookings/bookings.module';
+import { CommunicationBookingSnapshotReadModule } from '@modules/bookings/communication-booking-snapshot-read/communication-booking-snapshot-read.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { PrismaModule } from '@shared/database/prisma.module';
@@ -75,7 +75,7 @@ import { CommunicationMetricsRefreshService } from './observability/communicatio
     StationsModule,
     DocumentsModule,
     NotificationsModule,
-    BookingsModule,
+    CommunicationBookingSnapshotReadModule,
     TasksModule,
     forwardRef(() => VoiceAssistantModule),
     forwardRef(() => WhatsAppModule),

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,7 +11,10 @@ import {
   WhatsAppTemplateProviderStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT,
+  type CommunicationBookingSnapshotReadPort,
+} from '../ports/communication-booking-snapshot-read.port';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { TaskPermissionService } from '@modules/tasks/task-permission.service';
@@ -44,7 +48,8 @@ export class CommunicationQuickActionExecutorService {
     private readonly aiRouter: WhatsAppAiRouterService,
     private readonly aiContext: WhatsAppAiContextService,
     private readonly aiTools: WhatsAppAiToolsService,
-    private readonly bookings: BookingsService,
+    @Inject(COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT)
+    private readonly bookingSnapshotRead: CommunicationBookingSnapshotReadPort,
     private readonly documentBundle: BookingDocumentBundleService,
     private readonly tasks: TasksService,
     private readonly taskPermissions: TaskPermissionService,
@@ -95,9 +100,9 @@ export class CommunicationQuickActionExecutorService {
             if (missing.length === 0) {
               throw new BadRequestException('No missing documents for this booking');
             }
-            const detail = await this.bookings.findDetail(orgId, bookingId);
-            if (!detail) throw new NotFoundException('Booking not found');
-            return `Für deine Buchung ${detail.core.bookingNumber} fehlen noch Dokumente: ${missing.join(', ')}. Bitte reiche diese zeitnah ein.`;
+            const snapshot = await this.bookingSnapshotRead.getSnapshot(orgId, bookingId);
+            if (!snapshot) throw new NotFoundException('Booking not found');
+            return `Für deine Buchung ${snapshot.bookingNumber} fehlen noch Dokumente: ${missing.join(', ')}. Bitte reiche diese zeitnah ein.`;
           },
         );
       case 'send_handover_link':
@@ -129,14 +134,14 @@ export class CommunicationQuickActionExecutorService {
           nativeConversationId,
           WhatsAppTemplateCategory.PAYMENT_REMINDER,
           async (orgId, bookingId) => {
-            const detail = await this.bookings.findDetail(orgId, bookingId);
-            if (!detail) throw new NotFoundException('Booking not found');
-            const parts = [`Erinnerung zu Buchung ${detail.core.bookingNumber}`];
-            if (detail.finance.depositStatus === 'REQUESTED') {
-              parts.push(`Kaution: ${detail.finance.depositStatus}`);
+            const snapshot = await this.bookingSnapshotRead.getSnapshot(orgId, bookingId);
+            if (!snapshot) throw new NotFoundException('Booking not found');
+            const parts = [`Erinnerung zu Buchung ${snapshot.bookingNumber}`];
+            if (snapshot.depositStatus === 'REQUESTED') {
+              parts.push(`Kaution: ${snapshot.depositStatus}`);
             }
-            if (detail.finance.paymentStatus && detail.finance.paymentStatus !== 'PAID') {
-              parts.push(`Zahlung: ${detail.finance.paymentStatus}`);
+            if (snapshot.paymentStatus && snapshot.paymentStatus !== 'PAID') {
+              parts.push(`Zahlung: ${snapshot.paymentStatus}`);
             }
             return parts.join('. ');
           },
