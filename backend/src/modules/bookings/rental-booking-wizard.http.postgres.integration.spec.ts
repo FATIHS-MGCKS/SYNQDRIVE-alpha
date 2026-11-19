@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import * as request from 'supertest';
+import { BOOKING_ELIGIBILITY_TRANSITION_CODE } from './booking-eligibility-gatekeeper/booking-eligibility-transition.policy';
 import { createP6Pr5cWizardHttpApp } from './testing/p6-pr5c-bookings-http-nest.harness';
 import {
   assertP6Pr5bPostgresReachable,
@@ -145,7 +146,7 @@ function masterUser(orgId: string, userId: string) {
         .set(...authHeader(masterUser(fixture.orgId, fixture.userId)))
         .expect(200);
 
-      expect(previewRes.body.fingerprint).toBeTruthy();
+      expect(previewRes.body.previewFingerprint).toBeTruthy();
       expect(['ELIGIBLE', 'ELIGIBLE_WITH_WARNINGS']).toContain(previewRes.body.status);
 
       const confirmRes = await request(app.getHttpServer())
@@ -156,7 +157,7 @@ function masterUser(orgId: string, userId: string) {
           privacyAccepted: true,
           status: 'CONFIRMED',
           paymentIntent: 'pay_on_pickup',
-          eligibilityPreviewFingerprint: previewRes.body.fingerprint,
+          eligibilityPreviewFingerprint: previewRes.body.previewFingerprint,
         })
         .expect(201);
 
@@ -183,7 +184,7 @@ function masterUser(orgId: string, userId: string) {
         .send({
           status: 'CONFIRMED',
           paymentIntent: 'pay_on_pickup',
-          eligibilityPreviewFingerprint: previewRes.body.fingerprint,
+          eligibilityPreviewFingerprint: previewRes.body.previewFingerprint,
         })
         .expect(201);
       expect(dupConfirm.body.idempotent).toBe(true);
@@ -219,7 +220,7 @@ function masterUser(orgId: string, userId: string) {
 
   it('denies cross-organization wizard draft read (tenant isolation)', async () => {
     const fixture = await seedP6Pr5cWizardOrg(prisma);
-  const quote = await createP6Pr5cPricingQuote(prisma, fixture);
+    const quote = await createP6Pr5cPricingQuote(prisma, fixture);
     let bookingId = '';
     try {
       const draftRes = await request(app.getHttpServer())
@@ -247,7 +248,7 @@ function masterUser(orgId: string, userId: string) {
     }
   });
 
-  it('blocks confirm when eligibility preview fingerprint is stale', async () => {
+  it('blocks confirm when eligibility preview fingerprint is stale (RULES_CHANGED)', async () => {
     const fixture = await seedP6Pr5cWizardOrg(prisma);
     const quote = await createP6Pr5cPricingQuote(prisma, fixture);
     try {
@@ -271,24 +272,76 @@ function masterUser(orgId: string, userId: string) {
         .query({ paymentIntent: 'pay_on_pickup', targetStatus: 'CONFIRMED' })
         .set(...authHeader(masterUser(fixture.orgId, fixture.userId)))
         .expect(200);
-      const staleFingerprint = previewRes.body.fingerprint as string;
+
+      expect(previewRes.body.status).toBe('ELIGIBLE');
+      expect(previewRes.body.canConfirm).toBe(true);
+
+      const confirmRes = await request(app.getHttpServer())
+        .post(`${orgBase(fixture.orgId)}/bookings/wizard-draft/${bookingId}/confirm`)
+        .set(...authHeader(masterUser(fixture.orgId, fixture.userId)))
+        .send({
+          status: 'CONFIRMED',
+          paymentIntent: 'pay_on_pickup',
+          eligibilityPreviewFingerprint: 'stale-fingerprint-not-from-preview',
+        })
+        .expect(409);
+
+      expect(confirmRes.body.code).toBe(BOOKING_ELIGIBILITY_TRANSITION_CODE.RULES_CHANGED);
+      expect(confirmRes.body.previewFingerprint).toBe(previewRes.body.previewFingerprint);
+      expect(confirmRes.body.previousFingerprint).toBe('stale-fingerprint-not-from-preview');
+
+      const row = await prisma.booking.findFirstOrThrow({
+        where: { id: bookingId, organizationId: fixture.orgId },
+      });
+      expect(row.status).toBe(BookingStatus.PENDING);
+    } finally {
+      await cleanupP6Pr5cWizardFixture(prisma, fixture.orgId);
+      await prisma.organization.delete({ where: { id: fixture.orgBId } }).catch(() => undefined);
+    }
+  });
+
+  it('blocks confirm when eligibility gate fails (NOT_ELIGIBLE)', async () => {
+    const fixture = await seedP6Pr5cWizardOrg(prisma);
+    const quote = await createP6Pr5cPricingQuote(prisma, fixture);
+    try {
+      const draftRes = await request(app.getHttpServer())
+        .post(`${orgBase(fixture.orgId)}/bookings/wizard-draft`)
+        .set(...authHeader(masterUser(fixture.orgId, fixture.userId)))
+        .send({
+          vehicleId: fixture.vehicleId,
+          customerId: fixture.customerId,
+          startDate: fixture.pickupAt.toISOString(),
+          endDate: fixture.returnAt.toISOString(),
+          quoteId: quote.quoteId,
+          pickupStationId: fixture.stationId,
+          returnStationId: fixture.stationId,
+        })
+        .expect(201);
+      const bookingId = draftRes.body.booking.id;
+
+      const previewRes = await request(app.getHttpServer())
+        .get(`${orgBase(fixture.orgId)}/bookings/wizard-draft/${bookingId}/eligibility-preview`)
+        .query({ paymentIntent: 'pay_on_pickup', targetStatus: 'CONFIRMED' })
+        .set(...authHeader(masterUser(fixture.orgId, fixture.userId)))
+        .expect(200);
+      const fingerprint = previewRes.body.previewFingerprint as string;
 
       await prisma.customerVerificationCheck.updateMany({
         where: { organizationId: fixture.orgId, customerId: fixture.customerId },
         data: { status: 'REJECTED' },
       });
 
-      await request(app.getHttpServer())
+      const rejectRes = await request(app.getHttpServer())
         .post(`${orgBase(fixture.orgId)}/bookings/wizard-draft/${bookingId}/confirm`)
         .set(...authHeader(masterUser(fixture.orgId, fixture.userId)))
         .send({
           status: 'CONFIRMED',
           paymentIntent: 'pay_on_pickup',
-          eligibilityPreviewFingerprint: staleFingerprint,
+          eligibilityPreviewFingerprint: fingerprint,
         })
-        .expect((res) => {
-          expect([403, 409]).toContain(res.status);
-        });
+        .expect(409);
+
+      expect(rejectRes.body.code).toBe(BOOKING_ELIGIBILITY_TRANSITION_CODE.NOT_ELIGIBLE);
 
       const row = await prisma.booking.findFirstOrThrow({
         where: { id: bookingId, organizationId: fixture.orgId },

@@ -48,7 +48,8 @@ docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${BASE_DB}" -v ON_ERROR_S
   -c "CREATE DATABASE ${DISPOSABLE_DB};"
 
 echo "P6_PR5B_DISPOSABLE_DATABASE=${DISPOSABLE_DB}"
-echo "DATABASE_URL=${DATABASE_URL}"
+echo "DATABASE_URL_HOST=127.0.0.1"
+echo "DATABASE_URL_DB=${DISPOSABLE_DB}"
 
 npm ci
 npx prisma generate
@@ -124,9 +125,9 @@ run_jest_postgres_suite() {
     exit "${test_exit}"
   fi
   echo "P6_PR5B_HTTP_POSTGRES_TESTS_EXECUTED=7"
-  echo "P6_PR5C_HTTP_POSTGRES_TESTS_EXECUTED=5"
+  echo "P6_PR5C_HTTP_POSTGRES_TESTS_EXECUTED=6"
   echo "P6-PR5B/PR5C disposable PostgreSQL integration: PASS (${expected_tests}/${expected_tests})"
 }
 
 assert_p6_pr5b_integration_env
-run_jest_postgres_suite 16
+run_jest_postgres_suite 17
