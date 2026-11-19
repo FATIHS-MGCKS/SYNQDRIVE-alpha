@@ -2,6 +2,10 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | P6-PR5E rental category/override policy enum @map closeout | P6-PR5E | foreign/additional/young driver policy columns on two models |
+| 2026-11-19 | P6-PR5E org rental rules Prisma @map + ephemeral schema preflight | P6-PR5E | CI column credit_card_required; disposable parity SELECT guard |
+| 2026-11-19 | P6-PR5E F1 fingerprint includes effective rental rule values | P6-PR5E | TEST_4 18→19 RULES_CHANGED; confirm ordering documented |
+| 2026-11-19 | P6-PR5E real internal eligibility Postgres HTTP | P6-PR5E | Isolated harness; published org rental revisions; 5 HTTP tests; CI 27; Didit mocked |
 | 2026-11-19 | P6-PR5D payment_link BookingPaymentRequest Postgres HTTP | P6-PR5D | 5 HTTP tests; Connect seeds; real payment services; Stripe checkout mock only; CI 22 |
 | 2026-11-19 | P6-PR5C independent review remediation (F1–F3) | P6-PR5C | CI log redaction; fingerprint vs eligibility tests; 17 Jest expects |
 | 2026-11-19 | P6-PR5C disposable Postgres wizard HTTP suite | P6-PR5C | `rental-booking-wizard.http.postgres.integration.spec.ts`; `p6-pr5c-bookings-http-nest.harness.ts`; CI script extended to 16 tests |

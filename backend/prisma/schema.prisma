@@ -6568,13 +6568,13 @@ model OrganizationRentalRules {
   minimumLicenseHoldingMonths Int?                          @map("minimum_license_holding_months")
   depositAmountCents          Int?                          @map("deposit_amount_cents")
   depositCurrency             String                        @default("EUR") @map("deposit_currency")
-  creditCardRequired          Boolean?
-  foreignTravelPolicy         RentalForeignTravelPolicy?
-  additionalDriverPolicy      RentalAdditionalDriverPolicy?
-  youngDriverPolicy           RentalYoungDriverPolicy?
+  creditCardRequired          Boolean?                      @map("credit_card_required")
+  foreignTravelPolicy         RentalForeignTravelPolicy?      @map("foreign_travel_policy")
+  additionalDriverPolicy      RentalAdditionalDriverPolicy?   @map("additional_driver_policy")
+  youngDriverPolicy           RentalYoungDriverPolicy?        @map("young_driver_policy")
   insuranceRequirement        String?                       @map("insurance_requirement")
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
-  notes                       String?
+  notes                       String?                       @map("notes")
   isActive                    Boolean                       @default(true) @map("is_active")
   version                     Int                           @default(1)
   createdAt                   DateTime                      @default(now()) @map("created_at")
@@ -6600,12 +6600,12 @@ model RentalVehicleCategory {
   depositAmountCents          Int?                          @map("deposit_amount_cents")
   depositCurrency             String?                       @map("deposit_currency")
   creditCardRequired          Boolean?                      @map("credit_card_required")
-  foreignTravelPolicy         RentalForeignTravelPolicy?
-  additionalDriverPolicy      RentalAdditionalDriverPolicy?
-  youngDriverPolicy           RentalYoungDriverPolicy?
+  foreignTravelPolicy         RentalForeignTravelPolicy?      @map("foreign_travel_policy")
+  additionalDriverPolicy      RentalAdditionalDriverPolicy?   @map("additional_driver_policy")
+  youngDriverPolicy           RentalYoungDriverPolicy?        @map("young_driver_policy")
   insuranceRequirement        String?                       @map("insurance_requirement")
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
-  notes                       String?
+  notes                       String?                       @map("notes")
   isActive                    Boolean                       @default(true) @map("is_active")
   status                      RentalVehicleCategoryStatus   @default(ACTIVE) @map("status")
   statusChangedAt             DateTime?                     @map("status_changed_at")
@@ -6632,12 +6632,12 @@ model VehicleRentalRequirementOverride {
   depositAmountCents          Int?                          @map("deposit_amount_cents")
   depositCurrency             String?                       @map("deposit_currency")
   creditCardRequired          Boolean?                      @map("credit_card_required")
-  foreignTravelPolicy         RentalForeignTravelPolicy?
-  additionalDriverPolicy      RentalAdditionalDriverPolicy?
-  youngDriverPolicy           RentalYoungDriverPolicy?
+  foreignTravelPolicy         RentalForeignTravelPolicy?      @map("foreign_travel_policy")
+  additionalDriverPolicy      RentalAdditionalDriverPolicy?   @map("additional_driver_policy")
+  youngDriverPolicy           RentalYoungDriverPolicy?        @map("young_driver_policy")
   insuranceRequirement        String?                       @map("insurance_requirement")
   manualApprovalRequired      Boolean?                      @map("manual_approval_required")
-  notes                       String?
+  notes                       String?                       @map("notes")
   version                     Int                           @default(1)
   createdAt                   DateTime                      @default(now()) @map("created_at")
   updatedAt                   DateTime                      @updatedAt @map("updated_at")

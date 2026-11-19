@@ -65,6 +65,22 @@ const { PrismaClient } = require('@prisma/client');
     await prisma.$queryRaw`SELECT language FROM users LIMIT 0`;
     await prisma.$queryRaw`SELECT id FROM bookings LIMIT 0`;
     await prisma.$queryRaw`SELECT id FROM booking_document_bundles LIMIT 0`;
+    await prisma.$queryRaw`
+      SELECT
+        credit_card_required,
+        foreign_travel_policy,
+        additional_driver_policy,
+        young_driver_policy,
+        insurance_requirement,
+        manual_approval_required,
+        notes,
+        version
+      FROM organization_rental_rules
+      LIMIT 0`;
+    await prisma.$queryRaw`
+      SELECT id, organization_id, scope_type, scope_id, rules_hash, normalized_rules
+      FROM rental_rule_revisions
+      LIMIT 0`;
   } finally {
     await prisma.$disconnect();
   }
@@ -82,6 +98,15 @@ apply_p6_pr5b_ephemeral_schema_parity() {
     -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT DEFAULT '\''de'\'';' \
     -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT '\''Europe/Berlin'\'';' \
     -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT '\''DD.MM.YYYY'\'';'
+  docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${DISPOSABLE_DB}" -v ON_ERROR_STOP=1 \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS credit_card_required BOOLEAN;' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS foreign_travel_policy "RentalForeignTravelPolicy";' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS additional_driver_policy "RentalAdditionalDriverPolicy";' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS young_driver_policy "RentalYoungDriverPolicy";' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS insurance_requirement TEXT;' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS manual_approval_required BOOLEAN;' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS notes TEXT;' \
+    -c 'ALTER TABLE organization_rental_rules ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;'
   echo "TEST_SCHEMA_DRIFT_SYNC=P6_PR5B_TARGETED_SQL_PARITY"
 }
 
@@ -112,7 +137,7 @@ run_jest_postgres_suite() {
   local log
   log="$(mktemp /tmp/p6-pr5b-pg-ci.XXXXXX.log)"
   set +e
-  npm test -- --testPathPatterns='p6-pr5b-disposable-postgres-preflight|rental-booking-lifecycle.http.postgres|rental-booking-wizard.http.postgres|rental-booking-wizard-payment-link.http.postgres' --runInBand --verbose 2>&1 | tee "${log}"
+  npm test -- --testPathPatterns='p6-pr5b-disposable-postgres-preflight|rental-booking-lifecycle.http.postgres|rental-booking-wizard.http.postgres|rental-booking-wizard-payment-link.http.postgres|rental-booking-wizard-eligibility-real.http.postgres' --runInBand --verbose 2>&1 | tee "${log}"
   local test_exit=${PIPESTATUS[0]}
   set -e
 
@@ -127,8 +152,9 @@ run_jest_postgres_suite() {
   echo "P6_PR5B_HTTP_POSTGRES_TESTS_EXECUTED=7"
   echo "P6_PR5C_HTTP_POSTGRES_TESTS_EXECUTED=6"
   echo "P6_PR5D_HTTP_POSTGRES_TESTS_EXECUTED=5"
-  echo "P6-PR5B/PR5C/PR5D disposable PostgreSQL integration: PASS (${expected_tests}/${expected_tests})"
+  echo "P6_PR5E_HTTP_POSTGRES_TESTS_EXECUTED=5"
+  echo "P6-PR5B/PR5C/PR5D/PR5E disposable PostgreSQL integration: PASS (${expected_tests}/${expected_tests})"
 }
 
 assert_p6_pr5b_integration_env
-run_jest_postgres_suite 22
+run_jest_postgres_suite 27

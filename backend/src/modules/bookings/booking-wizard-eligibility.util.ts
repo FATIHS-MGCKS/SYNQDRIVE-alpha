@@ -1,6 +1,10 @@
 import { createHash } from 'crypto';
 import { ConflictException } from '@nestjs/common';
 import type { BookingStatus } from '@prisma/client';
+import {
+  RENTAL_RULE_FIELD_KEYS,
+  type EffectiveRentalRequirement,
+} from '@modules/rental-rules/rental-rules.types';
 import type { BookingRentalEligibilityResult } from './booking-rental-eligibility.types';
 import type {
   BookingEligibilityGateResult,
@@ -32,6 +36,20 @@ export type BookingWizardEligibilityPreviewResult = {
   canCreatePending: boolean;
 };
 
+function buildRentalRulesFingerprintSegment(
+  rules: EffectiveRentalRequirement | null | undefined,
+): string {
+  if (!rules) return '';
+  const canonical: Record<string, unknown> = { rulesActive: rules.rulesActive };
+  for (const key of RENTAL_RULE_FIELD_KEYS) {
+    const field = rules[key];
+    if (field && typeof field === 'object' && 'value' in field) {
+      canonical[key] = field.value;
+    }
+  }
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+}
+
 export function buildEligibilityPreviewFingerprint(
   gateResult: BookingEligibilityGateResult,
 ): string {
@@ -41,6 +59,9 @@ export function buildEligibilityPreviewFingerprint(
     sourceRuleIds: [...gateResult.sourceRuleIds].sort(),
     reasonCodes: [...gateResult.reasonCodes].sort(),
     missingFields: [...gateResult.missingFields].sort(),
+    rentalRulesFingerprint: buildRentalRulesFingerprintSegment(
+      gateResult.domains.rentalRules.result?.effectiveRules,
+    ),
   };
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }

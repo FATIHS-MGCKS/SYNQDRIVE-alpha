@@ -1,4 +1,6 @@
 import { ConflictException } from '@nestjs/common';
+import type { EffectiveRentalRequirement } from '@modules/rental-rules/rental-rules.types';
+import { createActiveRentalRulesActivationSnapshot } from '@modules/rental-rules/rental-rules-activation.policy';
 import type { BookingEligibilityGateResult } from './booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.types';
 import {
   assertWizardPreviewFingerprintMatches,
@@ -29,6 +31,77 @@ describe('booking-wizard-eligibility.util', () => {
       sourceRuleIds: ['org:org-1'],
     });
     expect(first).toBe(second);
+  });
+
+  it('changes preview fingerprint when effective rental rule values change but status stays eligible', () => {
+    const layer = { source: 'ORGANIZATION_DEFAULT' as const, sourceName: 'Org' };
+    const effectiveRules = {
+      organizationId: 'org-1',
+      vehicleId: 'vehicle-1',
+      rentalCategoryId: null,
+      rentalCategoryName: null,
+      rentalCategoryType: null,
+      rulesActive: true,
+      activation: createActiveRentalRulesActivationSnapshot(),
+      minimumAgeYears: { value: 18, ...layer },
+      minimumLicenseHoldingMonths: { value: 0, ...layer },
+      depositAmountCents: { value: 50_000, ...layer },
+      depositAmount: { value: 50_000, ...layer },
+      depositCurrency: { value: 'EUR', ...layer },
+      creditCardRequired: { value: false, ...layer },
+      foreignTravelPolicy: { value: 'ALLOWED' as const, ...layer },
+      additionalDriverPolicy: { value: 'ALLOWED' as const, ...layer },
+      youngDriverPolicy: { value: 'ALLOWED' as const, ...layer },
+      insuranceRequirement: { value: null, source: null, sourceName: null },
+      manualApprovalRequired: { value: false, ...layer },
+      notes: { value: null, source: null, sourceName: null },
+      minimumLicenseHoldingYears: { value: 0, ...layer },
+      minimumLicenseHoldingRemainderMonths: { value: 0, ...layer },
+    } satisfies EffectiveRentalRequirement;
+
+    const base = buildGateResult({
+      domains: {
+        customer: { evaluated: true, canProceedForStage: true, result: null },
+        verification: { evaluated: true, result: null },
+        rentalRules: {
+          evaluated: true,
+          result: {
+            status: 'ELIGIBLE',
+            blockingReasons: [],
+            warningReasons: [],
+            missingFields: [],
+            manualApprovalReasons: [],
+            effectiveRules,
+            decisionSource: 'RENTAL_RULES_EFFECTIVE',
+            facts: [],
+            customerId: 'cust-1',
+            vehicleId: 'vehicle-1',
+          },
+        },
+        vehicle: { evaluated: true, vehicleFound: true, vehicleId: 'vehicle-1' },
+        vehicleReadiness: { evaluated: false, skipped: true, blocked: false },
+        pricingDeposit: { evaluated: false, skipped: true },
+      },
+    });
+
+    const aged = buildEligibilityPreviewFingerprint(base);
+    const updated = buildEligibilityPreviewFingerprint({
+      ...base,
+      domains: {
+        ...base.domains,
+        rentalRules: {
+          ...base.domains.rentalRules,
+          result: {
+            ...base.domains.rentalRules.result!,
+            effectiveRules: {
+              ...effectiveRules,
+              minimumAgeYears: { value: 19, ...layer },
+            },
+          },
+        },
+      },
+    });
+    expect(updated).not.toBe(aged);
   });
 
   it('maps gatekeeper preview flags for confirm and pending', () => {
