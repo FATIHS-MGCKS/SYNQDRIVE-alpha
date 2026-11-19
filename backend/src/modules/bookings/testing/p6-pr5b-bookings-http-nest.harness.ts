@@ -97,7 +97,12 @@ export async function createP6Pr5bBookingsHttpApp(
       { provide: BookingsService, useValue: bookingsService },
       {
         provide: BookingHandoverDraftService,
-        useValue: { getDraft: noopAsync, upsertDraft: noopAsync, deleteDraft: noopAsync },
+        useValue: {
+          getDraft: noopAsync,
+          upsertDraft: noopAsync,
+          deleteDraft: noopAsync,
+          deleteDraftsForBooking: noopAsync,
+        },
       },
       { provide: BookingRentalEligibilityService, useValue: {} },
       { provide: BookingEligibilityGatekeeperService, useValue: {} },
@@ -135,6 +140,7 @@ export async function createP6Pr5bBookingsHttpApp(
               getDraft: noopAsync,
               upsertDraft: noopAsync,
               deleteDraft: noopAsync,
+              deleteDraftsForBooking: noopAsync,
             } as never,
             { enqueueForBooking: rdaEnqueue } as never,
           ),
