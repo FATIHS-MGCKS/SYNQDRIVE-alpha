@@ -54,7 +54,7 @@ async function createVehicle(prisma: PrismaClient, orgId: string, stationId: str
   await prisma.$executeRaw`
     INSERT INTO vehicles (
       id, organization_id, vin, make, model, year, fuel_type,
-      registry_lifecycle, status, home_station_id, created_at, updated_at
+      registry_lifecycle, status, station_id, created_at, updated_at
     ) VALUES (
       ${vehicleId}, ${orgId}, ${vin}, 'VW', 'Golf', 2022, 'GASOLINE'::"FuelType",
       'ACTIVE'::"VehicleRegistryLifecycle",
