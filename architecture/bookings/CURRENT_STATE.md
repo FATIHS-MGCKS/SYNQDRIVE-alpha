@@ -116,7 +116,7 @@ flowchart LR
 
 - **CONFIRMED:** DI job repository uses booking resolution port implemented under `bookings/`.
 - **INFERRED gap:** Some Core VI paths may still touch `booking` / handover tables directly — documented as out of scope in P4 final audit (`NEEDS_FURTHER_EVIDENCE` for full independence).
-- **INFERRED gap:** `DocumentsController` booking routes not in `RENTAL_PRODUCT_LICENSED_CONTROLLERS` — product license parity **UNKNOWN**.
+- **P6-PR4A:** `DocumentsController` and `LegalDocumentDeliveryEvidenceController` use `ProductLicenseGuard` + `@RequireProduct(RENTAL)` (HTTP-confirmed bypass remediated). `LegalDocumentsController` remains without product license (org legal-text admin).
 
 ## Configuration and feature flags
 

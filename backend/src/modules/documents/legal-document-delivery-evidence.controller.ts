@@ -10,6 +10,9 @@ import {
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RequireLegalDocumentPermission } from './decorators/require-legal-document-permission.decorator';
 import { LegalDocumentDeliveryEvidenceService } from './legal-document-delivery-evidence.service';
@@ -27,7 +30,8 @@ import {
  * are managed in separate modules.
  */
 @Controller('organizations/:orgId/bookings/:bookingId/legal-delivery-evidence')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@RequireProduct(ProductSlug.RENTAL)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard, PermissionsGuard)
 export class LegalDocumentDeliveryEvidenceController {
   constructor(private readonly evidence: LegalDocumentDeliveryEvidenceService) {}
 
