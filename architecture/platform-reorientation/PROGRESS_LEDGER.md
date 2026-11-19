@@ -66,6 +66,8 @@
 | MONO-ARCH-DOC-MERGED | 2026-11-18 | Governance | [#2435](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2435) | `31f83eb81025ccbf9039cb36393801cd9593c412` | **MERGED** | **NOT_RECORDED** | **NOT_CLAIMED** | Binding monorepo architecture documentation alignment (docs-only) | [`MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT_2026-11-18.md`](evidence/MONOREPO_ARCHITECTURE_DOCUMENTATION_ALIGNMENT_2026-11-18.md) | CI #2435 | Supersedes **MONO-ARCH-DOC** OPEN snapshot |
 | P5-B4-PR1-DRAFT | 2026-11-18 | P5 | [#2436](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2436) | _draft branch_ | **DRAFT** | **NO** | **NOT_CLAIMED** | IAM MFA authority bootstrap — **DEFERRED** (owner; do not merge) | [`P5_B4_PR1_IAM_MFA_AUTHORITY_AUDIT_2026-11-18.md`](evidence/P5_B4_PR1_IAM_MFA_AUTHORITY_AUDIT_2026-11-18.md) on draft branch only | — | Post–Core/Rental workstream |
 | P5-CLOSEOUT | 2026-11-18 | P5 | [#2437](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2437) | `59182a9dec80b35d805cf64dd6252172c2fc4ba9` (audit baseline) | **OPEN** | **NO** | **NOT_CLAIMED** | P5 closeout + P6 readiness; B1 attestation; PR6 NOT_REQUIRED; recorder test hygiene | [`P5_CLOSEOUT_P6_READINESS_2026-11-18.md`](evidence/P5_CLOSEOUT_P6_READINESS_2026-11-18.md) | Focused security Jest | **P6 GO** pending #2437; supersedes **P5-ROADMAP** remaining-work text |
+| P6-PR1-MERGED | 2026-11-19 | P6 | [#2438](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2438) | `90fd7766a4aeb357f385a2b0cfb9b2cccce03334` | **MERGED** | **NOT_RECORDED** | **NOT_CLAIMED** | Rental stress assessment gate; API/payload publication (DS4 consumer P2-1/P2-2 surfaces); 9-locale booking UI | Consumer Audit V1 P2-1/P2-2 (partial path) | CI #2438 | P6-PR2 TDI consumer P1-2/P1-3 |
+| P6-PR2-DRAFT | 2026-11-19 | P6 | [#2439](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2439) | `afd3b52eca5faf2eaf6810b8a67525fe0acb0490` | **DRAFT** | **NO** | **NOT_CLAIMED** | RDA TDI quality + legacy stress fallback (P1-2/P1-3); independent review F1–F3; governance closeout on branch | [`CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md`](../drivingintelligence/evidence/CONSUMER_AUDIT_V1_FINDINGS_REGISTER.md) · [`CURRENT_STATE.md`](../rental-driving-analysis/CURRENT_STATE.md) | CI #2439 (36 checks @ `afd3b52e`) | Await merge + independent re-review; P2-3/P2-4 out of scope |
 
 **Verified `origin/main` at ledger init (2026-11-17):** `01a7ea3ee984518a587c00f0ba37f8a5151ec996` (P2 complete; P3-PR1 not yet merged).
 
@@ -74,6 +76,8 @@
 **Verified `origin/main` after P5-B3-PR4 merge (2026-11-18):** `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e` (P5 **IN_PROGRESS**; P5-B3 PR5 #2434 not yet on `main` at this baseline).
 
 **Verified `origin/main` at P5 closeout audit (2026-11-18):** `59182a9dec80b35d805cf64dd6252172c2fc4ba9` (includes P5-B3 PR5 #2434; **excludes** #2435–#2437 until merged).
+
+**Verified `origin/main` after P6-PR1 merge (2026-11-19):** `90fd7766a4aeb357f385a2b0cfb9b2cccce03334` (includes #2438; **excludes** #2439 until merged).
 
 ---
 
