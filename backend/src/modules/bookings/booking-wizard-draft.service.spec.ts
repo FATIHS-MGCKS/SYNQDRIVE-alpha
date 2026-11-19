@@ -165,7 +165,10 @@ describe('BookingWizardDraftService eligibility integration', () => {
       'org-1',
       'booking-1',
       expect.objectContaining({ status: 'CONFIRMED' }),
-      expect.objectContaining({ userId: 'user-1' }),
+      expect.objectContaining({
+        userId: 'user-1',
+        eligibilityPreviewFingerprint: preview.previewFingerprint,
+      }),
     );
     expect(result.booking.status).toBe('CONFIRMED');
   });

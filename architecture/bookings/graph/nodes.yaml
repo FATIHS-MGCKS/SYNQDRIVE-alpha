@@ -227,7 +227,9 @@ nodes:
     epistemic_status: INFERRED
     source_type: CURRENT_TEST
     summary: >
-      Wizard draft, checkout, eligibility preview, confirm on disposable Postgres; pay_on_pickup invoice unpaid invariant; Stripe checkout mocked.
+      Wizard draft, checkout, confirm on disposable Postgres (17/17); real gatekeeper assembly
+      with documented customer/verification/rental-rules stubs — ELIGIBILITY_DATABASE_E2E NOT_VERIFIED;
+      CONFIRMATION partial mocked eligibility; pay_on_pickup invoice unpaid; Stripe mocked.
     source_paths:
       - backend/src/modules/bookings/rental-booking-wizard.http.postgres.integration.spec.ts
       - backend/src/modules/bookings/testing/p6-pr5c-bookings-http-nest.harness.ts
