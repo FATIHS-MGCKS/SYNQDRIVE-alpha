@@ -228,7 +228,8 @@ nodes:
     source_type: AUDIT_DOCUMENT
     summary: >
       Reconciles merged PRs #2441–#2447; 12-row capability matrix; gap classification;
-      P6 GO for modular disposable Postgres scope; recommends SYNQDRIVE-CORE STEP 1 next.
+      P6 GO for modular disposable Postgres scope; post-#2448 amendment aligns with binding Alpha monorepo;
+      next op SYNQDRIVE_ALPHA_POST_P6_CORE_RENTAL_BOUNDARY_AUDIT.
     source_paths:
       - architecture/bookings/evidence/BKG-EVID-P6-CERTIFICATION-CLOSEOUT-2026-11-19.md
 

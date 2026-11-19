@@ -13,6 +13,8 @@ You are working inside the SynqDrive codebase.
 
 SynqDrive is a multi-tenant SaaS platform for fleet, rental, telematics, vehicle health, maintenance, AI-assisted analysis, and operations management.
 
+**SYNQDRIVE-alpha binding shape:** one repository, one NestJS runtime, one deployment, one shared database. Core and Rental are **logical** domains — **read first:** [`architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md`](../../architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md) and [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md). No physical repo extraction; co-located Rental does **not** require M2M.
+
 You must follow these rules strictly.
 
 ## 1) Core engineering behavior
@@ -237,7 +239,24 @@ For medium and large tasks, after implementation report clearly:
 - what dead/duplicate logic was removed, if any
 - any remaining blockers only if truly necessary
 
-## 10) Non-negotiable rules
+## 10) Core/Rental monorepo dependency policy
+
+- **Core must not** depend directly on Rental **business-logic services** (bookings workflows, rental rules enforcement services, rental payment orchestration, etc.).
+- **Rental may consume Core** platform/intelligence via existing services, ports, and NestJS DI — do not reimplement entitlements, vehicle registry, or trip FSM inside Rental modules.
+- Do not duplicate Core functionality in Rental or place Rental business rules in product-neutral Core modules.
+- Do not introduce silent bidirectional Core↔Rental business-service dependencies; composition-root port wiring (P4 pattern) is allowed and is not a violation by itself.
+- Preserve tenant isolation, org scoping, product guards (`ProductLicenseGuard`), and permission enforcement on every change.
+- Do not restart physical `SYNQDRIVE-CORE` extraction or require M2M for in-monolith Rental.
+
+Before **new** modules or **substantive** cross-domain changes: read the platform master plan + central module registry; assign domain ownership; update authority/ledger per [`Architectur-Updates.mdc`](Architectur-Updates.mdc).
+
+## 11) Future external applications (interface readiness only)
+
+- Design Core contracts product-neutral; prefer versioned external APIs, entitlements, vehicle-scoped permissions, service-client registry, fail-closed M2M for **separate** backends when owner-armed.
+- **Do not** wire unfinished apps (VYMOD, Fleet, logbook, etc.), enable `CORE_APP_M2M_ENABLED` / production M2M flags, or claim live integration readiness without explicit evidence and owner scope.
+- Reuse merged platform foundations — goal is **interface readiness**, not speculative infrastructure.
+
+## 12) Non-negotiable rules
 
 - Do not rebuild whole modules when targeted changes are enough.
 - Do not create duplicate competing architectures.

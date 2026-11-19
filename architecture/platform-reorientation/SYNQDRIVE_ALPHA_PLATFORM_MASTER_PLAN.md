@@ -71,6 +71,19 @@ Central registry synopsis: [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../
 - Master Admin as control plane for products, entitlements, vehicle access, and (future) service clients.
 - No new universal Core health aggregator (explicit non-goal).
 
+### Future application interface readiness (agents — binding clarification)
+
+**Goal:** Core stays **product-neutral** and **contract-ready** for separate consumers (VYMOD, Fleet, digital logbook, other catalog products) — **INTERFACE_READINESS**, not ordinary-agent **LIVE_INTEGRATION**.
+
+| Principle | Rule |
+|-----------|------|
+| Contracts | Product-neutral Core surfaces; versioned external read/API patterns where merged |
+| Security | Tenant/org isolation; product entitlements; vehicle-scoped permissions; fail-closed `CORE_APP_M2M_*` defaults |
+| Integration scope | Reuse merged P2/P3 registry + entitlements + guarded APIs — **do not** connect unfinished apps, arm production M2M, or claim readiness without evidence |
+| Co-located Rental | In-process — **not** M2M-mandatory (this section does not change Rental runtime) |
+
+Agent enforcement: [`MONOREPO_AGENT_GUARDRAILS.md`](MONOREPO_AGENT_GUARDRAILS.md); [`.cursor/rules/projektregel.mdc`](../../.cursor/rules/projektregel.mdc); root `AGENTS.md` promotion pending owner i18n authority label when edited.
+
 ## Product map
 
 | Product | `ProductSlug` | Status in Alpha | External M2M |
