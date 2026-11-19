@@ -58,6 +58,13 @@ function masterUser(orgId: string, userId: string) {
   };
 }
 
+const P6_PR5C_DEFAULT_PRICING_INPUT = {
+  manualAdjustmentCents: 0,
+  manualDiscountCents: 0,
+  selectedExtraOptionIds: [] as string[],
+  selectedInsuranceOptionIds: [] as string[],
+};
+
 (LIVE ? describe : describe.skip)('P6-PR5C rental booking wizard (PostgreSQL HTTP)', () => {
   jest.setTimeout(180_000);
 
@@ -95,12 +102,12 @@ function masterUser(orgId: string, userId: string) {
           expect([200, 201]).toContain(res.status);
         });
 
-      expect(simulateRes.body.simulation?.vehicleId ?? simulateRes.body.vehicleId).toBeTruthy();
+      expect(simulateRes.body.quoteId).toBeTruthy();
       expect(simulateRes.body.currency).toBeTruthy();
+      const quoteId = simulateRes.body.quoteId as string;
 
-      const quoteRow = await createP6Pr5cPricingQuote(prisma, fixture);
       const quotePersisted = await prisma.pricingQuote.findFirst({
-        where: { id: quoteRow.quoteId, organizationId: fixture.orgId },
+        where: { id: quoteId, organizationId: fixture.orgId },
       });
       expect(quotePersisted?.vehicleId).toBe(fixture.vehicleId);
 
@@ -112,10 +119,10 @@ function masterUser(orgId: string, userId: string) {
           customerId: fixture.customerId,
           startDate: fixture.pickupAt.toISOString(),
           endDate: fixture.returnAt.toISOString(),
-          quoteId: quoteRow.quoteId,
+          quoteId,
           pickupStationId: fixture.stationId,
           returnStationId: fixture.stationId,
-          pricingInput: { manualAdjustmentCents: 0, manualDiscountCents: 0 },
+          pricingInput: P6_PR5C_DEFAULT_PRICING_INPUT,
         })
         .expect(201);
 
@@ -129,7 +136,7 @@ function masterUser(orgId: string, userId: string) {
       expect(reloaded?.vehicleId).toBe(fixture.vehicleId);
 
       const consumedQuote = await prisma.pricingQuote.findFirst({
-        where: { id: quoteRow.quoteId, organizationId: fixture.orgId },
+        where: { id: quoteId, organizationId: fixture.orgId },
       });
       expect(consumedQuote?.consumedByBookingId).toBe(bookingId);
 
@@ -234,6 +241,7 @@ function masterUser(orgId: string, userId: string) {
           quoteId: quote.quoteId,
           pickupStationId: fixture.stationId,
           returnStationId: fixture.stationId,
+          pricingInput: P6_PR5C_DEFAULT_PRICING_INPUT,
         })
         .expect(201);
       bookingId = draftRes.body.booking.id;
@@ -263,6 +271,7 @@ function masterUser(orgId: string, userId: string) {
           quoteId: quote.quoteId,
           pickupStationId: fixture.stationId,
           returnStationId: fixture.stationId,
+          pricingInput: P6_PR5C_DEFAULT_PRICING_INPUT,
         })
         .expect(201);
       const bookingId = draftRes.body.booking.id;
@@ -315,6 +324,7 @@ function masterUser(orgId: string, userId: string) {
           quoteId: quote.quoteId,
           pickupStationId: fixture.stationId,
           returnStationId: fixture.stationId,
+          pricingInput: P6_PR5C_DEFAULT_PRICING_INPUT,
         })
         .expect(201);
       const bookingId = draftRes.body.booking.id;
@@ -367,6 +377,7 @@ function masterUser(orgId: string, userId: string) {
           quoteId: randomUUID(),
           pickupStationId: fixture.stationId,
           returnStationId: fixture.stationId,
+          pricingInput: P6_PR5C_DEFAULT_PRICING_INPUT,
         })
         .expect(404);
     } finally {
