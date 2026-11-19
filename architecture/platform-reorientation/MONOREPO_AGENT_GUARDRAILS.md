@@ -17,7 +17,7 @@
 
 | Domain | Owns (non-exhaustive) |
 |--------|------------------------|
-| **Core** | Master Admin; IAM and entitlements; canonical vehicles and trips; Trip FSM; vehicle intelligence (DS4/DBI/tire/battery/service); shared product-neutral platform services |
+| **Core** | Master Admin; IAM and entitlements; canonical vehicles and trips; Trip FSM; vehicle intelligence (DS4/DBI/tire/battery/service); shared product-neutral platform services — including **Communication Center, WhatsApp Business, Voice Assistant Platform, AI Platform** (owner 2026-11-19 — [`evidence/POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](evidence/POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md); registry `NOT_STARTED` unchanged) |
 | **Rental** | Bookings; rental customers; payments and contracts; rental rules; rental workflows; rental-specific analysis; `frontend/src/rental` |
 
 ## Dependency invariants (agents must enforce)

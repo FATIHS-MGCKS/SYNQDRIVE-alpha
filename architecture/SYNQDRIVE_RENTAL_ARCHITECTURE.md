@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-11-18 (binding monorepo synopsis — registry rows unchanged)
+**Last updated:** 2026-11-19 (Core platform module ownership descriptions — registry coverage statuses unchanged)
 
 ---
 
@@ -38,7 +38,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 |--------|------------------|-----------------|-------------------------|----------------|
 | Account & Self-Service | End-user account profile, preferences, and self-service account operations for authenticated users. | `NOT_STARTED` | N/A — inventory only | — |
 | Activity Log & HTTP Audit | Captures HTTP mutation audit trails and exposes activity-log APIs for org and master-admin review. | `NOT_STARTED` | N/A — inventory only | — |
-| AI Platform (Fleet Chat & Tools) | Org-scoped fleet AI chat, LLM gateway, document and vehicle AI tools, limits, and routing. | `NOT_STARTED` | N/A — inventory only | — |
+| AI Platform (Fleet Chat & Tools) | **Core platform:** org-scoped fleet AI chat, LLM gateway, document and vehicle AI tools, limits, and routing (owner domain 2026-11-19; authority audit not started). | `NOT_STARTED` | N/A — inventory only | — |
 | Auth API | Tenant authentication API surface including token refresh and auth endpoints backing Clerk integration. | `NOT_STARTED` | N/A — inventory only | — |
 | Automatic Trip Enrichment (ATE) | Orchestrates post-finalize trip behavior enrichment, hardware routing, and reconciliation-driven enrichment chains. | `AUTHORITY_ACTIVE` | `CANONICAL` (per [GRAPH.yaml](knowledge-graphs/automatic-trip-enrichment/GRAPH.yaml)) | [`architecture/knowledge-graphs/automatic-trip-enrichment/`](knowledge-graphs/automatic-trip-enrichment/) |
 | Battery V2 | Documents Battery V2 health model, signal authority, lifecycle, execution, persistence, and consumer contracts. | `AUTHORITY_ACTIVE` | Phase 4 resolution planning · gaps remain open | [`architecture/battery-v2/`](battery-v2/) |
@@ -47,7 +47,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 migration consumer (PR-8) · Production audit not started | [`architecture/brakes-health/`](brakes-health/) |
 | Business Audit | Durable business-event audit outbox with scheduled processing for operational audit records. | `NOT_STARTED` | N/A — inventory only | — |
 | Business Insights | Detector-based dashboard insight signals such as utilization, shortages, and fleet operational patterns. | `NOT_STARTED` | N/A — inventory only | — |
-| Communication Center | Omnichannel conversation persistence and operator inbox across WhatsApp, SMS, and voice projections. | `NOT_STARTED` | N/A — inventory only | — |
+| Communication Center | **Core platform:** omnichannel conversation persistence and operator inbox across WhatsApp, SMS, and voice projections (owner domain 2026-11-19; authority audit not started). | `NOT_STARTED` | N/A — inventory only | — |
 | Customer Verification (Didit) | Identity verification workflows and Didit webhook handling for rental eligibility. | `NOT_STARTED` | N/A — inventory only | — |
 | Customers | Org-scoped rental customer records, profiles, and customer management APIs. | `NOT_STARTED` | N/A — inventory only | — |
 | Damages | Structured vehicle damage records with pin and image semantics and org-facing damage management. | `NOT_STARTED` | N/A — inventory only | — |
@@ -102,8 +102,8 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Vehicle Signal Intelligence (VSI) | Per-link signal capability profiles: declared vs observed reconciliation, fingerprints, continuous capability maintenance; charter + P0–P7 roadmap. | `AUDIT_IN_PROGRESS` | P0+P1 **merged** #2034 · charter/roadmap 2026-10-15 | [`architecture/vehicle-signal-intelligence/`](vehicle-signal-intelligence/) |
 | Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, connectivity consent, and operational vehicle projections. | `NOT_STARTED` | N/A — inventory only | — |
 | Vendors | Third-party vendor and workshop directory including geocoding helpers for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
-| Voice Assistant Platform | Voice agent control plane, webhook ingestion, call orchestration, MCP gateway, billing, and protection. | `NOT_STARTED` | N/A — inventory only | — |
-| WhatsApp Business | Meta WhatsApp Business API integration, webhooks, and tenant WhatsApp configuration. | `NOT_STARTED` | N/A — inventory only | — |
+| Voice Assistant Platform | **Core platform:** voice agent control plane, webhook ingestion, call orchestration, MCP gateway, billing, and protection (owner domain 2026-11-19; authority audit not started). | `NOT_STARTED` | N/A — inventory only | — |
+| WhatsApp Business | **Core platform:** Meta WhatsApp Business API integration, webhooks, and tenant WhatsApp configuration (owner domain 2026-11-19; authority audit not started). | `NOT_STARTED` | N/A — inventory only | — |
 | Workflows | Configurable workflow engine with maker-checker, shadow mode, rollout gates, and audit trails. | `NOT_STARTED` | N/A — inventory only | — |
 
 **Inventory boundary:** The overview table above is the canonical complete module inventory as of 2026-09-06, plus **DSRG** registered 2026-10-11 (previously absent from inventory; hub docs existed under `architecture/dsrg/` before registry row). Rows with `NOT_STARTED` are inventoried only — they are not audited, Production-verified, or safe for substantive work without following [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md). Discovery evidence: [`MODULE_INVENTORY_DISCOVERY_2026-09-06.md`](MODULE_INVENTORY_DISCOVERY_2026-09-06.md). Do not infer module understanding from flat `architecture/*.md` mentions alone.

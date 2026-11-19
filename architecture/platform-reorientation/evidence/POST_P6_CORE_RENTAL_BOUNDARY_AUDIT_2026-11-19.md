@@ -5,18 +5,18 @@
 **Mode:** `READ_ONLY_FIRST` (documentation only; no runtime/schema/deploy)  
 **Audited `origin/main` baseline:** `65a76e63b200b5d9110324a32620e2096bfac77f` (post #2449 monorepo governance)
 
-**Binding context:** [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md), [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md), [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md), [`POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md`](POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md).
+**Binding context:** [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md), [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md), [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md), [`POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md`](POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md), [`POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md).
 
 ## Evidence vocabulary (do not conflate)
 
 | Layer | Meaning |
 |-------|---------|
 | **CONFIRMED direct dependency** | Constructor/type import of a rental-module class or util — **code evidence only** |
-| **CONFIRMED owning domain** | Registry **AUTHORITY_ACTIVE** or binding master-plan/domain authority states ownership **CONFIRMED** |
-| **CONFIRMED architecture violation** | **Both**: forbidden dependency direction per guardrails **and** consumer + provider domains **CONFIRMED** — not inferred from module naming alone |
-| **NEEDS_FURTHER_EVIDENCE** | Direct dependency **CONFIRMED**, but consumer and/or provider domain ownership unresolved for rule application |
+| **CONFIRMED owning domain** | Owner decision document, registry description, or **AUTHORITY_ACTIVE** authority |
+| **CONFIRMED architecture violation** | Forbidden dependency direction per guardrails **and** consumer + provider domains **CONFIRMED** |
+| **NEEDS_FURTHER_EVIDENCE** | Direct dependency **CONFIRMED**, but domain ownership still unresolved for rule application |
 
-Registry: Communication Center, WhatsApp Business, Voice Assistant Platform, AI Platform → **`NOT_STARTED`** (inventory only). **Rental Health** → **`AUDIT_IN_PROGRESS`** (partial authority; **Rental** domain). **Vehicle intelligence** → **Core** (master plan + P4 scope).
+**Owner classification (2026-11-19):** Communication Center, WhatsApp Business, Voice Assistant Platform, AI Platform → **Core platform** (`NOT_STARTED` coverage unchanged). **Rental Health** → **Rental** (`AUDIT_IN_PROGRESS`). **Vehicle intelligence** → **Core** (master plan + P4).
 
 ---
 
@@ -39,7 +39,7 @@ Registry: Communication Center, WhatsApp Business, Voice Assistant Platform, AI 
 | Surface | Result headline |
 |---------|-----------------|
 | A. Core → Rental direct service imports (VI focus) | **Clean** for rental-driving-analysis business services |
-| B. NestJS DI across domains | **CONFIRMED** direct `BookingsService` (7 sites, 3 modules); **CONFIRMED** VI → `RentalHealthService` where domains evidenced |
+| B. NestJS DI across domains | **CONFIRMED** Core platform → Rental `BookingsService` / `VehicleBookingContextService`; **CONFIRMED** VI → `RentalHealthService` |
 | C. Core VI → booking persistence | **NFE** — Prisma reads retained; job repo uses booking resolution port |
 | D–H | Unchanged from initial audit (workers spot-check, composition root, frontend P2, dashboard/evaluations allowed) |
 
@@ -47,24 +47,57 @@ Registry: Communication Center, WhatsApp Business, Voice Assistant Platform, AI 
 
 ## Phase 3 — Findings register
 
-### CONFIRMED direct dependency — `BookingsService` (ownership of consumers **NOT_STARTED**)
+### CONFIRMED architecture violation — Core platform → Rental business services (P0)
 
-Binding rule (*Core/platform → rental business services forbidden*) applies only when the **consumer** is **CONFIRMED Core/platform**. Do **not** classify these as `CONFIRMED_ARCHITECTURE_VIOLATION` until registry/owner classifies Communication, WhatsApp, or Voice Assistant Platform.
+Owner-confirmed **Core** consumers; provider **Rental** (`BookingsService` / `VehicleBookingContextService`).
 
-| ID | Consumer module | Registry | Injection sites | Runtime API surface (grep `65a76e63`) |
-|----|-----------------|----------|-----------------|----------------------------------------|
-| D-01 | `communication` | NOT_STARTED | `communication-quick-action.executor.ts` | **`findDetail(orgId, bookingId)` only** — L98, L132 (`detail.core.bookingNumber`, `detail.finance.*`) |
-| D-02 | `whatsapp` | NOT_STARTED | 4 services | **`findDetail(orgId, bookingId)`** (6 call sites across AI context/tools, reminder, conversation context) |
-| D-03 | `voice-mcp-gateway` | NOT_STARTED | 2 services | **`findAll`**, **`findById`** (read tools + write-tool precondition reads); broader than D-01 |
+#### V-P0-01 — Communication Center → `BookingsService`
 
 | Field | Value |
 |-------|-------|
-| Provider | `bookings` / `BookingsService` (**Rental** — Bookings `AUDIT_IN_PROGRESS`) |
-| Direction | Unresolved consumer → Rental business service |
-| Classification | **CONFIRMED direct dependency** + **NEEDS_FURTHER_EVIDENCE** (binding-rule violation) |
-| Priority (pending ownership) | **P0-candidate** — material if consumers are Core/platform; **intra-rental channel** if consumers are reclassified Rental |
+| Source | `communication-quick-action.executor.ts` |
+| Consumer domain | **Core** (Communication Center — owner 2026-11-19) |
+| Provider | `BookingsService` (**Rental**) |
+| Evidence | Constructor injection; `findDetail(orgId, bookingId)` L98, L132 only |
+| Classification | **CONFIRMED_ARCHITECTURE_VIOLATION** |
+| Priority | **P0** |
+| Smallest remediation | `COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT` (first implementation PR) |
 
-### CONFIRMED architecture violation (domains evidenced)
+#### V-P0-02 — WhatsApp Business → `BookingsService`
+
+| Field | Value |
+|-------|-------|
+| Sources | `whatsapp-ai-context.service.ts`, `whatsapp-ai-tools.service.ts`, `whatsapp-booking-reminder.service.ts`, `whatsapp-conversation-context.service.ts` |
+| Consumer domain | **Core** (owner 2026-11-19) |
+| Evidence | 4× DI; **`findDetail(orgId, bookingId)`** (6 call sites) |
+| Classification | **CONFIRMED_ARCHITECTURE_VIOLATION** |
+| Priority | **P0** |
+| Smallest remediation | Narrow read port(s) after PR1 pattern — not broad booking API |
+
+#### V-P0-03 — Voice Assistant Platform → `BookingsService`
+
+| Field | Value |
+|-------|-------|
+| Sources | `voice-mcp-tools.service.ts`, `voice-mcp-write-tools.service.ts` |
+| Consumer domain | **Core** (owner 2026-11-19) |
+| Evidence | **`findAll`**, **`findById`** (read + write-tool preconditions) |
+| Classification | **CONFIRMED_ARCHITECTURE_VIOLATION** |
+| Priority | **P0** |
+| Smallest remediation | Separate narrow read/write command ports — scoped per tool surface |
+
+#### V-P0-04 — AI Platform → `VehicleBookingContextService`
+
+| Field | Value |
+|-------|-------|
+| Source | `ai/tools/get-vehicle-booking-context/ai-get-vehicle-booking-context.tool.ts` |
+| Consumer domain | **Core** (AI Platform — owner 2026-11-19) |
+| Provider | `VehicleBookingContextService` in `bookings/vehicle-booking-context` (**Rental** business service — booking operational context assembly) |
+| Evidence | `ai.module.ts` imports `BookingsModule`; tool calls `getVehicleBookingOperationalContext(organizationId, vehicleId, …)` |
+| Classification | **CONFIRMED_ARCHITECTURE_VIOLATION** (Rental business-logic service, not merely Prisma) |
+| Priority | **P0** |
+| Smallest remediation | Core-owned neutral read port for vehicle operational snapshot; Rental adapter |
+
+### CONFIRMED architecture violation — Core vehicle intelligence (P1)
 
 #### V-P1-01 — Core vehicle intelligence → Rental Health service
 
@@ -92,19 +125,6 @@ Binding rule (*Core/platform → rental business services forbidden*) applies on
 | Priority | **P1** |
 | Smallest remediation | Extend **booking resolution / driver-pool port** (VI `ports/`) with Rental adapter |
 
-### CONFIRMED direct dependency — unresolved rule (AI Platform)
-
-#### NFE-AI-01 — AI Platform → `VehicleBookingContextService`
-
-| Field | Value |
-|-------|-------|
-| Source | `ai/tools/get-vehicle-booking-context/ai-get-vehicle-booking-context.tool.ts` |
-| Consumer registry | AI Platform **`NOT_STARTED`** |
-| Provider | `bookings/vehicle-booking-context` (**Rental**) |
-| Evidence | `ai.module.ts` → `BookingsModule`; tool injects `VehicleBookingContextService` |
-| Classification | **CONFIRMED direct dependency** + **NEEDS_FURTHER_EVIDENCE** (violation if AI confirmed Core/platform) |
-| Priority | **P1-candidate** |
-
 ### ALLOWED_IN_PROCESS_DEPENDENCY
 
 Unchanged — see prior audit rows A-01 … A-08 (P4 ports, composition `forwardRef`, intra-rental Bookings→RDA, Rental→VI rental-health import direction, etc.).
@@ -114,9 +134,7 @@ Unchanged — see prior audit rows A-01 … A-08 (P4 ports, composition `forward
 | ID | Surface | Notes |
 |----|---------|-------|
 | NFE-01 | VI `prisma.booking` / `bookingHandoverProtocol` | Persisted from P4 — not automatic violation |
-| NFE-02 | **D-01 / D-02 / D-03** consumer domain classification | Owner must assign Communication / WhatsApp / Voice to Core platform vs Rental operational channel |
 | NFE-03 | Worker queue domain map | Spot-check only |
-| NFE-AI-01 | AI → booking context | See above |
 
 ### P2 — Optional hardening
 
@@ -128,12 +146,10 @@ Frontend master → rental util imports — unchanged (P2-01, P2-02).
 
 | Category | Count |
 |----------|-------|
-| **CONFIRMED_ARCHITECTURE_VIOLATION** | **2** (V-P1-01, V-P1-02) |
-| **CONFIRMED direct dependency** (rule pending) | **3 module groups**, **7** `BookingsService` DI sites + **1** `VehicleBookingContextService` |
-| **NEEDS_FURTHER_EVIDENCE** (binding rule) | **4** findings (D-01, D-02, D-03, NFE-AI-01) |
-| **P0 (CONFIRMED)** | **0** |
-| **P1 (CONFIRMED)** | **2** |
-| **P0/P1-candidate** (post ownership) | Up to **3** platform channel groups + AI |
+| **CONFIRMED_ARCHITECTURE_VIOLATION** | **6** findings (**4** P0 module groups + **2** P1 VI) |
+| **P0 (CONFIRMED)** | **4** (Communication, WhatsApp, Voice → `BookingsService`; AI → `VehicleBookingContextService`) |
+| **P1 (CONFIRMED)** | **2** (VI → `RentalHealthService`; VI → driver-pool util) |
+| **Direct `BookingsService` DI sites** | **7** (1 + 4 + 2 services) |
 
 ---
 
@@ -141,9 +157,9 @@ Frontend master → rental util imports — unchanged (P2-01, P2-02).
 
 **P4 VI ↔ rental-driving-analysis service boundary:** **CERTIFIED INTACT** on `65a76e63`.
 
-**Post-P6 overall:** **`BOUNDARY_AUDIT_NOT_GO`** for **documented Core→Rental service violations** (V-P1-01, V-P1-02). Platform `BookingsService` couplings are **recorded** and **P0-candidate** but **not** counted as confirmed violations until consumer ownership is resolved.
+**Post-P6 overall:** **`BOUNDARY_AUDIT_NOT_GO`** — **6** confirmed Core→Rental service/util violations (4× P0 platform + 2× P1 VI).
 
-**Review remediation (2026-11-19):** F1 ownership epistemics applied on top of initial audit; P4 and historical findings preserved.
+**Review history:** 2026-11-19 epistemic remediation; **owner Core classification** reconciles P0 platform findings ([`POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md)). P4 historical findings preserved.
 
 ---
 
@@ -163,7 +179,7 @@ Frontend master → rental util imports — unchanged (P2-01, P2-02).
 3. **Consumer** injects port token only — **no** `BookingsService` import on communication side.
 4. Migrate **only** `CommunicationQuickActionExecutorService` in first implementation PR.
 
-**Out of scope for PR1:** WhatsApp / Voice (wider `findDetail` or `findAll`/`findById` surfaces) — classify consumer domain first or follow with separate narrow ports.
+**Out of scope for PR1:** WhatsApp / Voice / AI (separate narrow ports after PR1; Core ownership confirmed).
 
 ---
 
@@ -182,5 +198,5 @@ Frontend master → rental util imports — unchanged (P2-01, P2-02).
 |--------|-------------------|--------|
 | Bookings | **UNCHANGED** | `AUDIT_IN_PROGRESS` |
 | Vehicle intelligence / rental-driving-analysis | **UNCHANGED** | P4 reaffirmed |
-| Communication / WhatsApp / Voice / AI | **UNCHANGED** | `NOT_STARTED` — no promotion |
+| Communication / WhatsApp / Voice / AI | **UPDATED** | `NOT_STARTED` unchanged; **Core domain** mini descriptions + owner record |
 | Rental Health | **UNCHANGED** | `AUDIT_IN_PROGRESS` |
