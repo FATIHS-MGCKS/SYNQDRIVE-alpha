@@ -55,6 +55,47 @@ npx prisma generate
 export PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1
 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
+verify_prisma_schema_matches_client() {
+  node <<'NODE'
+const { PrismaClient } = require('@prisma/client');
+(async () => {
+  const prisma = new PrismaClient();
+  try {
+    await prisma.$queryRaw`SELECT language FROM users LIMIT 0`;
+    await prisma.$queryRaw`SELECT id FROM bookings LIMIT 0`;
+    await prisma.$queryRaw`SELECT id FROM booking_document_bundles LIMIT 0`;
+  } finally {
+    await prisma.$disconnect();
+  }
+  console.log('P6-PR5B schema verification OK');
+})().catch((error) => {
+  console.error('P6-PR5B schema verification failed:', error.message);
+  process.exit(1);
+});
+NODE
+}
+
+sync_ephemeral_schema_if_needed() {
+  if verify_prisma_schema_matches_client 2>/dev/null; then
+    return 0
+  fi
+  echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH"
+  local log
+  log="$(mktemp /tmp/p6-pr5b-dbpush.XXXXXX.log)"
+  set +e
+  npx prisma db push --accept-data-loss --skip-generate 2>&1 | tee "${log}"
+  local db_push_exit=${PIPESTATUS[0]}
+  set -e
+  if verify_prisma_schema_matches_client; then
+    return 0
+  fi
+  echo "P6-PR5B schema drift unresolved after db push (exit=${db_push_exit})" >&2
+  cat "${log}" >&2
+  exit 1
+}
+
+sync_ephemeral_schema_if_needed
+
 export RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION=1
 
 assert_p6_pr5b_integration_env() {
