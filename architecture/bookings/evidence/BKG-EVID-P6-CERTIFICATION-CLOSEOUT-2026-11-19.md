@@ -10,7 +10,7 @@
 |---------|--------|
 | **P6_CERTIFICATION_VERDICT** | **GO** — agreed P6 disposable-Postgres modular HTTP certification + P6-PR5 unit/workflow harness + bookings authority bootstrap (`AUDIT_IN_PROGRESS`) are **complete for declared scope**. |
 | **FULL uninterrupted lifecycle DB E2E** | **NOT_CLAIMED** — certification is **composable suites**, not one HTTP spec from wizard through return. |
-| **CORE_SEPARATION_READY** | **NOT_READY** (by design) — STEP 1 is **SYNQDRIVE-CORE** independence; further Rental-only Postgres work **does not block** STEP 1. |
+| **BINDING_MONOREPO_ALIGNMENT** | **CONFIRMED** — Alpha is the permanent platform repo; Core/Rental are **logical** domains in one runtime/deployment ([`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md)). Physical repo extraction **PAUSED**. |
 | **BOOKINGS_REGISTRY_STATUS** | `AUDIT_IN_PROGRESS` — no `AUTHORITY_ACTIVE` promotion. |
 
 ## Merged workstream map (evidence, not titles)
@@ -59,29 +59,40 @@ Legend — **EVIDENCE_LEVEL:** `CI_POSTGRES` = disposable Postgres + opt-in env;
 | Real `RentalHealthService` deep dependencies | **D** | Mocked open in Postgres HTTP harnesses; production health separate. |
 | Production deployed SHA workflow validation | **C** | Repo/CI certified; Production drift documented in `AUDIT_MANIFEST.md`. |
 | `AUTHORITY_ACTIVE` promotion (bookings module) | **D** | Separate governance audit / promotion gate — **not** a P6 disposable-Postgres certification blocker. |
-| Core/Rental code boundary extraction (STEP 1) | **B** | Blocks SYNQDRIVE-CORE independence — **not** solved by more PR5 Postgres tests. |
-| Rental rules module authority (`NOT_STARTED` registry row) | **D** | Documentation inventory only; not required for Core STEP 1 operability. |
-| M2M / `CORE_APP_M2M_ENABLED` production activation between **separate** Core and Rental deployments | **C** | **STEP 3** integration gate after standalone apps exist; Alpha already ships M2M **default OFF** for in-monolith operation. |
+| Post-P6 logical Core↔Rental boundary review (inside Alpha) | **D** | Follow-on READ_ONLY audit; P4 baseline [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](../../platform-reorientation/evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) — not physical extraction. |
+| Rental rules module authority (`NOT_STARTED` registry row) | **D** | Documentation inventory only; orthogonal to P6 Postgres certification. |
+| M2M activation for **separately deployed** non-Rental product backends | **C** | External product integration gate — **not** required for co-located Rental in Alpha. |
 
 ### Remaining P6 certification blockers (category A)
 
 **None** for the **declared** P6 disposable-Postgres + workflow harness scope. Category **D** governance items and explicit non-goals (full lifecycle single spec, Production) do **not** reopen P6.
 
-## Architectural decision (STEP 1 / 2 / 3)
+## Architectural navigation (binding monorepo — current)
 
-Owner sequence preserved:
+Per owner decision **2026-11-16** (paused extraction) and monorepo documentation **2026-11-18**:
 
-1. **STEP 1:** SYNQDRIVE-CORE repository **operational without Rental modules** — physical extraction, Core platform IAM/products, vehicle intelligence; co-located in-process coupling in Alpha is **not** STEP 1.
-2. **STEP 2:** Standalone Rental from SYNQDRIVE-alpha **after** Core independence.
-3. **STEP 3:** Rental↔Core via approved versioned APIs; **M2M live activation** (`CORE_APP_M2M_ENABLED`, distributed rate limits) is an inter-app **production** gate — **not** required for STEP 1 Core to run Rental-free.
+- **SYNQDRIVE-alpha** remains the **central active platform repository** (one NestJS app, one deployment, shared DB).
+- **SYNQDRIVE-CORE** is a **paused reference fork** — do **not** restart physical repository extraction.
+- Co-located Rental uses **in-process** Core platform services and **user JWT** — **external M2M is not required** for Rental.
+- P6 Postgres certification does **not** imply a separate deployable Rental or Core backend.
 
-**Determination:** P6 Rental Postgres certification **does not block STEP 1**. Mocked Didit/Stripe/email in Rental E2E harnesses are **not** Core separation blockers. **M2M “at scale”** is **not** classified as a STEP 1 blocker (Alpha P3 M2M merged, default OFF). **Recommend returning to SYNQDRIVE-CORE independence workstream** as the smallest next executable operation.
+**Determination:** Certification mock boundaries (Didit/Stripe/email) are **not** monorepo architecture violations.
 
-## Smallest next executable operation
+## Smallest next executable operation (current)
 
-**`SYNQDRIVE-CORE_P3+_EXTRACTION_CONTINUATION`** — resume platform extraction journal on `SYNQDRIVE-CORE` `main` (Core domain extraction, vehicle/platform APIs per master plan — **not** Rental Postgres certification), with Rental certification artifacts treated as **frozen evidence** on alpha `8b8a6e3d3`.
+**`SYNQDRIVE_ALPHA_POST_P6_CORE_RENTAL_BOUNDARY_AUDIT`** — READ_ONLY_FIRST review of remaining **logical** Core→Rental dependencies inside Alpha, starting from P4 boundary evidence. Scope and classification vocabulary: [`POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md`](../../platform-reorientation/evidence/POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md).
 
 Optional Rental follow-ups (category D, not blocking): compose wizard→handover in one disposable spec; Production read-only workflow sample; rental-rules module audit.
+
+## Historical navigation (SUPERSEDED — #2448 as merged)
+
+The following text was published in PR #2448 before monorepo governance correction; **do not use** for current architecture decisions:
+
+- Recommended **`SYNQDRIVE-CORE_P3+_EXTRACTION_CONTINUATION`**
+- STEP 1/2/3 physical repository extraction and separate Core/Rental deployables as the active path
+- `CORE_SEPARATION_READY` framing tied to SYNQDRIVE-CORE independence
+
+**Superseded by:** this amendment + [`POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md`](../../platform-reorientation/evidence/POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md).
 
 ## Validation (closeout commit)
 
