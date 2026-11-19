@@ -20,6 +20,22 @@ export type P6Pr5bIsolationProof = {
   productionHostRejected: true;
 };
 
+export async function assertP6Pr5bPostgresReachable(): Promise<P6Pr5bIsolationProof> {
+  const proof = assertP6Pr5bDisposablePostgresPreflight();
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    throw new Error(
+      'P6-PR5B: disposable PostgreSQL is not reachable under opt-in integration (fail-closed)',
+    );
+  } finally {
+    await prisma.$disconnect().catch(() => undefined);
+  }
+  return proof;
+}
+
 export function assertP6Pr5bDisposablePostgresPreflight(): P6Pr5bIsolationProof {
   if (process.env[P6_PR5B_OPT_IN_ENV] !== '1') {
     throw new Error(`${P6_PR5B_OPT_IN_ENV}=1 is required for disposable Postgres integration tests`);

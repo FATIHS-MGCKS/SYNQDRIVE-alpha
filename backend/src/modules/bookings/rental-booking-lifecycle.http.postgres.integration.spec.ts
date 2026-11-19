@@ -1,5 +1,6 @@
 /**
- * P6-PR5B — Disposable PostgreSQL rental booking lifecycle (Nest HTTP + Prisma).
+ * P6-PR5B — Disposable PostgreSQL rental **handover** HTTP integration (Nest + Prisma).
+ * Seeds CONFIRMED bookings; does not certify wizard → payment over HTTP.
  *
  * Opt-in:
  *   RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION=1
@@ -30,13 +31,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { RentalDrivingAnalysisRecomputeTriggerService } from '@modules/rental-driving-analysis/rental-driving-analysis-recompute.trigger';
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '@modules/rental-driving-analysis/rental-driving-analysis.recompute.types';
 import {
-  assertP6Pr5bDisposablePostgresPreflight,
+  assertP6Pr5bPostgresReachable,
   P6_PR5B_OPT_IN_ENV,
 } from './testing/p6-pr5b-disposable-postgres-preflight';
 import {
   cleanupP6Pr5bRentalFixture,
   handoverPayload,
-  probeP6Pr5bPostgresDatabase,
   seedP6Pr5bPickupReadyBooking,
 } from './testing/rental-booking-lifecycle-pg.harness';
 
@@ -65,8 +65,7 @@ function bookingsBase(orgId: string): string {
   let app: INestApplication;
   let prisma: PrismaClient;
   let rdaEnqueue: jest.Mock;
-  let dbOk = false;
-  let isolationProof: ReturnType<typeof assertP6Pr5bDisposablePostgresPreflight>;
+  let isolationProof: Awaited<ReturnType<typeof assertP6Pr5bPostgresReachable>>;
 
   const masterUser = (orgId: string, userId: string) => ({
     id: userId,
@@ -77,10 +76,7 @@ function bookingsBase(orgId: string): string {
   });
 
   beforeAll(async () => {
-    dbOk = await probeP6Pr5bPostgresDatabase();
-    if (!dbOk) return;
-
-    isolationProof = assertP6Pr5bDisposablePostgresPreflight();
+    isolationProof = await assertP6Pr5bPostgresReachable();
     prisma = new PrismaClient();
     rdaEnqueue = jest.fn().mockResolvedValue({ enqueued: false, reason: 'NO_ANCHOR_TRIP' });
 
@@ -112,19 +108,17 @@ function bookingsBase(orgId: string): string {
   });
 
   it('records disposable DATABASE_URL isolation proof', () => {
-    if (!dbOk) return;
     expect(isolationProof.optIn).toBe(true);
     expect(isolationProof.productionHostRejected).toBe(true);
     expect(['127.0.0.1', 'localhost', 'postgres']).toContain(isolationProof.hostname);
   });
 
   it('denies bookings HTTP when ACTIVE RENTAL entitlement is missing (403)', async () => {
-    if (!dbOk) return;
     const orgId = randomUUID();
     await prisma.organization.create({
       data: { id: orgId, companyName: 'No Rental Org', businessType: 'RENTAL', status: 'ACTIVE' },
     });
-  try {
+    try {
       const userId = randomUUID();
       await prisma.user.create({
         data: {
@@ -146,7 +140,6 @@ function bookingsBase(orgId: string): string {
   });
 
   it('denies cross-organization booking read (tenant isolation)', async () => {
-    if (!dbOk) return;
     const fixture = await seedP6Pr5bPickupReadyBooking(prisma);
     try {
       await request(app.getHttpServer())
@@ -159,7 +152,6 @@ function bookingsBase(orgId: string): string {
   });
 
   it('blocks pickup handover when document bundle is missing prerequisites', async () => {
-    if (!dbOk) return;
     const fixture = await seedP6Pr5bPickupReadyBooking(prisma);
     await prisma.bookingDocumentBundle.delete({ where: { bookingId: fixture.bookingId } });
     try {
@@ -176,7 +168,6 @@ function bookingsBase(orgId: string): string {
   });
 
   it('completes CONFIRMED → ACTIVE → COMPLETED via HTTP handover with persistence asserts', async () => {
-    if (!dbOk) return;
     const fixture = await seedP6Pr5bPickupReadyBooking(prisma);
     try {
       const pickupRes = await request(app.getHttpServer())
@@ -250,7 +241,6 @@ function bookingsBase(orgId: string): string {
   });
 
   it('does not roll back COMPLETED when RDA enqueue rejects after RETURN', async () => {
-    if (!dbOk) return;
     const fixture = await seedP6Pr5bPickupReadyBooking(prisma);
     try {
       await request(app.getHttpServer())
@@ -275,7 +265,6 @@ function bookingsBase(orgId: string): string {
   });
 
   it('rejects trial org product for bookings routes (403)', async () => {
-    if (!dbOk) return;
     const fixture = await seedP6Pr5bPickupReadyBooking(prisma, {
       rentalEntitlement: OrgProductStatus.TRIAL,
     });

@@ -57,9 +57,34 @@ bash scripts/test/prisma-migrate-deploy-resilient.sh
 
 export RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION=1
 
-set +e
-npm test -- --testPathPatterns='p6-pr5b-disposable-postgres-preflight|rental-booking-lifecycle.http.postgres' --runInBand --verbose
-test_exit=${PIPESTATUS[0]}
-set -e
+assert_p6_pr5b_integration_env() {
+  if [[ "${RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION:-}" != "1" ]]; then
+    echo "Refusing: RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION=1 required (prevents silent describe.skip)" >&2
+    exit 1
+  fi
+  fail_closed_database_url "DATABASE_URL" "${DATABASE_URL}"
+}
 
-exit "${test_exit}"
+run_jest_postgres_suite() {
+  local expected_tests="$1"
+  local log
+  log="$(mktemp /tmp/p6-pr5b-pg-ci.XXXXXX.log)"
+  set +e
+  npm test -- --testPathPatterns='p6-pr5b-disposable-postgres-preflight|rental-booking-lifecycle.http.postgres' --runInBand --verbose 2>&1 | tee "${log}"
+  local test_exit=${PIPESTATUS[0]}
+  set -e
+
+  if ! grep -qE "Tests:[[:space:]]+${expected_tests} passed, ${expected_tests} total" "${log}"; then
+    echo "P6-PR5B: expected ${expected_tests} passed tests (discovery/execution mismatch or failure)" >&2
+    grep -E 'Tests:|PASS |FAIL ' "${log}" >&2 || true
+    exit 1
+  fi
+  if [[ "${test_exit}" -ne 0 ]]; then
+    exit "${test_exit}"
+  fi
+  echo "P6_PR5B_HTTP_POSTGRES_TESTS_EXECUTED=7"
+  echo "P6-PR5B disposable PostgreSQL integration: PASS (${expected_tests}/${expected_tests})"
+}
+
+assert_p6_pr5b_integration_env
+run_jest_postgres_suite 11

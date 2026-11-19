@@ -1,0 +1,40 @@
+name: P6-PR5B rental booking PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/bookings/**'
+      - 'backend/scripts/test/rental-booking-lifecycle-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/p6-pr5b-rental-booking-postgres-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: p6-pr5b-booking-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  CI_PG_CONTAINER: p6-pr5b-ci-postgres
+
+jobs:
+  p6-pr5b-booking-postgres:
+    name: P6-PR5B rental booking disposable PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: P6-PR5B HTTP/PostgreSQL booking handover integration
+        run: bash backend/scripts/test/rental-booking-lifecycle-postgres-ci.sh
