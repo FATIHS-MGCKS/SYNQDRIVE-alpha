@@ -221,6 +221,21 @@ nodes:
       - backend/src/modules/bookings/rental-booking-workflow-certification.spec.ts
       - architecture/bookings/evidence/BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md
 
+  - id: BKG-EVID-P6-PR5C-WIZARD-PAYMENT-DATABASE-E2E-2026-11-19
+    type: evidence
+    title: P6-PR5C database-backed rental wizard HTTP E2E
+    epistemic_status: INFERRED
+    source_type: CURRENT_TEST
+    summary: >
+      Wizard draft, checkout, confirm on disposable Postgres (17/17); real gatekeeper assembly
+      with documented customer/verification/rental-rules stubs — ELIGIBILITY_DATABASE_E2E NOT_VERIFIED;
+      CONFIRMATION partial mocked eligibility; pay_on_pickup invoice unpaid; Stripe mocked.
+    source_paths:
+      - backend/src/modules/bookings/rental-booking-wizard.http.postgres.integration.spec.ts
+      - backend/src/modules/bookings/testing/p6-pr5c-bookings-http-nest.harness.ts
+      - backend/src/modules/bookings/testing/p6-pr5c-gatekeeper-boundary.spec.ts
+      - architecture/bookings/evidence/BKG-EVID-P6-PR5C-WIZARD-PAYMENT-DATABASE-E2E-2026-11-19.md
+
   - id: BKG-EVID-P6-PR5B-DATABASE-E2E-2026-11-19
     type: evidence
     title: P6-PR5B database-backed rental booking HTTP E2E

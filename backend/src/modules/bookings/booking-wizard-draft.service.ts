@@ -331,6 +331,7 @@ export class BookingWizardDraftService {
     }, {
       userId: options?.userId ?? null,
       eligibilityApprovalId: body.eligibilityApprovalId,
+      eligibilityPreviewFingerprint: body.eligibilityPreviewFingerprint,
     });
 
     await this.bookingDepositSnapshot.freezeDepositOnSnapshot(orgId, bookingId);
