@@ -210,6 +210,17 @@ nodes:
     evidence:
       - BKG-EVID-ARCH-RETROACTIVITY-001
 
+  - id: BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19
+    type: evidence
+    title: P6-PR5 rental workflow certification
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Service-level workflow harness; return-handover RDA enqueue remediation; E2E Postgres blocked.
+    source_paths:
+      - backend/src/modules/bookings/rental-booking-workflow-certification.spec.ts
+      - architecture/bookings/evidence/BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md
+
   - id: BKG-EVID-HTTP-DOC-LICENSE-2026-11-19
     type: evidence
     title: P6-PR4A HTTP booking-document product license matrix

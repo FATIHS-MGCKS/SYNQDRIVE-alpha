@@ -2,6 +2,7 @@
 
 | ID | Type | Title | Location |
 |----|------|-------|----------|
+| BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19 | CURRENT_TEST | P6-PR5 workflow matrix + harness | [`BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md`](BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md) |
 | BKG-EVID-HTTP-DOC-LICENSE-2026-11-19 | CURRENT_TEST | P6-PR4A HTTP product license matrix | [`BKG-EVID-HTTP-DOC-LICENSE-2026-11-19.md`](BKG-EVID-HTTP-DOC-LICENSE-2026-11-19.md) |
 | BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19 | CURRENT_CODE | F1 document route guard inspection (pre-remediation) | [`BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19.md`](BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19.md) |
 | BKG-EVID-CODE-MODULE-001 | CURRENT_CODE | Module inspection 2026-11-19 | `backend/src/modules/bookings/`, frontend rental/operator |

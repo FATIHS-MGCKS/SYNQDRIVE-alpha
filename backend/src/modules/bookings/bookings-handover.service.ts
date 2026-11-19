@@ -44,6 +44,8 @@ import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-
 import { StationAccessService } from '@shared/stations/station-access.service';
 import { BookingHandoverDraftService } from './booking-handover-draft.service';
 import { assertVehicleRegistryActiveForOperationalAdmission } from '@modules/vehicles/registry/vehicle-registry-admission';
+import { RentalDrivingAnalysisRecomputeTriggerService } from '@modules/rental-driving-analysis/rental-driving-analysis-recompute.trigger';
+import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '@modules/rental-driving-analysis/rental-driving-analysis.recompute.types';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -74,6 +76,7 @@ export class BookingsHandoverService {
     private readonly bookingEligibilityRecheck: BookingEligibilityRecheckService,
     private readonly stationAccess: StationAccessService,
     private readonly handoverDraftService: BookingHandoverDraftService,
+    private readonly rentalDrivingAnalysisRecomputeTrigger: RentalDrivingAnalysisRecomputeTriggerService,
   ) {}
 
   private runBackgroundTask(label: string, work: Promise<void>): void {
@@ -491,6 +494,19 @@ export class BookingsHandoverService {
           returnStationId: booking.returnStationId,
         }),
       );
+      void this.rentalDrivingAnalysisRecomputeTrigger
+        .enqueueForBooking({
+          organizationId: orgId,
+          vehicleId: updatedBooking.vehicleId,
+          bookingId,
+          reason: RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED,
+          correlationId: `rental-recompute:${bookingId}:${RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS.BOOKING_COMPLETED}`,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Rental analysis recompute enqueue failed booking=${bookingId}: ${sanitizeAutomationError(err)}`,
+          );
+        });
     }
 
     await this.fleetMapCache.invalidate(orgId);

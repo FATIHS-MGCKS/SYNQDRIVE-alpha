@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | P6-PR5 workflow certification harness + return RDA enqueue | P6-PR5 | `rental-booking-workflow-certification.spec.ts`; handover `BOOKING_COMPLETED` trigger parity |
 | 2026-11-19 | P6-PR4A booking-document `ProductLicenseGuard` + HTTP matrix | P6-PR4A | Confirmed TRIAL/non-ACTIVE bypass; fix on Documents + legal-delivery-evidence controllers |
 | 2026-11-19 | Independent review remediation F1–F3 on PR #2441 | P6-PR4 | F1 document route guard evidence; manifest SHA/validation; no runtime changes |
 | 2026-11-19 | Bootstrap authority `architecture/bookings/` (V0.1) | P6-PR4 | NOT_STARTED → AUDIT_IN_PROGRESS; graph + validators |

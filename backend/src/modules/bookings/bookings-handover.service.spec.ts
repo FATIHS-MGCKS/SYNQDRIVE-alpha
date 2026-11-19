@@ -189,6 +189,9 @@ function createHarness(options: {
     onPickupHandoverCompleted: jest.fn().mockResolvedValue(undefined),
     onReturnHandoverCompleted: jest.fn().mockResolvedValue(undefined),
   };
+  const rentalDrivingAnalysisRecomputeTrigger = {
+    enqueueForBooking: jest.fn().mockResolvedValue({ enqueued: true }),
+  };
 
   const svc = new BookingsHandoverService(
     prisma as never,
@@ -203,6 +206,7 @@ function createHarness(options: {
     bookingEligibilityRecheck as never,
     stationAccess as never,
     handoverDraftService as never,
+    rentalDrivingAnalysisRecomputeTrigger as never,
   );
 
   return {
@@ -215,6 +219,7 @@ function createHarness(options: {
     bookingDocumentGenerationDispatcher,
     workflowEvents,
     taskAutomation,
+    rentalDrivingAnalysisRecomputeTrigger,
   };
 }
 
@@ -317,7 +322,13 @@ describe('BookingsHandoverService', () => {
   });
 
   it('completes return with km driven and makes vehicle available', async () => {
-    const { svc, tx, workflowEvents, bookingDocumentGenerationDispatcher } = createHarness({
+    const {
+      svc,
+      tx,
+      workflowEvents,
+      bookingDocumentGenerationDispatcher,
+      rentalDrivingAnalysisRecomputeTrigger,
+    } = createHarness({
       booking: bookingRow({ status: 'ACTIVE' }),
       pickupOdometer: 15000,
     });
@@ -342,6 +353,13 @@ describe('BookingsHandoverService', () => {
     );
     expect(workflowEvents.scheduleEmit).toHaveBeenCalled();
     expect(bookingDocumentGenerationDispatcher.enqueueReturnDocuments).toHaveBeenCalled();
+    expect(rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: orgId,
+        bookingId,
+        reason: 'BOOKING_COMPLETED',
+      }),
+    );
   });
 
   it('treats return protocol as immutable when already recorded', async () => {
