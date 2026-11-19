@@ -7,6 +7,7 @@ import { PermissionsGuard } from './permissions.guard';
 import { MasterBillingGuard } from './master-billing.guard';
 import { StationAccessService } from '@shared/stations/station-access.service';
 import { StationScopeGuard } from '@shared/guards/station-scope.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
 
 @Global()
 @Module({
@@ -19,6 +20,7 @@ import { StationScopeGuard } from '@shared/guards/station-scope.guard';
     MasterBillingGuard,
     StationAccessService,
     StationScopeGuard,
+    ProductLicenseGuard,
   ],
   exports: [
     EffectiveAccessLoaderService,
@@ -28,6 +30,7 @@ import { StationScopeGuard } from '@shared/guards/station-scope.guard';
     MasterBillingGuard,
     StationAccessService,
     StationScopeGuard,
+    ProductLicenseGuard,
   ],
 })
 export class SharedGuardsModule {}

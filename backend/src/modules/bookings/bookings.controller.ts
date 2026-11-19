@@ -58,9 +58,13 @@ import { RequirePermission } from '@shared/decorators/require-permission.decorat
 import { CreateHandoverProtocolPayload } from './handover.types';
 import { resolveHandoverActor } from './handover-actor.util';
 import { GetHandoverDraftQueryDto, UpsertHandoverDraftDto } from './dto/booking-handover-draft.dto';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/bookings')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard, PermissionsGuard)
 export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,

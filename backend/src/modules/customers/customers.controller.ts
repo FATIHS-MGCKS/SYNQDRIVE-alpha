@@ -37,6 +37,9 @@ import {
   UploadCustomerDocumentDto,
 } from './dto';
 import { PaginationParams } from '@shared/utils/pagination';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 const CUSTOMER_DOCS_DIR = join(process.cwd(), 'uploads', 'customer-documents');
 if (!existsSync(CUSTOMER_DOCS_DIR))
@@ -77,8 +80,9 @@ const customerDocUploadInterceptor = FileInterceptor('file', {
   },
 });
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/customers')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard)
 export class CustomersController {
   constructor(
     private readonly customersService: CustomersService,

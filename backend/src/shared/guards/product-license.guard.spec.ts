@@ -36,10 +36,17 @@ describe('ProductLicenseGuard — entitlement status parity', () => {
     });
   });
 
-  it('denies when no row matches operational statuses (TRIAL fail-closed)', async () => {
-    prisma.organizationProduct.findFirst.mockResolvedValue(null);
-    await expect(guard.canActivate(ctx('org-1'))).rejects.toBeInstanceOf(ForbiddenException);
-  });
+  it.each([OrgProductStatus.TRIAL, OrgProductStatus.SUSPENDED, OrgProductStatus.CANCELLED])(
+    'denies when no operational row matches (%s fail-closed)',
+    async (status) => {
+      prisma.organizationProduct.findFirst.mockImplementation(async (args: { where: { status?: { in: OrgProductStatus[] } } }) => {
+        const allowed = args.where.status?.in ?? [];
+        expect(allowed).toEqual([...ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES]);
+        return allowed.includes(status) ? { id: 'op-1' } : null;
+      });
+      await expect(guard.canActivate(ctx('org-1'))).rejects.toBeInstanceOf(ForbiddenException);
+    },
+  );
 
   it('passes when reflector has no product key', async () => {
     reflector.getAllAndOverride.mockReturnValue(undefined);

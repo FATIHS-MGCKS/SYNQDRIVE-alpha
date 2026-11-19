@@ -31,14 +31,18 @@ import {
   UpsertOrganizationRentalRulesDto,
   UpsertVehicleRentalOverridesDto,
 } from './dto';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 /**
  * Administration → Rental Rules / Mietregeln.
  * Tenant isolation via OrgScopingGuard; capabilities via PermissionsGuard +
  * `@RequireRentalRulePermission`. ORG_ADMIN / MASTER_ADMIN retain access via guard bypass.
  */
+@RequireProduct(ProductSlug.RENTAL)
 @Controller()
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard, PermissionsGuard)
 export class RentalRulesController {
   constructor(private readonly rentalRules: RentalRulesService) {}
 

@@ -41,11 +41,22 @@ import { StationsV2FeatureGuard } from './guards/stations-v2-feature.guard';
 import { RequireStationsV2Feature } from './decorators/require-stations-v2-feature.decorator';
 import { getStationsV2EffectiveFlags } from './stations-v2-feature-disabled.error';
 import { StationTransferService } from './transfers/station-transfer.service';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 const STATIONS_MODULE = 'stations';
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/stations')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard, StationScopeGuard, StationsV2FeatureGuard)
+@UseGuards(
+  OrgScopingGuard,
+  ProductLicenseGuard,
+  RolesGuard,
+  PermissionsGuard,
+  StationScopeGuard,
+  StationsV2FeatureGuard,
+)
 export class StationsController {
   constructor(
     private readonly stationsService: StationsService,

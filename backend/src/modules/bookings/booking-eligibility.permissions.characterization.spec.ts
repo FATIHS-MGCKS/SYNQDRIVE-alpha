@@ -1,6 +1,7 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { BOOKING_ELIGIBILITY_PERMISSION_REQUIREMENTS } from './booking-eligibility-permission.constants';
@@ -15,7 +16,7 @@ describe('BookingsController rental eligibility permissions characterization', (
   it('applies PermissionsGuard at controller level', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, BookingsController) ?? [];
     expect(guards).toEqual(
-      expect.arrayContaining([OrgScopingGuard, RolesGuard, PermissionsGuard]),
+      expect.arrayContaining([OrgScopingGuard, ProductLicenseGuard, RolesGuard, PermissionsGuard]),
     );
   });
 
