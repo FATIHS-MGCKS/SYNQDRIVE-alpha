@@ -75,6 +75,14 @@ Harness: `p6-pr5e-bookings-http-nest.harness.ts`
 | Pattern | + `rental-booking-wizard-eligibility-real.http.postgres` |
 | Expected total | **27** (4 + 7 + 6 + 5 + 5) |
 
+## Schema parity remediation (P6-PR5E CI)
+
+**Root cause:** `OrganizationRentalRules` in `schema.prisma` omitted `@map` for several columns that migrations create as snake_case (e.g. `credit_card_required`). Prisma Client queried camelCase `creditCardRequired`, which does not exist on disposable PostgreSQL after `migrate deploy`.
+
+**Fix (no new SQL migration):** Add `@map` on `creditCardRequired`, policy enums, and `notes` to match `20260620100000_rental_rules_eligibility` / `20260723130000_rental_rule_revisions`.
+
+**Disposable CI guard:** `rental-booking-lifecycle-postgres-ci.sh` — `SELECT … FROM organization_rental_rules` + `rental_rule_revisions` in `verify_prisma_schema_matches_client`; targeted `ADD COLUMN IF NOT EXISTS` parity for org rental rules columns (ephemeral DB only).
+
 ## Validation
 
 ```bash
