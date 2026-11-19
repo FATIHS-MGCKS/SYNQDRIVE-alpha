@@ -53,6 +53,14 @@ P6-PR5C/PR5D harnesses unchanged (stubs preserved).
 | Rule change | `supersedeP6Pr5eOrgRentalRules` → v2 ACTIVE, v1 RETIRED |
 | Blocked customer | `CustomerStatus.BLOCKED` update before confirm |
 
+## F1 independent review (rule-change / fingerprint)
+
+**Enforcement ordering (confirm):** `BookingEligibilityEnforcementService.assertAllowed` runs **before** `assertWizardPreviewFingerprintMatches`. A restrictive rule change that makes the customer ineligible surfaces **`BOOKING_ELIGIBILITY_NOT_ELIGIBLE`** on confirm — not `BOOKING_ELIGIBILITY_RULES_CHANGED`. Restrictive age denial remains **TEST_3**.
+
+**Fingerprint gap (remediated):** Preview fingerprint previously hashed only `status`, `sourceRuleIds`, and `reasonCodes`. Published org rule change **18 → 19** with a 30-year-old customer stays **ELIGIBLE** but must still invalidate the fingerprint. **CHANGE:** `buildEligibilityPreviewFingerprint` now includes a `rentalRulesFingerprint` segment derived from effective rule field values.
+
+**TEST_4:** Supersedes org revision **18 → 19**, expects **`BOOKING_ELIGIBILITY_RULES_CHANGED`** while `eligibilityStatus` remains `ELIGIBLE`.
+
 ## HTTP spec
 
 `backend/src/modules/bookings/rental-booking-wizard-eligibility-real.http.postgres.integration.spec.ts` (5 tests)

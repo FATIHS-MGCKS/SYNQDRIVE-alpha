@@ -225,8 +225,10 @@ async function createWizardDraft(
     }
   });
 
-  it('TEST_4: published rule change invalidates prior eligibility fingerprint', async () => {
-    const fixture = await seedP6Pr5eWizardOrg(prisma);
+  it('TEST_4: published rule change invalidates fingerprint while customer stays eligible (18 → 19)', async () => {
+    const fixture = await seedP6Pr5eWizardOrg(prisma, {
+      rentalRules: { minimumAgeYears: 18, minimumLicenseHoldingMonths: 0 },
+    });
     const quote = await createP6Pr5ePricingQuote(prisma, fixture);
     try {
       const bookingId = await createWizardDraft(app, fixture, quote.quoteId);
@@ -238,10 +240,11 @@ async function createWizardDraft(
         .expect(200);
 
       expect(previewRes.body.canConfirm).toBe(true);
+      expect(previewRes.body.status).toBe('ELIGIBLE');
       const fingerprint = previewRes.body.previewFingerprint as string;
 
       await supersedeP6Pr5eOrgRentalRules(prisma, fixture.orgId, fixture.userId, {
-        minimumAgeYears: 99,
+        minimumAgeYears: 19,
         minimumLicenseHoldingMonths: 0,
       });
 
@@ -258,6 +261,7 @@ async function createWizardDraft(
       expect(confirmRes.body.code).toBe(BOOKING_ELIGIBILITY_TRANSITION_CODE.RULES_CHANGED);
       expect(confirmRes.body.previousFingerprint).toBe(fingerprint);
       expect(confirmRes.body.previewFingerprint).not.toBe(fingerprint);
+      expect(confirmRes.body.eligibilityStatus).toBe('ELIGIBLE');
 
       const row = await prisma.booking.findFirstOrThrow({
         where: { id: bookingId, organizationId: fixture.orgId },
