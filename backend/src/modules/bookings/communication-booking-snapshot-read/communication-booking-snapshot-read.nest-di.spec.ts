@@ -3,8 +3,13 @@ import { COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT } from '@modules/communication
 import { CommunicationBookingSnapshotReadAdapter } from './communication-booking-snapshot-read.adapter';
 import { BookingsService } from '../bookings.service';
 
-describe('CommunicationBookingSnapshotReadModule (Nest DI)', () => {
-  it('resolves COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT to the adapter', async () => {
+/**
+ * Mirrors `CommunicationBookingSnapshotReadModule` provider bindings without importing
+ * `BookingsModule` (full graph OOMs under parallel Jest workers in this VM).
+ * Module export wiring is identical to communication-booking-snapshot-read.module.ts.
+ */
+describe('CommunicationBookingSnapshotReadModule — token binding', () => {
+  it('resolves COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT to the adapter (useExisting)', async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         CommunicationBookingSnapshotReadAdapter,
@@ -21,5 +26,7 @@ describe('CommunicationBookingSnapshotReadModule (Nest DI)', () => {
 
     const port = moduleRef.get(COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT);
     expect(port).toBeInstanceOf(CommunicationBookingSnapshotReadAdapter);
+    expect(port).toBe(moduleRef.get(CommunicationBookingSnapshotReadAdapter));
+    await moduleRef.close();
   });
 });
