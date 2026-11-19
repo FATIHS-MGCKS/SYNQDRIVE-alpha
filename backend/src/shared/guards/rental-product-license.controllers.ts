@@ -9,6 +9,8 @@ import { PaymentsConnectController } from '@modules/payments/payments-connect.co
 import { RentalRulesController } from '@modules/rental-rules/rental-rules.controller';
 import { RentalHealthController } from '@modules/rental-health/rental-health.controller';
 import { RentalDrivingAnalysisController } from '@modules/rental-driving-analysis/rental-driving-analysis.controller';
+import { DocumentsController } from '@modules/documents/documents.controller';
+import { LegalDocumentDeliveryEvidenceController } from '@modules/documents/legal-document-delivery-evidence.controller';
 import { PRODUCT_KEY } from './product-license.guard';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { ProductLicenseGuard } from './product-license.guard';
@@ -26,6 +28,8 @@ export const RENTAL_PRODUCT_LICENSED_CONTROLLERS: Type<unknown>[] = [
   RentalRulesController,
   RentalHealthController,
   RentalDrivingAnalysisController,
+  DocumentsController,
+  LegalDocumentDeliveryEvidenceController,
 ];
 
 export function assertRentalProductLicenseMetadata(controller: Type<unknown>): void {

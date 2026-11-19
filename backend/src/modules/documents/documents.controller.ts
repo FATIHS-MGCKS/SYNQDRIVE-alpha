@@ -12,6 +12,9 @@ import type { Response } from 'express';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
@@ -30,7 +33,8 @@ import { buildContentDispositionInline } from './storage/document-storage-conten
  * via a public URL. Downloads serve the STORED file (no silent regeneration).
  */
 @Controller('organizations/:orgId')
-@UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
+@RequireProduct(ProductSlug.RENTAL)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, PermissionsGuard, RolesGuard)
 export class DocumentsController {
   constructor(
     private readonly bundle: BookingDocumentBundleService,

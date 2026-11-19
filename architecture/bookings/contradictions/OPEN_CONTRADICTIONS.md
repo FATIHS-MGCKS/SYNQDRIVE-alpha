@@ -2,7 +2,7 @@
 
 | ID | Statement A | Statement B | Resolution |
 |----|-------------|-------------|------------|
-| BKG-CONTRA-LICENSE-001 | P6-PR3 policy: operational Rental APIs require ACTIVE `RENTAL` via `ProductLicenseGuard` on `BookingsController` (confirmed on `origin/main`). | `DocumentsController` and `LegalDocumentDeliveryEvidenceController` expose booking-scoped HTTP without `ProductLicenseGuard` (confirmed in [`BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19.md`](../evidence/BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19.md)). | **Unresolved policy alignment** — not a Core/Rental boundary violation. **Confirmed missing route-level product guard** on both controllers. **Alternative enforcement:** org scope + RBAC only. **Entitlement bypass:** **not claimed** without HTTP proof; tracked as `BKG-HYP-001`. |
+| BKG-CONTRA-LICENSE-001 | P6-PR3 policy vs booking-document HTTP without product guard | HTTP tests **confirmed bypass** pre-fix ([`BKG-EVID-HTTP-DOC-LICENSE-2026-11-19.md`](../evidence/BKG-EVID-HTTP-DOC-LICENSE-2026-11-19.md)); **remediated** P6-PR4A — `ProductLicenseGuard` + `@RequireProduct(RENTAL)` on `DocumentsController` and `LegalDocumentDeliveryEvidenceController`. `LegalDocumentsController` unchanged. |
 
 ## Out of scope for BKG-CONTRA-LICENSE-001
 
