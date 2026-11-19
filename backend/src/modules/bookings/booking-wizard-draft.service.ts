@@ -263,7 +263,10 @@ export class BookingWizardDraftService {
     orgId: string,
     bookingId: string,
     body: BookingWizardDraftConfirmDto,
-    options?: { userId?: string | null },
+    options?: {
+      userId?: string | null;
+      actor?: Pick<PermissionActor, 'platformRole' | 'membershipRole' | 'organizationId'>;
+    },
   ): Promise<BookingWizardConfirmResult> {
     const paymentIntent = body.paymentIntent ?? body.paymentMethod;
     const resolvedIntent = this.resolvePaymentIntent(paymentIntent);
@@ -350,6 +353,8 @@ export class BookingWizardDraftService {
       const actor: PermissionActor = {
         id: options?.userId ?? undefined,
         organizationId: orgId,
+        platformRole: options?.actor?.platformRole,
+        membershipRole: options?.actor?.membershipRole,
       };
       const context = await this.checkoutContextService.getCheckoutContext(orgId, bookingId);
       paymentFlow = await this.paymentFlowService.executePaymentLinkFlow({

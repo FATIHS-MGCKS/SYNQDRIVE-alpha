@@ -218,7 +218,12 @@ export async function createP6Pr5cWizardHttpApp(
       InvoiceNumberService,
       {
         provide: InvoicePaymentTaskService,
-        useValue: { ensurePaymentTask: noopAsync, clearPaymentTask: noopAsync },
+        useValue: {
+          ensurePaymentTask: noopAsync,
+          clearPaymentTask: noopAsync,
+          syncPaymentCheckTask: noopAsync,
+          syncPaymentCheckTaskById: noopAsync,
+        },
       },
       InvoicesService,
       BookingInvoiceLifecycleService,
@@ -235,7 +240,11 @@ export async function createP6Pr5cWizardHttpApp(
       { provide: StripeCheckoutService, useValue: P6_PR5C_STRIPE_CHECKOUT_MOCK },
       {
         provide: PaymentEmailEnqueueService,
-        useValue: { enqueuePaymentRequestEmail: jest.fn().mockResolvedValue({ queued: false }) },
+        useValue: {
+          enqueuePaymentRequestEmail: jest.fn().mockResolvedValue({ queued: false }),
+          maybeEnqueueAfterCheckout: jest.fn().mockResolvedValue(null),
+          isEnabled: () => false,
+        },
       },
       BookingWizardPaymentFlowService,
       { provide: RentalHealthService, useValue: P6_PR5C_RENTAL_HEALTH_MOCK },
