@@ -219,10 +219,10 @@ export async function createP6Pr5cWizardHttpApp(
             decision,
             businessAudit,
           );
-          const enforcementMutable = enforcement as BookingEligibilityEnforcementService & {
-            countAdditionalDrivers: (organizationId: string, bookingId: string) => Promise<number>;
-            isDepositReceived: (organizationId: string, bookingId: string) => Promise<boolean>;
-          };
+          const enforcementMutable = enforcement as unknown as Record<
+            string,
+            (...args: unknown[]) => Promise<unknown>
+          >;
           enforcementMutable.countAdditionalDrivers = async () => 0;
           enforcementMutable.isDepositReceived = async () => false;
           return enforcement;
