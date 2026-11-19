@@ -9,17 +9,20 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
 import { StationAccessService } from '@shared/stations/station-access.service';
-import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
+import { CustomerVerificationReadModelService } from '@modules/customer-verification/customer-verification-read-model.service';
 import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
+import { DiditService } from '@modules/customer-verification/providers/didit/didit.service';
 import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import { BookingInvoiceLifecycleService } from '@modules/invoices/booking-invoice-lifecycle.service';
 import { InvoiceNumberService } from '@modules/invoices/invoice-number.service';
 import { InvoicePaymentTaskService } from '@modules/invoices/invoice-payment-task.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { PricingController } from '@modules/pricing/pricing.controller';
-import { PricingModule } from '@modules/pricing/pricing.module';
+import { PriceTariffsService } from '@modules/pricing/price-tariffs.service';
+import { PricingMigrationService } from '@modules/pricing/pricing-migration.service';
 import { PricingQuoteService } from '@modules/pricing/pricing-quote.service';
 import { PricingService } from '@modules/pricing/pricing.service';
+import { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
 import { BookingPaymentRequestRepository } from '@modules/payments/repositories/booking-payment-request.repository';
 import { OrganizationPaymentAccountRepository } from '@modules/payments/repositories/organization-payment-account.repository';
@@ -99,11 +102,7 @@ export async function createP6Pr5cWizardHttpApp(
   TestAuthGuard: TestAuthGuardCtor,
 ): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
-    imports: [
-      ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
-      PricingModule,
-      CustomerVerificationModule,
-    ],
+    imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true })],
     controllers: [BookingsController, PricingController],
     providers: [
       Reflector,
@@ -118,6 +117,15 @@ export async function createP6Pr5cWizardHttpApp(
       StationRuleEngineService,
       StationValidationService,
       RentalEffectiveRulesService,
+      DepositResolverService,
+      BookingDepositSnapshotService,
+      PricingMigrationService,
+      PriceTariffsService,
+      PricingService,
+      PricingQuoteService,
+      CustomerVerificationReadModelService,
+      { provide: DiditService, useValue: {} },
+      CustomerVerificationService,
       CustomerEligibilityService,
       BookingRentalEligibilityService,
       BookingEligibilityGatekeeperService,
