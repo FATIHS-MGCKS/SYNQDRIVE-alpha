@@ -233,6 +233,7 @@ nodes:
     source_paths:
       - backend/src/modules/bookings/rental-booking-wizard.http.postgres.integration.spec.ts
       - backend/src/modules/bookings/testing/p6-pr5c-bookings-http-nest.harness.ts
+      - backend/src/modules/bookings/testing/p6-pr5c-gatekeeper-boundary.spec.ts
       - architecture/bookings/evidence/BKG-EVID-P6-PR5C-WIZARD-PAYMENT-DATABASE-E2E-2026-11-19.md
 
   - id: BKG-EVID-P6-PR5B-DATABASE-E2E-2026-11-19
