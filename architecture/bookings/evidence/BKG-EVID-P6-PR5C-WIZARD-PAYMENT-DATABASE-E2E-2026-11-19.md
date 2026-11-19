@@ -33,8 +33,9 @@ P6-PR5B **handover** certification (`DATABASE_HANDOVER_E2E_VERIFIED`) remains un
 | Item | Finding |
 |------|---------|
 | **Prior anti-pattern** | Test harness intercepted `evaluate()` and synthesized `ELIGIBLE` / `NOT_ELIGIBLE` when status was `TECHNICAL_ERROR` or evaluation threw |
-| **Root cause (customer)** | `CustomerEligibilityService` mock returned a **legacy flat object** without `stages`, causing `mapCustomerEligibilityToGateReasons` to throw → **`TECHNICAL_ERROR`**. Prior spy masked this. |
-| **Root cause (rental)** | Full `BookingRentalEligibilityService.check()` against disposable Postgres still yields rental-domain **`TECHNICAL_ERROR`** (customer fact-trust / document graph not production-complete in CI DB). Harness keeps **mocked** rental check returning stub `effectiveRules`. |
+| **Root cause (customer)** | Legacy customer mock without `stages` broke `mapCustomerEligibilityToGateReasons` → throw / **`TECHNICAL_ERROR`**. Fixed via `createP6Pr5cCustomerEligibilityStub()`. |
+| **Root cause (vehicle readiness)** | `P6_PR5C_RENTAL_HEALTH_MOCK` omitted `reasons[]`; `evaluateVehicleReadinessDomain` read `gate.reasons[0]` → throw → **`TECHNICAL_ERROR`** whenever `includeVehicleReadiness` is true (CONFIRM preview). Prior synthetic `evaluate()` spy masked this. |
+| **Rental check boundary** | `BookingRentalEligibilityService.check` mocked **ELIGIBLE** with stub `effectiveRules` (full service not certification-safe on disposable Postgres without deeper fixtures). |
 | **F1 verdict** | **REAL_GATEKEEPER_WITH_DOCUMENTED_STUB_BOUNDARIES** — interception removed; gatekeeper assembly is real; domain inputs remain bounded stubs. **Does not satisfy** `ELIGIBILITY_DATABASE_E2E_VERIFIED`. |
 | **NOT_ELIGIBLE path** | Seeded `customer_verification_check` `REJECTED` rows → stub verification reader → real gatekeeper → HTTP `409` `NOT_ELIGIBLE` |
 | **Stale fingerprint path** | Eligible preview + wrong fingerprint → HTTP `409` `RULES_CHANGED` (enforcement fingerprint compare; not synthetic override) |

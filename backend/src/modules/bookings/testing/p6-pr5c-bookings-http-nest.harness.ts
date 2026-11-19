@@ -104,6 +104,7 @@ export const P6_PR5C_RENTAL_HEALTH_MOCK = {
     healthGateStatus: 'OK',
     healthGateWarning: null,
     manualReviewRequired: false,
+    reasons: [],
   }),
 };
 
