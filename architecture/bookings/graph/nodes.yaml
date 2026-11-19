@@ -210,6 +210,18 @@ nodes:
     evidence:
       - BKG-EVID-ARCH-RETROACTIVITY-001
 
+  - id: BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19
+    type: evidence
+    title: F1 Documents route guard inspection
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      Independent review confirms no ProductLicenseGuard on DocumentsController and
+      LegalDocumentDeliveryEvidenceController; see evidence markdown file.
+    source_paths:
+      - backend/src/modules/documents/documents.controller.ts
+      - backend/src/modules/documents/legal-document-delivery-evidence.controller.ts
+
   - id: BKG-EVID-CODE-MODULE-001
     type: evidence
     title: Repository module inspection 2026-11-19
@@ -302,8 +314,8 @@ nodes:
     title: Product license coverage Documents vs Bookings controller
     epistemic_status: CONFIRMED
     summary: >
-      BookingsController requires ProductLicenseGuard; DocumentsController booking routes are not in the
-      P6-PR3 licensed controller registry — unresolved whether TRIAL orgs can bypass via documents HTTP.
+      BookingsController has ProductLicenseGuard; DocumentsController and LegalDocumentDeliveryEvidenceController
+      booking routes do not (F1 CONFIRMED). RBAC/org scope remain; runtime entitlement bypass NOT PROVEN (BKG-HYP-001).
     evidence:
       - BKG-TEST-GUARD-STACK-001
 

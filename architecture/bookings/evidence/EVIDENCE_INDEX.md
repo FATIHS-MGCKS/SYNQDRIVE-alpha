@@ -2,6 +2,7 @@
 
 | ID | Type | Title | Location |
 |----|------|-------|----------|
+| BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19 | CURRENT_CODE | F1 document route guard inspection | [`BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19.md`](BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19.md) |
 | BKG-EVID-CODE-MODULE-001 | CURRENT_CODE | Module inspection 2026-11-19 | `backend/src/modules/bookings/`, frontend rental/operator |
 | BKG-EVID-PROD-RUNTIME-001 | PRODUCTION_OBSERVATION | VPS presence + health | [`PRODUCTION_BASELINE.md`](PRODUCTION_BASELINE.md) |
 | BKG-EVID-ARCH-PAYMENT-INTENT-001 | ARCHITECTURE_DOCUMENT | Payment intent vs paid | `architecture/BOOKING_PAYMENT_INTENT_VS_PAID_2026-07-14.md` |
