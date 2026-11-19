@@ -56,10 +56,42 @@ import { BookingWizardCheckoutContextService } from '../booking-wizard-checkout-
 import { BookingWizardPaymentFlowService } from '../booking-wizard-payment-flow.service';
 import { BookingPickupGateAuditService } from '../booking-pickup-gate/booking-pickup-gate-audit.service';
 import { BookingPickupGateService } from '../booking-pickup-gate/booking-pickup-gate.service';
+import { BookingDocumentCompletenessService } from '@modules/documents/booking-document-completeness.service';
+import { LegalDocumentResolverService } from '@modules/documents/legal-document-resolver.service';
+import { LegalDocumentsService } from '@modules/documents/legal-documents.service';
+import { LEGAL_STATUS } from '@modules/documents/documents.constants';
+import { legalDocumentLookupKeys } from '@modules/documents/legal-document-type.compat';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { BusinessAuditService } from '@modules/business-audit/business-audit.service';
 
 type TestAuthGuardCtor = new (...args: never[]) => { canActivate: (ctx: unknown) => boolean };
+
+function minimalLegalDocumentsService(prisma: PrismaClient): Pick<LegalDocumentsService, 'getActiveByType'> {
+  return {
+    async getActiveByType(orgId: string, language = 'de') {
+      const now = new Date();
+      const active = await prisma.organizationLegalDocument.findMany({
+        where: {
+          organizationId: orgId,
+          language,
+          status: LEGAL_STATUS.ACTIVE,
+          AND: [
+            { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+            { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+          ],
+        },
+        orderBy: { activatedAt: 'desc' },
+      });
+      const map: Record<string, (typeof active)[number] | undefined> = {};
+      for (const doc of active) {
+        for (const key of legalDocumentLookupKeys(doc.documentType, doc.legalVariant)) {
+          if (!map[key]) map[key] = doc;
+        }
+      }
+      return map;
+    },
+  };
+}
 
 const noopAsync = async () => undefined;
 
@@ -111,6 +143,13 @@ export async function createP6Pr5cWizardHttpApp(
       ProductLicenseGuard,
       PermissionsGuard,
       StationAccessService,
+      BookingDocumentCompletenessService,
+      LegalDocumentResolverService,
+      {
+        provide: LegalDocumentsService,
+        useFactory: (prismaService: PrismaService) => minimalLegalDocumentsService(prismaService as unknown as PrismaClient),
+        inject: [PrismaService],
+      },
       BookingPickupGateAuditService,
       BookingPickupGateService,
       StationsV2ConfigService,
@@ -147,7 +186,6 @@ export async function createP6Pr5cWizardHttpApp(
       OrganizationPaymentAccountService,
       BookingPaymentRequestRepository,
       BookingPaymentRequestService,
-      BookingDepositSnapshotService,
       BookingWizardCheckoutContextService,
       { provide: StripeCheckoutService, useValue: P6_PR5C_STRIPE_CHECKOUT_MOCK },
       {
