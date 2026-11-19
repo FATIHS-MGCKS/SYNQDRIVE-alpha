@@ -104,6 +104,8 @@ async function createGeneratedForBooking(
     suffix: string;
   },
 ) {
+  const deliveryProofSatisfied =
+    params.documentType === DOCUMENT_TYPE.BOOKING_INVOICE ? { sentAt: new Date() } : {};
   return prisma.generatedDocument.create({
     data: {
       organizationId: params.orgId,
@@ -117,6 +119,7 @@ async function createGeneratedForBooking(
       status: DOCUMENT_STATUS.GENERATED,
       legalDocumentId: params.legalDocumentId ?? null,
       generatedAt: new Date(),
+      ...deliveryProofSatisfied,
     },
   });
 }
