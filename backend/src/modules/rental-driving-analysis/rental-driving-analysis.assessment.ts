@@ -4,7 +4,10 @@ import type {
   RentalDrivingAnalysisCompleteness,
 } from '@prisma/client';
 import type { AnalysisAssessability } from '../vehicle-intelligence/trips/trip-analysis-status';
-import { isRentalTdiScoreAdmissible } from './rental-driving-analysis.tdi-quality';
+import {
+  isRentalTripImpactSettledForAssessment,
+  isRentalTripWithAdmissibleTdiImpact,
+} from './rental-driving-analysis.tdi-quality';
 
 export type RentalAssessmentMissingComponent =
   | 'BOOKING_NOT_COMPLETED'
@@ -175,8 +178,11 @@ export function assessRentalDrivingAnalysis(
       tripsWithReconciledMisuse += 1;
     }
     if (
-      trip.drivingImpactStatus === 'READY' &&
-      isRentalTdiScoreAdmissible(trip.tdiAnalysisStatus)
+      isRentalTripWithAdmissibleTdiImpact({
+        tripStatus: trip.tripStatus,
+        drivingImpactStatus: trip.drivingImpactStatus,
+        tdiAnalysisStatus: trip.tdiAnalysisStatus,
+      })
     ) {
       tripsWithReadyImpact += 1;
     }
@@ -303,10 +309,10 @@ export function buildRentalAssessmentTripSnapshot(input: {
   misuseStage?: 'pending' | 'done' | 'skipped' | 'failed' | null;
 }): RentalAssessmentTripSnapshot {
   const drivingImpactStatus = input.drivingImpactStatus ?? null;
-  const drivingImpactSettled =
-    drivingImpactStatus === 'SKIPPED' ||
-    (drivingImpactStatus === 'READY' &&
-      isRentalTdiScoreAdmissible(input.tdiAnalysisStatus));
+  const drivingImpactSettled = isRentalTripImpactSettledForAssessment({
+    drivingImpactStatus,
+    tdiAnalysisStatus: input.tdiAnalysisStatus,
+  });
 
   const misuseReconciled =
     input.misuseStage === 'done' ||

@@ -11,10 +11,38 @@ describe('rental-driving-analysis.assessment (P61)', () => {
     tripStatus: 'COMPLETED',
     tripAnalysisStatus: 'COMPLETED',
     drivingImpactStatus: 'READY',
+    tdiAnalysisStatus: 'COMPLETE',
     analysisAssessability: 'FULL',
     analysisRunStatus: 'COMPLETED',
     hasAttribution: true,
     misuseStage: 'done',
+  });
+
+  it('returns PROVISIONAL when driving impact READY but no TDI row (F1)', () => {
+    const readyWithoutTdi = buildRentalAssessmentTripSnapshot({
+      tripId: 'trip-no-tdi',
+      tripStatus: 'COMPLETED',
+      tripAnalysisStatus: 'COMPLETED',
+      drivingImpactStatus: 'READY',
+      tdiAnalysisStatus: null,
+      analysisAssessability: 'FULL',
+      analysisRunStatus: 'COMPLETED',
+      hasAttribution: true,
+      misuseStage: 'done',
+    });
+
+    const result = assessRentalDrivingAnalysis({
+      bookingStatus: 'COMPLETED',
+      analysisCompleteness: 'FULL',
+      assignedTripCount: 1,
+      pendingCoreJobCount: 0,
+      pendingRentalRecomputeJobCount: 0,
+      trips: [readyWithoutTdi],
+    });
+
+    expect(result.status).toBe('PROVISIONAL');
+    expect(result.missingComponents).toContain('DRIVING_IMPACT_PENDING');
+    expect(result.tripBreakdown.tripsWithReadyImpact).toBe(0);
   });
 
   it('returns PROVISIONAL when driving impact READY but TDI is STALE', () => {
@@ -192,6 +220,7 @@ describe('rental-driving-analysis.assessment (P61)', () => {
           tripStatus: 'COMPLETED',
           tripAnalysisStatus: 'COMPLETED',
           drivingImpactStatus: 'READY',
+          tdiAnalysisStatus: 'COMPLETE',
           analysisAssessability: 'FULL',
           analysisRunStatus: 'COMPLETED',
           hasAttribution: false,

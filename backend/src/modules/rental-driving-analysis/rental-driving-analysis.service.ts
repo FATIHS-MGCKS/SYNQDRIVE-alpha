@@ -33,6 +33,7 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import {
+  gateRentalAnalysisListQualitativeFields,
   gateRentalAnalysisPayloadForApi,
   resolvePublishedRentalApiDrivingStressScore,
 } from './rental-driving-analysis.api-response.util';
@@ -76,7 +77,7 @@ import type {
 } from './rental-driving-analysis.types';
 import {
   isAdmissibleTripDrivingImpactStatus,
-  isRentalTdiScoreAdmissible,
+  isRentalTripWithAdmissibleTdiImpact,
   resolveRentalTripStressScore,
 } from './rental-driving-analysis.tdi-quality';
 
@@ -89,6 +90,7 @@ type TripForAnalysis = {
   citySharePercent?: number | null;
   highwaySharePercent?: number | null;
   countrySharePercent?: number | null;
+  drivingImpactStatus?: string | null;
   drivingScore?: number | null;
   totalAccelerationEvents?: number | null;
   totalBrakingEvents?: number | null;
@@ -492,12 +494,13 @@ export class RentalDrivingAnalysisService {
       tripImpactRows.map((row) => [row.tripId, row]),
     );
 
-    const tripsWithReadyImpact = allAssignedTrips.filter((trip) => {
-      if (trip.tripStatus !== TripStatus.COMPLETED || trip.drivingImpactStatus !== 'READY') {
-        return false;
-      }
-      return isRentalTdiScoreAdmissible(tripImpactByTripId.get(trip.id)?.analysisStatus);
-    }).length;
+    const tripsWithReadyImpact = allAssignedTrips.filter((trip) =>
+      isRentalTripWithAdmissibleTdiImpact({
+        tripStatus: trip.tripStatus,
+        drivingImpactStatus: trip.drivingImpactStatus,
+        tdiAnalysisStatus: tripImpactByTripId.get(trip.id)?.analysisStatus,
+      }),
+    ).length;
     const pendingTripAnalysisJobCount = await this.prisma.drivingIntelligenceJob.count({
       where: {
         organizationId: orgId,
@@ -678,6 +681,7 @@ export class RentalDrivingAnalysisService {
             }
           : null,
         tripLegacyDrivingScore: trip.drivingScore,
+        drivingImpactStatus: trip.drivingImpactStatus,
       });
       const distanceKm =
         tdiRow?.distanceKm ?? impactMap.get(trip.id)?.distanceKm ?? trip.distanceKm ?? 0;
@@ -740,6 +744,7 @@ export class RentalDrivingAnalysisService {
               }
             : null,
           tripLegacyDrivingScore: trip.drivingScore,
+          drivingImpactStatus: trip.drivingImpactStatus,
         }).score,
       });
     });
@@ -779,6 +784,7 @@ export class RentalDrivingAnalysisService {
             }
           : null,
         tripLegacyDrivingScore: trip.drivingScore,
+        drivingImpactStatus: trip.drivingImpactStatus,
       });
       return {
         tripId: trip.id,
@@ -1292,6 +1298,13 @@ export class RentalDrivingAnalysisService {
       } | null;
     },
   ) {
+    const qualitative = gateRentalAnalysisListQualitativeFields(r.assessmentStatus, {
+      overallLevel: r.overallLevel,
+      driverStyleCategory: r.driverStyleCategory,
+      riskLevel: r.riskLevel,
+      wearImpact: r.wearImpact,
+    });
+
     return {
       id: r.id,
       bookingId: r.bookingId,
@@ -1302,16 +1315,16 @@ export class RentalDrivingAnalysisService {
       driverId: r.driverId,
       periodStart: r.periodStart.toISOString(),
       periodEnd: r.periodEnd.toISOString(),
-      overallLevel: r.overallLevel,
-      driverStyleCategory: r.driverStyleCategory,
-      riskLevel: r.riskLevel,
+      overallLevel: qualitative.overallLevel,
+      driverStyleCategory: qualitative.driverStyleCategory,
+      riskLevel: qualitative.riskLevel,
       drivingStressScore: resolvePublishedRentalApiDrivingStressScore(
         r.assessmentStatus,
         r.drivingScore,
       ),
       drivingEventsCount: r.drivingEventsCount,
       abuseDetectionCount: r.abuseDetectionCount,
-      wearImpact: r.wearImpact,
+      wearImpact: qualitative.wearImpact,
       calculationVersion: r.calculationVersion,
       inputFingerprint: r.inputFingerprint,
       generatedAt: r.generatedAt.toISOString(),
