@@ -10,7 +10,8 @@
 | **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `41fd912aacbefeb20ec238bc481b5505f943b65e` (repository audit baseline at bootstrap) |
+| **ORIGIN_MAIN_SHA** | `41fd912aacbefeb20ec238bc481b5505f943b65e` (repository audit baseline at bootstrap — **immutable**) |
+| **VERIFIED_ORIGIN_MAIN_SHA** | `8b8a6e3d3706301be8eff538ed3d2b493ee857b4` (post P6-PR5E merge #2447; recorded for closeout reconciliation only) |
 | **AUTHORITY_BOOTSTRAP_COMMIT_SHA** | `1769e8daf156d6934323f6794b8d45e858e822c7` (initial P6-PR4 authority tree) |
 | **AUDIT_BRANCH_SHA** | `1436091e79f9f64d086d7b54f10d917fcd3b9b56` (PR #2441 head) |
 | **PRODUCTION_AUDITED_AT** | 2026-11-19T08:58:00Z |

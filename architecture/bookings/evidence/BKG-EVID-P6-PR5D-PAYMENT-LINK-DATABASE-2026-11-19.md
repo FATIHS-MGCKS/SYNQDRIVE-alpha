@@ -1,7 +1,7 @@
 # P6-PR5D — Database-backed wizard payment_link + BookingPaymentRequest
 
 **Date:** 2026-11-19 (Europe/Berlin)  
-**Epistemic:** CONFIRMED (unit compile) / PENDING (disposable Postgres CI 22/22) / NOT_CLAIMED (Production)
+**Epistemic:** CONFIRMED (unit compile) / CONFIRMED (disposable Postgres CI **22/22** pre-PR5E; **27/27** @ `origin/main` `8b8a6e3d3` after PR #2447) / NOT_CLAIMED (Production)
 
 ## Scope
 
