@@ -71,6 +71,7 @@ function bookingsBase(orgId: string): string {
   });
 
   beforeAll(async () => {
+    process.env.STATIONS_V2_FLAGS_TEST_DEFAULT = 'off';
     isolationProof = await assertP6Pr5bPostgresReachable();
     prisma = new PrismaClient();
     rdaEnqueue = jest.fn().mockResolvedValue({ enqueued: false, reason: 'NO_ANCHOR_TRIP' });

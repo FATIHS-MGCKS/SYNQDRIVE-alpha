@@ -96,6 +96,7 @@ sync_ephemeral_schema_if_needed() {
 sync_ephemeral_schema_if_needed
 
 export RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION=1
+export STATIONS_V2_FLAGS_TEST_DEFAULT=off
 
 assert_p6_pr5b_integration_env() {
   if [[ "${RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION:-}" != "1" ]]; then
