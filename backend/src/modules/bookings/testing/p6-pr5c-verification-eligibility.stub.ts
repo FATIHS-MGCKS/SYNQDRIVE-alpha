@@ -40,11 +40,7 @@ export async function resolveP6Pr5cVerificationEligibility(
   const idDocument = mapCheckStatus(idCheck?.status);
   const drivingLicense = mapCheckStatus(licenseCheck?.status);
 
-  const confirmBlocked =
-    idDocument !== 'verified' ||
-    drivingLicense !== 'verified' ||
-    idDocument === 'rejected' ||
-    drivingLicense === 'rejected';
+  const confirmBlocked = idDocument !== 'verified' || drivingLicense !== 'verified';
 
   const blockingReasons = confirmBlocked
     ? [
