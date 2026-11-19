@@ -161,6 +161,8 @@
     "test:bookings": "jest --testPathPatterns='modules/bookings|booking-pickup-gate|booking-document-|booking-payment-request|rental-contract-legal' --testPathIgnorePatterns='postgres\\.invariants'",
     "test:bookings:security": "jest bookings-security-negative booking-controller-permissions.characterization",
     "test:bookings:integration": "jest booking-pickup-gate.integration booking-wizard-eligibility-e2e-flow",
+    "test:bookings:p6-pr5b:postgres": "RENTAL_BOOKING_LIFECYCLE_POSTGRES_INTEGRATION=1 jest --runInBand p6-pr5b-disposable-postgres-preflight rental-booking-lifecycle.http.postgres",
+    "test:bookings:p6-pr5b:postgres:ci": "bash scripts/test/rental-booking-lifecycle-postgres-ci.sh",
     "test:bookings:verify": "bash scripts/test/booking-backend-verify.sh all",
     "test:bookings:verify:unit": "bash scripts/test/booking-backend-verify.sh unit",
     "test:workflow-automation": "jest --testPathPatterns='modules/workflows|task-automation|task-automation-outbox|booking-pickup-return-timing' --testPathIgnorePatterns='postgres\\.invariants'",

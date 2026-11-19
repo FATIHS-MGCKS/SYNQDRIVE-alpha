@@ -221,6 +221,18 @@ nodes:
       - backend/src/modules/bookings/rental-booking-workflow-certification.spec.ts
       - architecture/bookings/evidence/BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md
 
+  - id: BKG-EVID-P6-PR5B-DATABASE-E2E-2026-11-19
+    type: evidence
+    title: P6-PR5B database-backed rental booking HTTP E2E
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Disposable Postgres fail-closed preflight; Nest HTTP pickup/return handover with Prisma reload asserts; RDA trigger tier honesty.
+    source_paths:
+      - backend/src/modules/bookings/rental-booking-lifecycle.http.postgres.integration.spec.ts
+      - backend/src/modules/bookings/testing/p6-pr5b-disposable-postgres-preflight.ts
+      - architecture/bookings/evidence/BKG-EVID-P6-PR5B-DATABASE-E2E-2026-11-19.md
+
   - id: BKG-EVID-HTTP-DOC-LICENSE-2026-11-19
     type: evidence
     title: P6-PR4A HTTP booking-document product license matrix
