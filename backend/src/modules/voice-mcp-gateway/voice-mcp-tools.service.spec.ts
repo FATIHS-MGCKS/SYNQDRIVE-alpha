@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VoiceMcpToolsService, VoiceMcpGatewayMiddlewareService } from './voice-mcp-tools.service';
 import { CustomersService } from '@modules/customers/customers.service';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import { VOICE_BOOKING_READ_PORT } from './ports/voice-booking-read.port';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { InvoiceListReadService } from '@modules/invoices/invoice-list-read.service';
 import { StationsService } from '@modules/stations/stations.service';
@@ -22,9 +22,9 @@ describe('VoiceMcpToolsService', () => {
     findAll: jest.fn(),
     findById: jest.fn(),
   };
-  const bookingsService = {
-    findAll: jest.fn(),
-    findById: jest.fn(),
+  const bookingRead = {
+    searchBookings: jest.fn(),
+    getBookingById: jest.fn(),
   };
   const vehiclesService = {
     findOne: jest.fn(),
@@ -74,7 +74,7 @@ describe('VoiceMcpToolsService', () => {
       providers: [
         VoiceMcpToolsService,
         { provide: CustomersService, useValue: customersService },
-        { provide: BookingsService, useValue: bookingsService },
+        { provide: VOICE_BOOKING_READ_PORT, useValue: bookingRead },
         { provide: VehiclesService, useValue: vehiclesService },
         { provide: InvoiceListReadService, useValue: invoiceListReadService },
         { provide: StationsService, useValue: stationsService },
@@ -118,7 +118,7 @@ describe('VoiceMcpToolsService', () => {
   });
 
   it('find_booking returns booking references without internal ids', async () => {
-    bookingsService.findAll.mockResolvedValue({
+    bookingRead.searchBookings.mockResolvedValue({
       data: [
         {
           id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
