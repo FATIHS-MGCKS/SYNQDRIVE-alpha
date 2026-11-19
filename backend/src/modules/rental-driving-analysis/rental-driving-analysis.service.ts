@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   BookingStatus,
   DrivingAnalysisMaturity,
+  Prisma,
   RentalDrivingAnalysis,
   RentalDrivingAnalysisStability,
   TripAssignmentStatus,
@@ -73,6 +74,11 @@ import type {
   RentalDrivingAttributionSummary,
   RentalDrivingAssessmentSummary,
 } from './rental-driving-analysis.types';
+import {
+  isAdmissibleTripDrivingImpactStatus,
+  isRentalTdiScoreAdmissible,
+  resolveRentalTripStressScore,
+} from './rental-driving-analysis.tdi-quality';
 
 type TripForAnalysis = {
   id: string;
@@ -104,6 +110,55 @@ type ImpactStressRow = {
   thermalBrakeStressScore: number | null;
   distanceKm: number;
 };
+
+type TripDrivingImpactSelectRow = ImpactStressRow & {
+  tripId: string;
+  analysisStatus: import('@prisma/client').TripDrivingImpactAnalysisStatus;
+  modelVersion: string;
+  sourceSummaryJson: Prisma.JsonValue;
+  primarySource: string | null;
+  measuredShare: number | null;
+  providerClassifiedShare: number | null;
+  reconstructedShare: number | null;
+  estimatedProxyShare: number | null;
+  contextOnlyShare: number | null;
+  nativeEventCount: number | null;
+  hfEventCount: number | null;
+  measurementCoverage: number | null;
+  hardwareProfile: string | null;
+  capabilityVersion: string | null;
+  healthEligibility: string | null;
+  provenanceMaturity: string | null;
+  provenanceVersion: string | null;
+};
+
+const TRIP_DRIVING_IMPACT_RENTAL_SELECT = {
+  tripId: true,
+  drivingStressScore: true,
+  longitudinalStressScore: true,
+  brakingStressScore: true,
+  stopGoStressScore: true,
+  highSpeedStressScore: true,
+  thermalBrakeStressScore: true,
+  distanceKm: true,
+  modelVersion: true,
+  sourceSummaryJson: true,
+  primarySource: true,
+  measuredShare: true,
+  providerClassifiedShare: true,
+  reconstructedShare: true,
+  estimatedProxyShare: true,
+  contextOnlyShare: true,
+  nativeEventCount: true,
+  hfEventCount: true,
+  measurementCoverage: true,
+  hardwareProfile: true,
+  capabilityVersion: true,
+  healthEligibility: true,
+  provenanceMaturity: true,
+  provenanceVersion: true,
+  analysisStatus: true,
+} as const;
 
 export type GenerateRentalDrivingAnalysisOptions = {
   recomputeReason?: RentalDrivingAnalysisRecomputeReason | string;
@@ -425,10 +480,24 @@ export class RentalDrivingAnalysisService {
     const completedAssignedTripCount = allAssignedTrips.filter(
       (trip) => trip.tripStatus === TripStatus.COMPLETED,
     ).length;
-    const tripsWithReadyImpact = allAssignedTrips.filter(
-      (trip) =>
-        trip.tripStatus === TripStatus.COMPLETED && trip.drivingImpactStatus === 'READY',
-    ).length;
+
+    const assignedTripIds = allAssignedTrips.map((trip) => trip.id);
+    const tripImpactRows: TripDrivingImpactSelectRow[] = assignedTripIds.length
+      ? await this.prisma.tripDrivingImpact.findMany({
+          where: { tripId: { in: assignedTripIds } },
+          select: TRIP_DRIVING_IMPACT_RENTAL_SELECT,
+        })
+      : [];
+    const tripImpactByTripId = new Map(
+      tripImpactRows.map((row) => [row.tripId, row]),
+    );
+
+    const tripsWithReadyImpact = allAssignedTrips.filter((trip) => {
+      if (trip.tripStatus !== TripStatus.COMPLETED || trip.drivingImpactStatus !== 'READY') {
+        return false;
+      }
+      return isRentalTdiScoreAdmissible(tripImpactByTripId.get(trip.id)?.analysisStatus);
+    }).length;
     const pendingTripAnalysisJobCount = await this.prisma.drivingIntelligenceJob.count({
       where: {
         organizationId: orgId,
@@ -457,7 +526,6 @@ export class RentalDrivingAnalysisService {
       },
     });
 
-    const assignedTripIds = allAssignedTrips.map((trip) => trip.id);
     const [attributionRows, analysisRuns] = await Promise.all([
       assignedTripIds.length
         ? this.prisma.driverAttribution.findMany({
@@ -499,6 +567,7 @@ export class RentalDrivingAnalysisService {
         tripStatus: trip.tripStatus,
         tripAnalysisStatus: trip.tripAnalysisStatus,
         drivingImpactStatus: trip.drivingImpactStatus,
+        tdiAnalysisStatus: tripImpactByTripId.get(trip.id)?.analysisStatus ?? null,
         analysisAssessability: assessability.analysisAssessability,
         analysisRunStatus: latestRunByTrip.get(trip.id) ?? 'MISSING',
         hasAttribution: tripsWithAttribution.has(trip.id),
@@ -576,62 +645,45 @@ export class RentalDrivingAnalysisService {
     }
 
     const tripsWithMetrics = tripsInRange;
-    const tripIds = tripsWithMetrics.map((trip) => trip.id);
-    const impactRows = tripIds.length
-      ? await this.prisma.tripDrivingImpact.findMany({
-          where: { tripId: { in: tripIds } },
-          select: {
-            tripId: true,
-            drivingStressScore: true,
-            longitudinalStressScore: true,
-            brakingStressScore: true,
-            stopGoStressScore: true,
-            highSpeedStressScore: true,
-            thermalBrakeStressScore: true,
-            distanceKm: true,
-            modelVersion: true,
-            sourceSummaryJson: true,
-            primarySource: true,
-            measuredShare: true,
-            providerClassifiedShare: true,
-            reconstructedShare: true,
-            estimatedProxyShare: true,
-            contextOnlyShare: true,
-            nativeEventCount: true,
-            hfEventCount: true,
-            measurementCoverage: true,
-            hardwareProfile: true,
-            capabilityVersion: true,
-            healthEligibility: true,
-            provenanceMaturity: true,
-            provenanceVersion: true,
-          },
-        })
-      : [];
+    const impactRows = tripsWithMetrics
+      .map((trip) => tripImpactByTripId.get(trip.id))
+      .filter((row): row is TripDrivingImpactSelectRow => row != null);
     const impactMap = new Map(
-      impactRows.map((row) => [
-        row.tripId,
-        {
-          drivingStressScore: row.drivingStressScore,
-          longitudinalStressScore: row.longitudinalStressScore,
-          brakingStressScore: row.brakingStressScore,
-          stopGoStressScore: row.stopGoStressScore,
-          highSpeedStressScore: row.highSpeedStressScore,
-          thermalBrakeStressScore: row.thermalBrakeStressScore,
-          distanceKm: row.distanceKm ?? 0,
-        } satisfies ImpactStressRow,
-      ]),
+      impactRows
+        .filter((row) => isAdmissibleTripDrivingImpactStatus(row.analysisStatus))
+        .map((row) => [
+          row.tripId,
+          {
+            drivingStressScore: row.drivingStressScore,
+            longitudinalStressScore: row.longitudinalStressScore,
+            brakingStressScore: row.brakingStressScore,
+            stopGoStressScore: row.stopGoStressScore,
+            highSpeedStressScore: row.highSpeedStressScore,
+            thermalBrakeStressScore: row.thermalBrakeStressScore,
+            distanceKm: row.distanceKm ?? 0,
+          } satisfies ImpactStressRow,
+        ]),
     );
     const provenanceMap = new Map(
       impactRows.map((row) => [row.tripId, readTripDrivingImpactProvenance(row)]),
     );
 
     const aggregationRows: AggregationRow[] = tripsWithMetrics.map((trip) => {
-      const impact = impactMap.get(trip.id);
+      const tdiRow = tripImpactByTripId.get(trip.id);
+      const resolved = resolveRentalTripStressScore({
+        tdiRow: tdiRow
+          ? {
+              drivingStressScore: tdiRow.drivingStressScore,
+              analysisStatus: tdiRow.analysisStatus,
+            }
+          : null,
+        tripLegacyDrivingScore: trip.drivingScore,
+      });
+      const distanceKm =
+        tdiRow?.distanceKm ?? impactMap.get(trip.id)?.distanceKm ?? trip.distanceKm ?? 0;
       return {
-        drivingStressScore:
-          impact?.drivingStressScore ?? trip.drivingScore ?? null,
-        distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+        drivingStressScore: resolved.score,
+        distanceKm,
       };
     });
     const aggregate = this.driverScoreService.aggregateRows(
@@ -655,8 +707,8 @@ export class RentalDrivingAnalysisService {
     const abuseCount = tripsWithMetrics.reduce((sum, trip) => sum + (trip.abuseEvents ?? 0), 0);
 
     const rentalMetricTrips = tripsWithMetrics.map((trip) => {
-      const impact = impactMap.get(trip.id);
-      const provenance = provenanceMap.get(trip.id);
+      const impactRow = tripImpactByTripId.get(trip.id);
+      const provenance = impactRow ? provenanceMap.get(trip.id) : undefined;
       const assessability = deriveAnalysisAssessability({
         behaviorSummaryJson: (trip as { behaviorSummaryJson?: unknown }).behaviorSummaryJson,
         behaviorEnrichmentStatus: (trip as { behaviorEnrichmentStatus?: string | null })
@@ -666,7 +718,8 @@ export class RentalDrivingAnalysisService {
       });
       return buildRentalTripMetricInput({
         tripId: trip.id,
-        distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+        distanceKm:
+          impactRow?.distanceKm ?? impactMap.get(trip.id)?.distanceKm ?? trip.distanceKm ?? 0,
         startTime: trip.startTime ?? periodStart,
         endTime: trip.endTime ?? null,
         durationMinutes: trip.durationMinutes ?? null,
@@ -679,17 +732,26 @@ export class RentalDrivingAnalysisService {
         nativeEventCount: provenance?.nativeEventCount,
         hfEventCount: provenance?.hfEventCount,
         estimatedProxyShare: provenance?.estimatedProxyShare,
-        vehicleStressScore: impact?.drivingStressScore ?? trip.drivingScore ?? null,
+        vehicleStressScore: resolveRentalTripStressScore({
+          tdiRow: impactRow
+            ? {
+                drivingStressScore: impactRow.drivingStressScore,
+                analysisStatus: impactRow.analysisStatus,
+              }
+            : null,
+          tripLegacyDrivingScore: trip.drivingScore,
+        }).score,
       });
     });
     const normalizedMetrics = computeRentalDrivingMetrics(rentalMetricTrips);
 
     const roadDistribution = aggregateRentalRoadDistribution(
       tripsWithMetrics.map((trip) => {
-        const impact = impactMap.get(trip.id);
+        const impactRow = tripImpactByTripId.get(trip.id);
         return {
           tripId: trip.id,
-          distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+          distanceKm:
+            impactRow?.distanceKm ?? impactMap.get(trip.id)?.distanceKm ?? trip.distanceKm ?? 0,
           citySharePercent: trip.citySharePercent,
           highwaySharePercent: trip.highwaySharePercent,
           countrySharePercent: trip.countrySharePercent,
@@ -708,11 +770,21 @@ export class RentalDrivingAnalysisService {
       avgTripKm < 20 ? 'mostly_short_distance' : avgTripKm >= 50 ? 'mostly_long_distance' : 'mixed';
 
     const tripFingerprints = tripsWithMetrics.map((trip) => {
-      const impact = impactMap.get(trip.id);
+      const impactRow = tripImpactByTripId.get(trip.id);
+      const resolved = resolveRentalTripStressScore({
+        tdiRow: impactRow
+          ? {
+              drivingStressScore: impactRow.drivingStressScore,
+              analysisStatus: impactRow.analysisStatus,
+            }
+          : null,
+        tripLegacyDrivingScore: trip.drivingScore,
+      });
       return {
         tripId: trip.id,
-        distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
-        drivingStressScore: impact?.drivingStressScore ?? trip.drivingScore ?? null,
+        distanceKm:
+          impactRow?.distanceKm ?? impactMap.get(trip.id)?.distanceKm ?? trip.distanceKm ?? 0,
+        drivingStressScore: resolved.score,
         endTimeIso: trip.endTime?.toISOString() ?? null,
       };
     });
