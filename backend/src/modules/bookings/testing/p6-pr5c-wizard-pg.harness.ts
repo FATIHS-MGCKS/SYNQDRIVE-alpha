@@ -164,6 +164,14 @@ export async function seedP6Pr5cWizardOrg(
 
   await seedP6Pr5cVerifiedCustomerDocuments(prisma, org.id, customer.id, userId);
 
+  await prisma.customerEligibilityPolicy
+    .upsert({
+      where: { organizationId: org.id },
+      create: { organizationId: org.id },
+      update: {},
+    })
+    .catch(() => undefined);
+
   const vehicleId = await createVehicle(prisma, org.id, station.id);
 
   const migration = new PricingMigrationService(prisma as unknown as PrismaService);

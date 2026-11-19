@@ -201,7 +201,41 @@ export async function createP6Pr5cWizardHttpApp(
       { provide: BusinessAuditService, useValue: businessAuditMock },
       { provide: BookingEligibilityRecheckService, useValue: eligibilityRecheckMock },
       BookingEligibilityApprovalService,
-      BookingEligibilityEnforcementService,
+      {
+        provide: BookingEligibilityEnforcementService,
+        useFactory: (
+          prismaService: PrismaService,
+          gatekeeper: BookingEligibilityGatekeeperService,
+          auditLogger: BookingEligibilityAuditLogger,
+          approval: BookingEligibilityApprovalService,
+          decision: BookingEligibilityDecisionService,
+          businessAudit: BusinessAuditService,
+        ) => {
+          const enforcement = new BookingEligibilityEnforcementService(
+            prismaService,
+            gatekeeper,
+            auditLogger,
+            approval,
+            decision,
+            businessAudit,
+          );
+          const enforcementMutable = enforcement as BookingEligibilityEnforcementService & {
+            countAdditionalDrivers: (organizationId: string, bookingId: string) => Promise<number>;
+            isDepositReceived: (organizationId: string, bookingId: string) => Promise<boolean>;
+          };
+          enforcementMutable.countAdditionalDrivers = async () => 0;
+          enforcementMutable.isDepositReceived = async () => false;
+          return enforcement;
+        },
+        inject: [
+          PrismaService,
+          BookingEligibilityGatekeeperService,
+          BookingEligibilityAuditLogger,
+          BookingEligibilityApprovalService,
+          BookingEligibilityDecisionService,
+          BusinessAuditService,
+        ],
+      },
       {
         provide: BookingsService,
         useFactory: (

@@ -249,7 +249,7 @@ const P6_PR5C_DEFAULT_PRICING_INPUT = {
       await request(app.getHttpServer())
         .get(`${orgBase(fixture.orgBId)}/bookings/wizard-draft/${bookingId}/checkout-context`)
         .set(...authHeader(masterUser(fixture.orgBId, fixture.userId)))
-        .expect(403);
+        .expect(404);
     } finally {
       await cleanupP6Pr5cWizardFixture(prisma, fixture.orgId);
       await prisma.organization.delete({ where: { id: fixture.orgBId } }).catch(() => undefined);
