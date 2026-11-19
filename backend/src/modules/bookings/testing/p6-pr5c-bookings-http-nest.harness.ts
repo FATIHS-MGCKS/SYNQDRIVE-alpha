@@ -134,6 +134,9 @@ export async function createP6Pr5cWizardHttpApp(
   prisma: PrismaClient,
   TestAuthGuard: TestAuthGuardCtor,
 ): Promise<INestApplication> {
+  jest.spyOn(prisma.bookingAllowedDriver, 'count').mockResolvedValue(0);
+  jest.spyOn(prisma.bookingDeposit, 'findFirst').mockResolvedValue(null);
+
   const moduleRef = await Test.createTestingModule({
     imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true })],
     controllers: [BookingsController, PricingController],
@@ -201,41 +204,7 @@ export async function createP6Pr5cWizardHttpApp(
       { provide: BusinessAuditService, useValue: businessAuditMock },
       { provide: BookingEligibilityRecheckService, useValue: eligibilityRecheckMock },
       BookingEligibilityApprovalService,
-      {
-        provide: BookingEligibilityEnforcementService,
-        useFactory: (
-          prismaService: PrismaService,
-          gatekeeper: BookingEligibilityGatekeeperService,
-          auditLogger: BookingEligibilityAuditLogger,
-          approval: BookingEligibilityApprovalService,
-          decision: BookingEligibilityDecisionService,
-          businessAudit: BusinessAuditService,
-        ) => {
-          const enforcement = new BookingEligibilityEnforcementService(
-            prismaService,
-            gatekeeper,
-            auditLogger,
-            approval,
-            decision,
-            businessAudit,
-          );
-          const enforcementMutable = enforcement as unknown as Record<
-            string,
-            (...args: unknown[]) => Promise<unknown>
-          >;
-          enforcementMutable.countAdditionalDrivers = async () => 0;
-          enforcementMutable.isDepositReceived = async () => false;
-          return enforcement;
-        },
-        inject: [
-          PrismaService,
-          BookingEligibilityGatekeeperService,
-          BookingEligibilityAuditLogger,
-          BookingEligibilityApprovalService,
-          BookingEligibilityDecisionService,
-          BusinessAuditService,
-        ],
-      },
+      BookingEligibilityEnforcementService,
       {
         provide: BookingsService,
         useFactory: (
