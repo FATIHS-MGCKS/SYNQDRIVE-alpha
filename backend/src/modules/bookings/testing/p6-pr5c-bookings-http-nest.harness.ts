@@ -130,6 +130,7 @@ const eligibilityRecheckMock = {
   evaluateAfterMutation: jest.fn().mockResolvedValue({ scheduled: false }),
   scheduleRecheckForBooking: jest.fn().mockResolvedValue(undefined),
   invalidateApprovalsIfStale: jest.fn().mockResolvedValue(undefined),
+  processMutationRecheckFromInvalidationFacts: jest.fn().mockResolvedValue(undefined),
 };
 
 export async function createP6Pr5cWizardHttpApp(
