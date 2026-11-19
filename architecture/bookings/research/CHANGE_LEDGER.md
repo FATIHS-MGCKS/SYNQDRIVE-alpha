@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | P6-PR5E rental category/override policy enum @map closeout | P6-PR5E | foreign/additional/young driver policy columns on two models |
 | 2026-11-19 | P6-PR5E org rental rules Prisma @map + ephemeral schema preflight | P6-PR5E | CI column credit_card_required; disposable parity SELECT guard |
 | 2026-11-19 | P6-PR5E F1 fingerprint includes effective rental rule values | P6-PR5E | TEST_4 18→19 RULES_CHANGED; confirm ordering documented |
 | 2026-11-19 | P6-PR5E real internal eligibility Postgres HTTP | P6-PR5E | Isolated harness; published org rental revisions; 5 HTTP tests; CI 27; Didit mocked |
