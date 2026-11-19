@@ -25,6 +25,7 @@ import { PricingService } from '@modules/pricing/pricing.service';
 import { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
 import { createP6Pr5cRentalEffectiveRulesStub } from './p6-pr5c-rental-rules.stub';
+import { resolveP6Pr5cVerificationEligibility } from './p6-pr5c-verification-eligibility.stub';
 import { BookingPaymentRequestRepository } from '@modules/payments/repositories/booking-payment-request.repository';
 import { OrganizationPaymentAccountRepository } from '@modules/payments/repositories/organization-payment-account.repository';
 import { PaymentTransactionRepository } from '@modules/payments/repositories/payment-transaction.repository';
@@ -171,7 +172,19 @@ export async function createP6Pr5cWizardHttpApp(
       PricingQuoteService,
       CustomerVerificationReadModelService,
       { provide: DiditService, useValue: {} },
-      CustomerVerificationService,
+      {
+        provide: CustomerVerificationService,
+        useFactory: (prismaService: PrismaService) => ({
+          getEligibilityStatus: (organizationId: string, customerId: string, options?: { bookingId?: string | null }) =>
+            resolveP6Pr5cVerificationEligibility(
+              prismaService as unknown as PrismaClient,
+              organizationId,
+              customerId,
+              options?.bookingId,
+            ),
+        }),
+        inject: [PrismaService],
+      },
       CustomerEligibilityService,
       BookingRentalEligibilityService,
       BookingEligibilityGatekeeperService,
