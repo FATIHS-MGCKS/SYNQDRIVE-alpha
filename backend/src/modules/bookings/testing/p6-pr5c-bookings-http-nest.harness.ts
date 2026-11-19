@@ -218,7 +218,12 @@ export async function createP6Pr5cWizardHttpApp(
       InvoiceNumberService,
       {
         provide: InvoicePaymentTaskService,
-        useValue: { ensurePaymentTask: noopAsync, clearPaymentTask: noopAsync },
+        useValue: {
+          ensurePaymentTask: noopAsync,
+          clearPaymentTask: noopAsync,
+          syncPaymentCheckTask: noopAsync,
+          syncPaymentCheckTaskById: noopAsync,
+        },
       },
       InvoicesService,
       BookingInvoiceLifecycleService,

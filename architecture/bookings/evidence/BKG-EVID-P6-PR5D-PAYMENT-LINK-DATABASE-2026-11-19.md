@@ -47,6 +47,10 @@ HTTP wizard confirm with `paymentIntent=payment_link` on disposable PostgreSQL. 
 
 Negative Connect: `seedP6Pr5dPaymentsEnabledConnectNotReady` — payments on, account PENDING / no charges (no bypass).
 
+## Production correction (minimal)
+
+`BookingsController.confirmWizardDraft` forwards `platformRole` / `membershipRole` into `BookingWizardDraftService.confirmDraft` so `PaymentsAccessService.assertPaymentPermission` honors `MASTER_ADMIN` for real `createRentalPaymentRequest` (no permission bypass in tests).
+
 ## HTTP spec
 
 `backend/src/modules/bookings/rental-booking-wizard-payment-link.http.postgres.integration.spec.ts` (5 cases)

@@ -183,10 +183,19 @@ export class BookingsController {
   async confirmWizardDraft(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
-    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser() user: { id?: string; platformRole?: string; membershipRole?: string; organizationId?: string } | undefined,
     @Body() body: BookingWizardDraftConfirmDto,
   ) {
-    return this.wizardDraftService.confirmDraft(orgId, bookingId, body, { userId });
+    return this.wizardDraftService.confirmDraft(orgId, bookingId, body, {
+      userId: user?.id,
+      actor: user
+        ? {
+            platformRole: user.platformRole,
+            membershipRole: user.membershipRole,
+            organizationId: user.organizationId,
+          }
+        : undefined,
+    });
   }
 
   @Post('wizard-draft/:bookingId/abort')
