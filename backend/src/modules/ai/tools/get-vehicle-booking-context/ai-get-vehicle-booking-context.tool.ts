@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { VehicleBookingContextService } from '@modules/bookings/vehicle-booking-context/vehicle-booking-context.service';
+import {
+  AI_VEHICLE_BOOKING_CONTEXT_READ_PORT,
+  type AiVehicleBookingContextReadPort,
+} from '../../ports/ai-vehicle-booking-context-read.port';
 import type { AiExecutionContext } from '../../execution/ai-execution-context.types';
 import {
   assertAiBookingAccess,
@@ -26,7 +29,8 @@ import type {
 export class AiGetVehicleBookingContextTool {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly vehicleBookingContext: VehicleBookingContextService,
+    @Inject(AI_VEHICLE_BOOKING_CONTEXT_READ_PORT)
+    private readonly vehicleBookingContextRead: AiVehicleBookingContextReadPort,
     private readonly vehicleScopeResolver: AiPrismaVehicleScopeResolver,
   ) {}
 
@@ -61,7 +65,7 @@ export class AiGetVehicleBookingContextTool {
     const customerGate = assertAiCustomerDataAccess(verifiedContext);
     const includeCustomerDisplayName = customerGate === true;
 
-    const operational = await this.vehicleBookingContext.getVehicleBookingOperationalContext(
+    const operational = await this.vehicleBookingContextRead.getVehicleBookingOperationalContext(
       verifiedContext.organizationId,
       vehicleAccess.vehicleId,
       { now, includeCustomerDisplayName },

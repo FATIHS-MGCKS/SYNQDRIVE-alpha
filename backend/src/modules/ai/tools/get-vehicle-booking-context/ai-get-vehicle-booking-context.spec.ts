@@ -80,7 +80,7 @@ function makeOperationalContext(overrides: Record<string, unknown> = {}) {
 
 describe('AiGetVehicleBookingContextTool', () => {
   let prisma: { vehicle: { findFirst: jest.Mock } };
-  let vehicleBookingContext: { getVehicleBookingOperationalContext: jest.Mock };
+  let vehicleBookingContextRead: { getVehicleBookingOperationalContext: jest.Mock };
   let vehicleScopeResolver: AiPrismaVehicleScopeResolver;
   let tool: AiGetVehicleBookingContextTool;
 
@@ -97,7 +97,7 @@ describe('AiGetVehicleBookingContextTool', () => {
         }),
       },
     };
-    vehicleBookingContext = {
+    vehicleBookingContextRead = {
       getVehicleBookingOperationalContext: jest.fn().mockResolvedValue(makeOperationalContext()),
     };
     vehicleScopeResolver = {
@@ -109,7 +109,7 @@ describe('AiGetVehicleBookingContextTool', () => {
     } as unknown as AiPrismaVehicleScopeResolver;
     tool = new AiGetVehicleBookingContextTool(
       prisma as never,
-      vehicleBookingContext as never,
+      vehicleBookingContextRead as never,
       vehicleScopeResolver,
     );
   });
@@ -141,7 +141,7 @@ describe('AiGetVehicleBookingContextTool', () => {
     expect(outcome.data?.returnOverdue).toBe(true);
     expect(outcome.data?.currentBooking?.returnStatus).toBe('PENDING');
     expect(outcome.data?.currentBooking?.customerDisplayName).toBeUndefined();
-    expect(vehicleBookingContext.getVehicleBookingOperationalContext).toHaveBeenCalledWith(
+    expect(vehicleBookingContextRead.getVehicleBookingOperationalContext).toHaveBeenCalledWith(
       ORG_ID,
       VEHICLE_ID,
       expect.objectContaining({ includeCustomerDisplayName: false }),
@@ -150,7 +150,7 @@ describe('AiGetVehicleBookingContextTool', () => {
 
   it('includes customer display name with customers read permission', async () => {
     const base = makeOperationalContext();
-    vehicleBookingContext.getVehicleBookingOperationalContext.mockResolvedValue({
+    vehicleBookingContextRead.getVehicleBookingOperationalContext.mockResolvedValue({
       ...base,
       currentBooking: {
         ...base.currentBooking!,
@@ -171,7 +171,7 @@ describe('AiGetVehicleBookingContextTool', () => {
       NOW,
     );
 
-    expect(vehicleBookingContext.getVehicleBookingOperationalContext).toHaveBeenCalledWith(
+    expect(vehicleBookingContextRead.getVehicleBookingOperationalContext).toHaveBeenCalledWith(
       ORG_ID,
       VEHICLE_ID,
       expect.objectContaining({ includeCustomerDisplayName: true }),
@@ -180,7 +180,7 @@ describe('AiGetVehicleBookingContextTool', () => {
   });
 
   it('returns none context when no open booking', async () => {
-    vehicleBookingContext.getVehicleBookingOperationalContext.mockResolvedValue({
+    vehicleBookingContextRead.getVehicleBookingOperationalContext.mockResolvedValue({
       ...makeOperationalContext(),
       contextKind: 'NONE',
       currentBooking: null,
