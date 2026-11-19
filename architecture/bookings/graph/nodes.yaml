@@ -1,0 +1,345 @@
+# Bookings Knowledge Graph — Nodes (bootstrap V0.1, AUDIT_IN_PROGRESS)
+# Validate: bash architecture/bookings/scripts/validate-graph.sh
+# Repository baseline: origin/main @ 41fd912aacbefeb20ec238bc481b5505f943b65e (2026-11-19)
+
+nodes:
+  - id: BKG-DOM-BOOKINGS-001
+    type: domain
+    title: Rental Bookings domain
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Org-scoped rental booking lifecycle: wizard draft/confirm, eligibility gatekeeper, pickup legal gate,
+      handover pickup/return, payments coupling, allowed drivers, status machine, and detail aggregation.
+      Does not own trip boundaries, DS4 motion runs, or platform product catalog administration.
+    source_paths:
+      - backend/src/modules/bookings/
+      - frontend/src/rental/components/bookings/
+      - frontend/src/rental/components/booking-detail/
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+      - BKG-EVID-PROD-RUNTIME-001
+
+  - id: BKG-API-CONTROLLER-001
+    type: api
+    title: BookingsController HTTP surface
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Base path organizations/:orgId/bookings. Guards OrgScopingGuard, ProductLicenseGuard (RENTAL ACTIVE),
+      RolesGuard, PermissionsGuard. Wizard, eligibility, handover, CRUD, stats, today pickups/returns.
+    source_paths:
+      - backend/src/modules/bookings/bookings.controller.ts
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-ORCH-CORE-SVC-001
+    type: orchestrator
+    title: BookingsService orchestration
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      Primary domain orchestrator (~2k+ LOC): overlap locking, lifecycle transitions, detail assembly,
+      health gates on create/update, document/task side effects, RDA recompute trigger hooks.
+    source_paths:
+      - backend/src/modules/bookings/bookings.service.ts
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+
+  - id: BKG-PIPE-WIZARD-001
+    type: pipeline
+    title: Booking wizard draft → confirm
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      booking-wizard-draft, checkout-context, payment-flow services; quote consume from Pricing;
+      idempotent confirm replay; payment intent + invoice bootstrap (does not mark PAID without real payment).
+    source_paths:
+      - backend/src/modules/bookings/booking-wizard-draft.service.ts
+      - backend/src/modules/bookings/booking-wizard-checkout-context.service.ts
+      - backend/src/modules/bookings/booking-wizard-payment-flow.service.ts
+    evidence:
+      - BKG-EVID-ARCH-PAYMENT-INTENT-001
+      - BKG-TEST-WIZARD-001
+
+  - id: BKG-PIPE-ELIGIBILITY-001
+    type: pipeline
+    title: Rental eligibility gatekeeper stack
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      Gatekeeper service, manual approval/decision append-only rows, retroactivity recheck cron (30s tick),
+      rental-rules + customer verification inputs; pickup enforcement integration.
+    source_paths:
+      - backend/src/modules/bookings/booking-eligibility-gatekeeper/
+      - backend/src/modules/bookings/booking-eligibility-recheck/
+    evidence:
+      - BKG-EVID-ARCH-RETROACTIVITY-001
+      - BKG-TEST-ELIGIBILITY-001
+
+  - id: BKG-PIPE-HANDOVER-001
+    type: pipeline
+    title: Handover pickup and return
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      bookings-handover.service, handover drafts, pickup gate audit, workflow events with idempotency keys;
+      idempotent pickup replay when already ACTIVE with protocol.
+    source_paths:
+      - backend/src/modules/bookings/bookings-handover.service.ts
+      - backend/src/modules/bookings/booking-handover-draft.service.ts
+      - backend/src/modules/bookings/booking-pickup-gate/
+    evidence:
+      - BKG-EVID-ARCH-PICKUP-GATE-001
+
+  - id: BKG-PERSIST-BOOKING-001
+    type: persist
+    title: Booking aggregate persistence
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      bookings table; BookingStatus lifecycle; paymentIntent/paymentStatus; relations to customer, vehicle,
+      stations, quotes, handover, eligibility, payment requests, DI jobs, RDA rows, allowed drivers.
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+
+  - id: BKG-QUEUE-DOC-GEN-001
+    type: queue
+    title: booking.document.generation Bull queue
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      Async booking document bundle generation via BookingDocumentGenerationJob rows and Bull processor
+      (owned orchestration in Documents module; Bookings dispatches jobs).
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+      - backend/src/modules/documents/
+    evidence:
+      - BKG-EVID-ARCH-DOC-LIFECYCLE-001
+
+  - id: BKG-PORT-DI-RESOLUTION-001
+    type: port
+    title: DrivingIntelligenceBookingResolutionPort adapter
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: SUBSTANTIAL
+    summary: >
+      P4-PR1 adapter under bookings/ satisfies Core VI job persist validation without prisma.booking
+      inside DrivingIntelligenceJobRepository; wired from VehicleIntelligenceModule composition root.
+    source_paths:
+      - backend/src/modules/bookings/driving-intelligence-booking-resolution/
+      - architecture/platform-reorientation/evidence/P4_PR1_DRIVING_INTELLIGENCE_BOOKING_DECOUPLING_2026-11-17.md
+    evidence:
+      - BKG-EVID-AUDIT-P4-001
+      - BKG-TEST-PORT-DI-001
+
+  - id: BKG-POL-TENANT-001
+    type: policy
+    title: Organization scoping and RBAC
+    epistemic_status: CONFIRMED
+    summary: >
+      All routes keyed by :orgId; PermissionsGuard on bookings + booking-eligibility modules;
+      allowed-driver policy uses membership roles on specific routes.
+    source_paths:
+      - backend/src/shared/auth/org-scoping.guard.ts
+      - backend/src/modules/bookings/booking-allowed-drivers/
+    evidence:
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-POL-PRODUCT-LICENSE-001
+    type: policy
+    title: RENTAL ProductLicenseGuard (P6-PR3)
+    epistemic_status: CONFIRMED
+    summary: >
+      RequireProduct(RENTAL) + ACTIVE OrganizationProduct only; TRIAL does not grant operational API access.
+    source_paths:
+      - backend/src/shared/guards/product-license.guard.ts
+      - architecture/platform-product-catalog/CHANGE_RECORD_P6_PR3_2026-11-19.md
+    evidence:
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-CONS-RENTAL-UI-001
+    type: consumer
+    title: Rental SPA booking surfaces
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      BookingsView, NewBookingView wizard, BookingDossier detail tabs, vehicle-bookings agenda; API via frontend/src/lib/api.ts.
+    source_paths:
+      - frontend/src/rental/App.tsx
+      - frontend/src/lib/api.ts
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+
+  - id: BKG-CONS-OPERATOR-001
+    type: consumer
+    title: Operator booking deep links
+    epistemic_status: CONFIRMED
+    reconstruction_maturity: PARTIAL
+    summary: >
+      Operator shell routes /operator/bookings/:bookingId and handover/document sheets (separate from rental SPA view state).
+    source_paths:
+      - frontend/src/operator/
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+
+  - id: BKG-DEC-PAYMENT-INTENT-001
+    type: decision
+    title: Payment intent does not imply PAID invoice
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      Wizard card intent confirms booking and leaves invoice open until Stripe/checkout/webhook records payment.
+    source_paths:
+      - architecture/BOOKING_PAYMENT_INTENT_VS_PAID_2026-07-14.md
+    evidence:
+      - BKG-EVID-ARCH-PAYMENT-INTENT-001
+      - BKG-TEST-WIZARD-001
+
+  - id: BKG-DEC-RETROACTIVITY-001
+    type: decision
+    title: Eligibility rule retroactivity policy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      Confirmed bookings keep frozen rule snapshot; rule publishes and mutations trigger recheck without silent retroactive cancel.
+    source_paths:
+      - architecture/BOOKING_ELIGIBILITY_RETROACTIVITY_2026-07-23.md
+    evidence:
+      - BKG-EVID-ARCH-RETROACTIVITY-001
+
+  - id: BKG-EVID-CODE-DOC-ROUTE-GUARDS-2026-11-19
+    type: evidence
+    title: F1 Documents route guard inspection
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: >
+      Independent review confirms no ProductLicenseGuard on DocumentsController and
+      LegalDocumentDeliveryEvidenceController; see evidence markdown file.
+    source_paths:
+      - backend/src/modules/documents/documents.controller.ts
+      - backend/src/modules/documents/legal-document-delivery-evidence.controller.ts
+
+  - id: BKG-EVID-CODE-MODULE-001
+    type: evidence
+    title: Repository module inspection 2026-11-19
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Bookings Nest module, controller, and frontend consumers inspected on audit branch.
+
+  - id: BKG-EVID-PROD-RUNTIME-001
+    type: evidence
+    title: Production runtime presence 2026-11-19
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      Deployed release at /opt/synqdrive/current includes bookings.controller.ts; public health OK.
+      Deployed SHA differs from origin/main (documented drift).
+
+  - id: BKG-EVID-ARCH-PAYMENT-INTENT-001
+    type: evidence
+    title: Supporting doc payment intent vs paid
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: architecture/BOOKING_PAYMENT_INTENT_VS_PAID_2026-07-14.md
+
+  - id: BKG-EVID-ARCH-RETROACTIVITY-001
+    type: evidence
+    title: Supporting doc eligibility retroactivity
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: architecture/BOOKING_ELIGIBILITY_RETROACTIVITY_2026-07-23.md
+
+  - id: BKG-EVID-ARCH-PICKUP-GATE-001
+    type: evidence
+    title: Supporting doc legal pickup gate
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: architecture/LEGAL_DOCUMENT_PICKUP_GATE_2026-07-22.md
+
+  - id: BKG-EVID-ARCH-DOC-LIFECYCLE-001
+    type: evidence
+    title: Supporting doc booking document lifecycle
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: architecture/BOOKING_DOCUMENT_LIFECYCLE_2026-06-13.md
+
+  - id: BKG-EVID-AUDIT-P4-001
+    type: evidence
+    title: P4 boundary audit evidence
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: architecture/platform-reorientation/evidence/P4_PR1 and P4_BOUNDARY_FINAL_AUDIT
+
+  - id: BKG-TEST-GUARD-STACK-001
+    type: test_evidence
+    title: Guard and product license characterization
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: bookings-security-negative.spec.ts, rental-product-license.controllers.spec.ts
+
+  - id: BKG-TEST-WIZARD-001
+    type: test_evidence
+    title: Wizard and payment flow specs
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: booking-wizard-*.spec.ts, booking-invoice-bootstrap.behavior.spec.ts
+
+  - id: BKG-TEST-ELIGIBILITY-001
+    type: test_evidence
+    title: Eligibility gatekeeper specs
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: booking-eligibility-gatekeeper/*.spec.ts, booking-eligibility-recheck/*.spec.ts
+
+  - id: BKG-TEST-PORT-DI-001
+    type: test_evidence
+    title: DI booking resolution port specs
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: driving-intelligence-booking-resolution/*.spec.ts
+
+  - id: BKG-GAP-DOC-PRODUCT-LICENSE-001
+    type: gap
+    title: DocumentsController booking routes vs P6-PR3 licensed set
+    epistemic_status: CONFIRMED
+    summary: >
+      Booking-scoped document HTTP routes are adjacent to bookings but not in RENTAL_PRODUCT_LICENSED_CONTROLLERS;
+      product license parity for document downloads UNKNOWN for independent review.
+
+  - id: BKG-CONTRA-LICENSE-001
+    type: contradiction
+    title: Product license coverage Documents vs Bookings controller
+    epistemic_status: CONFIRMED
+    summary: >
+      BookingsController has ProductLicenseGuard; DocumentsController and LegalDocumentDeliveryEvidenceController
+      booking routes do not (F1 CONFIRMED). RBAC/org scope remain; runtime entitlement bypass NOT PROVEN (BKG-HYP-001).
+    evidence:
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-DEC-P6-PRODUCT-LICENSE-001
+    type: decision
+    title: RENTAL ACTIVE product license on BookingsController
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      Inherited platform decision P6-PR3; confirmed on origin/main; Production SHA drift leaves runtime enforcement UNKNOWN on VPS baseline.
+    source_paths:
+      - architecture/platform-product-catalog/CHANGE_RECORD_P6_PR3_2026-11-19.md
+    evidence:
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-HYP-001
+    type: hypothesis
+    title: TRIAL org document route bypass
+    epistemic_status: INFERRED
+    summary: Documents booking routes may be reachable without ACTIVE RENTAL when JWT/session is otherwise valid.
+
+  - id: BKG-GAP-PROD-COUNTS-001
+    type: gap
+    title: Production bounded booking table counts
+    epistemic_status: UNKNOWN
+    summary: >
+      Read-only SSH verified module on VPS; bounded SQL counts not collected in this audit (no DB session in audit log).

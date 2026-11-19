@@ -1,0 +1,54 @@
+# Bookings Knowledge Graph — Invariants
+
+invariants:
+  - id: BKG-INV-TENANT-001
+    kind: CONFIRMED_INVARIANT
+    title: Organization-scoped booking access
+    epistemic_status: CONFIRMED
+    statement: >
+      Every BookingsController mutation and read resolves organizationId from the route and OrgScopingGuard;
+      cross-org JWT access to another org's booking routes is denied.
+    evidence:
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-INV-PRODUCT-001
+    kind: CONFIRMED_INVARIANT
+    title: ACTIVE RENTAL product for operational booking APIs
+    epistemic_status: CONFIRMED
+    statement: >
+      BookingsController requires ProductLicenseGuard with ProductSlug.RENTAL and operational status ACTIVE only
+      (TRIAL does not satisfy operational entitlement policy).
+    evidence:
+      - BKG-TEST-GUARD-STACK-001
+
+  - id: BKG-INV-OVERLAP-001
+    kind: CONFIRMED_INVARIANT
+    title: Vehicle booking overlap serialization
+    epistemic_status: CONFIRMED
+    statement: >
+      Creating/updating bookings for the same vehicle uses pg_advisory_xact_lock on a deterministic overlap key
+      to prevent conflicting concurrent bookings.
+    evidence:
+      - BKG-EVID-CODE-MODULE-001
+
+  - id: BKG-INV-PAYMENT-001
+    kind: CONFIRMED_INVARIANT
+    title: Payment intent is not proof of settlement
+    epistemic_status: CONFIRMED
+    statement: >
+      Selecting card or other payment intent in the wizard does not mark OrgInvoice PAID without a real payment
+      recording path (webhook/checkout/recordPayment).
+    evidence:
+      - BKG-TEST-WIZARD-001
+      - BKG-EVID-ARCH-PAYMENT-INTENT-001
+
+  - id: BKG-INV-CORE-BOUNDARY-001
+    kind: CONDITIONAL_INVARIANT
+    title: Core VI job persist uses booking resolution port
+    epistemic_status: CONFIRMED
+    statement: >
+      DrivingIntelligenceJobRepository validates booking/vehicle scope via DRIVING_INTELLIGENCE_BOOKING_RESOLUTION_PORT
+      implemented by adapter code under bookings/ (P4-PR1). Other Core paths may still read booking tables directly (out of P4 scope).
+    evidence:
+      - BKG-EVID-AUDIT-P4-001
+      - BKG-TEST-PORT-DI-001

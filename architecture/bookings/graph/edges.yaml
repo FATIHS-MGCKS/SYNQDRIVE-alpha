@@ -1,0 +1,71 @@
+# Bookings Knowledge Graph — Edges
+
+edges:
+  - from: BKG-API-CONTROLLER-001
+    relation: owned_by
+    to: BKG-DOM-BOOKINGS-001
+  - from: BKG-ORCH-CORE-SVC-001
+    relation: owned_by
+    to: BKG-DOM-BOOKINGS-001
+  - from: BKG-API-CONTROLLER-001
+    relation: input_to
+    to: BKG-ORCH-CORE-SVC-001
+  - from: BKG-PIPE-WIZARD-001
+    relation: owned_by
+    to: BKG-DOM-BOOKINGS-001
+  - from: BKG-PIPE-ELIGIBILITY-001
+    relation: owned_by
+    to: BKG-DOM-BOOKINGS-001
+  - from: BKG-PIPE-HANDOVER-001
+    relation: owned_by
+    to: BKG-DOM-BOOKINGS-001
+  - from: BKG-ORCH-CORE-SVC-001
+    relation: persists
+    to: BKG-PERSIST-BOOKING-001
+  - from: BKG-PIPE-WIZARD-001
+    relation: persists
+    to: BKG-PERSIST-BOOKING-001
+  - from: BKG-PIPE-WIZARD-001
+    relation: enqueues
+    to: BKG-QUEUE-DOC-GEN-001
+  - from: BKG-PIPE-ELIGIBILITY-001
+    relation: gates
+    to: BKG-PIPE-WIZARD-001
+    notes: Confirm and pickup checks
+  - from: BKG-PIPE-HANDOVER-001
+    relation: gates
+    to: BKG-PIPE-ELIGIBILITY-001
+    notes: Pickup gate after eligibility
+  - from: BKG-POL-TENANT-001
+    relation: governs
+    to: BKG-API-CONTROLLER-001
+  - from: BKG-POL-PRODUCT-LICENSE-001
+    relation: governs
+    to: BKG-API-CONTROLLER-001
+  - from: BKG-CONS-RENTAL-UI-001
+    relation: consumed_by
+    to: BKG-API-CONTROLLER-001
+  - from: BKG-CONS-OPERATOR-001
+    relation: consumed_by
+    to: BKG-API-CONTROLLER-001
+  - from: BKG-PORT-DI-RESOLUTION-001
+    relation: owned_by
+    to: BKG-DOM-BOOKINGS-001
+  - from: BKG-EVID-AUDIT-P4-001
+    relation: supports
+    to: BKG-PORT-DI-RESOLUTION-001
+    notes: P4 audit documents port + persistence scope
+  - from: BKG-DEC-PAYMENT-INTENT-001
+    relation: governs
+    to: BKG-PIPE-WIZARD-001
+  - from: BKG-DEC-RETROACTIVITY-001
+    relation: governs
+    to: BKG-PIPE-ELIGIBILITY-001
+  - from: BKG-DOM-BOOKINGS-001
+    relation: depends_on
+    to: BKG-POL-PRODUCT-LICENSE-001
+    notes: P6-PR3 operational entitlement
+  - from: BKG-CONTRA-LICENSE-001
+    relation: contradicts
+    to: BKG-POL-PRODUCT-LICENSE-001
+    notes: Adjacent HTTP surface not yet aligned in licensed controller registry
