@@ -7,6 +7,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
 import { BookingsController } from './bookings.controller';
 import {
   assertCanManageBookingDrivers,
@@ -19,7 +20,12 @@ describe('Bookings — security negative tests', () => {
     it('requires org scoping + roles + permissions on BookingsController', () => {
       const guards = Reflect.getMetadata(GUARDS_METADATA, BookingsController) ?? [];
       expect(guards).toEqual(
-        expect.arrayContaining([OrgScopingGuard, RolesGuard, PermissionsGuard]),
+        expect.arrayContaining([
+          OrgScopingGuard,
+          ProductLicenseGuard,
+          RolesGuard,
+          PermissionsGuard,
+        ]),
       );
     });
   });

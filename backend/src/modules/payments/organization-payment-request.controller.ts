@@ -15,13 +15,17 @@ import { CreateBookingPaymentRefundDto } from './dto/create-booking-payment-refu
 import { mapBookingPaymentRefundResponse } from './dto/booking-payment-refund.response';
 import { PaymentsFeatureGuard } from './guards/payments-feature.guard';
 import { PaymentsPermissionGuard } from './guards/payments-permission.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 interface AuthedRequest {
   user?: PermissionActor;
 }
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/payment-requests')
-@UseGuards(OrgScopingGuard, PaymentsFeatureGuard, PaymentsPermissionGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, PaymentsFeatureGuard, PaymentsPermissionGuard)
 export class OrganizationPaymentRequestController {
   constructor(private readonly bookingPaymentRefundService: BookingPaymentRefundService) {}
 

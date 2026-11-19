@@ -58,6 +58,12 @@ Canonical status capabilities: `backend/src/modules/products/entitlements/entitl
 
 See `CHANGE_RECORD_P2_PR5_2026-11-17.md`.
 
+## P6-PR3 — Rental operational API product license (2026-11-19)
+
+- **Guard:** existing `ProductLicenseGuard` + `@RequireProduct(ProductSlug.RENTAL)` on org-scoped Rental HTTP controllers (bookings, customers, pricing, stations, rental payments, rental rules/health/RDA).
+- **Policy:** `OrganizationProduct.status === ACTIVE` only (TRIAL / suspended / cancelled → HTTP 403); `expiresAt` not enforced (unchanged).
+- **Excluded:** Core entitlements read, vehicle intelligence, M2M resource APIs, Master Admin product administration, Stripe/webhook callbacks (`webhooks/stripe-connect`, platform billing webhooks).
+
 ## TAXI platform product retirement (P2-PR4C)
 
 - **Owner:** TAXI is not a future SYNQDRIVE **ProductSlug**; `BusinessType.TAXI` and legal scope `TAXI` remain.

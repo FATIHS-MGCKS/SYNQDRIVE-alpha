@@ -3,9 +3,13 @@ import { RentalDrivingAnalysisService } from './rental-driving-analysis.service'
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PaginationParams } from '@shared/utils/pagination';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/rental-driving-analyses')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard)
 export class RentalDrivingAnalysisController {
   constructor(private readonly service: RentalDrivingAnalysisService) {}
 

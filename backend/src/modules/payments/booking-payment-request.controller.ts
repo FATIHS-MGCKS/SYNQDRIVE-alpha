@@ -20,13 +20,17 @@ import { CreateCheckoutSessionDto } from './dto/stripe-checkout.dto';
 import { mapCheckoutSessionResponse } from './dto/stripe-checkout.response';
 import { PaymentsFeatureGuard } from './guards/payments-feature.guard';
 import { PaymentsPermissionGuard } from './guards/payments-permission.guard';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 interface AuthedRequest {
   user?: PermissionActor;
 }
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/bookings/:bookingId/payment-requests')
-@UseGuards(OrgScopingGuard, PaymentsFeatureGuard, PaymentsPermissionGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, PaymentsFeatureGuard, PaymentsPermissionGuard)
 export class BookingPaymentRequestController {
   constructor(
     private readonly bookingPaymentRequestService: BookingPaymentRequestService,

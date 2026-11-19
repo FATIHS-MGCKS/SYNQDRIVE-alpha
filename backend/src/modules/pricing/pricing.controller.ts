@@ -23,9 +23,13 @@ import {
   UpsertTariffVersionDto,
 } from './dto';
 import { parseBookingInstant } from './tariff-instant.util';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard)
 export class PricingController {
   constructor(
     private readonly priceTariffs: PriceTariffsService,

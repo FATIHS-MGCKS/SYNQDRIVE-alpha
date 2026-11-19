@@ -15,6 +15,9 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 class CreateTireRentalReviewOverrideDto {
   reason!: string;
@@ -41,8 +44,9 @@ class CreateBrakeRentalReviewOverrideDto {
  * Fleet endpoints use the Redis-backed summary read model (see
  * {@link RentalHealthSummaryService}). Detail route stays canonical.
  */
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId')
-@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, RolesGuard, PermissionsGuard)
 export class RentalHealthController {
   constructor(
     private readonly rentalHealth: RentalHealthService,

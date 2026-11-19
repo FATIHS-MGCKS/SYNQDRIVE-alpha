@@ -19,13 +19,17 @@ import {
 import { PaymentsFeatureGuard } from './guards/payments-feature.guard';
 import { PaymentsPermissionGuard } from './guards/payments-permission.guard';
 import { StripeConnectAccountService } from './stripe-connect-account.service';
+import { ProductLicenseGuard } from '@shared/guards/product-license.guard';
+import { RequireProduct } from '@shared/decorators/require-product.decorator';
+import { ProductSlug } from '@prisma/client';
 
 interface AuthedRequest {
   user?: PermissionActor;
 }
 
+@RequireProduct(ProductSlug.RENTAL)
 @Controller('organizations/:orgId/payments/connect')
-@UseGuards(OrgScopingGuard, PaymentsFeatureGuard, PaymentsPermissionGuard)
+@UseGuards(OrgScopingGuard, ProductLicenseGuard, PaymentsFeatureGuard, PaymentsPermissionGuard)
 export class PaymentsConnectController {
   constructor(private readonly stripeConnectAccountService: StripeConnectAccountService) {}
 
