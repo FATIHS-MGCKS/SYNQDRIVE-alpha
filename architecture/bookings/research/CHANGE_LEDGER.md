@@ -2,6 +2,9 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | Post-P6 boundary owner Core classification (#2450) | Governance | [`POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](../../platform-reorientation/evidence/POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md); P0=4 platform violations reconciled |
+| 2026-11-19 | Post-P6 boundary audit review remediation (#2450) | Governance | F1 ownership epistemics; P0 CONFIRMED=0; narrow communication `findDetail` port scope |
+| 2026-11-19 | Post-P6 Core/Rental boundary audit (READ_ONLY) | Governance | [`POST_P6_CORE_RENTAL_BOUNDARY_AUDIT_2026-11-19.md`](../../platform-reorientation/evidence/POST_P6_CORE_RENTAL_BOUNDARY_AUDIT_2026-11-19.md); P4 VI↔RDA intact; platform `BookingsService` direct deps NFE until ownership |
 | 2026-11-19 | Post-P6 agent monorepo guardrails (#2449) | Governance | `MONOREPO_AGENT_GUARDRAILS.md`, `projektregel.mdc`, `Architectur-Updates`; `AGENTS.md` deferred (i18n authority label) |
 | 2026-11-19 | Post-P6 monorepo governance correction | Governance | Supersedes #2448 CORE-extraction nav; `POST_P6_MONOREPO_GOVERNANCE_CORRECTION`; next `SYNQDRIVE_ALPHA_POST_P6_CORE_RENTAL_BOUNDARY_AUDIT` |
 | 2026-11-19 | P6-PR6 independent review F1–F4 doc remediation | P6-PR6 | Progress ledger DRAFT restore; immutable `ORIGIN_MAIN_SHA`; gap single-category; M2M STEP 3 not STEP 1 |
