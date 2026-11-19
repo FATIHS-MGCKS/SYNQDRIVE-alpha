@@ -69,6 +69,10 @@ Re-inspect **logical** dependency boundaries inside Alpha (no implementation in 
 
 Evidence record + optional registry/authority updates; **no** runtime changes unless a separate implementation PR is authorized.
 
+## Agent governance guardrails (binding)
+
+Enforced via root [`AGENTS.md`](../../../AGENTS.md) § **Binding Core/Rental monorepo guardrails** and [`.cursor/rules/projektregel.mdc`](../../../.cursor/rules/projektregel.mdc) § Core/Rental monorepo dependency policy — dependency invariants, new-module ownership checklist, future-application **interface readiness** (no live integration in ordinary agent work).
+
 ## Validation (this correction PR)
 
 ```bash

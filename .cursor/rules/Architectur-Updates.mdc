@@ -7,9 +7,10 @@ alwaysApply: true
 
 1. Read root [`AGENTS.md`](../../AGENTS.md) and [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../../architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md).
 2. For platform, product catalog, entitlements, Master Admin, or M2M work: also read [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) and scan [`architecture/platform-reorientation/PROGRESS_LEDGER.md`](../../architecture/platform-reorientation/PROGRESS_LEDGER.md) for the active phase — without weakening module-authority obligations below.
-3. Branch on the module’s **registry coverage status**.
-4. For `AUTHORITY_ACTIVE`: read all mandatory entry documents listed in the registry.
-5. For `NOT_STARTED` or `AUDIT_IN_PROGRESS`: follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md).
+3. **Domain ownership review (mandatory):** classify the change as **Core**, **Rental**, or documented shared infrastructure; verify dependency invariants in `AGENTS.md` § Binding Core/Rental monorepo guardrails (Core → Rental business services forbidden; Rental → Core via contracts/DI allowed). New modules require explicit ownership — no silent cross-domain business-service coupling.
+4. Branch on the module’s **registry coverage status**.
+5. For `AUTHORITY_ACTIVE`: read all mandatory entry documents listed in the registry.
+6. For `NOT_STARTED` or `AUDIT_IN_PROGRESS`: follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](../../architecture/MODULE_AUTHORITY_STANDARD.md).
 
 ## After every substantive change (same workstream/PR)
 

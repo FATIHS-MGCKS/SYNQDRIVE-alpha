@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | Post-P6 agent monorepo guardrails (#2449) | Governance | `AGENTS.md`, `projektregel.mdc`, `Architectur-Updates` ownership review; master plan interface-readiness |
 | 2026-11-19 | Post-P6 monorepo governance correction | Governance | Supersedes #2448 CORE-extraction nav; `POST_P6_MONOREPO_GOVERNANCE_CORRECTION`; next `SYNQDRIVE_ALPHA_POST_P6_CORE_RENTAL_BOUNDARY_AUDIT` |
 | 2026-11-19 | P6-PR6 independent review F1–F4 doc remediation | P6-PR6 | Progress ledger DRAFT restore; immutable `ORIGIN_MAIN_SHA`; gap single-category; M2M STEP 3 not STEP 1 |
 | 2026-11-19 | P6 certification closeout report + gap classification | P6-PR6 | `BKG-EVID-P6-CERTIFICATION-CLOSEOUT-2026-11-19`; main `8b8a6e3d3`; GO for agreed scope; CORE STEP 1 next |
