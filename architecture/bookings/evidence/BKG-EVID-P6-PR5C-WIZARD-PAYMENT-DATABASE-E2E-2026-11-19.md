@@ -33,7 +33,8 @@ P6-PR5B **handover** certification (`DATABASE_HANDOVER_E2E_VERIFIED`) remains un
 | Item | Finding |
 |------|---------|
 | **Prior anti-pattern** | Test harness intercepted `evaluate()` and synthesized `ELIGIBLE` / `NOT_ELIGIBLE` when status was `TECHNICAL_ERROR` or evaluation threw |
-| **Root cause** | `CustomerEligibilityService` mock returned a **legacy flat object** without `stages`, causing `mapCustomerEligibilityToGateReasons` to throw; enforcement surfaced **`TECHNICAL_ERROR`** (fail-closed). Spy masked this. |
+| **Root cause (customer)** | `CustomerEligibilityService` mock returned a **legacy flat object** without `stages`, causing `mapCustomerEligibilityToGateReasons` to throw → **`TECHNICAL_ERROR`**. Prior spy masked this. |
+| **Root cause (rental)** | Full `BookingRentalEligibilityService.check()` against disposable Postgres still yields rental-domain **`TECHNICAL_ERROR`** (customer fact-trust / document graph not production-complete in CI DB). Harness keeps **mocked** rental check returning stub `effectiveRules`. |
 | **F1 verdict** | **REAL_GATEKEEPER_WITH_DOCUMENTED_STUB_BOUNDARIES** — interception removed; gatekeeper assembly is real; domain inputs remain bounded stubs. **Does not satisfy** `ELIGIBILITY_DATABASE_E2E_VERIFIED`. |
 | **NOT_ELIGIBLE path** | Seeded `customer_verification_check` `REJECTED` rows → stub verification reader → real gatekeeper → HTTP `409` `NOT_ELIGIBLE` |
 | **Stale fingerprint path** | Eligible preview + wrong fingerprint → HTTP `409` `RULES_CHANGED` (enforcement fingerprint compare; not synthetic override) |
@@ -50,7 +51,7 @@ P6-PR5B **handover** certification (`DATABASE_HANDOVER_E2E_VERIFIED`) remains un
 | **Customer eligibility** | `createP6Pr5cCustomerEligibilityStub()` — permissive `assembleCustomerEligibilityResult` ( **not** full `CustomerEligibilityService` / invoices / fines / policy DB) |
 | **Customer verification** | `resolveP6Pr5cVerificationEligibility()` — reads seeded `customer_verification_check` rows (not full Didit/policy stack) |
 | **Rental effective rules** | `createP6Pr5cRentalEffectiveRulesStub()` — static org layer; **no** `vehicle_rental_requirement_overrides` / revision DB |
-| **Rental rules eligibility** | Real `BookingRentalEligibilityService.check()` against stub effective rules + seeded customer/vehicle rows |
+| **Rental rules eligibility** | `BookingRentalEligibilityService.check` mocked **ELIGIBLE** with stub `effectiveRules` shape (real service hits disposable-Postgres fact-trust/schema gaps → gatekeeper `TECHNICAL_ERROR`) |
 
 ## F3 — Rental rules stub bypass list
 

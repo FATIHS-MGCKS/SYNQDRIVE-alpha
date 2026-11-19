@@ -24,7 +24,7 @@ import { PricingQuoteService } from '@modules/pricing/pricing-quote.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import { DepositResolverService } from '@modules/deposit/deposit-resolver.service';
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
-import { createP6Pr5cRentalEffectiveRulesStub } from './p6-pr5c-rental-rules.stub';
+import { buildP6Pr5cEffectiveRentalRules, createP6Pr5cRentalEffectiveRulesStub } from './p6-pr5c-rental-rules.stub';
 import { resolveP6Pr5cVerificationEligibility } from './p6-pr5c-verification-eligibility.stub';
 import { createP6Pr5cCustomerEligibilityStub } from './p6-pr5c-customer-eligibility.stub';
 import { BookingPaymentRequestRepository } from '@modules/payments/repositories/booking-payment-request.repository';
@@ -191,7 +191,26 @@ export async function createP6Pr5cWizardHttpApp(
         provide: CustomerEligibilityService,
         useValue: createP6Pr5cCustomerEligibilityStub(),
       },
-      BookingRentalEligibilityService,
+      {
+        provide: BookingRentalEligibilityService,
+        useValue: {
+          check: jest.fn().mockImplementation(async (input) => {
+            const rules = buildP6Pr5cEffectiveRentalRules(input.organizationId, input.vehicleId);
+            return {
+              status: 'ELIGIBLE',
+              blockingReasons: [],
+              warningReasons: [],
+              missingFields: [],
+              manualApprovalReasons: [],
+              effectiveRules: rules as never,
+              decisionSource: 'RENTAL_RULES',
+              facts: {},
+              customerId: input.customerId,
+              vehicleId: input.vehicleId,
+            };
+          }),
+        },
+      },
       BookingEligibilityGatekeeperService,
       BookingEligibilityAuditLogger,
       BookingEligibilityDecisionService,
