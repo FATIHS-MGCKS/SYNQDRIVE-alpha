@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | WhatsApp booking operational read adapter | POST-P6-BOUNDARY-PR2 | `WhatsAppBookingOperationalReadAdapter` + mapper |
 | 2026-11-19 | Communication booking snapshot read adapter | POST-P6-BOUNDARY-PR1 | `CommunicationBookingSnapshotReadAdapter` → `findDetail` mapping |
 | 2026-11-19 | Post-P6 boundary owner Core classification (#2450) | Governance | [`POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](../../platform-reorientation/evidence/POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md); P0=4 platform violations reconciled |
 | 2026-11-19 | Post-P6 boundary audit review remediation (#2450) | Governance | F1 ownership epistemics; P0 CONFIRMED=0; narrow communication `findDetail` port scope |

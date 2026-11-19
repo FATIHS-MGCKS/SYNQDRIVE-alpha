@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,7 +12,11 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
-import { BookingsService } from '@modules/bookings/bookings.service';
+import {
+  WHATSAPP_BOOKING_OPERATIONAL_READ_PORT,
+  type WhatsAppBookingOperationalRead,
+  type WhatsAppBookingOperationalReadPort,
+} from './ports/whatsapp-booking-operational-read.port';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
@@ -33,7 +38,8 @@ export interface ProactiveSendResult {
 export class WhatsAppBookingReminderService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly bookings: BookingsService,
+    @Inject(WHATSAPP_BOOKING_OPERATIONAL_READ_PORT)
+    private readonly bookingRead: WhatsAppBookingOperationalReadPort,
     private readonly documentBundle: BookingDocumentBundleService,
     private readonly damages: DamagesService,
     private readonly provider: WhatsAppProviderService,
@@ -171,11 +177,11 @@ export class WhatsAppBookingReminderService {
     bookingId: string,
     opts: {
       category: WhatsAppTemplateCategory;
-      fallback: (detail: NonNullable<Awaited<ReturnType<BookingsService['findDetail']>>>) => string;
+      fallback: (detail: WhatsAppBookingOperationalRead) => string;
       kind: 'transactional' | 'support';
     },
   ): Promise<ProactiveSendResult> {
-    const detail = await this.bookings.findDetail(orgId, bookingId);
+    const detail = await this.bookingRead.getOperationalRead(orgId, bookingId);
     if (!detail) throw new NotFoundException('Booking not found');
 
     const phone = detail.customer.phone;

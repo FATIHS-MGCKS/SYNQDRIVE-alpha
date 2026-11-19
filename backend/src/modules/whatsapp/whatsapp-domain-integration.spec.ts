@@ -106,11 +106,18 @@ describe('WhatsAppBookingReminderService consent', () => {
     whatsAppMessage: { create: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
     whatsAppTemplate: { findFirst: jest.fn().mockResolvedValue(null) },
   };
-  const bookings = {
-    findDetail: jest.fn().mockResolvedValue({
-      core: { bookingId: 'bk-1', bookingNumber: 'B-1', status: 'Confirmed', startDate: '2026-06-01', endDate: '2026-06-10', pickupStationName: 'Kassel' },
+  const bookingRead = {
+    getOperationalRead: jest.fn().mockResolvedValue({
+      core: {
+        bookingId: 'bk-1',
+        bookingNumber: 'B-1',
+        status: 'Confirmed',
+        startDate: '2026-06-01',
+        endDate: '2026-06-10',
+        pickupStationName: 'Kassel',
+      },
       customer: { customerId: 'cust-1', fullName: 'Max Mustermann', phone: '+491701234567' },
-      vehicle: { vehicleId: 'veh-1' },
+      vehicle: { vehicleId: 'veh-1', displayName: 'Car' },
       stations: { pickup: null, return: null },
       finance: { depositStatus: null, paymentStatus: 'PAID' },
     }),
@@ -131,7 +138,7 @@ describe('WhatsAppBookingReminderService consent', () => {
   it('booking reminder requires consent', async () => {
     const service = new WhatsAppBookingReminderService(
       prisma as any,
-      bookings as any,
+      bookingRead as any,
       documentBundle as any,
       damages as any,
       provider as any,
@@ -155,7 +162,7 @@ describe('WhatsAppBookingReminderService consent', () => {
 
     const service = new WhatsAppBookingReminderService(
       prisma as any,
-      bookings as any,
+      bookingRead as any,
       documentBundle as any,
       damages as any,
       provider as any,
