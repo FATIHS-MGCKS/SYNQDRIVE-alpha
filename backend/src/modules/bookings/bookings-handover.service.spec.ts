@@ -241,10 +241,17 @@ describe('BookingsHandoverService', () => {
   });
 
   it('completes pickup: activates booking, rents vehicle, binds signatures and damages', async () => {
-    const { svc, tx, pickupGate, bookingDocumentGenerationDispatcher } = createHarness();
+    const {
+      svc,
+      tx,
+      pickupGate,
+      bookingDocumentGenerationDispatcher,
+      rentalDrivingAnalysisRecomputeTrigger,
+    } = createHarness();
     const result = await svc.createHandover(orgId, bookingId, 'PICKUP', basePayload, actor);
 
     expect(pickupGate.assertPickupAllowed).toHaveBeenCalled();
+    expect(rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking).not.toHaveBeenCalled();
     expect(result.booking.status).toBe('ACTIVE');
     expect(result.protocol.customerSignatureDataUrl).toBe(basePayload.customerSignatureDataUrl);
     expect(tx.vehicle.update).toHaveBeenCalledWith(
@@ -363,13 +370,45 @@ describe('BookingsHandoverService', () => {
   });
 
   it('treats return protocol as immutable when already recorded', async () => {
-    const { svc } = createHarness({
+    const { svc, rentalDrivingAnalysisRecomputeTrigger } = createHarness({
       booking: bookingRow({ status: 'ACTIVE' }),
       existingReturn: { id: 'proto-return' },
     });
     await expect(
       svc.createHandover(orgId, bookingId, 'RETURN', { ...basePayload, odometerKm: 16000 }, actor),
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking).not.toHaveBeenCalled();
+  });
+
+  describe('RDA BOOKING_COMPLETED trigger (P6-PR5 review)', () => {
+    it('does not enqueue on failed return (wrong booking status)', async () => {
+      const { svc, rentalDrivingAnalysisRecomputeTrigger } = createHarness({
+        booking: bookingRow({ status: 'CONFIRMED' }),
+      });
+      await expect(
+        svc.createHandover(orgId, bookingId, 'RETURN', { ...basePayload, odometerKm: 15100 }, actor),
+      ).rejects.toBeDefined();
+      expect(rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking).not.toHaveBeenCalled();
+    });
+
+    it('completes return when enqueue rejects with BOOKING_COMPLETED attempt', async () => {
+      const { svc, rentalDrivingAnalysisRecomputeTrigger } = createHarness({
+        booking: bookingRow({ status: 'ACTIVE' }),
+        pickupOdometer: 15000,
+      });
+      rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking.mockRejectedValue(
+        new Error('NO_ANCHOR_TRIP'),
+      );
+      const result = await svc.createHandover(
+        orgId,
+        bookingId,
+        'RETURN',
+        { ...basePayload, odometerKm: 15120 },
+        actor,
+      );
+      expect(result.booking.status).toBe('COMPLETED');
+      expect(rentalDrivingAnalysisRecomputeTrigger.enqueueForBooking).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('scopes findForBooking to tenant booking', async () => {

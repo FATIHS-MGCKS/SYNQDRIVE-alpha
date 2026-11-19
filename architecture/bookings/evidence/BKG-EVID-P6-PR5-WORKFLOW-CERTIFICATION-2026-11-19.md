@@ -3,58 +3,70 @@
 **Date:** 2026-11-19 (Europe/Berlin)  
 **Epistemic:** CONFIRMED (repository Jest) / UNKNOWN (disposable Postgres E2E) / NOT_CLAIMED (Production)
 
+## Certification tiers (F2 — independent review)
+
+| Tier | What counts | P6-PR5 claim |
+|------|-------------|--------------|
+| **Isolated service / unit tests** | Single class, mocked deps | Yes — module `*.spec.ts` files |
+| **In-memory contract harness** | `rental-booking-workflow-certification.spec.ts` — **separate `it` blocks**, not one persistent booking DB row | Yes — composes contracts only |
+| **Integration tests** | Multi-service without full HTTP/DB (e.g. pickup gate matrix) | Partial — `booking-pickup-gate.integration.spec.ts` |
+| **Full DB-backed E2E** | Disposable Postgres, Nest HTTP, real persistence chain | **BLOCKED** — not in this workstream |
+| **Production validation** | Live tenant evidence | **NOT_CLAIMED** |
+
+**Not verified by this PR:** durable queue processing after `enqueueForBooking` (Bull/Redis worker completion), live Stripe capture, async Driving Intelligence pipeline completion. A mocked or resolved `enqueueForBooking` invocation is **trigger scheduling intent only**, not `INTEGRATION_VERIFIED` queue semantics.
+
 ## Workflow coverage matrix
 
-| Step | Contract | Primary evidence | Certification layer |
-|------|----------|------------------|---------------------|
-| 1 Wizard draft | `BookingWizardDraftService` | `booking-wizard-draft.service.spec.ts` | `rental-booking-workflow-certification.spec.ts` |
-| 2 Pricing / eligibility | Gatekeeper + enforcement | `booking-eligibility-*.spec.ts`, `booking-wizard-eligibility-e2e-flow.spec.ts` | Harness confirm + fingerprint |
-| 3 Wizard confirm | FSM → CONFIRMED | `booking-wizard-eligibility-e2e-flow.spec.ts` | Harness |
-| 4 Payment intent / link | No live Stripe | `booking-wizard-payment-flow.service.spec.ts` | Harness |
-| 5 Invoice consistency | `syncOnBookingConfirmed` | `booking-invoice-bootstrap.behavior.spec.ts` | Wizard harness mock |
-| 6 Document prerequisites | Pickup gate + bundle | `booking-pickup-gate.integration.spec.ts` | Negative harness |
-| 7 Pickup gate | `assertPickupAllowed` | `booking-pickup-gate.integration.spec.ts` | Handover harness |
-| 8 Pickup handover | CONFIRMED → ACTIVE | `bookings-handover.service.spec.ts` | Harness |
-| 9 Booking ACTIVE | Status + vehicle RENTED | `bookings-handover.service.spec.ts` | Harness |
-| 10 Return handover | ACTIVE → COMPLETED | `bookings-handover.service.spec.ts` | Harness |
-| 11 Booking COMPLETED | Workflow `booking.completed` | `bookings-handover.service.spec.ts` | Harness |
-| 12 RDA recompute | Assessment + trigger | `rental-driving-analysis.recompute.spec.ts` | **Remediation:** return handover now enqueues `BOOKING_COMPLETED` (parity with `BookingsService.update`) |
+| Step | Contract | Primary evidence | P6-PR5 harness role |
+|------|----------|------------------|-------------------|
+| 1–3 Wizard / eligibility / confirm | Draft → CONFIRMED | `booking-wizard-eligibility-e2e-flow.spec.ts` | Separate harness `it` |
+| 4–5 Payment / invoice | No PAID on intent | `booking-wizard-payment-flow.service.spec.ts` | Separate harness `it` |
+| 6–7 Documents / pickup gate | Gate blocks | `booking-pickup-gate.integration.spec.ts` | Negative harness `it` |
+| 8–11 Handover FSM | ACTIVE / COMPLETED | `bookings-handover.service.spec.ts` | Separate harness `it` (pickup then return harness instances) |
+| 12 RDA assessment | `recomputeForBooking` output | **`rental-driving-analysis.recompute.spec.ts` (authoritative)** | **Not duplicated** — no placeholder step-12 test |
+| 12 RDA trigger on return | `enqueueForBooking` call | **`bookings-handover.service.spec.ts`** (P6-PR5 review regression suite) | Harness asserts mock call on return only |
+
+## RDA trigger semantics (F3)
+
+After successful **RETURN** handover only:
+
+- `enqueueForBooking({ reason: BOOKING_COMPLETED, … })` — fire-and-forget; `.catch` logs warn, **does not roll back** COMPLETED.
+- **PICKUP** does not call this trigger.
+- Failed / rolled-back RETURN, duplicate RETURN (`HANDOVER_ALREADY_EXISTS`), and pre-transaction rejects do not call it.
+- `RentalDrivingAnalysisRecomputeTriggerService` may return `{ enqueued: false, reason: 'NO_ANCHOR_TRIP' | 'NO_ANALYSIS_RUN' | … }` without a queued job — **no retry system** in P6-PR5.
+
+## Confirmed defect remediated (Phase 4)
+
+**Gap:** Return handover set `COMPLETED` without scheduling RDA `BOOKING_COMPLETED` (unlike `BookingsService.update`).
+
+**Fix:** `BookingsHandoverService` — post-success RETURN enqueue (same correlation id pattern as bookings update).
 
 ## Negative cases (mapped)
 
 | Case | Evidence |
 |------|----------|
-| Missing ACTIVE RENTAL | `rental-product-license.http-security.integration.spec.ts` (P6-PR4A) |
-| Cross-org | Handover + HTTP license specs |
-| RBAC insufficient | HTTP license + permission guards |
+| Missing ACTIVE RENTAL | `rental-product-license.http-security.integration.spec.ts` |
+| Cross-org / RBAC | Handover + HTTP license specs |
 | Eligibility failure | `booking-wizard-eligibility-e2e-flow.spec.ts` |
-| Missing pickup documents | `booking-pickup-gate.integration.spec.ts` + certification negative |
-| Repeated wizard confirm | `booking-wizard-eligibility-e2e-flow.spec.ts` (idempotent) |
-| Repeated pickup | `bookings-handover.service.spec.ts` |
-| Payment request failure | `booking-wizard-payment-flow.service.spec.ts` + certification |
-| Invoice not falsely PAID | Payment flow harness (no PAID in result) |
-| RDA pending / inadmissible | `rental-driving-analysis.recompute.spec.ts`, TDI quality specs |
-
-## Confirmed defect remediated (Phase 4)
-
-**Gap:** Return handover transitioned booking to `COMPLETED` but did not enqueue rental driving analysis recompute (unlike `BookingsService.update`).
-
-**Fix:** `BookingsHandoverService` — fire-and-forget `RentalDrivingAnalysisRecomputeTriggerService.enqueueForBooking` with `BOOKING_COMPLETED` after successful return handover.
+| Missing pickup documents | `booking-pickup-gate.integration.spec.ts` |
+| Repeated confirm / pickup / return | Wizard e2e + handover specs |
+| Payment request failure | `booking-wizard-payment-flow.service.spec.ts` |
+| RDA inadmissible trips | `rental-driving-analysis.recompute.spec.ts` |
 
 ## Certification verdict
 
 | Layer | Verdict |
 |-------|---------|
-| UNIT_VERIFIED | Yes — step module specs + P6-PR5 harness (7 tests) |
-| INTEGRATION_VERIFIED | Partial — in-memory service harness; pickup gate integration; task pipeline; no full Nest HTTP wizard→return |
-| E2E_VERIFIED | **BLOCKED** — no disposable-Postgres booking lifecycle E2E in CI |
+| UNIT_VERIFIED | Yes |
+| INTEGRATION_VERIFIED | Partial (harness + pickup gate; **not** single lifecycle E2E) |
+| E2E_VERIFIED | **BLOCKED** |
 | PRODUCTION_VALIDATED | **NOT_CLAIMED** |
-| Real payment capture | **NOT_CLAIMED** (mocked Stripe) |
-| Async DI analysis completion | **NOT_CLAIMED** (job enqueue only) |
+| Queue / worker processing | **NOT_CLAIMED** |
 
 ## Validation commands
 
 ```bash
 cd backend && npm test -- --testPathPatterns=rental-booking-workflow-certification
-cd backend && npm test -- --testPathPatterns='booking-wizard-eligibility-e2e-flow|bookings-handover.service|booking-pickup-gate.integration|rental-driving-analysis.recompute'
+cd backend && npm test -- --testPathPatterns=bookings-handover.service
+cd backend && npm test -- --testPathPatterns=rental-driving-analysis.recompute
 ```

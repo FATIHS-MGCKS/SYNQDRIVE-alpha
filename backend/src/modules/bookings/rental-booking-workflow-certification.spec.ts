@@ -259,10 +259,6 @@ describe('P6-PR5 rental booking workflow certification', () => {
     jest.useRealTimers();
   });
 
-  it('step 12: RDA recompute assessment contract (see rental-driving-analysis.recompute.spec.ts)', () => {
-    expect(RENTAL_WORKFLOW_CERTIFICATION_STEPS[11]).toBe('rda_recompute');
-  });
-
   describe('negative contracts', () => {
     it('blocks pickup when document bundle incomplete', async () => {
       const evaluation = {
