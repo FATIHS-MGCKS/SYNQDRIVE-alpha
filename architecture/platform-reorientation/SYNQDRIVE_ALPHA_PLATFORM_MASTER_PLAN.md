@@ -82,7 +82,7 @@ Central registry synopsis: [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../
 | Integration scope | Reuse merged P2/P3 registry + entitlements + guarded APIs — **do not** connect unfinished apps, arm production M2M, or claim readiness without evidence |
 | Co-located Rental | In-process — **not** M2M-mandatory (this section does not change Rental runtime) |
 
-Agent enforcement: root [`AGENTS.md`](../../AGENTS.md) § Binding Core/Rental monorepo guardrails; [`.cursor/rules/projektregel.mdc`](../../.cursor/rules/projektregel.mdc).
+Agent enforcement: [`MONOREPO_AGENT_GUARDRAILS.md`](MONOREPO_AGENT_GUARDRAILS.md); [`.cursor/rules/projektregel.mdc`](../../.cursor/rules/projektregel.mdc); root `AGENTS.md` promotion pending owner i18n authority label when edited.
 
 ## Product map
 

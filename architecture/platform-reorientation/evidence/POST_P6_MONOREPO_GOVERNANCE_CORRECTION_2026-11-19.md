@@ -71,7 +71,9 @@ Evidence record + optional registry/authority updates; **no** runtime changes un
 
 ## Agent governance guardrails (binding)
 
-Enforced via root [`AGENTS.md`](../../../AGENTS.md) § **Binding Core/Rental monorepo guardrails** and [`.cursor/rules/projektregel.mdc`](../../../.cursor/rules/projektregel.mdc) § Core/Rental monorepo dependency policy — dependency invariants, new-module ownership checklist, future-application **interface readiness** (no live integration in ordinary agent work).
+Enforced via [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md), [`.cursor/rules/projektregel.mdc`](../../../.cursor/rules/projektregel.mdc), and [`.cursor/rules/Architectur-Updates.mdc`](../../../.cursor/rules/Architectur-Updates.mdc) domain-ownership review.
+
+**CI note:** Root `AGENTS.md` edits require owner PR label `i18n-governance-authority-change`; #2449 keeps canonical policy in platform-reorientation + Cursor rules until owner promotes into `AGENTS.md`.
 
 ## Validation (this correction PR)
 
