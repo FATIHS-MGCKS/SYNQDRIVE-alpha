@@ -38,7 +38,20 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
   let orgProducts: ProductRow[] = [];
   const bundleGetBundleView = jest.fn().mockResolvedValue({ items: [] });
   const evidenceList = jest.fn().mockResolvedValue([]);
-  const bundleGenerate = jest.fn();
+  const enqueueInitialBundle = jest.fn().mockResolvedValue({ enqueued: true, id: 'job-1' });
+  const getById = jest.fn().mockResolvedValue({ id: 'doc-1', documentType: 'RENTAL_CONTRACT' });
+  const toDto = jest.fn().mockReturnValue({ id: 'doc-1' });
+  const voidDocument = jest.fn().mockResolvedValue({ id: 'doc-1' });
+  const recordPresentation = jest.fn().mockResolvedValue({ id: 'ev-1' });
+
+  const DOC_ID = '550e8400-e29b-41d4-a716-446655440001';
+  const presentationBody = {
+    customerId: '550e8400-e29b-41d4-a716-446655440010',
+    legalDocumentId: '550e8400-e29b-41d4-a716-446655440011',
+    generatedDocumentId: '550e8400-e29b-41d4-a716-446655440012',
+    deliveryChannel: 'EMAIL',
+    recipientSnapshot: { customerId: '550e8400-e29b-41d4-a716-446655440010' },
+  };
 
   const prisma = {
     organization: {
@@ -137,9 +150,15 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
         ProductLicenseGuard,
         { provide: PrismaService, useValue: prisma },
         { provide: BookingDocumentBundleService, useValue: { getBundleView: bundleGetBundleView } },
-        { provide: GeneratedDocumentsService, useValue: {} },
+        {
+          provide: GeneratedDocumentsService,
+          useValue: { getById, toDto, voidDocument },
+        },
         { provide: RentalContractService, useValue: {} },
-        { provide: BookingDocumentGenerationDispatcherService, useValue: {} },
+        {
+          provide: BookingDocumentGenerationDispatcherService,
+          useValue: { enqueueInitialBundle },
+        },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();
@@ -156,7 +175,10 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
         RolesGuard,
         ProductLicenseGuard,
         { provide: PrismaService, useValue: prisma },
-        { provide: LegalDocumentDeliveryEvidenceService, useValue: { listForBooking: evidenceList } },
+        {
+          provide: LegalDocumentDeliveryEvidenceService,
+          useValue: { listForBooking: evidenceList, recordPresentation },
+        },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();
@@ -177,7 +199,10 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
     jest.clearAllMocks();
     bundleGetBundleView.mockClear();
     evidenceList.mockClear();
-    bundleGenerate.mockClear();
+    enqueueInitialBundle.mockClear();
+    getById.mockClear();
+    voidDocument.mockClear();
+    recordPresentation.mockClear();
   });
 
   describe.each([
@@ -240,6 +265,108 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
         .get(route)
         .set('Authorization', `Bearer ${signWorker(ORG_A, 'worker-a')}`)
         .expect(403);
+    });
+  });
+
+  describe('Mutations — product license and no side effects on deny', () => {
+    const generateRoute = `/api/v1/organizations/${ORG_A}/bookings/${BOOKING_ID}/documents/generate-initial-bundle`;
+    const metadataRoute = `/api/v1/organizations/${ORG_A}/documents/${DOC_ID}/metadata`;
+    const voidRoute = `/api/v1/organizations/${ORG_A}/documents/${DOC_ID}/void`;
+    const presentationRoute = `/api/v1/organizations/${ORG_A}/bookings/${BOOKING_ID}/legal-delivery-evidence`;
+
+    it('Documents POST generate-initial-bundle allows ACTIVE RENTAL', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.ACTIVE,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(documentsApp.getHttpServer())
+        .post(generateRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .expect(201);
+      expect(enqueueInitialBundle).toHaveBeenCalled();
+    });
+
+    it('Documents POST generate-initial-bundle denies TRIAL without enqueue', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.TRIAL,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(documentsApp.getHttpServer())
+        .post(generateRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .expect(403);
+      expect(enqueueInitialBundle).not.toHaveBeenCalled();
+    });
+
+    it('Documents GET metadata denies TRIAL without getById', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.TRIAL,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(documentsApp.getHttpServer())
+        .get(metadataRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .expect(403);
+      expect(getById).not.toHaveBeenCalled();
+    });
+
+    it('Documents POST void allows ACTIVE RENTAL', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.ACTIVE,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(documentsApp.getHttpServer())
+        .post(voidRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .send({})
+        .expect(201);
+      expect(voidDocument).toHaveBeenCalled();
+    });
+
+    it('Documents POST void denies TRIAL without voidDocument', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.TRIAL,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(documentsApp.getHttpServer())
+        .post(voidRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .send({})
+        .expect(403);
+      expect(voidDocument).not.toHaveBeenCalled();
+    });
+
+    it('Legal delivery POST denies TRIAL without recordPresentation', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.TRIAL,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(evidenceApp.getHttpServer())
+        .post(presentationRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .send(presentationBody)
+        .expect(403);
+      expect(recordPresentation).not.toHaveBeenCalled();
+    });
+
+    it('Legal delivery POST allows ACTIVE RENTAL', async () => {
+      orgProducts.push({
+        organizationId: ORG_A,
+        status: OrgProductStatus.ACTIVE,
+        product: { slug: ProductSlug.RENTAL },
+      });
+      await request(evidenceApp.getHttpServer())
+        .post(presentationRoute)
+        .set('Authorization', `Bearer ${signMasterAdmin(ORG_A)}`)
+        .send(presentationBody)
+        .expect(201);
+      expect(recordPresentation).toHaveBeenCalled();
     });
   });
 });
