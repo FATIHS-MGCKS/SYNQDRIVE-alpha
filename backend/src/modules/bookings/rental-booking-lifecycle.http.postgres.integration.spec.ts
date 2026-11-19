@@ -13,9 +13,6 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
 import {
   BookingStatus,
   OrgProductStatus,
@@ -25,11 +22,8 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import * as request from 'supertest';
-import { BookingsModule } from './bookings.module';
-import { PrismaModule } from '@shared/database/prisma.module';
-import { PrismaService } from '@shared/database/prisma.service';
-import { RentalDrivingAnalysisRecomputeTriggerService } from '@modules/rental-driving-analysis/rental-driving-analysis-recompute.trigger';
 import { RENTAL_DRIVING_ANALYSIS_RECOMPUTE_REASONS } from '@modules/rental-driving-analysis/rental-driving-analysis.recompute.types';
+import { createP6Pr5bBookingsHttpApp } from './testing/p6-pr5b-bookings-http-nest.harness';
 import {
   assertP6Pr5bPostgresReachable,
   P6_PR5B_OPT_IN_ENV,
@@ -79,27 +73,7 @@ function bookingsBase(orgId: string): string {
     isolationProof = await assertP6Pr5bPostgresReachable();
     prisma = new PrismaClient();
     rdaEnqueue = jest.fn().mockResolvedValue({ enqueued: false, reason: 'NO_ANCHOR_TRIP' });
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), PrismaModule, BookingsModule],
-      providers: [{ provide: APP_GUARD, useClass: TestAuthGuard }],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(prisma)
-      .overrideProvider(RentalDrivingAnalysisRecomputeTriggerService)
-      .useValue({ enqueueForBooking: rdaEnqueue })
-      .compile();
-
-    app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    app.use(
-      (req: { headers: Record<string, string>; user?: unknown }, _res: unknown, next: () => void) => {
-        const header = req.headers['x-test-user'];
-        if (header && header !== 'null') req.user = JSON.parse(header);
-        next();
-      },
-    );
-    await app.init();
+    app = await createP6Pr5bBookingsHttpApp(prisma, rdaEnqueue, TestAuthGuard);
   }, 180_000);
 
   afterAll(async () => {
