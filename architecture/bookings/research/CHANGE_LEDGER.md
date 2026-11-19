@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-19 | P6-PR5E real internal eligibility Postgres HTTP | P6-PR5E | Isolated harness; published org rental revisions; 5 HTTP tests; CI 27; Didit mocked |
 | 2026-11-19 | P6-PR5D payment_link BookingPaymentRequest Postgres HTTP | P6-PR5D | 5 HTTP tests; Connect seeds; real payment services; Stripe checkout mock only; CI 22 |
 | 2026-11-19 | P6-PR5C independent review remediation (F1–F3) | P6-PR5C | CI log redaction; fingerprint vs eligibility tests; 17 Jest expects |
 | 2026-11-19 | P6-PR5C disposable Postgres wizard HTTP suite | P6-PR5C | `rental-booking-wizard.http.postgres.integration.spec.ts`; `p6-pr5c-bookings-http-nest.harness.ts`; CI script extended to 16 tests |

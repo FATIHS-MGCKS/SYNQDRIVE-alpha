@@ -221,6 +221,20 @@ nodes:
       - backend/src/modules/bookings/rental-booking-workflow-certification.spec.ts
       - architecture/bookings/evidence/BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md
 
+  - id: BKG-EVID-P6-PR5E-REAL-ELIGIBILITY-DATABASE-2026-11-19
+    type: evidence
+    title: P6-PR5E real internal rental eligibility DB HTTP E2E
+    epistemic_status: INFERRED
+    source_type: CURRENT_TEST
+    summary: >
+      Isolated wizard harness with real gatekeeper, customer eligibility, rental rules, verification read path;
+      published org rental rule revisions on disposable Postgres (27-suite); Didit network mocked.
+    source_paths:
+      - backend/src/modules/bookings/rental-booking-wizard-eligibility-real.http.postgres.integration.spec.ts
+      - backend/src/modules/bookings/testing/p6-pr5e-bookings-http-nest.harness.ts
+      - backend/src/modules/bookings/testing/p6-pr5e-wizard-pg.harness.ts
+      - architecture/bookings/evidence/BKG-EVID-P6-PR5E-REAL-ELIGIBILITY-DATABASE-2026-11-19.md
+
   - id: BKG-EVID-P6-PR5D-PAYMENT-LINK-DATABASE-2026-11-19
     type: evidence
     title: P6-PR5D wizard payment_link BookingPaymentRequest DB E2E
