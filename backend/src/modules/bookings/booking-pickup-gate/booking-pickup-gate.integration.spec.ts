@@ -364,6 +364,10 @@ describe('BookingsHandoverService pickup idempotency', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { enqueueForBooking: jest.fn() } as any,
     );
     const result = await svc.createHandover('org-1', 'bk-1', 'PICKUP', {
       odometerKm: 1000,

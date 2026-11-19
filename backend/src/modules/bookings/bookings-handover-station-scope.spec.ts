@@ -51,6 +51,7 @@ describe('BookingsHandoverService station scope', () => {
       { processPickupPrecheck: jest.fn() } as never,
       stationAccess as never,
       { deleteDraftsForBooking: jest.fn() } as never,
+      { enqueueForBooking: jest.fn() } as never,
     );
 
     await expect(
