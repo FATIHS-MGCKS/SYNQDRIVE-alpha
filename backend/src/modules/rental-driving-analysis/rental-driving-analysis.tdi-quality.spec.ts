@@ -57,7 +57,7 @@ describe('rental-driving-analysis TDI quality (P1-2 / P1-3 / F1)', () => {
     ).toEqual({ score: null, source: 'trip_driving_impact' });
   });
 
-  it('uses vehicle_trip_compat when no TDI and impact not READY (B)', () => {
+  it('uses vehicle_trip_compat only when no TDI and impact PENDING (B)', () => {
     expect(
       resolveRentalTripStressScore({
         tdiRow: null,
@@ -65,6 +65,29 @@ describe('rental-driving-analysis TDI quality (P1-2 / P1-3 / F1)', () => {
         drivingImpactStatus: 'PENDING',
       }),
     ).toEqual({ score: 33, source: 'vehicle_trip_compat' });
+  });
+
+  it.each(['SKIPPED', 'FAILED'] as const)(
+    'blocks legacy compat when no TDI and impact %s (F3)',
+    (status) => {
+      expect(
+        resolveRentalTripStressScore({
+          tdiRow: null,
+          tripLegacyDrivingScore: 33,
+          drivingImpactStatus: status,
+        }),
+      ).toEqual({ score: null, source: 'none' });
+    },
+  );
+
+  it('blocks legacy compat for COMPLETED SKIPPED trip with legacy drivingScore (F3)', () => {
+    expect(
+      resolveRentalTripStressScore({
+        tdiRow: null,
+        tripLegacyDrivingScore: 44,
+        drivingImpactStatus: 'SKIPPED',
+      }),
+    ).toEqual({ score: null, source: 'none' });
   });
 
   it('blocks compat when READY without TDI row (C)', () => {

@@ -42,9 +42,21 @@ export type RentalTripDrivingImpactScoreRow = {
 };
 
 /**
- * P1-3 / F1 — authoritative TDI vs explicit vehicle_trip compat.
- * vehicle_trip_compat only when no TDI row and VehicleTrip is not READY
- * (pre-authority / pipeline-not-finished). READY without TDI never compat.
+ * Rental-only legacy stress compat (F3).
+ * Only PENDING without a TDI row is treated as in-flight pipeline gap
+ * (see trip-driving-impact-coverage JOB_MISSING path). Terminal impact
+ * states (READY/SKIPPED/FAILED) without TDI must not use VehicleTrip.drivingScore.
+ * LIMITATION: pre-TDI legacy gaps (READY/SKIPPED + no row) are not scored via compat;
+ * TDI backfill is required for numeric stress evidence.
+ */
+export function allowsRentalVehicleTripLegacyStressCompat(
+  drivingImpactStatus: string | null | undefined,
+): boolean {
+  return drivingImpactStatus === 'PENDING';
+}
+
+/**
+ * P1-3 / F1 / F3 — authoritative TDI vs explicit vehicle_trip compat.
  */
 export function resolveRentalTripStressScore(input: {
   tdiRow: RentalTripDrivingImpactScoreRow | null | undefined;
@@ -64,11 +76,11 @@ export function resolveRentalTripStressScore(input: {
     return { score: null, source: 'trip_driving_impact' };
   }
 
-  if (drivingImpactStatus === 'READY') {
-    return { score: null, source: 'none' };
-  }
-
-  if (tripLegacyDrivingScore != null && Number.isFinite(tripLegacyDrivingScore)) {
+  if (
+    allowsRentalVehicleTripLegacyStressCompat(drivingImpactStatus) &&
+    tripLegacyDrivingScore != null &&
+    Number.isFinite(tripLegacyDrivingScore)
+  ) {
     return { score: tripLegacyDrivingScore, source: 'vehicle_trip_compat' };
   }
 
