@@ -221,6 +221,17 @@ nodes:
       - backend/src/modules/bookings/rental-booking-workflow-certification.spec.ts
       - architecture/bookings/evidence/BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md
 
+  - id: BKG-EVID-P6-CERTIFICATION-CLOSEOUT-2026-11-19
+    type: evidence
+    title: P6 rental booking certification closeout
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Reconciles merged PRs #2441–#2447; 12-row capability matrix; gap classification;
+      P6 GO for modular disposable Postgres scope; recommends SYNQDRIVE-CORE STEP 1 next.
+    source_paths:
+      - architecture/bookings/evidence/BKG-EVID-P6-CERTIFICATION-CLOSEOUT-2026-11-19.md
+
   - id: BKG-EVID-P6-PR5E-REAL-ELIGIBILITY-DATABASE-2026-11-19
     type: evidence
     title: P6-PR5E real internal rental eligibility DB HTTP E2E

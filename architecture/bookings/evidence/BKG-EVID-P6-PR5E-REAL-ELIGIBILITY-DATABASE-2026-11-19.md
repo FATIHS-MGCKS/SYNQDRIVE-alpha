@@ -1,7 +1,7 @@
 # P6-PR5E — Real internal rental eligibility (disposable PostgreSQL HTTP)
 
 **Date:** 2026-11-19 (Europe/Berlin)  
-**Epistemic:** CONFIRMED (harness wiring) / PENDING (disposable Postgres CI 27/27) / NOT_CLAIMED (Production)
+**Epistemic:** CONFIRMED (harness wiring) / CONFIRMED (disposable Postgres CI **27/27** @ `origin/main` `8b8a6e3d3`, PR #2447 merge) / NOT_CLAIMED (Production)
 
 ## Scope
 
