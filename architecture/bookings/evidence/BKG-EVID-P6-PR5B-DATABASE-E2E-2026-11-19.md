@@ -89,6 +89,30 @@ bash architecture/bookings/scripts/validate-graph.sh
 - Full document workers, Stripe, and live eligibility gatekeeper subgraph remain out of scope.
 - Ephemeral DB may apply targeted SQL parity (`users.language` etc.) after `prisma migrate deploy` resilience — disposable DB only.
 
+## CI governance closeout (P6-PR5B)
+
+### Production database guard bundle (manifest pin)
+
+| Item | Value |
+|------|-------|
+| Failure cause | `backend/package.json` SHA in `production-database-guard-bundle.manifest.sha256` lagged P6-PR5B script pins (`test:bookings:p6-pr5b:postgres*`) |
+| Remediation | `bash backend/scripts/ops/update-production-database-guard-bundle-manifest.sh` |
+| Changed artifact | **Only** `backend/scripts/ops/contracts/production-database-guard-bundle.manifest.sha256` line for `backend/package.json` (`5faa34d2…` → `ee9e3fca…`) |
+| Guard libs / workflow / identity contract | **Unchanged** (no weakening, no bypass) |
+
+### i18n authority protection (new workflow)
+
+PR adds `.github/workflows/p6-pr5b-rental-booking-postgres-ci.yml` → governance-authority path per Layer 0.
+
+| Requirement | Value |
+|-------------|-------|
+| **Approval label** | `i18n-governance-authority-change` |
+| **Trusted actor** | `FATIHS-MGCKS` (`TRUSTED_AUTHORITY_ACTOR` in `.github/workflows/i18n-authority-protection.yml`) |
+| Agent action | **Do not** apply label or bypass gate; owner applies label after review |
+| Pass condition | Authority-only workflow change + label on PR from trusted actor |
+
+Disposable PostgreSQL suite unchanged: **11** tests (4 preflight + 7 HTTP); no test assertion count or opt-in semantics removed.
+
 ## Independent review remediation log (append-only)
 
 | SHA | Note |
