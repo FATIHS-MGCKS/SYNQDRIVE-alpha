@@ -2,6 +2,7 @@ import {
   assessRentalDrivingAnalysis,
   allowsStrongCustomerRecommendation,
   buildRentalAssessmentTripSnapshot,
+  publishesRentalDrivingStressScore,
 } from './rental-driving-analysis.assessment';
 
 describe('rental-driving-analysis.assessment (P61)', () => {
@@ -191,5 +192,17 @@ describe('rental-driving-analysis.assessment (P61)', () => {
 
     expect(result.status).toBe('PROVISIONAL');
     expect(result.missingComponents).toContain('PENDING_CORE_JOBS');
+  });
+});
+
+describe('publishesRentalDrivingStressScore (P6 P2-2)', () => {
+  it('allows COMPLETE and PARTIAL only', () => {
+    expect(publishesRentalDrivingStressScore('COMPLETE')).toBe(true);
+    expect(publishesRentalDrivingStressScore('PARTIAL')).toBe(true);
+    expect(publishesRentalDrivingStressScore('PROVISIONAL')).toBe(false);
+    expect(publishesRentalDrivingStressScore('NOT_ASSESSABLE')).toBe(false);
+    expect(publishesRentalDrivingStressScore('FAILED')).toBe(false);
+    expect(publishesRentalDrivingStressScore(null)).toBe(false);
+    expect(publishesRentalDrivingStressScore(undefined)).toBe(false);
   });
 });

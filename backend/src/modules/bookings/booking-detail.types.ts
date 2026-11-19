@@ -140,6 +140,13 @@ export type BookingDetailDto = {
   usage: {
     drivingStressScore: number | null;
     stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
+    assessmentStatus:
+      | 'COMPLETE'
+      | 'PARTIAL'
+      | 'PROVISIONAL'
+      | 'NOT_ASSESSABLE'
+      | 'FAILED'
+      | null;
     drivingEventsCount: number | null;
     abuseDetectionCount: number | null;
     misuseCaseCount: number;

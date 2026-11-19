@@ -45,9 +45,35 @@ export const rentalMisuseStressDe = {
   'misuseStress.stress.empty.title': 'Noch keine Fahrbelastungsauswertung',
   'misuseStress.stress.empty.description':
     'Nach abgeschlossener Miete mit Telemetrie erscheint hier das Belastungsprofil für Reifen, Bremsen und Fahrzeug.',
+  'misuseStress.stress.empty.payloadUnavailable':
+    'Detaillierte Belastungsdaten sind für diesen Bewertungsstatus noch nicht verfügbar.',
+  'misuseStress.stress.bookingUsage.panelTitle': 'Fahrbelastung dieser Buchung',
+  'misuseStress.stress.bookingUsage.stat.stress': 'Fahrbelastung',
+  'misuseStress.stress.bookingUsage.stat.drivingEvents': 'Fahrereignisse',
+  'misuseStress.stress.bookingUsage.stat.abuseEvents': 'Missbrauchsereignisse',
+  'misuseStress.stress.bookingUsage.stat.misuseHints': 'Verdachtshinweise',
+  'misuseStress.stress.bookingUsage.stat.kmDriven': 'Km gefahren',
+  'misuseStress.stress.bookingUsage.pendingHint':
+    'Nutzungsanalyse steht nach oder während der Vermietung zur Verfügung, sobald Fahrdaten vorliegen.',
+  'misuseStress.stress.bookingUsage.misusePanelTitle':
+    'Missbrauchs-/Schadensverdacht während dieser Buchung',
   'misuseStress.stress.overallAssessment': 'Gesamteinschätzung',
   'misuseStress.stress.wearRelevance': 'Verschleißrelevanz',
   'misuseStress.stress.watchpoints': 'Hinweise',
   'misuseStress.stress.meta.scoredTrips': '{count} bewertete Fahrten',
   'misuseStress.stress.meta.distanceKm': '{km} km',
+  'misuseStress.stress.footnote':
+    'SynqDrive bewertet hier die technische Fahrzeugbelastung — nicht moralisch den Fahrer. Speeding/Safety-Compliance wird im Rental nicht bewertet.',
+  'misuseStress.stress.scoreNotPublished':
+    'Numerischer Belastungswert wird bei diesem Bewertungsstatus nicht angezeigt.',
+  'misuseStress.stress.assessmentStatus.label': 'Bewertungsstatus',
+  'misuseStress.stress.assessmentStatus.COMPLETE': 'Vollständig',
+  'misuseStress.stress.assessmentStatus.PARTIAL': 'Teilweise',
+  'misuseStress.stress.assessmentStatus.PROVISIONAL': 'Vorläufig',
+  'misuseStress.stress.assessmentStatus.NOT_ASSESSABLE': 'Nicht bewertbar',
+  'misuseStress.stress.assessmentStatus.FAILED': 'Fehlgeschlagen',
+  'misuseStress.stress.wearImpact.low': 'Gering',
+  'misuseStress.stress.wearImpact.medium': 'Mittel',
+  'misuseStress.stress.wearImpact.medium_to_high': 'Mittel bis hoch',
+  'misuseStress.stress.wearImpact.high': 'Hoch',
 } as const;

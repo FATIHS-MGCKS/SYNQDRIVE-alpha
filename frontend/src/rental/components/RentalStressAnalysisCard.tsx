@@ -1,13 +1,17 @@
 import type { RentalDrivingAnalysisItem } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { StatusChip } from '../../components/patterns';
 import { EmptyState } from '../../components/patterns';
 import { Icon } from './ui/Icon';
 import { VehicleStressPanel } from './VehicleStressPanel';
 import {
   getDataConfidenceLabel,
-  resolveDrivingStressScore,
   type DataConfidence,
 } from '../lib/scoreFormat';
+import {
+  rentalAssessmentStatusI18nKey,
+  resolveRentalAnalysisStressScore,
+} from '../lib/rental-assessment-score';
 
 interface RentalStressAnalysisCardProps {
   analysis: RentalDrivingAnalysisItem | null;
@@ -15,31 +19,73 @@ interface RentalStressAnalysisCardProps {
   title?: string;
 }
 
-const WEAR_LABELS: Record<string, string> = {
-  low: 'Gering',
-  medium: 'Mittel',
-  medium_to_high: 'Mittel bis hoch',
-  high: 'Hoch',
-};
-
 export function RentalStressAnalysisCard({
   analysis,
   loading,
-  title = 'Fahrbelastung der Miete',
+  title,
 }: RentalStressAnalysisCardProps) {
+  const { t } = useLanguage();
+  const cardTitle = title ?? t('misuseStress.stress.cardTitle');
+
   if (loading) {
-    return (
-      <div className=" surface-premium p-4 animate-pulse h-32" />
-    );
+    return <div className=" surface-premium p-4 animate-pulse h-32" />;
   }
 
-  if (!analysis?.payload) {
+  if (!analysis) {
     return (
       <EmptyState
         icon={<Icon name="activity" className="w-6 h-6" />}
-        title="Noch keine Fahrbelastungsauswertung"
-        description="Nach abgeschlossener Miete mit Telemetrie erscheint hier das Belastungsprofil für Reifen, Bremsen und Fahrzeug."
+        title={t('misuseStress.stress.empty.title')}
+        description={t('misuseStress.stress.empty.description')}
       />
+    );
+  }
+
+  const assessmentStatusEarly = analysis.assessmentStatus ?? null;
+  const assessmentLabelKeyEarly = rentalAssessmentStatusI18nKey(assessmentStatusEarly);
+
+  if (!analysis.payload) {
+    if (!assessmentLabelKeyEarly) {
+      return (
+        <EmptyState
+          icon={<Icon name="activity" className="w-6 h-6" />}
+          title={t('misuseStress.stress.empty.title')}
+          description={t('misuseStress.stress.empty.description')}
+        />
+      );
+    }
+    const stressScoreEarly = resolveRentalAnalysisStressScore(analysis);
+    const scorePublishableEarly = stressScoreEarly != null;
+    return (
+      <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+              {t('misuseStress.stress.assessmentStatus.label')}
+            </span>
+            <StatusChip
+              tone={
+                assessmentStatusEarly === 'COMPLETE'
+                  ? 'success'
+                  : assessmentStatusEarly === 'PARTIAL'
+                    ? 'info'
+                    : 'neutral'
+              }
+              className="text-[9px]"
+            >
+              {t(assessmentLabelKeyEarly)}
+            </StatusChip>
+          </div>
+          {!scorePublishableEarly && (
+            <p className="text-[11px] text-muted-foreground">
+              {t('misuseStress.stress.scoreNotPublished')}
+            </p>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t('misuseStress.stress.empty.payloadUnavailable')}
+        </p>
+      </div>
     );
   }
 
@@ -47,31 +93,58 @@ export function RentalStressAnalysisCard({
   const stress = payload.vehicleStressSummary;
   const meta = payload.analysisMeta;
   const wear = payload.wearImpactAssessment;
-
-  const stressScore =
-    stress?.drivingStressScore ??
-    resolveDrivingStressScore({ drivingScore: analysis.drivingScore });
+  const assessmentStatus = analysis.assessmentStatus ?? null;
+  const stressScore = resolveRentalAnalysisStressScore(analysis);
+  const assessmentLabelKey = rentalAssessmentStatusI18nKey(assessmentStatus);
+  const scorePublishable = stressScore != null;
 
   return (
     <div className="space-y-4">
+      {assessmentLabelKey && (
+        <div className="flex flex-col gap-1 px-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+              {t('misuseStress.stress.assessmentStatus.label')}
+            </span>
+            <StatusChip
+              tone={
+                assessmentStatus === 'COMPLETE'
+                  ? 'success'
+                  : assessmentStatus === 'PARTIAL'
+                    ? 'info'
+                    : 'neutral'
+              }
+              className="text-[9px]"
+            >
+              {t(assessmentLabelKey)}
+            </StatusChip>
+          </div>
+          {!scorePublishable && (
+            <p className="text-[11px] text-muted-foreground">
+              {t('misuseStress.stress.scoreNotPublished')}
+            </p>
+          )}
+        </div>
+      )}
+
       <VehicleStressPanel
-        title={title}
+        title={cardTitle}
         stressScore={stressScore}
-        stressLevel={stress?.stressLevel ?? null}
-        components={stress ?? undefined}
-        hasEnoughData={meta?.dataConfidence !== 'low' || stressScore != null}
+        stressLevel={scorePublishable ? (stress?.stressLevel ?? null) : null}
+        components={scorePublishable ? (stress ?? undefined) : undefined}
+        hasEnoughData={scorePublishable && (meta?.dataConfidence !== 'low' || stressScore != null)}
         dataConfidence={(meta?.dataConfidence as DataConfidence) ?? null}
-        footnote="SynqDrive bewertet hier die technische Fahrzeugbelastung — nicht moralisch den Fahrer. Speeding/Safety-Compliance wird im Rental nicht bewertet."
+        footnote={t('misuseStress.stress.footnote')}
       />
 
-      {stress?.summary && (
+      {scorePublishable && stress?.summary && (
         <p className="text-xs text-muted-foreground px-1">{stress.summary}</p>
       )}
 
       {payload.overallAssessment?.shortSummary && (
         <div className="rounded-lg border border-border bg-muted/30 p-3">
           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">
-            Gesamteinschätzung
+            {t('misuseStress.stress.overallAssessment')}
           </p>
           <p className="text-xs text-foreground">{payload.overallAssessment.shortSummary}</p>
         </div>
@@ -80,7 +153,7 @@ export function RentalStressAnalysisCard({
       {wear && (
         <div className="rounded-lg surface-premium p-4">
           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
-            Verschleißrelevanz
+            {t('misuseStress.stress.wearRelevance')}
           </p>
           <p className="text-xs text-foreground mb-2">{wear.summary}</p>
           {wear.affectedAreas && wear.affectedAreas.length > 0 && (
@@ -97,7 +170,18 @@ export function RentalStressAnalysisCard({
                   }
                   className="text-[9px]"
                 >
-                  {area.area}: {WEAR_LABELS[area.impact] ?? area.impact}
+                  {area.area}:{' '}
+                  {(['low', 'medium', 'medium_to_high', 'high'] as const).includes(
+                    area.impact as 'low' | 'medium' | 'medium_to_high' | 'high',
+                  )
+                    ? t(
+                        `misuseStress.stress.wearImpact.${area.impact}` as
+                          | 'misuseStress.stress.wearImpact.low'
+                          | 'misuseStress.stress.wearImpact.medium'
+                          | 'misuseStress.stress.wearImpact.medium_to_high'
+                          | 'misuseStress.stress.wearImpact.high',
+                      )
+                    : area.impact}
                 </StatusChip>
               ))}
             </div>
@@ -108,7 +192,7 @@ export function RentalStressAnalysisCard({
       {payload.watchpoints && payload.watchpoints.length > 0 && (
         <div className="rounded-lg surface-premium p-4">
           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
-            Hinweise
+            {t('misuseStress.stress.watchpoints')}
           </p>
           <ul className="space-y-1">
             {payload.watchpoints.slice(0, 5).map((w) => (
@@ -122,9 +206,15 @@ export function RentalStressAnalysisCard({
 
       {meta && (
         <p className="text-[10px] text-muted-foreground px-1">
-          {meta.scoredTripCount != null ? `${meta.scoredTripCount} bewertete Fahrten` : ''}
-          {meta.totalDistanceKm != null ? ` · ${Math.round(meta.totalDistanceKm)} km` : ''}
-          {meta.dataConfidence ? ` · ${getDataConfidenceLabel(meta.dataConfidence as DataConfidence)}` : ''}
+          {meta.scoredTripCount != null
+            ? t('misuseStress.stress.meta.scoredTrips', { count: meta.scoredTripCount })
+            : ''}
+          {meta.totalDistanceKm != null
+            ? ` · ${t('misuseStress.stress.meta.distanceKm', { km: Math.round(meta.totalDistanceKm) })}`
+            : ''}
+          {meta.dataConfidence
+            ? ` · ${getDataConfidenceLabel(meta.dataConfidence as DataConfidence)}`
+            : ''}
         </p>
       )}
     </div>

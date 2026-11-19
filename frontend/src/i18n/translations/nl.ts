@@ -15,6 +15,7 @@ import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterOneAutoNl } from './master.oneAuto.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 import { masterCvOemSpecsNl } from './master.cv.oemSpecs.nl';
+import { rentalMisuseStressStressGateNl } from './rental.misuseStress.stressGate.i18n';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -216,4 +217,5 @@ export const nl = {
   ...batteryV2HvInspectionNL,
   ...tireWearV3Nl,
   ...serviceIntelligenceNl,
+  ...rentalMisuseStressStressGateNl,
 } satisfies PartialTranslationDictionary;

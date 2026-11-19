@@ -15,6 +15,7 @@ import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
 import { masterOneAutoEs } from './master.oneAuto.es';
 import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
 import { masterCvOemSpecsEs } from './master.cv.oemSpecs.es';
+import { rentalMisuseStressStressGateEs } from './rental.misuseStress.stressGate.i18n';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -215,4 +216,5 @@ export const es = {
   ...batteryV2HvInspectionES,
   ...tireWearV3Es,
   ...serviceIntelligenceEs,
+  ...rentalMisuseStressStressGateEs,
 } satisfies PartialTranslationDictionary;

@@ -45,9 +45,35 @@ export const rentalMisuseStressEn = {
   'misuseStress.stress.empty.title': 'No driving load analysis yet',
   'misuseStress.stress.empty.description':
     'After a completed rental with telemetry, the load profile for tires, brakes, and vehicle appears here.',
+  'misuseStress.stress.empty.payloadUnavailable':
+    'Detailed load data is not available for this assessment status.',
+  'misuseStress.stress.bookingUsage.panelTitle': 'Driving load for this booking',
+  'misuseStress.stress.bookingUsage.stat.stress': 'Driving load',
+  'misuseStress.stress.bookingUsage.stat.drivingEvents': 'Driving events',
+  'misuseStress.stress.bookingUsage.stat.abuseEvents': 'Abuse events',
+  'misuseStress.stress.bookingUsage.stat.misuseHints': 'Review hints',
+  'misuseStress.stress.bookingUsage.stat.kmDriven': 'Km driven',
+  'misuseStress.stress.bookingUsage.pendingHint':
+    'Usage analysis becomes available after or during the rental once driving data is present.',
+  'misuseStress.stress.bookingUsage.misusePanelTitle':
+    'Abuse or damage suspicion during this booking',
   'misuseStress.stress.overallAssessment': 'Overall assessment',
   'misuseStress.stress.wearRelevance': 'Wear relevance',
   'misuseStress.stress.watchpoints': 'Hints',
   'misuseStress.stress.meta.scoredTrips': '{count} scored trips',
   'misuseStress.stress.meta.distanceKm': '{km} km',
+  'misuseStress.stress.footnote':
+    'SynqDrive measures technical vehicle load here — not a moral judgment of the driver. Speeding and safety compliance are not scored in Rental.',
+  'misuseStress.stress.scoreNotPublished':
+    'Numeric load score is not shown for this assessment status.',
+  'misuseStress.stress.assessmentStatus.label': 'Assessment status',
+  'misuseStress.stress.assessmentStatus.COMPLETE': 'Complete',
+  'misuseStress.stress.assessmentStatus.PARTIAL': 'Partial',
+  'misuseStress.stress.assessmentStatus.PROVISIONAL': 'Provisional',
+  'misuseStress.stress.assessmentStatus.NOT_ASSESSABLE': 'Not assessable',
+  'misuseStress.stress.assessmentStatus.FAILED': 'Failed',
+  'misuseStress.stress.wearImpact.low': 'Low',
+  'misuseStress.stress.wearImpact.medium': 'Medium',
+  'misuseStress.stress.wearImpact.medium_to_high': 'Medium to high',
+  'misuseStress.stress.wearImpact.high': 'High',
 } as const;

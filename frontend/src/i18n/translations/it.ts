@@ -15,6 +15,7 @@ import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
 import { masterOneAutoIt } from './master.oneAuto.it';
 import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
 import { masterCvOemSpecsIt } from './master.cv.oemSpecs.it';
+import { rentalMisuseStressStressGateIt } from './rental.misuseStress.stressGate.i18n';
 
 export const it = {
   'dashboard.welcomeBack': 'Bentornato, {name}',
@@ -215,4 +216,5 @@ export const it = {
   ...batteryV2HvInspectionIT,
   ...tireWearV3It,
   ...serviceIntelligenceIt,
+  ...rentalMisuseStressStressGateIt,
 } satisfies PartialTranslationDictionary;

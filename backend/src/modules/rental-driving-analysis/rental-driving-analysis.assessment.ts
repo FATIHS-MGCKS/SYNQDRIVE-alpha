@@ -108,6 +108,13 @@ export function allowsStrongCustomerRecommendation(
   return status === 'COMPLETE';
 }
 
+/** Publish numeric rental stress only when authoritative assessment allows display (P6 / P2-2). */
+export function publishesRentalDrivingStressScore(
+  status: RentalDrivingAnalysisAssessmentStatus | null | undefined,
+): boolean {
+  return status === 'COMPLETE' || status === 'PARTIAL';
+}
+
 /**
  * Deterministic rental analysis completeness assessment (P61).
  * Separates technical failures from low capability and lists missing components.

@@ -1721,6 +1721,13 @@ export type BookingDetailDto = {
   usage: {
     drivingStressScore: number | null;
     stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
+    assessmentStatus:
+      | 'COMPLETE'
+      | 'PARTIAL'
+      | 'PROVISIONAL'
+      | 'NOT_ASSESSABLE'
+      | 'FAILED'
+      | null;
     drivingEventsCount: number | null;
     abuseDetectionCount: number | null;
     misuseCaseCount: number;
@@ -2440,6 +2447,14 @@ export interface RentalDrivingAnalysisItem {
   riskLevel: string;
   /** Legacy column — mirrors vehicle stress score */
   drivingScore: number | null;
+  drivingStressScore?: number | null;
+  assessmentStatus?:
+    | 'COMPLETE'
+    | 'PARTIAL'
+    | 'PROVISIONAL'
+    | 'NOT_ASSESSABLE'
+    | 'FAILED'
+    | null;
   drivingEventsCount?: number | null;
   abuseDetectionCount?: number | null;
   wearImpact?: string | null;

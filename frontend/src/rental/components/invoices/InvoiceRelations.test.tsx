@@ -177,6 +177,7 @@ describe('InvoiceRelations component', () => {
           usage: {
             drivingStressScore: null,
             stressLevel: null,
+            assessmentStatus: null,
             drivingEventsCount: null,
             abuseDetectionCount: null,
             misuseCaseCount: 0,
