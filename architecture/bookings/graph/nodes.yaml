@@ -221,6 +221,19 @@ nodes:
       - backend/src/modules/bookings/rental-booking-workflow-certification.spec.ts
       - architecture/bookings/evidence/BKG-EVID-P6-PR5-WORKFLOW-CERTIFICATION-2026-11-19.md
 
+  - id: BKG-EVID-P6-PR5D-PAYMENT-LINK-DATABASE-2026-11-19
+    type: evidence
+    title: P6-PR5D wizard payment_link BookingPaymentRequest DB E2E
+    epistemic_status: INFERRED
+    source_type: CURRENT_TEST
+    summary: >
+      payment_link confirm with real BookingPaymentRequest persistence on disposable Postgres (22-suite);
+      Connect readiness gates verified; Stripe checkout mocked; idempotency + invoice unpaid invariants.
+    source_paths:
+      - backend/src/modules/bookings/rental-booking-wizard-payment-link.http.postgres.integration.spec.ts
+      - backend/src/modules/bookings/testing/p6-pr5d-payment-link-pg.harness.ts
+      - architecture/bookings/evidence/BKG-EVID-P6-PR5D-PAYMENT-LINK-DATABASE-2026-11-19.md
+
   - id: BKG-EVID-P6-PR5C-WIZARD-PAYMENT-DATABASE-E2E-2026-11-19
     type: evidence
     title: P6-PR5C database-backed rental wizard HTTP E2E

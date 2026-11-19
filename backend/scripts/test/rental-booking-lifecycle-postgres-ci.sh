@@ -112,7 +112,7 @@ run_jest_postgres_suite() {
   local log
   log="$(mktemp /tmp/p6-pr5b-pg-ci.XXXXXX.log)"
   set +e
-  npm test -- --testPathPatterns='p6-pr5b-disposable-postgres-preflight|rental-booking-lifecycle.http.postgres|rental-booking-wizard.http.postgres' --runInBand --verbose 2>&1 | tee "${log}"
+  npm test -- --testPathPatterns='p6-pr5b-disposable-postgres-preflight|rental-booking-lifecycle.http.postgres|rental-booking-wizard.http.postgres|rental-booking-wizard-payment-link.http.postgres' --runInBand --verbose 2>&1 | tee "${log}"
   local test_exit=${PIPESTATUS[0]}
   set -e
 
@@ -126,8 +126,9 @@ run_jest_postgres_suite() {
   fi
   echo "P6_PR5B_HTTP_POSTGRES_TESTS_EXECUTED=7"
   echo "P6_PR5C_HTTP_POSTGRES_TESTS_EXECUTED=6"
-  echo "P6-PR5B/PR5C disposable PostgreSQL integration: PASS (${expected_tests}/${expected_tests})"
+  echo "P6_PR5D_HTTP_POSTGRES_TESTS_EXECUTED=5"
+  echo "P6-PR5B/PR5C/PR5D disposable PostgreSQL integration: PASS (${expected_tests}/${expected_tests})"
 }
 
 assert_p6_pr5b_integration_env
-run_jest_postgres_suite 17
+run_jest_postgres_suite 22
