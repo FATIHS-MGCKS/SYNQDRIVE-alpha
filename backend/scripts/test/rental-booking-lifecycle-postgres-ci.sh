@@ -75,22 +75,21 @@ const { PrismaClient } = require('@prisma/client');
 NODE
 }
 
+apply_p6_pr5b_ephemeral_schema_parity() {
+  fail_closed_database_url "DATABASE_URL (parity)" "${DATABASE_URL}"
+  docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${DISPOSABLE_DB}" -v ON_ERROR_STOP=1 \
+    -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT DEFAULT '\''de'\'';' \
+    -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT '\''Europe/Berlin'\'';' \
+    -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT '\''DD.MM.YYYY'\'';'
+  echo "TEST_SCHEMA_DRIFT_SYNC=P6_PR5B_TARGETED_SQL_PARITY"
+}
+
 sync_ephemeral_schema_if_needed() {
-  if verify_prisma_schema_matches_client 2>/dev/null; then
-    return 0
-  fi
-  echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH"
-  local log
-  log="$(mktemp /tmp/p6-pr5b-dbpush.XXXXXX.log)"
-  set +e
-  npx prisma db push --accept-data-loss --skip-generate 2>&1 | tee "${log}"
-  local db_push_exit=${PIPESTATUS[0]}
-  set -e
+  apply_p6_pr5b_ephemeral_schema_parity
   if verify_prisma_schema_matches_client; then
     return 0
   fi
-  echo "P6-PR5B schema drift unresolved after db push (exit=${db_push_exit})" >&2
-  cat "${log}" >&2
+  echo "P6-PR5B schema drift unresolved after targeted parity SQL" >&2
   exit 1
 }
 

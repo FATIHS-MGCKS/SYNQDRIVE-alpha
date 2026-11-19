@@ -31,6 +31,7 @@ import {
 import {
   cleanupP6Pr5bRentalFixture,
   handoverPayload,
+  insertP6Pr5bTestUser,
   seedP6Pr5bPickupReadyBooking,
 } from './testing/rental-booking-lifecycle-pg.harness';
 
@@ -94,15 +95,13 @@ function bookingsBase(orgId: string): string {
     });
     try {
       const userId = randomUUID();
-      await prisma.user.create({
-        data: {
-          id: userId,
-          email: `no-rental-${userId}@test.local`,
-          name: 'No Rental',
-          status: 'ACTIVE',
-          platformRole: UserPlatformRole.MASTER_ADMIN,
-        },
-      });
+      await insertP6Pr5bTestUser(
+        prisma,
+        userId,
+        `no-rental-${userId}@test.local`,
+        'No Rental',
+        UserPlatformRole.MASTER_ADMIN,
+      );
 
       await request(app.getHttpServer())
         .get(bookingsBase(orgId))

@@ -31,6 +31,23 @@ function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Raw insert avoids Prisma client columns absent on partially-migrated disposable DBs. */
+export async function insertP6Pr5bTestUser(
+  prisma: PrismaClient,
+  userId: string,
+  email: string,
+  name: string,
+  platformRole: UserPlatformRole,
+): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+    VALUES (
+      ${userId}, ${email}, ${name}, 'ACTIVE'::"UserStatus",
+      ${platformRole}::"UserPlatformRole", NOW(), NOW()
+    )
+  `;
+}
+
 async function createVehicle(prisma: PrismaClient, orgId: string, stationId: string): Promise<string> {
   const vehicleId = randomUUID();
   const vin = `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`;
@@ -133,15 +150,13 @@ export async function seedP6Pr5bPickupReadyBooking(
   await ensureOrganizationProductEntitlement(prisma, orgB.id, ProductSlug.RENTAL);
 
   const userId = randomUUID();
-  await prisma.user.create({
-    data: {
-      id: userId,
-      email: `p6-pr5b-${suffix}@test.local`,
-      name: 'P6 PR5B Operator',
-      status: 'ACTIVE',
-      platformRole: UserPlatformRole.MASTER_ADMIN,
-    },
-  });
+  await insertP6Pr5bTestUser(
+    prisma,
+    userId,
+    `p6-pr5b-${suffix}@test.local`,
+    'P6 PR5B Operator',
+    UserPlatformRole.MASTER_ADMIN,
+  );
 
   const station = await prisma.station.create({
     data: {
