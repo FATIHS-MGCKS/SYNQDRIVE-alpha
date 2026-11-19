@@ -205,7 +205,7 @@ export async function createP6Pr5cWizardHttpApp(
               manualApprovalReasons: [],
               effectiveRules: rules as never,
               decisionSource: 'RENTAL_RULES',
-              facts: {},
+              facts: [],
               customerId: input.customerId,
               vehicleId: input.vehicleId,
             };
