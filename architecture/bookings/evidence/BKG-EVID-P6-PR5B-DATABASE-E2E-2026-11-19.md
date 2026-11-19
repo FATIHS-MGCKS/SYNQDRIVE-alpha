@@ -79,6 +79,15 @@ bash architecture/scripts/validate-module-registry.sh
 bash architecture/bookings/scripts/validate-graph.sh
 ```
 
+## Nest HTTP test harness
+
+`p6-pr5b-bookings-http-nest.harness.ts` mounts `BookingsController` with real `BookingsHandoverService`, pickup gate, and document completeness on Prisma (no full `BookingsModule` graph). Pickup eligibility enforcement is stubbed so CI focuses on handover persistence and document gates.
+
+## Remaining limitations
+
+- Wizard → confirm → payment intent not exercised over HTTP/Postgres (P6-PR5 unit harness).
+- Full document workers, Stripe, and live eligibility gatekeeper subgraph remain out of scope.
+
 ## REGISTRY_REVIEWED (F3)
 
 | Module | Before | After | AUTHORITY_ACTIVE promotion | Result |
