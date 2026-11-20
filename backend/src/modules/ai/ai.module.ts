@@ -4,7 +4,7 @@ import aiConfig from '@config/ai.config';
 import documentExtractionConfig from '@config/document-extraction.config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
-import { BookingsModule } from '@modules/bookings/bookings.module';
+import { AiVehicleBookingContextReadModule } from '@modules/bookings/ai-vehicle-booking-context-read/ai-vehicle-booking-context-read.module';
 import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
 import { LlmGatewayService } from './llm/llm-gateway.service';
 import { LLM_PROVIDER } from './llm/llm-provider.token';
@@ -59,7 +59,7 @@ import { AiHealthController } from './ai-health.controller';
     forwardRef(() => RentalHealthModule),
     TasksModule,
     forwardRef(() => VehicleIntelligenceModule),
-    forwardRef(() => BookingsModule),
+    AiVehicleBookingContextReadModule,
     ConfigModule.forFeature(aiConfig),
     ConfigModule.forFeature(appConfig),
     ConfigModule.forFeature(documentExtractionConfig),
