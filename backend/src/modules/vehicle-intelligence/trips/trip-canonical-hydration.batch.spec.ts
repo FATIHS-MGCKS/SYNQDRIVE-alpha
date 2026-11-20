@@ -1,6 +1,9 @@
 import { BookingStatus } from '@prisma/client';
+import { VehicleIntelligenceBookingDriverPoolAdapter } from '../../bookings/vehicle-intelligence-booking-driver-pool/vehicle-intelligence-booking-driver-pool.adapter';
 import { CanonicalTripHydrationBatchLoader } from './trip-canonical-hydration.batch';
 import { CANONICAL_HYDRATION_TRIP_ID_BATCH } from './trip-canonical-hydration.types';
+
+const bookingDriverPool = new VehicleIntelligenceBookingDriverPoolAdapter();
 
 function makePrisma() {
   return {
@@ -36,7 +39,7 @@ describe('CanonicalTripHydrationBatchLoader', () => {
     prisma.booking.findMany.mockResolvedValue([]);
     prisma.driverAttribution.findMany.mockResolvedValue([]);
 
-    const loader = new CanonicalTripHydrationBatchLoader(prisma);
+    const loader = new CanonicalTripHydrationBatchLoader(prisma, bookingDriverPool);
     const trips = makeTrips(120, 'veh-1');
     const prefetch = await loader.prefetch('org-1', trips);
 
@@ -66,7 +69,7 @@ describe('CanonicalTripHydrationBatchLoader', () => {
         },
       ]);
 
-    const loader = new CanonicalTripHydrationBatchLoader(prisma);
+    const loader = new CanonicalTripHydrationBatchLoader(prisma, bookingDriverPool);
     const prefetch = await loader.prefetch('org-1', [
       {
         id: 'trip-1',
@@ -103,7 +106,7 @@ describe('CanonicalTripHydrationBatchLoader', () => {
     prisma.driverAttribution.findMany.mockResolvedValue([]);
     prisma.booking.findMany.mockResolvedValue([]);
 
-    const loader = new CanonicalTripHydrationBatchLoader(prisma);
+    const loader = new CanonicalTripHydrationBatchLoader(prisma, bookingDriverPool);
     await loader.prefetch('org-secure', makeTrips(2, 'veh-secure'));
 
     expect(prisma.booking.findMany).toHaveBeenCalledWith(

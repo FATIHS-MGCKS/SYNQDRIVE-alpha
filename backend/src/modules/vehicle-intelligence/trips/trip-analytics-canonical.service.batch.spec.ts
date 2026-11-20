@@ -1,7 +1,10 @@
 import { TripAssignmentStatus, TripAssignmentSubjectType } from '@prisma/client';
+import { VehicleIntelligenceBookingDriverPoolAdapter } from '../../bookings/vehicle-intelligence-booking-driver-pool/vehicle-intelligence-booking-driver-pool.adapter';
 import { TripAnalyticsCanonicalService } from './trip-analytics-canonical.service';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripAttributionService } from './trip-attribution.service';
+
+const bookingDriverPool = new VehicleIntelligenceBookingDriverPoolAdapter();
 
 function makePrisma() {
   return {
@@ -66,8 +69,13 @@ describe('TripAnalyticsCanonicalService batch hydration', () => {
   beforeEach(() => {
     prisma = makePrisma();
     assignmentService = new TripAssignmentService(prisma);
-    attributionService = new TripAttributionService(prisma);
-    service = new TripAnalyticsCanonicalService(prisma, assignmentService, attributionService);
+    attributionService = new TripAttributionService(prisma, bookingDriverPool);
+    service = new TripAnalyticsCanonicalService(
+      prisma,
+      assignmentService,
+      attributionService,
+      bookingDriverPool,
+    );
   });
 
   it('hydrates a single trip through the shared batch path', async () => {

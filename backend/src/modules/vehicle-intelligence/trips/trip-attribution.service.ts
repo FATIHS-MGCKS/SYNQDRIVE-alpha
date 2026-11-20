@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { BookingStatus, Prisma, TripAssignmentStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
@@ -7,7 +7,10 @@ import type {
   TripAttributionInput,
 } from './trip-attribution.types';
 import { resolveDrivingAttributionRoles } from './driving-attribution-roles/driving-attribution-roles';
-import { resolveBookingDriverPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
+import {
+  VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT,
+  type VehicleIntelligenceBookingDriverPoolPort,
+} from '../ports/vehicle-intelligence-booking-driver-pool.port';
 import { assertBookingInOrganization } from '../tenant/vehicle-intelligence-tenant.scope';
 import { pickBookingOverlapCandidate } from './trip-canonical-hydration.booking-match';
 import type {
@@ -19,7 +22,11 @@ import type { TripHydrationTripInput } from './trip-canonical-hydration.types';
 
 @Injectable()
 export class TripAttributionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT)
+    private readonly bookingDriverPool: VehicleIntelligenceBookingDriverPoolPort,
+  ) {}
 
   resolveAttribution(input: TripAttributionInput): TripAttribution {
     const roles = resolveDrivingAttributionRoles({
@@ -272,7 +279,7 @@ export class TripAttributionService {
       },
     });
     if (!booking) return null;
-    return resolveBookingDriverPool({
+    return this.bookingDriverPool.resolveBookingDriverPool({
       bookingCustomerId: booking.customerId,
       assignedDriverId: booking.assignedDriverId,
       allowedRows: booking.allowedDrivers,

@@ -1,7 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { DriverAttributionSource, HandoverKind } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { resolveBookingDriverPool, isDriverInBookingPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
+import {
+  VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT,
+  type VehicleIntelligenceBookingDriverPoolPort,
+} from '../ports/vehicle-intelligence-booking-driver-pool.port';
 import { DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION } from '../driving-analysis-init/driving-analysis-init.types';
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { TripAttributionService } from '../trips/trip-attribution.service';
@@ -30,6 +33,8 @@ export class DriverAttributionService {
     private readonly repository: DriverAttributionRepository,
     private readonly tripAttributionService: TripAttributionService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
+    @Inject(VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT)
+    private readonly bookingDriverPool: VehicleIntelligenceBookingDriverPoolPort,
     @Optional()
     @Inject(RENTAL_DRIVING_ANALYSIS_RECOMPUTE_TRIGGER_PORT)
     private readonly rentalRecomputeTrigger?: RentalDrivingAnalysisRecomputeTriggerPort,
@@ -428,13 +433,13 @@ export class DriverAttributionService {
       throw new NotFoundException('Booking not found for organization');
     }
 
-    const pool = resolveBookingDriverPool({
+    const pool = this.bookingDriverPool.resolveBookingDriverPool({
       bookingCustomerId: booking.customerId,
       assignedDriverId: booking.assignedDriverId,
       allowedRows: booking.allowedDrivers,
     });
 
-    if (!isDriverInBookingPool(input.driverId, pool)) {
+    if (!this.bookingDriverPool.isDriverInBookingPool(input.driverId, pool)) {
       throw new BadRequestException(
         'Driver is not in the allowed driver pool for this booking',
       );
