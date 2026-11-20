@@ -92,7 +92,8 @@
 | MA vehicle authorization | `ProductVehicleAccessService` + grants via MA | **IMPLEMENTED** |
 | Product entitlement | Org grant + ACTIVE `OrganizationProduct` for `VYMOD` | **IMPLEMENTED** (enforced at token exchange + resource auth) |
 | Backend-to-Core auth | Service client + token exchange + scoped JWT | **IMPLEMENTED**; default **OFF** |
-| Entitlement status payload | `core.entitlements.v1` | **PARTIAL** — see gap G1 |
+| Product entitlement enforcement | token exchange + resource auth (`isOrganizationProductOperationallyEntitled`) | **SATISFIED** for minimum matrix |
+| Entitlement status **payload** over M2M | `core.entitlements.v1` (user JWT) | **NOT_IN_MINIMUM_CONTRACT** — see G1 |
 
 ### Fleet (separate repo — not connected)
 
@@ -106,7 +107,7 @@ Same minimum contracts as VYMOD with `ProductSlug.FLEET` binding on the service 
 
 | ID | Class | Summary | Path / behavior | Smallest remediation |
 |----|-------|---------|-----------------|----------------------|
-| G1 | **P1_REQUIRED_INTERFACE_GAP** | Scope `core:entitlements:read` is issuable but `core.entitlements.v1` rejects service JWT (by design P2). External backends cannot read entitlement **payload** over M2M. | `core-entitlements-read.controller.ts` (user JWT); `core-app-m2m-token.http-security.integration.spec.ts` expects 401 with service JWT | Small PR: M2M-guarded mirror under `core/read` or `@CoreAppM2mSkipUserJwt` entitlement routes — **only** when a consumer needs status/trial fields beyond token-exchange gate |
+| G1 | **CONDITIONAL_INTERFACE_EXTENSION** | Scope `core:entitlements:read` is issuable for registry/scope tests, but `core.entitlements.v1` is **user-JWT-only** (P2). Minimum VYMOD/Fleet contract is **enforcement at token exchange** (`CoreAppM2mTokenExchangeService` lines 107–117) + vehicle-read auth — **not** a live entitlement JSON payload. No approved consumer spec in-repo requires M2M entitlement reads. | `core-entitlements-read.controller.ts`; `core-app-m2m-token.http-security.integration.spec.ts` (service JWT → 401 on entitlements route) | Optional small PR **only after owner-approved consumer contract** needs trial/status fields over M2M |
 | G2 | **NEEDS_FURTHER_EVIDENCE** | Production M2M never attested | env flags default off | Owner-operated arming record (DSRG); no code in P10 |
 | G3 | **NEEDS_FURTHER_EVIDENCE** | Fresh-DB full migration chain | P3 certification § blocker | Ops/DB hygiene — unrelated to interface design |
 | G4 | **P2_OPTIONAL_HARDENING** | Additional versioned read APIs (trips, intelligence aggregates) | not in `CORE_APP_M2M_KNOWN_SCOPES` | Defer until consumer product scope demands — **not** minimal matrix |
@@ -139,3 +140,12 @@ Same minimum contracts as VYMOD with `ProductSlug.FLEET` binding on the service 
 
 - `bash architecture/scripts/validate-module-registry.sh`
 - Documentation-only diff vs `e2fd6eb9b…`
+
+---
+
+## Independent review (POST_P6_P10_INDEPENDENT_REVIEW)
+
+**Reviewed HEAD:** `2244b8d21ddfe732becb4d0050b6d44e89adb009` (matches expected PR tip)
+**G1 reclassification:** `CONDITIONAL_INTERFACE_EXTENSION` — not mandatory for defined minimum interface; token exchange already fail-closes without ACTIVE `OrganizationProduct`.
+**Mandatory Core code gaps for minimum readiness:** **none**
+**F7:** registry/graph validators PASS; docs-only diff; CI **7/7** @ `2244b8d21ddfe732becb4d0050b6d44e89adb009` (pre-remediation commit).
