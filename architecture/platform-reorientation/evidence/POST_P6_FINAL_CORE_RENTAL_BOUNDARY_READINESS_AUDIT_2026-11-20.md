@@ -127,6 +127,7 @@ No `AUTHORITY_ACTIVE` promotion.
 - `bash architecture/scripts/validate-module-registry.sh` — **PASS**
 - `bash architecture/dsrg/scripts/validate-graph.sh` — **PASS** (via registry validator chain)
 - `git diff --check` — **PASS** (documentation-only diff)
+- **GitHub CI @ `5d9c58a80` (PR #2460 branch):** **7/7 success** — docs-only; no application checks triggered beyond governance gates
 
 ---
 
