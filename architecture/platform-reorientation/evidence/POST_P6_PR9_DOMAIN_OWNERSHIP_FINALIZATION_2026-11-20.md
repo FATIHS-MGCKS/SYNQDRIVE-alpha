@@ -1,10 +1,10 @@
 # POST-P6-PR9 — Domain ownership finalization (owner decision)
 
-**Date:** 2026-11-20 (Europe/Berlin)  
-**Operation:** `SYNQDRIVE_ALPHA_POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION`  
-**Mode:** `READ_ONLY_FIRST` + **documentation only**  
-**Owner decision:** **EXPLICITLY_GRANTED** (binding; not `AUTHORITY_ACTIVE` promotion)  
-**Repository baseline:** `origin/main` @ `a5a8a06dd82900fa2a10d36ab0d6f00dbc4a5f9c`  
+**Date:** 2026-11-20 (Europe/Berlin)
+**Operation:** `SYNQDRIVE_ALPHA_POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION`
+**Mode:** `READ_ONLY_FIRST` + **documentation only**
+**Owner decision:** **EXPLICITLY_GRANTED** (binding; not `AUTHORITY_ACTIVE` promotion)
+**Repository baseline:** `origin/main` @ `a5a8a06dd82900fa2a10d36ab0d6f00dbc4a5f9c`
 **Supersedes (classification only):** unresolved Tasks/Documents/Invoices **ownership** questions in [`POST_P6_FINAL_BOUNDARY_INDEPENDENT_REVIEW_2026-11-20.md`](POST_P6_FINAL_BOUNDARY_INDEPENDENT_REVIEW_2026-11-20.md) — **does not** change frozen PR #2460 eight-violation closure facts.
 
 **Binding shape unchanged:** one Alpha repo, one NestJS runtime, one deployment, shared DB; `SYNQDRIVE-CORE` reference fork paused; no M2M mandate for co-located Rental.
@@ -89,3 +89,17 @@ Tasks & Work Orders, Documents, Invoices: **`NOT_STARTED`** — owner decision i
 - `validate-module-registry.sh` — run on PR branch
 - Documentation-only diff — no runtime/schema/migration files
 - **`AGENTS.md` intentionally unchanged** on this PR — i18n Layer-0 `i18n-authority-protection` requires trusted label `i18n-governance-authority-change` for governance-authority edits; binding mixed-module rules are normative in Master Plan § Mixed-module capability ownership and [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md).
+
+---
+
+## Independent review (POST_P6_PR9_INDEPENDENT_REVIEW)
+
+**Reviewed HEAD:** `a1d44213566227264a9a87225ef47f76b07a3b29`
+**Reviewer mode:** read-only verification + minimal documentation remediation
+**F1 ownership:** **PASS** — code aligns with owner capability split; physical modules remain mixed.
+**F2 boundary:** **PASS** — outbox/invoice/controller bundle uses are Rental→Rental; Communication/WhatsApp inject `DOCUMENTS_STORAGE` / `CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT` only (no new Core→Rental business-service coupling).
+**F3 governance:** **PASS** — monorepo invariants preserved; #2460 eight-violation closure not rewritten.
+**F4 registry:** **PASS** — Tasks/Documents/Invoices stay `NOT_STARTED`.
+**F5 agent rules:** **PASS** — Master Plan + MONOREPO_AGENT_GUARDRAILS + `projektregel.mdc` sufficient without `AGENTS.md` edit.
+**F6 documentation:** **PASS_AFTER_REMEDIATION** — ledger HEAD + `git diff --check` whitespace.
+**F7 verification:** **PASS** — registry/graph validators; docs-only diff; CI 7/7 green on reviewed HEAD.
