@@ -51,3 +51,5 @@ Historical 2026-11-19 audit preserved with supersession pointer only. Validators
 ## Merge recommendation
 
 **MERGE_READY_AFTER_CI** for documentation corrections — **NO_MERGE** unless owner instructs.
+
+**CI:** 9/9 success @ `a34f38c2d6534b32f0e7c070e0750497fc05acff` (Berlin 2026-11-20).
