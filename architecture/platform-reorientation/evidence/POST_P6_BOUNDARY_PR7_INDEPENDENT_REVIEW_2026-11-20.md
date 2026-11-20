@@ -49,3 +49,5 @@
 See final report on post-review HEAD.
 
 **MERGE_READY_AFTER_CI** — **NO_MERGE** unless owner instructs.
+
+**CI:** 39/39 success @ `d95dbe3602d6fabc36cdfc3e3962724fe17aa2e4` (Berlin 2026-11-20).
