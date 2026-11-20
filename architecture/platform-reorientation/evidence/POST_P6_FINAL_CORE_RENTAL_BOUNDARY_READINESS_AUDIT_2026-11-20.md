@@ -33,15 +33,17 @@
 
 | Consumer | Path | Consumer domain (evidence) | Crosses Core/Rental? | Classification |
 |----------|------|----------------------------|----------------------|----------------|
-| Bookings orchestration | `bookings/bookings.service.ts` | Rental (`bookings` **AUDIT_IN_PROGRESS**) | **No** | **ALLOWED_IN_PROCESS_DEPENDENCY** |
-| Wizard draft | `bookings/booking-wizard-draft.service.ts` | Rental | **No** | **ALLOWED_IN_PROCESS_DEPENDENCY** |
-| Invoices pipeline | `invoices/invoice-documents.service.ts` | Rental / financial docs coupling | **No** | **ALLOWED_IN_PROCESS_DEPENDENCY** |
-| HTTP API | `documents/documents.controller.ts` | Rental document surface | **No** | **ALLOWED_IN_PROCESS_DEPENDENCY** |
-| Generation worker | `documents/booking-document-generation/booking-document-generation.processor.service.ts` | Rental document lifecycle | **No** | **ALLOWED_IN_PROCESS_DEPENDENCY** |
-| Task automation outbox | `tasks/outbox/task-automation-outbox-executor.service.ts` | Tasks & Work Orders **NOT_STARTED**; calls `resyncBookingDocumentTasks` | **No** (not a Core platform module) | **NEEDS_FURTHER_EVIDENCE** — tasks module ownership authority incomplete; **not** classified as Core violation pending authority |
-| Rental adapter | `documents/core-booking-document-bundle-view/*` | Rental adapter at composition boundary | **No** (intended) | **ALLOWED_IN_PROCESS_DEPENDENCY** |
+| Bookings orchestration | `bookings/bookings.service.ts` | Bookings **AUDIT_IN_PROGRESS** — registry owns booking aggregate (`architecture/bookings/` scope) | **No** (same rental workflow island) | **ALLOWED_IN_PROCESS_DEPENDENCY** |
+| Wizard draft | `bookings/booking-wizard-draft.service.ts` | Under `bookings/` module tree | **No** | **ALLOWED_IN_PROCESS_DEPENDENCY** (inherits Bookings scope) |
+| Invoices pipeline | `invoices/invoice-documents.service.ts` | Invoices registry **NOT_STARTED** — no authority ownership row | **UNKNOWN** | **NEEDS_FURTHER_EVIDENCE** — bundle use is booking-invoice coupling; **not** certified intra-Rental without Invoices authority |
+| HTTP API | `documents/documents.controller.ts` | Documents registry **NOT_STARTED** — platform legal/storage vs rental bundle not authority-split | **UNKNOWN** | **NEEDS_FURTHER_EVIDENCE** — do **not** assume entire Documents module is Rental-owned |
+| Generation worker | `documents/booking-document-generation/booking-document-generation.processor.service.ts` | Documents **NOT_STARTED**; path is booking-document generation | **UNKNOWN** | **NEEDS_FURTHER_EVIDENCE** — workflow appears rental-coupled; ownership uncertified |
+| Task automation outbox | `tasks/outbox/task-automation-outbox-executor.service.ts` | Tasks & Work Orders **NOT_STARTED**; `SYNC_DOCUMENT_PACKAGES` → `resyncBookingDocumentTasks` | **UNKNOWN** | **NEEDS_FURTHER_EVIDENCE** — **not** certified intra-Rental; **not** a Core violation without Tasks owner classification |
+| Rental adapter | `documents/core-booking-document-bundle-view/*` | Composition-root Rental adapter | **No** (intended port boundary) | **ALLOWED_IN_PROCESS_DEPENDENCY** |
 
-**RESIDUAL_DOCUMENT_BUNDLE_VERDICT:** **No remaining confirmed Core→Rental `BookingDocumentBundleService` injections.** Residual direct injections are **Rental-domain or unresolved Tasks ownership** — document in dedicated Tasks/Documents audits; **no mandatory port** for co-located Rental orchestration in this pass.
+**Tasks owner decision question (binding, unresolved):** Should **Tasks & Work Orders** (including `task-automation-outbox`) be classified as **Core platform operations**, **Rental workflow automation**, or **hybrid** for Core→Rental injection rules? No owner decision on record.
+
+**RESIDUAL_DOCUMENT_BUNDLE_VERDICT:** **No confirmed Core→Rental `BookingDocumentBundleService` injections** after PR #2459. Residual injections require **module ownership evidence** before ALLOWED certification (except Bookings/wizard tree and Core adapter).
 
 ---
 
@@ -63,7 +65,7 @@
 | Area | Finding | Classification |
 |------|---------|----------------|
 | Frontend master → rental utils | `master/components/billing/admin-billing.utils.ts`, `master/components/support-ops/support-ops.utils.ts` re-export rental helpers | **DEFERRED_OPTIONAL_HARDENING** (P2-01) |
-| VI DTC cache | `vehicle-intelligence/dtc/dtc.service.ts` → `RentalHealthSummaryCacheService` | **NEEDS_FURTHER_EVIDENCE** — cache invalidation coupling; not in original eight violations |
+| VI DTC cache | `vehicle-intelligence/dtc/dtc.service.ts` → `@Optional() RentalHealthSummaryCacheService.invalidate` after DTC ingest (`invalidateRentalHealthCache`) | **DEFERRED_OPTIONAL_HARDENING** — Redis summary cache invalidation only (not `RentalHealthService`); VI subject to P4 service-boundary rules; owner has not classified cache helper vs business-logic service |
 | Workers / queues | Task outbox bundle call (see Phase 2) | **NEEDS_FURTHER_EVIDENCE** (Tasks authority) |
 | Rental → Core | Bookings eligibility → `RentalHealthService` (intra-rental intelligence) | **ALLOWED_IN_PROCESS_DEPENDENCY** |
 | Type-only imports | AI/VI → `rental-health.types`, recompute reason types | **ALLOWED_IN_PROCESS_DEPENDENCY** |
@@ -98,11 +100,12 @@ Notable **non-violation** follow-ups: Tasks outbox bundle (ownership), VI/Channe
 
 | Question | Verdict | Rationale |
 |----------|---------|-----------|
-| **A. CORE_RENTAL_BOUNDARY_COMPLETE** | **NO** | Audited **Core→Rental business-service injection program** for confirmed P0/P1 consumers is **closed** on `main`; full logical-domain certification **not** claimed — Prisma/type/frontend/cache debt remains |
+| **A. CORE_RENTAL_BOUNDARY_COMPLETE** | **NOT_VERIFIABLE** | Confirmed **P0/P1 Core→Rental business-service injections (eight)** **closed** on `main` @ `2bf9c19c8`; **full-domain certification** blocked by **unresolved Tasks/Documents/Invoices ownership** (no new confirmed violation counted) |
 | **B. CORE_PLATFORM_RUNTIME_READINESS** | **PARTIAL** | Single NestJS app with ports/adapters for platform channels; co-located Rental operational |
 | **C. FUTURE_EXTERNAL_APP_INTERFACE_READINESS** | **PARTIAL** | M2M/entitlements scaffolding; default fail-closed; no external activation |
-| **D. ADDITIONAL_RUNTIME_REFACTORING_REQUIRED** | **YES** (optional tracks) | Not blocking co-located monorepo; optional hardening for extraction / clarity |
-| **E. NEXT_SMALLEST_REQUIRED_OPERATION** | **NONE** (mandatory P0/P1 boundary) | **Optional:** Tasks module authority + outbox boundary classification; or owner-prioritized Prisma read ports (WhatsApp/Voice/VI) |
+| **D. MANDATORY_RUNTIME_REFACTORING_REQUIRED** | **NO** | No open **CONFIRMED_ARCHITECTURE_VIOLATION** from this audit |
+| **D2. OPTIONAL_ARCHITECTURAL_HARDENING** | **YES** (tracks) | Prisma read ports, frontend util split, DTC cache port, Tasks/Documents authority — **not** mandatory for co-located monorepo |
+| **E. NEXT_SMALLEST_REQUIRED_OPERATION** | **NONE** (mandatory boundary) | **Optional / owner:** Tasks & Work Orders ownership decision; module authority for Documents/Invoices; or prioritized Prisma read ports |
 
 **Production launch:** **NOT** inferred from this audit.
 
@@ -144,3 +147,5 @@ No `AUTHORITY_ACTIVE` promotion.
 | #2457 | `POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_2026-11-20.md` |
 | #2458 | `POST_P6_BOUNDARY_PR7_AI_RENTAL_HEALTH_PORT_REUSE_2026-11-20.md` |
 | #2459 | `POST_P6_BOUNDARY_PR8_CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT_2026-11-20.md` |
+
+**Independent review:** [`POST_P6_FINAL_BOUNDARY_INDEPENDENT_REVIEW_2026-11-20.md`](POST_P6_FINAL_BOUNDARY_INDEPENDENT_REVIEW_2026-11-20.md)
