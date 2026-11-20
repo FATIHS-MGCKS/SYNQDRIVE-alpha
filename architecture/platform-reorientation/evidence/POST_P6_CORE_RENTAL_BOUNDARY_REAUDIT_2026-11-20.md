@@ -42,8 +42,8 @@
 
 | Surface | Classification | Notes |
 |---------|----------------|-------|
-| `BookingDocumentBundleService` DI | **CONFIRMED_ARCHITECTURE_VIOLATION** → **V-P1-03** | `communication-quick-action.executor.ts` — Rental-owned document bundle assembly ([`Documents` registry row — rental bundles](../../SYNQDRIVE_RENTAL_ARCHITECTURE.md)) |
-| `COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT` | **ALLOWED** | Remediated |
+| `BookingDocumentBundleService` DI | **CONFIRMED_ARCHITECTURE_VIOLATION** → **V-P1-03** | `communication-quick-action.executor.ts` L18/L53 — injects Rental **booking document bundle** workflow service (`documents/booking-document-bundle.service.ts`); not a whole-module ownership claim |
+| `COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT` | **ALLOWED_IN_PROCESS_DEPENDENCY** | Remediated port slice |
 
 ### C. WhatsApp Business (Core)
 
@@ -51,20 +51,20 @@
 |---------|----------------|-------|
 | `BookingDocumentBundleService` DI (3 services) | **CONFIRMED_ARCHITECTURE_VIOLATION** → **V-P1-03** (grouped) | `whatsapp-ai-tools`, `whatsapp-booking-reminder`, `whatsapp-conversation-context` |
 | `DamagesService` DI | **ALLOWED_IN_PROCESS_DEPENDENCY** | Provider under Core `vehicle-intelligence/damages` |
-| Direct `prisma.booking.findFirst` / matcher reads | **NEEDS_FURTHER_EVIDENCE** | Shared DB tenant-scoped reads; not service injection — narrow read port optional **P2** |
+| Direct `prisma.booking.findFirst` / matcher reads | **NEEDS_FURTHER_EVIDENCE** | Shared DB tenant-scoped reads; not service injection — classification pending dedicated evidence; **not** counted as confirmed P2 hardening in this audit |
 
 ### D. Voice Assistant Platform (Core)
 
 | Surface | Classification | Notes |
 |---------|----------------|-------|
-| `VOICE_BOOKING_READ_PORT` | **ALLOWED** | Remediated |
-| `voice-mcp-entity-resolver.service.ts` `prisma.booking.findMany` | **NEEDS_FURTHER_EVIDENCE** | Entity resolution; optional **P2** read port |
+| `VOICE_BOOKING_READ_PORT` | **ALLOWED_IN_PROCESS_DEPENDENCY** | Remediated port slice |
+| `voice-mcp-entity-resolver.service.ts` `prisma.booking.findMany` | **NEEDS_FURTHER_EVIDENCE** | Entity resolution via shared Prisma — **not** counted as confirmed P2 hardening in this audit |
 
 ### E. AI Platform (Core)
 
 | Surface | Classification | Notes |
 |---------|----------------|-------|
-| `AI_VEHICLE_BOOKING_CONTEXT_READ_PORT` | **ALLOWED** | Remediated |
+| `AI_VEHICLE_BOOKING_CONTEXT_READ_PORT` | **ALLOWED_IN_PROCESS_DEPENDENCY** | Remediated port slice |
 | `RentalHealthService` in `ai-get-vehicle-health-summary.tool.ts` | **CONFIRMED_ARCHITECTURE_VIOLATION** → **V-P1-04** | `ai.module.ts` imports `RentalHealthModule`; same rule family as remediated V-P1-01 (VI) |
 | `DamagesService` in health summary tool | **ALLOWED_IN_PROCESS_DEPENDENCY** | Core VI service |
 | Type imports from `rental-health.types` | **ALLOWED_IN_PROCESS_DEPENDENCY** | Type-only |
@@ -99,7 +99,7 @@
 |-------|-------|
 | Consumers | `communication/ops/communication-quick-action.executor.ts`; `whatsapp/whatsapp-ai-tools.service.ts`, `whatsapp-booking-reminder.service.ts`, `whatsapp-conversation-context.service.ts` |
 | Consumer domain | **Core** (Communication, WhatsApp — owner 2026-11-19) |
-| Provider | `documents/booking-document-bundle.service.ts` — **Rental** document/bundle workflow per registry inventory |
+| Provider | `backend/src/modules/documents/booking-document-bundle.service.ts` — **Rental booking document bundle** assembly (contracts, handover-linked generated documents, bundle views); registry **Documents** module remains `NOT_STARTED` — violation scope is **this service/workflow**, not full Documents authority |
 | Rule | Guardrails § Core → Rental business-logic services forbidden |
 | Risk | Platform channels coupled to Rental bundle generation lifecycle; harder to extract/version |
 | Smallest remediation | Core-owned **document bundle read/generation command port(s)** with Rental adapter — scope per channel (likely shared `COMMUNICATION_*` / `WHATSAPP_*` token family) |
@@ -119,11 +119,14 @@
 
 ## Phase 4 — Prioritization summary
 
-| Tier | Count | IDs |
-|------|-------|-----|
-| **P0** | **0** | (Original P0 platform `BookingsService` / `VehicleBookingContextService` group **closed**) |
-| **P1** | **2** | V-P1-03 (document bundle), V-P1-04 (AI rental health) |
-| **P2** | **3+** | WhatsApp/Voice Prisma booking reads; frontend master util imports; VI Prisma booking hardening (optional) |
+**Evidence classification** (Phase 2 tables) is separate from **remediation priority** below.
+
+| Remediation priority | Count | Scope |
+|----------------------|-------|--------|
+| **P0** | **0** | Original platform `BookingsService` / `VehicleBookingContextService` group **closed** |
+| **P1** | **2** | **CONFIRMED_ARCHITECTURE_VIOLATION** only: V-P1-03, V-P1-04 |
+| **P2 (optional cleanup)** | **2 tracks** | **DEFERRED_OPTIONAL_HARDENING** only: VI `prisma.booking` / handover reads (NFE-01 carry-forward); frontend master→rental util imports (P2-01) |
+| **Unprioritized until classified** | — | Surfaces marked **NEEDS_FURTHER_EVIDENCE** (WhatsApp/Voice Prisma booking reads; tasks outbox bundle; external API matrix) — **not** included in P2 counts |
 
 ---
 
@@ -155,6 +158,11 @@
 |--------|-------------------|--------|
 | Bookings | **UNCHANGED** | `AUDIT_IN_PROGRESS` |
 | Vehicle intelligence / driving intelligence | **UNCHANGED** | Port remediation only on `main` |
-| Communication / WhatsApp / Voice / AI | **UNCHANGED** | `NOT_STARTED`; owner classification unchanged |
-| Documents | **UNCHANGED** | `NOT_STARTED`; cited as Rental-adjacent provider for V-P1-03 |
+| Communication Center | **UNCHANGED** | `AUDIT_IN_PROGRESS` · Production audit **NOT_STARTED** |
+| WhatsApp Business | **UNCHANGED** | `AUDIT_IN_PROGRESS` · Production audit **NOT_STARTED** |
+| Voice Assistant Platform | **UNCHANGED** | `AUDIT_IN_PROGRESS` · Production audit **NOT_STARTED** |
+| AI Platform | **UNCHANGED** | `AUDIT_IN_PROGRESS` · Production audit **NOT_STARTED** |
+| Documents | **UNCHANGED** | `NOT_STARTED`; V-P1-03 cites **booking-document-bundle** service only |
 | Rental Health | **UNCHANGED** | `AUDIT_IN_PROGRESS` |
+
+**Independent review:** [`POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_INDEPENDENT_REVIEW_2026-11-20.md`](POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_INDEPENDENT_REVIEW_2026-11-20.md)
