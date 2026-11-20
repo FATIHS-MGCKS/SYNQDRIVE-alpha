@@ -5,6 +5,8 @@
 **Mode:** `READ_ONLY_FIRST` (documentation only; no runtime/schema/deploy)  
 **Audited `origin/main` baseline:** `65a76e63b200b5d9110324a32620e2096bfac77f` (post #2449 monorepo governance)
 
+> **Superseded (findings status only):** [`POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_2026-11-20.md`](POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_2026-11-20.md) @ `3b5773233` — V-P0-01 … V-P1-02 **closed** on `main` after PR #2451–#2456; new P1 inventory documented there. This file remains historical evidence.
+
 **Binding context:** [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md), [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md), [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md), [`POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md`](POST_P6_MONOREPO_GOVERNANCE_CORRECTION_2026-11-19.md), [`POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md).
 
 ## Evidence vocabulary (do not conflate)
