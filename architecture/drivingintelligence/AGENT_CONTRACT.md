@@ -148,3 +148,7 @@ Never conflate:
 - `DrivingAnalysisReconciliationScheduler`: SINGLETON_GLOBAL when `SCHEDULER_LEADER_ELECTION_ENABLED`
 - BullMQ workers (`driving-intelligence-job.processor`): multi-replica safe via durable job row + idempotency
 - Disabled election: duplicate reconciliation sweeps possible — document in deployment config
+
+## Core ↔ Rental health read (POST-P6-BOUNDARY-PR5)
+
+`VehicleHealthTabSummaryService` and `VehicleFileSummaryService` inject `VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT` only (not `RentalHealthService`). Type-only `VehicleHealth` imports on VI paths remain permitted in-process.

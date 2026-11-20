@@ -1,7 +1,10 @@
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import type { HealthState, VehicleHealth } from '@modules/rental-health/rental-health.types';
+import {
+  VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT,
+  type VehicleIntelligenceRentalHealthReadPort,
+} from '../ports/vehicle-intelligence-rental-health-read.port';
 import { RENTAL_HEALTH_STALE_MS } from '@modules/rental-health/rental-health.types';
 import { AiHealthCareAggregationService } from './ai-health-care-aggregation.service';
 import { DashboardWarningLightsService } from '../dashboard-warning-lights/dashboard-warning-lights.service';
@@ -123,8 +126,8 @@ export class VehicleHealthTabSummaryService {
   private readonly logger = new Logger(VehicleHealthTabSummaryService.name);
 
   constructor(
-    @Inject(forwardRef(() => RentalHealthService))
-    private readonly rentalHealth: RentalHealthService,
+    @Inject(VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT)
+    private readonly rentalHealth: VehicleIntelligenceRentalHealthReadPort,
     private readonly prisma: PrismaService,
     private readonly aiHealthCare: AiHealthCareAggregationService,
     private readonly dashboardWarningLights: DashboardWarningLightsService,
