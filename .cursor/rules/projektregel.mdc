@@ -248,7 +248,7 @@ For medium and large tasks, after implementation report clearly:
 - Preserve tenant isolation, org scoping, product guards (`ProductLicenseGuard`), and permission enforcement on every change.
 - Do not restart physical `SYNQDRIVE-CORE` extraction or require M2M for in-monolith Rental.
 
-Before **new** modules or **substantive** cross-domain changes: read the platform master plan + central module registry; assign domain ownership; update authority/ledger per [`Architectur-Updates.mdc`](Architectur-Updates.mdc).
+Before **new** modules or **substantive** cross-domain changes: read the platform master plan + central module registry; **assign Core vs Rental capability ownership** (especially in mixed `tasks`, `documents`, `invoices` trees — physical module ≠ single owner); update authority/ledger per [`Architectur-Updates.mdc`](Architectur-Updates.mdc). Binding split: [`architecture/platform-reorientation/evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md`](../../architecture/platform-reorientation/evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md).
 
 ## 11) Future external applications (interface readiness only)
 
