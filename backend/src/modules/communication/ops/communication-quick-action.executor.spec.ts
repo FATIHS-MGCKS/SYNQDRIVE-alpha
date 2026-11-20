@@ -18,7 +18,7 @@ import {
   COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT,
   type CommunicationBookingSnapshotReadPort,
 } from '../ports/communication-booking-snapshot-read.port';
-import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT } from '@modules/platform-channels/ports/core-booking-document-bundle-view.port';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { TaskPermissionService } from '@modules/tasks/task-permission.service';
 import { CommunicationReplyError } from '../reply/communication-reply.errors';
@@ -92,7 +92,7 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
           provide: COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT,
           useValue: bookingSnapshotRead,
         },
-        { provide: BookingDocumentBundleService, useValue: documentBundle },
+        { provide: CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT, useValue: documentBundle },
         { provide: TasksService, useValue: tasks },
         { provide: TaskPermissionService, useValue: taskPermissions },
         { provide: CommunicationContextLinkService, useValue: contextLink },
@@ -122,7 +122,7 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
   it('request_missing_documents uses booking snapshot port for bookingNumber', async () => {
     documentBundle.getBundleView.mockResolvedValue({
       missingLegalDocuments: ['ID'],
-      legal: { missing: [] },
+      legalMissing: [],
     });
     (bookingSnapshotRead.getSnapshot as jest.Mock).mockResolvedValue({
       bookingNumber: 'B-MD',
@@ -148,7 +148,7 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
   it('request_missing_documents throws NotFound when snapshot is null', async () => {
     documentBundle.getBundleView.mockResolvedValue({
       missingLegalDocuments: ['ID'],
-      legal: { missing: [] },
+      legalMissing: [],
     });
     (bookingSnapshotRead.getSnapshot as jest.Mock).mockResolvedValue(null);
     prisma.whatsAppTemplate.findFirst.mockResolvedValue({

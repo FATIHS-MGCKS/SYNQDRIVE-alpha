@@ -5,6 +5,7 @@ import communicationRetentionConfig from '@config/communication-retention.config
 import communicationOperationalHealthConfig from '@config/communication-operational-health.config';
 import voiceRetentionConfig from '@config/voice-retention.config';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { CoreBookingDocumentBundleViewModule } from '@modules/documents/core-booking-document-bundle-view/core-booking-document-bundle-view.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { StationsModule } from '@modules/stations/stations.module';
@@ -74,6 +75,7 @@ import { CommunicationMetricsRefreshService } from './observability/communicatio
     PrismaModule,
     StationsModule,
     DocumentsModule,
+    CoreBookingDocumentBundleViewModule,
     NotificationsModule,
     CommunicationBookingSnapshotReadModule,
     TasksModule,

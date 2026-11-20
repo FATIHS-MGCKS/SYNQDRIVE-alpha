@@ -156,7 +156,7 @@ describe('WhatsAppBookingReminderService consent', () => {
   it('missing documents reminder uses document source', async () => {
     documentBundle.getBundleView.mockResolvedValue({
       missingLegalDocuments: ['TERMS_AND_CONDITIONS'],
-      legal: { missing: [] },
+      legalMissing: [],
     });
     consent.assertCanSend.mockRejectedValue(new WhatsAppConsentBlockedException('opted out'));
 
