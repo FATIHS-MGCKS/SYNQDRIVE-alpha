@@ -19,3 +19,5 @@
 **Registry:** Communication / WhatsApp remain `AUDIT_IN_PROGRESS`; Documents `NOT_STARTED`; Bookings `AUDIT_IN_PROGRESS`.
 
 **V-P1-03 verdict (this PR):** remediated for **four-consumer direct-injection scope** only.
+
+**Independent review:** [`POST_P6_BOUNDARY_PR8_INDEPENDENT_REVIEW_2026-11-20.md`](POST_P6_BOUNDARY_PR8_INDEPENDENT_REVIEW_2026-11-20.md)
