@@ -15,3 +15,5 @@
 **No duplicate adapter.** No extra DB IO.
 
 **Open:** V-P1-03 (`BookingDocumentBundleService`) unchanged per re-audit.
+
+**Independent review:** [`POST_P6_BOUNDARY_PR7_INDEPENDENT_REVIEW_2026-11-20.md`](POST_P6_BOUNDARY_PR7_INDEPENDENT_REVIEW_2026-11-20.md)
