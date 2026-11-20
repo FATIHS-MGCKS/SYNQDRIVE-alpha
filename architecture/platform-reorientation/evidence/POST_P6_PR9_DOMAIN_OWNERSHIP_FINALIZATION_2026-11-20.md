@@ -88,3 +88,4 @@ Tasks & Work Orders, Documents, Invoices: **`NOT_STARTED`** — owner decision i
 
 - `validate-module-registry.sh` — run on PR branch
 - Documentation-only diff — no runtime/schema/migration files
+- **`AGENTS.md` intentionally unchanged** on this PR — i18n Layer-0 `i18n-authority-protection` requires trusted label `i18n-governance-authority-change` for governance-authority edits; binding mixed-module rules are normative in Master Plan § Mixed-module capability ownership and [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md).
