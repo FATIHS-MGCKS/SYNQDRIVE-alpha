@@ -1,8 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataAuthorizationSourceType, TaskPriority } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import type { VehicleHealth } from '@modules/rental-health/rental-health.types';
+import {
+  VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT,
+  type VehicleIntelligenceRentalHealthReadPort,
+} from '@modules/vehicle-intelligence/ports/vehicle-intelligence-rental-health-read.port';
 import type { HealthState } from '@modules/rental-health/rental-health.types';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { ServiceComplianceService } from '@modules/vehicle-intelligence/service-compliance/service-compliance.service';
@@ -152,7 +155,8 @@ export class AiGetVehicleHealthSummaryTool {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rentalHealth: RentalHealthService,
+    @Inject(VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT)
+    private readonly rentalHealthRead: VehicleIntelligenceRentalHealthReadPort,
     private readonly serviceCompliance: ServiceComplianceService,
     private readonly damages: DamagesService,
     private readonly tasks: TasksService,
@@ -208,7 +212,7 @@ export class AiGetVehicleHealthSummaryTool {
     let rentalHealthError: string | null = null;
 
     try {
-      vehicleHealth = await this.rentalHealth.getVehicleHealth(
+      vehicleHealth = await this.rentalHealthRead.getVehicleHealth(
         verifiedContext.organizationId,
         row.id,
       );

@@ -1,6 +1,6 @@
 import { MembershipRole } from '@prisma/client';
 import type { VehicleHealth } from '@modules/rental-health/rental-health.types';
-import { RentalHealthService } from '@modules/rental-health/rental-health.service';
+import type { VehicleIntelligenceRentalHealthReadPort } from '@modules/vehicle-intelligence/ports/vehicle-intelligence-rental-health-read.port';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { ServiceComplianceService } from '@modules/vehicle-intelligence/service-compliance/service-compliance.service';
 import { TasksService } from '@modules/tasks/tasks.service';
@@ -115,7 +115,7 @@ function makeVehicleRow() {
 
 describe('AiGetVehicleHealthSummaryTool', () => {
   let prisma: { vehicle: { findFirst: jest.Mock }; orgDataAuthorization: { findFirst: jest.Mock } };
-  let rentalHealth: { getVehicleHealth: jest.Mock };
+  let rentalHealthRead: { getVehicleHealth: jest.Mock };
   let serviceCompliance: { evaluateCompliance: jest.Mock };
   let damages: { getStats: jest.Mock };
   let tasks: { getTasksForVehicle: jest.Mock };
@@ -133,7 +133,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
         }),
       },
     };
-    rentalHealth = { getVehicleHealth: jest.fn() };
+    rentalHealthRead = { getVehicleHealth: jest.fn() };
     serviceCompliance = { evaluateCompliance: jest.fn() };
     damages = { getStats: jest.fn().mockResolvedValue({
       total: 0,
@@ -158,7 +158,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
     };
     tool = new AiGetVehicleHealthSummaryTool(
       prisma as never,
-      rentalHealth as unknown as RentalHealthService,
+      rentalHealthRead as unknown as VehicleIntelligenceRentalHealthReadPort,
       serviceCompliance as unknown as ServiceComplianceService,
       damages as unknown as DamagesService,
       tasks as unknown as TasksService,
@@ -167,7 +167,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('returns fully unremarkable health summary', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(makeVehicleHealth());
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(makeVehicleHealth());
     serviceCompliance.evaluateCompliance.mockResolvedValue({
       nextService: {
         trackingStatus: 'TRACKED',
@@ -208,10 +208,11 @@ describe('AiGetVehicleHealthSummaryTool', () => {
       'no_active_dtcs_does_not_imply_overall_health',
     );
     expect(outcome.allowLlmInference).toBe(true);
+    expect(rentalHealthRead.getVehicleHealth).toHaveBeenCalledWith(ORG_ID, VEHICLE_ID);
   });
 
   it('does not treat missing data as healthy when modules are unknown', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         { overall_state: 'unknown' },
         {
@@ -263,7 +264,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('reports critical DTC without implying overall health', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         {
           overall_state: 'critical',
@@ -315,7 +316,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('reports battery warning', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         { overall_state: 'warning' },
         {
@@ -359,7 +360,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('marks stale tire measurement explicitly', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         { overall_state: 'warning' },
         {
@@ -405,7 +406,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('reports active technical observation as blocker', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         {
           overall_state: 'critical',
@@ -455,7 +456,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('reports overdue service', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         {
           overall_state: 'critical',
@@ -502,7 +503,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('reports no supported telemetry data as limited coverage', async () => {
-    rentalHealth.getVehicleHealth.mockResolvedValue(
+    rentalHealthRead.getVehicleHealth.mockResolvedValue(
       makeVehicleHealth(
         {
           overall_state: 'unknown',
@@ -558,7 +559,7 @@ describe('AiGetVehicleHealthSummaryTool', () => {
   });
 
   it('returns provider timeout as partial when rental health fails', async () => {
-    rentalHealth.getVehicleHealth.mockRejectedValue(new Error('ETIMEDOUT timeout'));
+    rentalHealthRead.getVehicleHealth.mockRejectedValue(new Error('ETIMEDOUT timeout'));
     serviceCompliance.evaluateCompliance.mockResolvedValue({
       nextService: {
         trackingStatus: 'TRACKED',

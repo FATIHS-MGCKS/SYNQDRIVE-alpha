@@ -28,7 +28,7 @@ import { ChatController } from './chat/chat.controller';
 import { AiVehicleResolutionService } from './vehicle-resolution/ai-vehicle-resolution.service';
 import { AiDataAuthorizationProbeAdapter } from './tools/ai-data-authorization.probe';
 import { AiPrismaVehicleScopeResolver } from './tools/ai-prisma-vehicle-scope.resolver';
-import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
+import { VehicleIntelligenceRentalHealthReadModule } from '@modules/rental-health/vehicle-intelligence-rental-health-read/vehicle-intelligence-rental-health-read.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { AiGetVehicleLocationTool } from './tools/get-vehicle-location/ai-get-vehicle-location.tool';
@@ -56,7 +56,7 @@ import { AiHealthController } from './ai-health.controller';
     RedisModule,
     forwardRef(() => VehiclesModule),
     DataAuthorizationsModule,
-    forwardRef(() => RentalHealthModule),
+    VehicleIntelligenceRentalHealthReadModule,
     TasksModule,
     forwardRef(() => VehicleIntelligenceModule),
     AiVehicleBookingContextReadModule,
