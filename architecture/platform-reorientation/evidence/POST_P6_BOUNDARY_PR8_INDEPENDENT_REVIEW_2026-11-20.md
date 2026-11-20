@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-20 (Europe/Berlin)  
 **PR:** [#2459](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2459)  
-**Reviewed HEAD:** `244ec0f155a671c98a631a55e329920f45032144`  
+**Reviewed HEAD:** `244ec0f155a671c98a631a55e329920f45032144` (implementation); evidence commit `72157974b0c8c1b5e241c545ab510c00cf4a49e9`  
 **Base:** `8b95e5e262dbb16651b011af78e2cdeabd416352`  
 **Diff:** 20 files, +239 / −29 (GitHub PR metadata)
 
@@ -72,15 +72,17 @@ V-P1-03: **remediated (draft)** for four-consumer injection scope only; residual
 
 ## F7 — Validation
 
-**VERDICT: PASS_LOCAL** (CI pending at review start; see final report)
+**VERDICT: PASS_LOCAL; CI_FAILURE_UNRELATED**
 
-- Focused Jest: 26/26 (adapter, Nest DI, consumers, executor, whatsapp-domain-integration).
+- Focused Jest @ `244ec0f15`: 26/26 (adapter, Nest DI, consumers, executor, whatsapp-domain-integration).
 - `npm run build`: pass.
-- `validate-module-registry.sh`: pass.
+- `validate-module-registry.sh`: pass @ `72157974b`.
 - `git diff --check main...HEAD`: pass.
+
+**GitHub CI @ `72157974b`:** Legal Documents workflow **CI gate (all critical jobs)** success; Vehicle Detail workflow failed on **unrelated** flake `vehicle-oem-specification-patch.postgres.integration.spec.ts` (`returns conflict when two concurrent OEM writes race` — both writes fulfilled, 0 PR8 file overlap). Backend unit/integration/build/boot checks green on both workflows.
 
 ## Confirmed defects
 
-**None** — no code changes required from independent review.
+**None in PR8 boundary scope** — no application code changes from independent review.
 
-**MERGE_READY_AFTER_CI** — **NO_MERGE** unless owner instructs.
+**MERGE_READY_AFTER_CI** — blocked on **unrelated** Vehicle Detail PostgreSQL concurrency job until re-run green; **NO_MERGE** unless owner instructs.
