@@ -4,7 +4,9 @@
 **Operation:** `SYNQDRIVE_ALPHA_POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT`  
 **Mode:** `READ_ONLY_ARCHITECTURE_AUDIT` (documentation only)  
 **Audited `origin/main` baseline:** `3b57732334bf9a95b8a5996e56821e8548b41779`  
-**Supersedes findings register in:** [`POST_P6_CORE_RENTAL_BOUNDARY_AUDIT_2026-11-19.md`](POST_P6_CORE_RENTAL_BOUNDARY_AUDIT_2026-11-19.md) for **closure status of V-P0-01 … V-P1-02** and **new** post-remediation inventory. Historical 2026-11-19 evidence is **preserved**; this document is the active status as of PR #2456 merge.
+**Supersedes findings register in:** [`POST_P6_CORE_RENTAL_BOUNDARY_AUDIT_2026-11-19.md`](POST_P6_CORE_RENTAL_BOUNDARY_AUDIT_2026-11-19.md) for **closure status of V-P0-01 … V-P1-02** and **new** post-remediation inventory. Historical 2026-11-19 evidence is **preserved**.
+
+> **Superseded (readiness verdict @ `2bf9c19c8`):** [`POST_P6_FINAL_CORE_RENTAL_BOUNDARY_READINESS_AUDIT_2026-11-20.md`](POST_P6_FINAL_CORE_RENTAL_BOUNDARY_READINESS_AUDIT_2026-11-20.md) — V-P0-01 … V-P1-04 **closed** after PR #2457–#2459; this file retains Phase 2–3 inventory detail at re-audit baseline `3b5773233` / `8b95e5e26`.
 
 **Binding context:** [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md), [`MONOREPO_AGENT_GUARDRAILS.md`](../MONOREPO_AGENT_GUARDRAILS.md), [`POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md), [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md), PR evidence #2451–#2456.
 
