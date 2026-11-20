@@ -31,7 +31,7 @@
 1. **SYNQDRIVE-alpha** remains the **central active platform repository** (single deployable application runtime + documented VPS production path).
 2. **Core** and **Rental** are **separate logical ownership and dependency domains** within the **same** repository, NestJS application runtime, and deployment — not separate production deployables in Alpha today.
 3. **Core owns:** Master Admin; IAM and entitlements; canonical vehicles and trips; Trip FSM; DS4 and DBI; tire/battery/service intelligence; shared platform infrastructure (workers, cross-cutting modules registered at composition root); **Communication Center, WhatsApp Business, Voice Assistant Platform, and AI Platform (Fleet Chat & Tools)** — owner-classified Core platform modules (2026-11-19; registry rows remain `NOT_STARTED` until authority audits complete — see [`evidence/POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md`](evidence/POST_P6_BOUNDARY_OWNER_CLASSIFICATION_2026-11-19.md)).
-4. **Rental owns:** bookings; rental customers; rental payments and contracts; rental-specific rules and workflows; product-specific analysis and UI (`frontend/src/rental`, rental backend modules).
+4. **Rental owns:** bookings; rental customers; rental payments and contracts; rental-specific rules and workflows; product-specific analysis and UI (`frontend/src/rental`, rental backend modules). **Capability-level splits inside mixed modules (owner 2026-11-20):** Tasks (Rental = booking automation/outbox), Documents (Rental = booking bundles + `DocumentsController` rental guards), Invoices (Rental = booking invoices) — see [`evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md`](evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md).
 5. **Core remains product-neutral:** Core intelligence and platform services **must not** take **direct dependencies** on Rental **business-logic services** (see P4 boundary evidence for the reviewed decoupling scope).
 6. **Rental consumes Core** through defined **internal contracts**, **ports**, **NestJS DI**, and **authorized guards**. **External M2M is not required** for co-located Rental in Alpha.
 7. **Other independent applications** (VYMOD, Fleet, digital logbook, school transport, etc.) consume **versioned Core APIs** when deployed separately.
@@ -50,6 +50,18 @@
 | Physical split of Core/Rental repos | **PAUSED** — `SYNQDRIVE-CORE` is a **reference fork** only |
 
 Central registry synopsis: [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../SYNQDRIVE_RENTAL_ARCHITECTURE.md) (module inventory; Core/Rental ownership per module row).
+
+## Mixed-module capability ownership (owner 2026-11-20 — binding)
+
+**Epistemic:** **CONFIRMED** owner decision. Registry rows for Tasks, Documents, Invoices remain **`NOT_STARTED`** until authority audits complete.
+
+| Module inventory row | Core capabilities | Rental capabilities |
+|--------------------|-------------------|---------------------|
+| Tasks & Work Orders | Generic task/work-order management | Booking lifecycle/preparation/pickup/return tasks; booking-document task sync; **task-automation outbox** |
+| Documents | Storage/metadata/integrity infrastructure (product-neutral ports) | Booking bundles, rental contracts, generation, **`DocumentsController` (`ProductSlug.RENTAL`)** |
+| Invoices | Future platform subscription billing (**not** claimed implemented in `invoices` module) | Booking invoices, rental invoice documents, rental payment-check tasks |
+
+Physical paths remain under single Nest modules until a future owner-scoped refactor. Agents **must** assign new code to the correct capability owner; **must not** treat physical folder name as sole ownership proof.
 
 ## Current architecture (verified on `origin/main` — `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e`)
 
