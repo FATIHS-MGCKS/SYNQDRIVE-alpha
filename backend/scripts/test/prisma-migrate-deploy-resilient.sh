@@ -43,6 +43,7 @@ prisma_schema_args() {
 recover_special_composite_index() {
   echo "==> Special migration $SPECIAL_MIGRATION: applying via apply-composite-indexes.ts"
   npx ts-node scripts/apply-composite-indexes.ts
+  npx ts-node scripts/test/verify-composite-indexes-batch-c.ts
   "${PRISMA_BIN[@]}" migrate resolve $(prisma_schema_args) --applied "$SPECIAL_MIGRATION"
 }
 

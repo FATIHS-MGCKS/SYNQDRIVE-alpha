@@ -34,7 +34,11 @@ export function assertCoreAppM2mDisposablePostgresPreflight(optInEnvVar: string)
     throw new Error('DATABASE_URL host must be 127.0.0.1 or localhost');
   }
 
+  const greenfieldBootstrapAllowed =
+    databaseName.startsWith('synqdrive_p12_') || databaseName.startsWith('synqdrive_greenfield_');
+
   if (
+    !greenfieldBootstrapAllowed &&
     !CORE_APP_M2M_DISPOSABLE_DATABASE_NAMES.some(
       (allowed) => databaseName === allowed || databaseName.startsWith(`${allowed}_`),
     )
