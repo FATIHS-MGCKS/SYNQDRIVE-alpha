@@ -126,6 +126,8 @@ Same minimum contracts as VYMOD with `ProductSlug.FLEET` binding on the service 
 
 **If G1 deferred:** **no new Core runtime implementation is required** for defined **interface readiness** scope (repository certification chain suffices for engineering readiness; production remains **NOT_VERIFIED**).
 
+**Database certification (P11):** full HTTP chain on disposable Postgres — [`POST_P6_P11_CORE_EXTERNAL_INTERFACE_DATABASE_CERTIFICATION_2026-11-20.md`](POST_P6_P11_CORE_EXTERNAL_INTERFACE_DATABASE_CERTIFICATION_2026-11-20.md).
+
 ---
 
 ## Governance / boundary preservation
