@@ -2,6 +2,7 @@
 
 | Date | Change | Workstream | Notes |
 |------|--------|------------|--------|
+| 2026-11-20 | Final Core/Rental boundary readiness audit | Governance | [`POST_P6_FINAL_CORE_RENTAL_BOUNDARY_READINESS_AUDIT_2026-11-20.md`](../../platform-reorientation/evidence/POST_P6_FINAL_CORE_RENTAL_BOUNDARY_READINESS_AUDIT_2026-11-20.md) @ `2bf9c19c8`; V-P0-01 … V-P1-04 closed |
 | 2026-11-20 | Post-P6 Core/Rental boundary re-audit | Governance | [`POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_2026-11-20.md`](../../platform-reorientation/evidence/POST_P6_CORE_RENTAL_BOUNDARY_REAUDIT_2026-11-20.md); original six violations closed on `main` `3b5773233`; V-P1-03/04 remain |
 | 2026-11-20 | Rental adapter for core document bundle view | POST-P6-BOUNDARY-PR8 | `documents/core-booking-document-bundle-view/*` delegates `getBundleView` |
 | 2026-11-20 | VI booking driver pool adapter | POST-P6-BOUNDARY-PR6 | `VehicleIntelligenceBookingDriverPoolAdapter` delegates `booking-allowed-drivers.util` |
