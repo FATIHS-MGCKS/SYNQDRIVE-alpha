@@ -57,7 +57,7 @@ Independently re-checked `main` @ `2bf9c19c8`: Communication/WhatsApp bundle por
 
 - Documentation-only PR; append-only ledger updates preserved.
 - `validate-module-registry.sh` — pass on review branch.
-- CI @ `f3f491a35` / `5d9c58a80`: **7/7 success**.
+- CI @ `5ff9bd13e` (post-review): **9/9 success**; prior `f3f491a35`: 7/7.
 
 ## Confirmed boundary violations
 
