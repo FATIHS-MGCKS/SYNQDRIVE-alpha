@@ -4,7 +4,6 @@
 |------|--------|------------|--------|
 | 2026-11-20 | VI booking driver pool adapter | POST-P6-BOUNDARY-PR6 | `VehicleIntelligenceBookingDriverPoolAdapter` delegates `booking-allowed-drivers.util` |
 | 2026-11-19 | AI vehicle booking context read adapter | POST-P6-BOUNDARY-PR4 | `AiVehicleBookingContextReadAdapter` delegates `VehicleBookingContextService` |
-| 2026-11-20 | VI booking driver pool adapter | POST-P6-BOUNDARY-PR6 | `VehicleIntelligenceBookingDriverPoolAdapter` delegates `booking-allowed-drivers.util` |
 | 2026-11-19 | Voice MCP booking read adapter | POST-P6-BOUNDARY-PR3 | `VoiceBookingReadAdapter` + mapper |
 | 2026-11-19 | WhatsApp booking operational read adapter | POST-P6-BOUNDARY-PR2 | `WhatsAppBookingOperationalReadAdapter` + mapper |
 | 2026-11-19 | Communication booking snapshot read adapter | POST-P6-BOUNDARY-PR1 | `CommunicationBookingSnapshotReadAdapter` → `findDetail` mapping |
