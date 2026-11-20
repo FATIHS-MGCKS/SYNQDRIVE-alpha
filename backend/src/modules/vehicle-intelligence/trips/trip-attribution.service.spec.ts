@@ -1,5 +1,8 @@
 import { TripAssignmentStatus } from '@prisma/client';
+import { VehicleIntelligenceBookingDriverPoolAdapter } from '../../bookings/vehicle-intelligence-booking-driver-pool/vehicle-intelligence-booking-driver-pool.adapter';
 import { TripAttributionService } from './trip-attribution.service';
+
+const bookingDriverPool = new VehicleIntelligenceBookingDriverPoolAdapter();
 
 function makeMockPrisma() {
   return {
@@ -15,7 +18,7 @@ describe('TripAttributionService', () => {
 
   beforeEach(() => {
     prisma = makeMockPrisma();
-    service = new TripAttributionService(prisma);
+    service = new TripAttributionService(prisma, bookingDriverPool);
   });
 
   it('private trip with notable behavior stays non-customer-relevant', () => {

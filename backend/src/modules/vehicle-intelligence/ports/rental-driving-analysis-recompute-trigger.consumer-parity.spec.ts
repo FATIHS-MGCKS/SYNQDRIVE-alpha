@@ -64,6 +64,7 @@ describe('RentalDrivingAnalysisRecomputeTriggerPort — VI consumer parity', () 
       {} as any,
       {} as any,
       jobDispatcher as any,
+      { resolveBookingDriverPool: jest.fn(), isDriverInBookingPool: jest.fn() },
       trigger,
     );
 

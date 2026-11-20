@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   type Prisma,
@@ -33,6 +33,10 @@ import {
   scopedVehicleTripWhere,
 } from '../tenant/vehicle-intelligence-tenant.scope';
 import { CanonicalTripHydrationBatchLoader } from './trip-canonical-hydration.batch';
+import {
+  VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT,
+  type VehicleIntelligenceBookingDriverPoolPort,
+} from '../ports/vehicle-intelligence-booking-driver-pool.port';
 import type { CanonicalTripDecisionSummary } from './trip-canonical-hydration.types';
 import type { TripHydrationTripInput } from './trip-canonical-hydration.types';
 import {
@@ -162,8 +166,10 @@ export class TripAnalyticsCanonicalService {
     private readonly prisma: PrismaService,
     private readonly tripAssignmentService: TripAssignmentService,
     private readonly tripAttributionService: TripAttributionService,
+    @Inject(VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT)
+    private readonly bookingDriverPool: VehicleIntelligenceBookingDriverPoolPort,
   ) {
-    this.hydrationBatchLoader = new CanonicalTripHydrationBatchLoader(prisma);
+    this.hydrationBatchLoader = new CanonicalTripHydrationBatchLoader(prisma, bookingDriverPool);
   }
 
   async hydrateTrips<T extends TripProjection>(

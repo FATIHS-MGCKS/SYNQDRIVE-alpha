@@ -6,6 +6,9 @@ import {
 import { TripAnalyticsCanonicalService } from './trip-analytics-canonical.service';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripAttributionService } from './trip-attribution.service';
+import { VehicleIntelligenceBookingDriverPoolAdapter } from '../../bookings/vehicle-intelligence-booking-driver-pool/vehicle-intelligence-booking-driver-pool.adapter';
+
+const bookingDriverPool = new VehicleIntelligenceBookingDriverPoolAdapter();
 
 function makeMockPrisma() {
   return {
@@ -99,7 +102,8 @@ describe('TripAnalyticsCanonicalService', () => {
     service = new TripAnalyticsCanonicalService(
       prisma,
       new TripAssignmentService(prisma),
-      new TripAttributionService(prisma),
+      new TripAttributionService(prisma, bookingDriverPool),
+      bookingDriverPool,
     );
   });
 

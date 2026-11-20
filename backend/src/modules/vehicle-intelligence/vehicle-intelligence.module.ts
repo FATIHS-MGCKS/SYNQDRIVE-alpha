@@ -174,6 +174,7 @@ import { DrivingAnalysisStageRepository } from './driving-analysis-stage/driving
 import { DrivingAnalysisStageOrchestratorService } from './driving-analysis-stage/driving-analysis-stage.orchestrator.service';
 import { DrivingIntelligenceJobRepository } from './driving-intelligence-jobs/driving-intelligence-jobs.repository';
 import { DrivingIntelligenceBookingResolutionModule } from '../bookings/driving-intelligence-booking-resolution/driving-intelligence-booking-resolution.module';
+import { VehicleIntelligenceBookingDriverPoolModule } from '../bookings/vehicle-intelligence-booking-driver-pool/vehicle-intelligence-booking-driver-pool.module';
 import { DrivingIntelligenceJobDispatcherService } from './driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobHandlerRegistry } from './driving-intelligence-jobs/driving-intelligence-jobs.handler.registry';
 import { DrivingIntelligenceJobProcessorService } from './driving-intelligence-jobs/driving-intelligence-jobs.processor.service';
@@ -358,6 +359,7 @@ import { FsdDiscoveryIntegrationModule } from './fsd-integration/fsd-integration
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
     DrivingIntelligenceBookingResolutionModule,
+    VehicleIntelligenceBookingDriverPoolModule,
     forwardRef(() => NotificationsModule),
     DataAuthorizationsModule,
     Dtc02ObservabilityModule,

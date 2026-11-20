@@ -152,3 +152,7 @@ Never conflate:
 ## Core ↔ Rental health read (POST-P6-BOUNDARY-PR5)
 
 `VehicleHealthTabSummaryService` and `VehicleFileSummaryService` inject `VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT` only (not `RentalHealthService`). Type-only `VehicleHealth` imports on VI paths remain permitted in-process.
+
+## Core ↔ Rental driver pool (POST-P6-BOUNDARY-PR6)
+
+VI attribution/hydration paths inject `VEHICLE_INTELLIGENCE_BOOKING_DRIVER_POOL_PORT` (adapter delegates `booking-allowed-drivers.util`). No direct util import in Core consumers.

@@ -1,5 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
+import { VehicleIntelligenceBookingDriverPoolAdapter } from '../../bookings/vehicle-intelligence-booking-driver-pool/vehicle-intelligence-booking-driver-pool.adapter';
 import { DriverAttributionService } from './driver-attribution.service';
+
+const bookingDriverPool = new VehicleIntelligenceBookingDriverPoolAdapter();
 
 function makePrisma() {
   return {
@@ -20,6 +23,7 @@ describe('DriverAttributionService tenant security', () => {
       { findByTrip: jest.fn() } as any,
       { resolveAttributionForTrip: jest.fn() } as any,
       { enqueue: jest.fn() } as any,
+      bookingDriverPool,
     );
 
     await expect(

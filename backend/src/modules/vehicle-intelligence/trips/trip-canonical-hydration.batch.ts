@@ -5,7 +5,7 @@ import type {
   DrivingAttributionConfidence,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { resolveBookingDriverPool } from '../../bookings/booking-allowed-drivers/booking-allowed-drivers.util';
+import type { VehicleIntelligenceBookingDriverPoolPort } from '../ports/vehicle-intelligence-booking-driver-pool.port';
 import { pickCanonicalDriverAttribution } from '../driver-attribution/driver-attribution-priority';
 import type { TripAttributionBookingOverlap } from './trip-attribution.types';
 import {
@@ -61,7 +61,10 @@ function chunkIds(ids: string[], size: number): string[][] {
 }
 
 export class CanonicalTripHydrationBatchLoader {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly bookingDriverPool: VehicleIntelligenceBookingDriverPoolPort,
+  ) {}
 
   async prefetch(
     organizationId: string,
@@ -221,7 +224,7 @@ export class CanonicalTripHydrationBatchLoader {
     for (const booking of bookings) {
       map.set(
         booking.id,
-        resolveBookingDriverPool({
+        this.bookingDriverPool.resolveBookingDriverPool({
           bookingCustomerId: booking.customerId,
           assignedDriverId: booking.assignedDriverId,
           allowedRows: booking.allowedDrivers,
