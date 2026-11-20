@@ -6,8 +6,6 @@
 #   SYNQDRIVE_GREENFIELD_MIGRATE_RECOVERY=1
 #   DATABASE_URL=postgresql://...@127.0.0.1:.../<disposable-db>
 #
-# Optional:
-#   SYNQDRIVE_GREENFIELD_REQUIRE_EMPTY_DB=1  (default 1) — refuse if _prisma_migrations has rows
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -33,12 +31,27 @@ case "$DB_NAME" in
     ;;
 esac
 
-if [[ "${SYNQDRIVE_GREENFIELD_REQUIRE_EMPTY_DB:-1}" == "1" ]]; then
-  ROWS="$(psql "${DATABASE_URL}" -tAc 'SELECT COUNT(*) FROM _prisma_migrations' 2>/dev/null | tr -d ' ' || true)"
-  if [[ -n "${ROWS}" && "${ROWS}" != "0" ]]; then
-    echo "greenfield recovery: _prisma_migrations already has ${ROWS} rows (set SYNQDRIVE_GREENFIELD_REQUIRE_EMPTY_DB=0 to override)" >&2
-    exit 43
-  fi
+if ! psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -tAc 'SELECT 1' >/dev/null 2>&1; then
+  echo "greenfield recovery: cannot connect to DATABASE_URL (refusing writes)" >&2
+  exit 44
+fi
+
+HAS_MIGRATION_TABLE="$(
+  psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -tAc "
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = '_prisma_migrations'
+    )
+  " | tr -d '[:space:]'
+)"
+if [[ "${HAS_MIGRATION_TABLE}" == "t" ]]; then
+  ROWS="$(psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -tAc 'SELECT COUNT(*)::bigint FROM _prisma_migrations' | tr -d '[:space:]')"
+else
+  ROWS="0"
+fi
+if [[ "${ROWS}" != "0" ]]; then
+  echo "greenfield recovery: _prisma_migrations already has ${ROWS} rows (populated DB refused)" >&2
+  exit 43
 fi
 
 export PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1

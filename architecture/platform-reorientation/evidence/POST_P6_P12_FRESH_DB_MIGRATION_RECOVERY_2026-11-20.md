@@ -97,3 +97,24 @@ The greenfield runner sets `PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1` and delegates t
 | `backend/scripts/test/verify-composite-indexes-batch-c.ts` | Post-apply index verifier |
 | `backend/scripts/test/prisma-migrate-deploy-resilient.sh` | Verify before `resolve` on `batch_c` |
 | `backend/src/modules/core-app-m2m/testing/core-app-m2m-disposable-postgres-preflight.ts` | Allow `synqdrive_p12_*` / `synqdrive_greenfield_*` for P11 retest on bootstrapped DB |
+
+---
+
+## P12 independent security review (2026-11-20)
+
+| Control | Verdict |
+|---------|---------|
+| F1 index integrity | **PASS** — 14/14 btree columns/order, non-unique, non-partial, valid (`verify-composite-indexes-batch-c.ts`) |
+| F2 DB preflight | **PASS** — opt-in, localhost guard, allowlist, connect probe, populated `_prisma_migrations` refused; **`SYNQDRIVE_GREENFIELD_REQUIRE_EMPTY_DB=0` removed** |
+| F3 recovery entrypoint | **PASS** — `recover_special_composite_index` now requires `PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1` (parity with M252/tail) |
+| F4 greenfield cert | **PASS** — `synqdrive_p12_review_cert`, 452 migrations, idempotent replay, checksum unchanged |
+| F5 regression | **PASS** — guard bundle manifest refreshed; no `prisma/migrations/*` diff; P11 3/3 |
+
+**Confirmed defects remediated in review:**
+
+1. Index verifier checked presence only — added definition parity (btree column order, uniqueness, partial predicate).
+2. Greenfield empty-DB override could bypass populated-DB guard — removed.
+3. Empty-DB `CASE` SQL could error on missing table — split into metadata `EXISTS` + conditional count.
+4. `batch_c` recovery lacked ephemeral gate — aligned with approved ephemeral-only recovery contract.
+
+**Selftest:** `backend/scripts/test/greenfield-disposable-migrate-recovery-preflight.selftest.sh`
