@@ -96,6 +96,8 @@ Physical paths remain under single Nest modules until a future owner-scoped refa
 
 Agent enforcement: [`MONOREPO_AGENT_GUARDRAILS.md`](MONOREPO_AGENT_GUARDRAILS.md); [`.cursor/rules/projektregel.mdc`](../../.cursor/rules/projektregel.mdc); root `AGENTS.md` promotion pending owner i18n authority label when edited.
 
+**Interface readiness audit (2026-11-20):** repository evidence for VYMOD/Fleet M2M contracts — [`evidence/POST_P6_P10_CORE_EXTERNAL_APP_INTERFACE_READINESS_2026-11-20.md`](evidence/POST_P6_P10_CORE_EXTERNAL_APP_INTERFACE_READINESS_2026-11-20.md); production M2M **not armed**; optional G1 M2M entitlements read gap only if consumers need payload beyond token gate.
+
 ## Product map
 
 | Product | `ProductSlug` | Status in Alpha | External M2M |
