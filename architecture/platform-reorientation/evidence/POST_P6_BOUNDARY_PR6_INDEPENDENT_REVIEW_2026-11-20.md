@@ -60,3 +60,5 @@ See machine-readable final report on post-review HEAD.
 ## Merge recommendation
 
 **MERGE_READY_AFTER_CI** for V-P1-02 scope once CI is green on review HEAD — **NO_MERGE** per operation unless owner instructs.
+
+**CI triage (`fbbe1839b`):** Vehicle Detail **Backend unit tests** failed on Actions; local `npm run test:vehicle-detail:verify:unit` **65/65 pass** on same tree — consistent with prior parallel-Jest runner flake (not PR6 assertion regression).
