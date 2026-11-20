@@ -50,14 +50,23 @@ npx jest --runInBand core-external-interface-contract.http.postgres.integration.
 | Redis rate limiting | — | `CoreAppM2mRateLimitMemoryRedis` |
 | MA MFA/Roles on unused admin paths | — | guards stubbed via `createCoreAppM2mIntegrationModule` |
 
-### Positive flow certified (VYMOD)
+### Positive flow certified (VYMOD) — HTTP + Postgres
 
 1. `CoreAppServiceClient` ACTIVE + scoped credential
 2. `CoreAppServiceOrgGrant` ACTIVE for org
-3. `OrganizationProduct` ACTIVE + `ORGANIZATION_WIDE` vehicle mode
+3. `OrganizationProduct` ACTIVE + **`ORGANIZATION_WIDE`** vehicle mode (no `VehicleProductGrant` row in this test)
 4. Vehicle with `registryLifecycle=ACTIVE`
 5. `POST /api/v1/auth/core-app/token` → service JWT
 6. `GET /api/v1/core/read/v1/organizations/:orgId/vehicles` + detail
+
+### Vehicle authorization evidence by mode
+
+| Mode | What P11 proves | Where B/C are proven |
+|------|-----------------|---------------------|
+| **A. ORGANIZATION_WIDE** | HTTP end-to-end on real Postgres (P11 positive test) | This PR |
+| **B. SELECTED_VEHICLES** | Not HTTP-certified in P11 | `product-vehicle-access.postgres.integration.spec.ts` — `SELECTED_VEHICLES zero grants…` / `…with ACTIVE grant authorizes only granted vehicle` (real Postgres, `ProductVehicleAccessService`) |
+| **C. Per-vehicle grant rows** | Not created in P11 positive path | Same service-level Postgres specs + `vehicle-product-grant.postgres.integration.spec.ts` |
+| **HTTP SELECTED isolation** | Not Postgres-backed | `core-read-vehicles.http-security.integration.spec.ts` — `enforces SELECTED_VEHICLES isolation` (in-memory Prisma mock) |
 
 ### Postgres-backed negatives (P11 file)
 
@@ -89,7 +98,7 @@ Disabled client, inactive product, stale credential/grant versions, scope escala
 | **ENTITLEMENT_DB** | PASS (ACTIVE `OrganizationProduct` gate at exchange + read) |
 | **M2M_TOKEN_DB** | PASS (real HTTP + bcrypt + persistence) |
 | **VEHICLE_READ_DB** | PASS (list + detail over real Postgres) |
-| **TENANT_ISOLATION_DB** | PASS (foreign org token deny); SELECTED_VEHICLES matrix via reused HTTP specs |
+| **TENANT_ISOLATION_DB** | PASS (revoked grant + foreign org token deny on real Postgres); per-vehicle scope not HTTP+PG in P11 |
 | **CORE_EXTERNAL_INTERFACE_DB_CERTIFICATION** | **PASS_WITH_FRESH_DB_CHAIN_BLOCKER** |
 | **PRODUCTION_READINESS** | **NOT_CLAIMED** |
 
@@ -98,3 +107,13 @@ Disabled client, inactive product, stale credential/grant versions, scope escala
 ## CI note
 
 New suite is **opt-in** (same pattern as P3 `CORE_APP_M2M_POSTGRES_INTEGRATION`). Default CI continues representative mocked HTTP security suites; no production M2M flags changed.
+
+**GITHUB_POSTGRES_CERTIFICATION:** **NOT_VERIFIED** — `core-external-interface-contract.http.postgres.integration.spec.ts` is not referenced in `.github/workflows/*` (local/agent opt-in only).
+
+---
+
+## Independent review (P11_INDEPENDENT_REVIEW)
+
+**Reviewed HEAD:** `1edfddd8300b24e9193222b31eb3fe9a27d4d4ba`
+**F2:** Positive path is **ORGANIZATION_WIDE only**; SELECTED/grant enforcement cited from existing Postgres service tests — no duplicate HTTP postgres case added.
+**F6:** `GITHUB_POSTGRES_CERTIFICATION = NOT_VERIFIED`

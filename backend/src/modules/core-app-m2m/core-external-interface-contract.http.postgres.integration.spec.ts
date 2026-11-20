@@ -167,7 +167,7 @@ const USER_JWT_SECRET = 'p11-disposable-user-jwt-secret';
       });
   }
 
-  it('positive: registry + grant + ACTIVE org product + vehicle grant → token → vehicle read (real HTTP + Postgres)', async () => {
+  it('positive: service client + org grant + ACTIVE org product + ORGANIZATION_WIDE vehicle access → token → vehicle read (real HTTP + Postgres)', async () => {
     const tokenRes = await exchangeToken();
     expect(tokenRes.status).toBe(200);
     expect(tokenRes.body.accessToken).toBeDefined();
