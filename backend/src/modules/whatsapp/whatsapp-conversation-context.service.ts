@@ -5,7 +5,10 @@ import {
   WHATSAPP_BOOKING_OPERATIONAL_READ_PORT,
   type WhatsAppBookingOperationalReadPort,
 } from './ports/whatsapp-booking-operational-read.port';
-import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import {
+  CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT,
+  type CoreBookingDocumentBundleViewPort,
+} from '@modules/platform-channels/ports/core-booking-document-bundle-view.port';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { WhatsAppConsentService } from './whatsapp-consent.service';
 import { normalizePhoneNumber } from './utils/whatsapp-phone.util';
@@ -27,7 +30,8 @@ export class WhatsAppConversationContextService {
     private readonly prisma: PrismaService,
     @Inject(WHATSAPP_BOOKING_OPERATIONAL_READ_PORT)
     private readonly bookingRead: WhatsAppBookingOperationalReadPort,
-    private readonly documentBundle: BookingDocumentBundleService,
+    @Inject(CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT)
+    private readonly documentBundleView: CoreBookingDocumentBundleViewPort,
     private readonly damages: DamagesService,
     private readonly consent: WhatsAppConsentService,
   ) {}
@@ -205,9 +209,9 @@ export class WhatsAppConversationContextService {
 
     if (bookingId && !documents) {
       try {
-        const bundle = await this.documentBundle.getBundleView(orgId, bookingId);
+        const bundle = await this.documentBundleView.getBundleView(orgId, bookingId);
         documents = {
-          bundleStatus: bundle.bundle.status,
+          bundleStatus: bundle.bundleStatus,
           missingCount: bundle.missingLegalDocuments.length,
           missingLabels: bundle.missingLegalDocuments,
           warnings: bundle.warnings,

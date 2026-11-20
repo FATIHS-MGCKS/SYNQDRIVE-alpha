@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import whatsappConfig from '@config/whatsapp.config';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { WhatsAppBookingOperationalReadModule } from '@modules/bookings/whatsapp-booking-operational-read/whatsapp-booking-operational-read.module';
-import { DocumentsModule } from '@modules/documents/documents.module';
+import { CoreBookingDocumentBundleViewModule } from '@modules/documents/core-booking-document-bundle-view/core-booking-document-bundle-view.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
@@ -33,7 +33,7 @@ import { WhatsAppLegacyHttpCompatibilityService } from './whatsapp-legacy-http-c
     forwardRef(() => CommunicationModule),
     ActivityLogModule,
     WhatsAppBookingOperationalReadModule,
-    DocumentsModule,
+    CoreBookingDocumentBundleViewModule,
     VehiclesModule,
     forwardRef(() => VehicleIntelligenceModule),
     TasksModule,

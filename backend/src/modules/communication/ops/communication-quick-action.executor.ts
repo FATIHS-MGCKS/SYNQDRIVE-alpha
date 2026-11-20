@@ -15,7 +15,10 @@ import {
   COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT,
   type CommunicationBookingSnapshotReadPort,
 } from '../ports/communication-booking-snapshot-read.port';
-import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import {
+  CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT,
+  type CoreBookingDocumentBundleViewPort,
+} from '@modules/platform-channels/ports/core-booking-document-bundle-view.port';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { TaskPermissionService } from '@modules/tasks/task-permission.service';
 import { whatsappConversationTaskDedupKey } from '@modules/tasks/automation/task-automation-rule.util';
@@ -50,7 +53,8 @@ export class CommunicationQuickActionExecutorService {
     private readonly aiTools: WhatsAppAiToolsService,
     @Inject(COMMUNICATION_BOOKING_SNAPSHOT_READ_PORT)
     private readonly bookingSnapshotRead: CommunicationBookingSnapshotReadPort,
-    private readonly documentBundle: BookingDocumentBundleService,
+    @Inject(CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT)
+    private readonly documentBundleView: CoreBookingDocumentBundleViewPort,
     private readonly tasks: TasksService,
     private readonly taskPermissions: TaskPermissionService,
     private readonly contextLink: CommunicationContextLinkService,
@@ -95,8 +99,8 @@ export class CommunicationQuickActionExecutorService {
           nativeConversationId,
           WhatsAppTemplateCategory.MISSING_DOCUMENTS,
           async (orgId, bookingId) => {
-            const bundle = await this.documentBundle.getBundleView(orgId, bookingId);
-            const missing = [...bundle.missingLegalDocuments, ...bundle.legal.missing];
+            const bundle = await this.documentBundleView.getBundleView(orgId, bookingId);
+            const missing = [...bundle.missingLegalDocuments, ...bundle.legalMissing];
             if (missing.length === 0) {
               throw new BadRequestException('No missing documents for this booking');
             }

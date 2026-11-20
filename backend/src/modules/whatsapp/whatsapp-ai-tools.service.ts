@@ -4,7 +4,10 @@ import {
   WHATSAPP_BOOKING_OPERATIONAL_READ_PORT,
   type WhatsAppBookingOperationalReadPort,
 } from './ports/whatsapp-booking-operational-read.port';
-import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import {
+  CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT,
+  type CoreBookingDocumentBundleViewPort,
+} from '@modules/platform-channels/ports/core-booking-document-bundle-view.port';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { TasksService } from '@modules/tasks/tasks.service';
@@ -19,7 +22,8 @@ export class WhatsAppAiToolsService {
     private readonly prisma: PrismaService,
     @Inject(WHATSAPP_BOOKING_OPERATIONAL_READ_PORT)
     private readonly bookingRead: WhatsAppBookingOperationalReadPort,
-    private readonly documentBundle: BookingDocumentBundleService,
+    @Inject(CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT)
+    private readonly documentBundleView: CoreBookingDocumentBundleViewPort,
     private readonly vehicles: VehiclesService,
     private readonly damages: DamagesService,
     private readonly tasks: TasksService,
@@ -108,9 +112,9 @@ export class WhatsAppAiToolsService {
     if (!ctx.booking) {
       return { tool: 'getMissingDocuments', ok: false, summary: 'Keine Buchung verknüpft' };
     }
-    const bundle = await this.documentBundle.getBundleView(orgId, ctx.booking.id);
+    const bundle = await this.documentBundleView.getBundleView(orgId, ctx.booking.id);
     const missing = bundle.missingLegalDocuments.length + bundle.warnings.length;
-    if (missing === 0 && bundle.legal.missing.length === 0) {
+    if (missing === 0 && bundle.legalMissing.length === 0) {
       return {
         tool: 'getMissingDocuments',
         ok: true,
@@ -118,7 +122,7 @@ export class WhatsAppAiToolsService {
         data: { missingCount: 0 },
       };
     }
-    const labels = [...bundle.missingLegalDocuments, ...bundle.legal.missing];
+    const labels = [...bundle.missingLegalDocuments, ...bundle.legalMissing];
     return {
       tool: 'getMissingDocuments',
       ok: true,

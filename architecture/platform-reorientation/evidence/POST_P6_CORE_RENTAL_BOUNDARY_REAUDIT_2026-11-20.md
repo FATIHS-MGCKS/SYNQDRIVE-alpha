@@ -103,6 +103,7 @@
 | Rule | Guardrails § Core → Rental business-logic services forbidden |
 | Risk | Platform channels coupled to Rental bundle generation lifecycle; harder to extract/version |
 | Smallest remediation | Core-owned **document bundle read/generation command port(s)** with Rental adapter — scope per channel (likely shared `COMMUNICATION_*` / `WHATSAPP_*` token family) |
+| Remediation draft (2026-11-20) | **POST-P6-BOUNDARY-PR8** — `CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT` + Rental adapter; four consumers migrated; see [`POST_P6_BOUNDARY_PR8_CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT_2026-11-20.md`](POST_P6_BOUNDARY_PR8_CORE_BOOKING_DOCUMENT_BUNDLE_VIEW_PORT_2026-11-20.md). **Not merged at re-audit baseline** `8b95e5e26`. Residual direct bundle injections (tasks outbox, bookings, invoices, etc.) unchanged. |
 
 ### V-P1-04 — AI Platform → `RentalHealthService` (P1)
 
