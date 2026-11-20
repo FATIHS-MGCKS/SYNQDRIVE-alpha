@@ -1,8 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { FuelType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { RentalHealthService } from '../../rental-health/rental-health.service';
 import type { VehicleHealth } from '../../rental-health/rental-health.types';
+import {
+  VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT,
+  type VehicleIntelligenceRentalHealthReadPort,
+} from '../ports/vehicle-intelligence-rental-health-read.port';
 import { ServiceComplianceService } from '../service-compliance/service-compliance.service';
 import type { ServiceInfoStatusDto } from '../service-compliance/service-compliance.service';
 import type {
@@ -69,7 +72,8 @@ function specRow(
 export class VehicleFileSummaryService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rentalHealth: RentalHealthService,
+    @Inject(VEHICLE_INTELLIGENCE_RENTAL_HEALTH_READ_PORT)
+    private readonly rentalHealth: VehicleIntelligenceRentalHealthReadPort,
     private readonly serviceCompliance: ServiceComplianceService,
   ) {}
 

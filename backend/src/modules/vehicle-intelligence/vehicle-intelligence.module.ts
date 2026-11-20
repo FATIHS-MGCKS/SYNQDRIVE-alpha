@@ -144,7 +144,7 @@ import { VehicleMotionPhysicsReferenceService } from './motion-physics-reference
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
-import { RentalHealthModule } from '../rental-health/rental-health.module';
+import { VehicleIntelligenceRentalHealthReadModule } from '../rental-health/vehicle-intelligence-rental-health-read/vehicle-intelligence-rental-health-read.module';
 import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { MaintenanceForecastService } from './service-compliance/maintenance-forecast/maintenance-forecast.service';
@@ -353,7 +353,7 @@ import { FsdDiscoveryIntegrationModule } from './fsd-integration/fsd-integration
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
     forwardRef(() => HighMobilityModule),
-    forwardRef(() => RentalHealthModule),
+    forwardRef(() => VehicleIntelligenceRentalHealthReadModule),
     forwardRef(() => TechnicalObservationsModule),
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => RentalDrivingAnalysisModule),
