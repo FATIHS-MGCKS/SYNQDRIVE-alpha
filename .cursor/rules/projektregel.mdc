@@ -13,7 +13,7 @@ You are working inside the SynqDrive codebase.
 
 SynqDrive is a multi-tenant SaaS platform for fleet, rental, telematics, vehicle health, maintenance, AI-assisted analysis, and operations management.
 
-**SYNQDRIVE-alpha binding shape:** one repository, one NestJS runtime, one deployment, one shared database. Core and Rental are **logical** domains — **read first:** [`architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md`](../../architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md) and [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md). No physical repo extraction; co-located Rental does **not** require M2M.
+**SYNQDRIVE-alpha binding shape:** one repository, one NestJS runtime, one deployment, one shared database. Core and Rental are **logical** domains — **read first:** [`architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md`](../../architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md) and [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](../../architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md). Security/privacy-relevant changes: [`architecture/compliance/ENGINEERING_COMPLIANCE_STANDARD.md`](../../architecture/compliance/ENGINEERING_COMPLIANCE_STANDARD.md). No physical repo extraction; co-located Rental does **not** require M2M.
 
 You must follow these rules strictly.
 
