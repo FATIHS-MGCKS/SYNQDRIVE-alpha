@@ -21,6 +21,9 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StorageService } from '@shared/storage/storage.service';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import {
   AdminCreateSupportTicketDto,
   CreateInternalNoteDto,
@@ -118,8 +121,9 @@ export class SupportController {
   }
 
   @Post('admin/support/tickets')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async adminCreate(@Body() body: AdminCreateSupportTicketDto) {
     return this.supportService.create({
       organizationId: body.organizationId,
@@ -133,8 +137,9 @@ export class SupportController {
   }
 
   @Post('admin/support/tickets/:id/messages')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async adminAddMessage(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -149,8 +154,9 @@ export class SupportController {
   }
 
   @Post('master/support/tickets/:id/messages')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async masterAddMessage(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -165,8 +171,9 @@ export class SupportController {
   }
 
   @Post('admin/support/tickets/:id/internal-notes')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async adminInternalNote(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -180,8 +187,9 @@ export class SupportController {
   }
 
   @Post('master/support/tickets/:id/internal-notes')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async masterInternalNote(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -195,8 +203,9 @@ export class SupportController {
   }
 
   @Patch('admin/support/tickets/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async update(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -215,8 +224,9 @@ export class SupportController {
   }
 
   @Patch('master/support/tickets/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async masterUpdate(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -226,8 +236,9 @@ export class SupportController {
   }
 
   @Patch('admin/support/tickets/:id/status')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async updateStatus(
     @Param('id') id: string,
     @Req() req: AuthRequest,
@@ -364,8 +375,9 @@ export class SupportController {
   // ─── File upload ─────────────────────────────────
 
   @Post('support/upload')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
