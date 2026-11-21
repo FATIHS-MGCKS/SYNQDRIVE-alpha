@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { TripDetectionState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { evaluateApdsV3OfflinePolicy } from './apds-v3-offline-policy.evaluator';
@@ -41,7 +41,7 @@ function activityTierFromTrip(state: TripDetectionState | null): string {
 }
 
 @Injectable()
-export class ApdsV3ShadowService implements OnModuleDestroy {
+export class ApdsV3ShadowService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ApdsV3ShadowService.name);
   private readonly writeTimestampsMs: number[] = [];
   private readonly budgetLock = { chain: Promise.resolve() as Promise<void> };
@@ -62,6 +62,10 @@ export class ApdsV3ShadowService implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.runtime.drainForShutdown();
+  }
+
+  onModuleInit(): void {
+    this.metrics?.setRuntimeReady(this.isRuntimeReady());
   }
 
   isRuntimeReady(): boolean {

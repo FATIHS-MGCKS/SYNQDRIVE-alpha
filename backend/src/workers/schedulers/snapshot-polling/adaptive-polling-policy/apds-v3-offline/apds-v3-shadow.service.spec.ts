@@ -100,6 +100,18 @@ describe('ApdsV3ShadowService', () => {
     await svc.onModuleDestroy();
   });
 
+  it('onModuleInit publishes runtime_ready gauge from env kill switch', () => {
+    const repo = { insertPollStartDecision } as unknown as ApdsV3ShadowRepository;
+    const svc = new ApdsV3ShadowService(
+      prisma as never,
+      eligibility as unknown as ApdsV3ShadowEligibilityService,
+      repo,
+      metrics as never,
+    );
+    svc.onModuleInit();
+    expect(metrics.setRuntimeReady).toHaveBeenCalledWith(true);
+  });
+
   it('kill switch off is no-op', async () => {
     process.env.WORKER_APDS_V3_SHADOW_ENABLED = 'false';
     const repo = { insertPollStartDecision } as unknown as ApdsV3ShadowRepository;

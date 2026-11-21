@@ -21,14 +21,14 @@ describe('resolveApdsV3ShadowPhysicalRequestIdentity', () => {
       'v',
     );
     expect(id).toEqual({
-      physicalRequestId: 'physical-fetch:bull-stable:run:2',
-      physicalFetchAttemptId: 'physical-fetch:bull-stable:run:2',
+      physicalRequestId: 'physical-fetch:exec:attempt-uuid:run:2',
+      physicalFetchAttemptId: 'physical-fetch:exec:attempt-uuid:run:2',
       enqueueAttemptId: 'attempt-uuid',
       identityClass: 'CORRELATED',
     });
   });
 
-  it('DERIVED from BullMQ job id + attemptsMade when enqueue evidence missing', () => {
+  it('DERIVED from BullMQ job id + attemptsMade when enqueue evidence missing (non-canonical job id)', () => {
     const id = resolveApdsV3ShadowPhysicalRequestIdentity(
       {
         id: 'job-99',
@@ -42,6 +42,81 @@ describe('resolveApdsV3ShadowPhysicalRequestIdentity', () => {
       physicalRequestId: 'physical-fetch:job-99:run:1',
       enqueueAttemptId: null,
     });
+  });
+
+  it('returns null for canonical snapshot job id without admissible enqueue execution anchor', () => {
+    expect(
+      resolveApdsV3ShadowPhysicalRequestIdentity(
+        {
+          id: 'snapshot-v',
+          attemptsMade: 0,
+          data: { vehicleId: 'v', dimoTokenId: 1 },
+        },
+        'v',
+      ),
+    ).toBeNull();
+  });
+
+  it('A — separate poll cycles: same vehicle/job/attemptsMade, different execution ids', () => {
+    const jobShell = {
+      id: 'snapshot-v',
+      attemptsMade: 0,
+      data: { vehicleId: 'v', dimoTokenId: 1 },
+    };
+    const pollA = resolveApdsV3ShadowPhysicalRequestIdentity(
+      {
+        ...jobShell,
+        data: {
+          ...jobShell.data,
+          apdShadowEnqueueEvidence: {
+            attemptId: 'exec-a',
+            canonicalJobId: 'snapshot-v',
+            binding: 'PHYSICAL_JOB_PAYLOAD' as const,
+            outcome: 'ENQUEUED' as const,
+            observedAtMs: 1,
+          },
+        },
+      },
+      'v',
+    );
+    const pollB = resolveApdsV3ShadowPhysicalRequestIdentity(
+      {
+        ...jobShell,
+        data: {
+          ...jobShell.data,
+          apdShadowEnqueueEvidence: {
+            attemptId: 'exec-b',
+            canonicalJobId: 'snapshot-v',
+            binding: 'PHYSICAL_JOB_PAYLOAD' as const,
+            outcome: 'ENQUEUED' as const,
+            observedAtMs: 2,
+          },
+        },
+      },
+      'v',
+    );
+    expect(pollA?.physicalRequestId).not.toBe(pollB?.physicalRequestId);
+  });
+
+  it('B — same poll execution: identical physical id for delivery replay', () => {
+    const job = {
+      id: 'snapshot-v',
+      attemptsMade: 0,
+      data: {
+        vehicleId: 'v',
+        dimoTokenId: 1,
+        apdShadowEnqueueEvidence: {
+          attemptId: 'exec-same',
+          canonicalJobId: 'snapshot-v',
+          binding: 'PHYSICAL_JOB_PAYLOAD' as const,
+          outcome: 'ENQUEUED' as const,
+          observedAtMs: 1,
+        },
+      },
+    };
+    const first = resolveApdsV3ShadowPhysicalRequestIdentity(job, 'v');
+    const second = resolveApdsV3ShadowPhysicalRequestIdentity(job, 'v');
+    expect(first?.physicalRequestId).toBe(second?.physicalRequestId);
   });
 
   it('BullMQ retry increments physical fetch attempt id', () => {
