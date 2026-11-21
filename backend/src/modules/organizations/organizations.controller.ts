@@ -18,6 +18,9 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { AdminCreateOrganizationDto } from './dto/admin-create-organization.dto';
+import { AdminUpdateOrganizationDto } from './dto/admin-update-organization.dto';
+import { CreateOrgAdminDto } from '@shared/dto/organization.dto';
 
 @Controller('admin/organizations')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -59,19 +62,12 @@ export class OrganizationsController {
   }
 
   @Post()
-  async create(
-    @Body()
-    body: Record<string, unknown>,
-  ) {
+  async create(@Body() body: AdminCreateOrganizationDto) {
     return this.organizationsService.create(body);
   }
 
   @Post(':id/admin')
-  async createAdmin(
-    @Param('id') id: string,
-    @Body()
-    body: { name: string; email: string; password: string },
-  ) {
+  async createAdmin(@Param('id') id: string, @Body() body: CreateOrgAdminDto) {
     return this.organizationsService.createOrgAdmin(id, body);
   }
 
@@ -94,12 +90,8 @@ export class OrganizationsController {
   }
 
   @Patch(':id')
-  async update(
-    @Param('id') id: string,
-    @Body()
-    body: Record<string, unknown>,
-  ) {
-    return this.organizationsService.update(id, body as any);
+  async update(@Param('id') id: string, @Body() body: AdminUpdateOrganizationDto) {
+    return this.organizationsService.update(id, body);
   }
 
   @Delete(':id')
