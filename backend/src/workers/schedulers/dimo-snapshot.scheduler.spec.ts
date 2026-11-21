@@ -113,6 +113,14 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
     );
   });
 
+  it('P6A — enqueue cohort does not filter organization lifecycle (telemetry may continue for SUSPENDED org vehicles)', async () => {
+    findMany.mockResolvedValue([]);
+    await scheduler.enqueueSnapshotJobs();
+    const where = findMany.mock.calls[0][0].where as Record<string, unknown>;
+    expect(where.organization).toBeUndefined();
+    expect(where).not.toHaveProperty('organizationId');
+  });
+
   it('legacy fixed cadence enqueues all matched vehicles every tick', async () => {
     process.env.WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE = 'true';
     const legacyRequestSnapshot = jest.fn().mockResolvedValue('ENQUEUED');
