@@ -158,6 +158,8 @@ export class VehiclesController {
 
   @Patch('admin/vehicles/:vehicleId/hv-master-specification')
   @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
   async upsertHvMasterSpecificationAdmin(
     @Param('vehicleId') vehicleId: string,
     @Body() body: UpsertVehicleHvMasterSpecificationDto,
@@ -598,6 +600,8 @@ export class VehiclesController {
 
   @Put('admin/vehicle-exterior-model-images/:view')
   @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async upsertExteriorModelImage(
     @Param('view') view: string,
     @Body()
@@ -623,6 +627,8 @@ export class VehiclesController {
 
   @Put('admin/vehicles/:vehicleId/exterior-images/:view')
   @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async upsertExteriorImageAdmin(
     @Param('vehicleId') vehicleId: string,
     @Param('view') view: string,
@@ -640,6 +646,8 @@ export class VehiclesController {
 
   @Post('admin/vehicles/:vehicleId/exterior-images/:view/save-as-model')
   @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async saveExteriorImageAsModelTemplate(
     @Param('vehicleId') vehicleId: string,
     @Param('view') view: string,
@@ -654,6 +662,8 @@ export class VehiclesController {
 
   @Post('admin/vehicles/:vehicleId/exterior-images/:view/apply-model')
   @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async applyExteriorModelImageToVehicle(
     @Param('vehicleId') vehicleId: string,
     @Param('view') view: string,
@@ -670,6 +680,8 @@ export class VehiclesController {
 
   @Delete('admin/vehicles/:vehicleId/exterior-images/:view')
   @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
   async deleteExteriorImageAdmin(
     @Param('vehicleId') vehicleId: string,
     @Param('view') view: string,
