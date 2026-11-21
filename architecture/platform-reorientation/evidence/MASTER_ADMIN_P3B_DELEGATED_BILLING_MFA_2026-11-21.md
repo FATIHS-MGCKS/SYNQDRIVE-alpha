@@ -32,7 +32,7 @@ Not wired: `BillingEmailDeliveryController` (`MASTER_ADMIN` only).
 
 1. Set `IAM_MFA_MASTER_BILLING_DELEGATE_ENABLED=true` (isolated gate; does not enable master-admin MFA).
 2. Ensure operators can enroll MFA via existing IAM MFA APIs (`IAM_MFA_ENROLLMENT_ENABLED` recommended).
-3. Re-issue JWTs after granting/revoking `master-billing` so `platformPermissions` matches authorization store.
+3. **Blocker (2026-11-21):** Implement canonical `master-billing` grant store + JWT issuer wiring — see [`MASTER_ADMIN_P3B_JWT_INTEGRATION_CORRECTION_2026-11-21.md`](./MASTER_ADMIN_P3B_JWT_INTEGRATION_CORRECTION_2026-11-21.md). Until then, only `MASTER_ADMIN` can use real signed JWTs on billing routes.
 
 ## Permission revocation
 
@@ -42,6 +42,8 @@ JWT `platformPermissions` are fixed at issuance (`AuthGuard.validateJwt`). Revoc
 
 - `backend/src/shared/auth/master-billing-delegate-mfa.guard.spec.ts`
 - `backend/src/modules/billing/master-billing-delegate.mfa.http-security.spec.ts`
+- `backend/src/modules/auth/refresh-token.platform-permissions.gap.spec.ts` (issuer gap)
+- `backend/src/modules/billing/master-billing.real-jwt.http-security.spec.ts` (real JWT HTTP)
 
 ## Registry
 
