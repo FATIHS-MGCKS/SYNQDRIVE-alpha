@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, GoneException } from '@nestjs/common';
 import { MembershipRole, MembershipStatus } from '@prisma/client';
 import { UsersService } from './users.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -128,6 +128,7 @@ describe('UsersService — security & membership', () => {
       }),
     );
     expect(lifecycle.suspend).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('reactivates REMOVED membership on createOrgUser', async () => {
@@ -209,6 +210,6 @@ describe('UsersService — security & membership', () => {
         workerUserId,
         { id: workerUserId },
       ),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toBeInstanceOf(GoneException);
   });
 });

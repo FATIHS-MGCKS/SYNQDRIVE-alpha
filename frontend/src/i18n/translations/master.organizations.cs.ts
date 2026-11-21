@@ -72,6 +72,8 @@ export const masterOrganizationsCs = {
   'master.organizations.iam.revokeConfirm': 'Odvolat pozvánku pro {{recipient}}?',
   'master.organizations.iam.suspendSuccess': 'Uživatel pozastaven v této organizaci.',
   'master.organizations.iam.reactivateSuccess': 'Uživatel obnoven.',
+  'master.organizations.iam.reactivateMembershipOnlyGlobalLocked':
+    'Členství v organizaci obnoveno; pozastavení účtu platformy stále blokuje přihlášení.',
   'master.organizations.iam.roleAssignSuccess': 'Organizační role přiřazena.',
   'master.organizations.iam.mutationFailed': 'Akce se nezdařila: {{error}}',
 };

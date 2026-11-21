@@ -72,6 +72,8 @@ export const masterOrganizationsTr = {
   'master.organizations.iam.revokeConfirm': '{{recipient}} için davet iptal edilsin mi?',
   'master.organizations.iam.suspendSuccess': 'Kullanıcı bu kuruluşta askıya alındı.',
   'master.organizations.iam.reactivateSuccess': 'Kullanıcı yeniden etkinleştirildi.',
+  'master.organizations.iam.reactivateMembershipOnlyGlobalLocked':
+    'Kuruluş üyeliği yeniden etkinleştirildi; platform hesabı askısı girişi hâlâ engelliyor.',
   'master.organizations.iam.roleAssignSuccess': 'Kuruluş rolü atandı.',
   'master.organizations.iam.mutationFailed': 'İşlem başarısız: {{error}}',
 };

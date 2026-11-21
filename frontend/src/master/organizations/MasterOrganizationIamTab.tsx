@@ -24,6 +24,7 @@ import {
   type IamTeamListItemDto,
   type OrganizationInviteDto,
   type OrganizationRoleDto,
+  type OrgUserDto,
 } from '../../lib/api';
 import { isStepUpRequiredError } from '../../lib/mfa';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -296,20 +297,29 @@ export function MasterOrganizationIamTab({
     if (!userId) return;
     const key = `suspend:${userId}`;
     setBusyKey(key);
+    let patchResult: OrgUserDto | undefined;
     try {
       await iamMutations.runWithStepUp(
         async () => {
-          await api.users.updateByOrg(orgId, userId, {
+          patchResult = await api.users.updateByOrg(orgId, userId, {
             status: (suspended ? 'ACTIVE' : 'SUSPENDED') as 'ACTIVE' | 'SUSPENDED',
           });
         },
         {
           onSuccess: async () => {
-            toast.success(
-              suspended
-                ? t('master.organizations.iam.reactivateSuccess')
-                : t('master.organizations.iam.suspendSuccess'),
-            );
+            const globalStillLocked =
+              suspended &&
+              patchResult?.membershipStatus === 'ACTIVE' &&
+              patchResult?.globalUserStatus === 'SUSPENDED';
+            if (globalStillLocked) {
+              toast.warning(t('master.organizations.iam.reactivateMembershipOnlyGlobalLocked'));
+            } else {
+              toast.success(
+                suspended
+                  ? t('master.organizations.iam.reactivateSuccess')
+                  : t('master.organizations.iam.suspendSuccess'),
+              );
+            }
             await refresh();
           },
         },

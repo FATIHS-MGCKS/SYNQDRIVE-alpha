@@ -55,26 +55,27 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
           userId: IAM_REGRESSION_IDS.multiOrgUser,
         }),
       );
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 
   describe('multi-org suspend', () => {
-    it('suspends membership in org A only', async () => {
-      const { prisma, service } = createUsersServiceHarness();
+    it('suspends membership in org A only via lifecycle.suspend', async () => {
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
       mockOrgAdminActorMembership(prisma, activeWorkerMembership);
-      prisma.organizationMembership.update.mockResolvedValue({});
       jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
 
       await service.updateOrgUser(
         IAM_REGRESSION_IDS.orgA,
         IAM_REGRESSION_IDS.multiOrgUser,
         { status: 'SUSPENDED' },
-        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
+        { id: IAM_REGRESSION_IDS.adminA, platformRole: 'MASTER_ADMIN' },
       );
 
-      expect(prisma.organizationMembership.update).toHaveBeenCalledWith(
+      expect(lifecycle.suspend).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ status: MembershipStatus.SUSPENDED }),
+          organizationId: IAM_REGRESSION_IDS.orgA,
+          userId: IAM_REGRESSION_IDS.multiOrgUser,
         }),
       );
       expect(prisma.user.update).not.toHaveBeenCalled();
@@ -83,26 +84,27 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
 
   describe('multi-org removal', () => {
     it('sets membership REMOVED without deleting global user', async () => {
-      const { prisma, service } = createUsersServiceHarness();
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
       prisma.organizationMembership.findFirst.mockResolvedValue({
         id: IAM_REGRESSION_IDS.membershipA,
         role: MembershipRole.WORKER,
         status: MembershipStatus.ACTIVE,
       });
       prisma.organizationMembership.count.mockResolvedValue(1);
-      prisma.organizationMembership.update.mockResolvedValue({});
 
       await service.removeOrgUser(
         IAM_REGRESSION_IDS.orgA,
         IAM_REGRESSION_IDS.multiOrgUser,
-        { id: IAM_REGRESSION_IDS.adminA },
+        { id: IAM_REGRESSION_IDS.adminA, platformRole: 'MASTER_ADMIN' },
       );
 
-      expect(prisma.organizationMembership.update).toHaveBeenCalledWith(
+      expect(lifecycle.remove).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: { status: MembershipStatus.REMOVED },
+          organizationId: IAM_REGRESSION_IDS.orgA,
+          userId: IAM_REGRESSION_IDS.multiOrgUser,
         }),
       );
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 
@@ -163,52 +165,52 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
   });
 
   describe('global user status unchanged', () => {
-    it('reactivate does not force global User.status ACTIVE', async () => {
-      const { prisma, service } = createUsersServiceHarness();
+    it('org membership reactivate does not mutate global User.status', async () => {
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
+      prisma.organizationMembership.findFirst.mockResolvedValue({
+        id: IAM_REGRESSION_IDS.membershipA,
+        role: MembershipRole.WORKER,
+        status: MembershipStatus.SUSPENDED,
+        roleLabel: null,
+        organizationRoleId: null,
+        stationScope: null,
+        stationIds: null,
+        permissions: null,
+        fieldAgentAccess: false,
+      });
+      prisma.user.findUnique.mockResolvedValue({
+        id: IAM_REGRESSION_IDS.multiOrgUser,
+        status: UserStatus.SUSPENDED,
+      });
+      jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
+
+      await service.updateOrgUser(
+        IAM_REGRESSION_IDS.orgA,
+        IAM_REGRESSION_IDS.multiOrgUser,
+        { status: 'ACTIVE' },
+        { id: IAM_REGRESSION_IDS.adminA, platformRole: 'MASTER_ADMIN' },
+      );
+
+      expect(lifecycle.reactivate).toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('createOrgUser on REMOVED membership delegates to lifecycle.reactivate', async () => {
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
       prisma.user.findUnique.mockResolvedValue({
         id: IAM_REGRESSION_IDS.multiOrgUser,
         email: 'multi@regression.test',
         status: UserStatus.SUSPENDED,
+        firstName: 'M',
+        lastName: 'U',
+        name: 'M U',
       });
       prisma.organizationMembership.findUnique.mockResolvedValue({
         id: IAM_REGRESSION_IDS.membershipA,
         status: MembershipStatus.REMOVED,
       });
-      prisma.organizationMembership.update.mockResolvedValue({
-        id: IAM_REGRESSION_IDS.membershipA,
-        role: MembershipRole.WORKER,
-        status: MembershipStatus.ACTIVE,
-        roleLabel: null,
-        stationScope: null,
-        stationIds: null,
-        department: null,
-        position: null,
-        permissions: null,
-        fieldAgentAccess: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        user: {
-          id: IAM_REGRESSION_IDS.multiOrgUser,
-          email: 'multi@regression.test',
-          name: 'M U',
-          firstName: 'M',
-          lastName: 'U',
-          status: UserStatus.SUSPENDED,
-          phone: '',
-          mobile: '',
-          language: 'de',
-          timezone: 'Europe/Berlin',
-          dateFormat: 'DD.MM.YYYY',
-          lastLoginAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          address: '',
-          mustChangePassword: false,
-          lastLoginIp: '',
-          lastLoginDevice: '',
-        },
-        organization: { id: IAM_REGRESSION_IDS.orgA, companyName: 'Org A' },
-      });
+      lifecycle.reactivate.mockResolvedValue({ membershipId: IAM_REGRESSION_IDS.membershipA });
+      jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
 
       await service.createOrgUser(
         IAM_REGRESSION_IDS.orgA,
@@ -221,7 +223,7 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
         { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
       );
 
-      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(lifecycle.reactivate).toHaveBeenCalled();
     });
   });
 

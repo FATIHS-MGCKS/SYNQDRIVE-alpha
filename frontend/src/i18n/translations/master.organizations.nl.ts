@@ -72,6 +72,8 @@ export const masterOrganizationsNl = {
   'master.organizations.iam.revokeConfirm': 'Uitnodiging voor {{recipient}} intrekken?',
   'master.organizations.iam.suspendSuccess': 'Gebruiker opgeschort in deze organisatie.',
   'master.organizations.iam.reactivateSuccess': 'Gebruiker geheractiveerd.',
+  'master.organizations.iam.reactivateMembershipOnlyGlobalLocked':
+    'Lidmaatschap hersteld; platformschorsing blokkeert aanmelden nog steeds.',
   'master.organizations.iam.roleAssignSuccess': 'Organisatierol toegewezen.',
   'master.organizations.iam.mutationFailed': 'Actie mislukt: {{error}}',
 };

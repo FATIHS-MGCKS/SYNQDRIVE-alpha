@@ -72,6 +72,8 @@ export const masterOrganizationsEn = {
   'master.organizations.iam.revokeConfirm': 'Revoke invitation for {{recipient}}?',
   'master.organizations.iam.suspendSuccess': 'User suspended in this organization.',
   'master.organizations.iam.reactivateSuccess': 'User reactivated.',
+  'master.organizations.iam.reactivateMembershipOnlyGlobalLocked':
+    'Organization membership reactivated, but platform account suspension still blocks sign-in.',
   'master.organizations.iam.roleAssignSuccess': 'Organization role assigned.',
   'master.organizations.iam.mutationFailed': 'Action failed: {{error}}',
 };

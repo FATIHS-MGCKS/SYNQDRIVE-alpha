@@ -72,6 +72,8 @@ export const masterOrganizationsPl = {
   'master.organizations.iam.revokeConfirm': 'Cofnąć zaproszenie dla {{recipient}}?',
   'master.organizations.iam.suspendSuccess': 'Użytkownik zawieszony w tej organizacji.',
   'master.organizations.iam.reactivateSuccess': 'Użytkownik przywrócony.',
+  'master.organizations.iam.reactivateMembershipOnlyGlobalLocked':
+    'Przywrócono członkostwo w organizacji; zawieszenie konta platformy nadal blokuje logowanie.',
   'master.organizations.iam.roleAssignSuccess': 'Przypisano rolę organizacji.',
   'master.organizations.iam.mutationFailed': 'Akcja nie powiodła się: {{error}}',
 };

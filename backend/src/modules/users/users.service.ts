@@ -30,7 +30,11 @@ import { UserAccessAuditAction } from './user-access-audit.service';
 import { IamAuditService } from './iam-audit.service';
 import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
-import { ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE } from './policies/org-membership-admin.policy';
+import {
+  ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
+  ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE,
+  assertOrgAdminUpdateDoesNotTouchGlobalIdentity,
+} from './policies/org-membership-admin.policy';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -421,19 +425,7 @@ export class UsersService {
           },
         });
       } else if (passwordHash) {
-        await tx.user.update({
-          where: { id: user.id },
-          data: {
-            passwordHash,
-            mustChangePassword: true,
-            firstName: dto.firstName || user.firstName,
-            lastName: dto.lastName || user.lastName,
-            name: fullName || user.name,
-            phone: dto.phone || user.phone,
-            mobile: dto.mobile || user.mobile,
-            address: dto.address || user.address,
-          },
-        });
+        throw new BadRequestException(ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE);
       }
 
       const membership = await tx.organizationMembership.create({
@@ -570,6 +562,10 @@ export class UsersService {
       );
     }
 
+    if (actor.platformRole !== 'MASTER_ADMIN') {
+      assertOrgAdminUpdateDoesNotTouchGlobalIdentity(dto);
+    }
+
     if (dto.role !== undefined && dto.role !== membership.role) {
       if (membership.role === MembershipRole.ORG_ADMIN) {
         await this.assertNotLastActiveOrgAdmin(orgId, userId);
@@ -616,10 +612,7 @@ export class UsersService {
       if (dto.language !== undefined) userUpdate.language = dto.language;
       if (dto.timezone !== undefined) userUpdate.timezone = dto.timezone;
       if (dto.dateFormat !== undefined) userUpdate.dateFormat = dto.dateFormat;
-      if (dto.status !== undefined) {
-        userUpdate.status =
-          dto.status === 'SUSPENDED' ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
-      }
+      // Organization-scoped dto.status drives membership lifecycle only — never global User.status.
 
       if (Object.keys(userUpdate).length > 0) {
         await tx.user.update({ where: { id: userId }, data: userUpdate });
@@ -899,6 +892,7 @@ export class UsersService {
             ? 'Removed'
             : USER_STATUS_MAP[u.status] || 'Active',
       membershipStatus,
+      globalUserStatus: u.status,
       lastActive: u.lastLoginAt?.toISOString() || u.updatedAt?.toISOString() || '',
       lastLoginAt: u.lastLoginAt?.toISOString() || '',
       createdAt: u.createdAt?.toISOString() || '',

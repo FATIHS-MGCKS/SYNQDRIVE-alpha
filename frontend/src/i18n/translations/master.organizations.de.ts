@@ -72,6 +72,8 @@ export const masterOrganizationsDe = {
   'master.organizations.iam.revokeConfirm': 'Einladung für {{recipient}} widerrufen?',
   'master.organizations.iam.suspendSuccess': 'Benutzer in dieser Organisation gesperrt.',
   'master.organizations.iam.reactivateSuccess': 'Benutzer reaktiviert.',
+  'master.organizations.iam.reactivateMembershipOnlyGlobalLocked':
+    'Organisations-Mitgliedschaft reaktiviert; Plattform-Kontosperre blockiert Anmeldung weiterhin.',
   'master.organizations.iam.roleAssignSuccess': 'Organisationsrolle zugewiesen.',
   'master.organizations.iam.mutationFailed': 'Aktion fehlgeschlagen: {{error}}',
 };
