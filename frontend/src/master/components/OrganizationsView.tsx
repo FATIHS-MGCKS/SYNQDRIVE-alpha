@@ -101,13 +101,13 @@ function OrgMobileCard({
 }
 
 export function OrganizationsView({ onSelectOrg, onAddOrg }: OrganizationsViewProps) {
-  const { data, loading, error, query, setQuery, refresh } = useOrganizationsOperational();
+  const { data, loading, error, query, setQuery, refresh, refreshStrict } = useOrganizationsOperational();
   const { registerOperationalRefresh } = useOrganizationsOperationalRefresh();
 
   useEffect(() => {
-    registerOperationalRefresh(refresh);
+    registerOperationalRefresh(refreshStrict);
     return () => registerOperationalRefresh(null);
-  }, [refresh, registerOperationalRefresh]);
+  }, [refreshStrict, registerOperationalRefresh]);
   const [showCreate, setShowCreate] = useState(false);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 

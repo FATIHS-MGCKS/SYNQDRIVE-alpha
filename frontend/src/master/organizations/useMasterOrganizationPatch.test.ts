@@ -75,7 +75,7 @@ describe('useMasterOrganizationPatch', () => {
     });
   });
 
-  it('clearPending drops retry', async () => {
+  it('MFA cancel (clearPending) prevents retry PATCH', async () => {
     updateMock.mockRejectedValueOnce(new Error('[STEP_UP_REQUIRED] MFA'));
     const { result } = renderHook(() => useMasterOrganizationPatch());
 

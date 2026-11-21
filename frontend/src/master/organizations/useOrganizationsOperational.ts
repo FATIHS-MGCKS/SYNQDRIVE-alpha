@@ -53,19 +53,30 @@ export function useOrganizationsOperational() {
     writeOrgListStateToUrl(queryToUrlState(next), replace);
   }, []);
 
-  const load = useCallback(async () => {
+  type LoadOptions = { strict?: boolean };
+
+  const load = useCallback(async (options?: LoadOptions) => {
     setLoading(true);
     setError(null);
     try {
       const res = await api.organizations.listOperational(query as Record<string, string | number | undefined>);
       setData(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Organisationen konnten nicht geladen werden');
+      const message = e instanceof Error ? e.message : 'Organisationen konnten nicht geladen werden';
+      setError(message);
       setData(null);
+      if (options?.strict) {
+        throw e instanceof Error ? e : new Error(message);
+      }
     } finally {
       setLoading(false);
     }
   }, [query]);
+
+  const refresh = useCallback(() => load(), [load]);
+
+  /** Mutation-driven refresh: sets error state but rejects so callers can distinguish failure. */
+  const refreshStrict = useCallback(() => load({ strict: true }), [load]);
 
   useEffect(() => {
     void load();
@@ -77,7 +88,7 @@ export function useOrganizationsOperational() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  return { data, loading, error, query, setQuery, refresh: load };
+  return { data, loading, error, query, setQuery, refresh, refreshStrict };
 }
 
 export function useOrganizationDetail(orgId: string | null) {

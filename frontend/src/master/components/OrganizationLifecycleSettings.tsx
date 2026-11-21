@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { isStepUpRequiredError } from '../../lib/mfa';
 import { ConfirmDialog } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -32,12 +33,20 @@ export function OrganizationLifecycleSettings({
 
   const actions = allowedOrgLifecycleActions(orgStatus);
 
+  useEffect(() => {
+    setError(null);
+  }, [orgStatus]);
+
   const runAction = async (action: OrgLifecycleAction) => {
     setError(null);
     setBusyAction(action);
     try {
       await onStatusChange(orgLifecyclePatchStatus(action));
+      setError(null);
     } catch (e) {
+      if (isStepUpRequiredError(e)) {
+        return;
+      }
       setError(e instanceof Error ? e.message : t('master.organizations.update.failed'));
     } finally {
       setBusyAction(null);

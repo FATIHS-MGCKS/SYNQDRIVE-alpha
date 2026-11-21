@@ -45,6 +45,56 @@ describe('OrganizationLifecycleSettings', () => {
     expect(onStatusChange).toHaveBeenCalledWith('ACTIVE');
   });
 
+  it('does not show STEP_UP_REQUIRED as a terminal lifecycle error', async () => {
+    const onStatusChange = vi.fn().mockRejectedValue(new Error('[STEP_UP_REQUIRED] MFA required'));
+    renderSettings({
+      orgId: 'org-1',
+      orgStatus: 'PENDING',
+      orgStatusLabel: 'Pending',
+      onStatusChange,
+    });
+
+    const button = container.querySelector('button');
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('clears prior errors when orgStatus updates after successful retry', () => {
+    const onStatusChange = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = (() => {
+      renderSettings({
+        orgId: 'org-1',
+        orgStatus: 'ACTIVE',
+        orgStatusLabel: 'Active',
+        onStatusChange,
+      });
+      return {
+        rerender: (nextStatus: string, nextLabel: string) => {
+          act(() => {
+            root.render(
+              createElement(
+                LanguageProvider,
+                null,
+                createElement(OrganizationLifecycleSettings, {
+                  orgId: 'org-1',
+                  orgStatus: nextStatus,
+                  orgStatusLabel: nextLabel,
+                  onStatusChange,
+                }),
+              ),
+            );
+          });
+        },
+      };
+    })();
+
+    rerender('SUSPENDED', 'Suspended');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('does not expose unrestricted ARCHIVED controls', () => {
     const onStatusChange = vi.fn();
     renderSettings({

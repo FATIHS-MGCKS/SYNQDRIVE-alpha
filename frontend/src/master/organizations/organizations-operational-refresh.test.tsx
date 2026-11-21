@@ -19,7 +19,9 @@ describe('organizations operational refresh registry', () => {
   });
 
   it('invokes registered refresh without duplicating fetch architecture', async () => {
-    const refresh = vi.fn().mockResolvedValue(undefined);
+    const refresh = vi.fn().mockImplementation(async () => {
+      throw new Error('strict refresh failed');
+    });
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -43,10 +45,16 @@ describe('organizations operational refresh registry', () => {
       harness!.registerOperationalRefresh(refresh);
     });
 
+    let rejected: unknown;
     await act(async () => {
-      await harness!.refreshOperationalList();
+      try {
+        await harness!.refreshOperationalList();
+      } catch (e) {
+        rejected = e;
+      }
     });
 
     expect(refresh).toHaveBeenCalledTimes(1);
+    expect(rejected).toBeInstanceOf(Error);
   });
 });
