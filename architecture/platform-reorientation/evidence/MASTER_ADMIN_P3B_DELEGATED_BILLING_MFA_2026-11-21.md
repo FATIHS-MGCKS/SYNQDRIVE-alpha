@@ -40,6 +40,8 @@ Uses `userMfaFactor`, `IamMfaStepUpService`, `x-step-up-token`, billing `STEP_UP
 
 `MasterAdminAuditService.recordMfaStepUp` accepts `actorPlatformRole`; delegate guard passes the real `USER` role (not `MASTER_ADMIN`).
 
+`resolveMfaAuditFields` honors `masterBillingDelegateMfaStepUpUsed` / `masterBillingDelegateMfaStepUpAction` so billing mutation success audits (`recordPrivilegedMutationSuccess`) record `mfaStepUpUsed: true` after delegate `x-step-up-token` validation.
+
 ## Tests
 
 - `master-billing-delegate-mfa.guard.spec.ts`
