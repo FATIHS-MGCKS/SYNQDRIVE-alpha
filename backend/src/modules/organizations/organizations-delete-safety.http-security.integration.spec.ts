@@ -65,7 +65,13 @@ describe('Organizations DELETE — P1 hard-delete safety (HTTP)', () => {
         { provide: OrganizationsOperationalService, useValue: {} },
         { provide: PaymentsAccessService, useValue: {} },
         { provide: AuditService, useValue: { record: jest.fn() } },
-        { provide: OrganizationRoleService, useValue: { ensureDefaultRoles: jest.fn() } },
+        {
+          provide: OrganizationRoleService,
+          useValue: {
+            ensureDefaultRoles: jest.fn().mockResolvedValue(undefined),
+            assertOrganizationSystemRolesProvisioned: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         { provide: VehiclesService, useValue: { aggregateDerivedFleetStatusCounts: jest.fn() } },
         { provide: ModuleRef, useValue: { get: jest.fn() } },
       ],

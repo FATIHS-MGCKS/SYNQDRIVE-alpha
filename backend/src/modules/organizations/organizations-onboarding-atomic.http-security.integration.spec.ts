@@ -82,6 +82,7 @@ describe('Organizations — atomic onboarding HTTP security', () => {
   };
 
   const ensureDefaultRoles = jest.fn().mockResolvedValue(undefined);
+  const assertOrganizationSystemRolesProvisioned = jest.fn().mockResolvedValue(undefined);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -92,7 +93,10 @@ describe('Organizations — atomic onboarding HTTP security', () => {
         { provide: OrganizationsOperationalService, useValue: {} },
         { provide: PaymentsAccessService, useValue: { setPaymentsEnabled: jest.fn() } },
         { provide: AuditService, useValue: { record: jest.fn() } },
-        { provide: OrganizationRoleService, useValue: { ensureDefaultRoles } },
+        {
+          provide: OrganizationRoleService,
+          useValue: { ensureDefaultRoles, assertOrganizationSystemRolesProvisioned },
+        },
         { provide: VehiclesService, useValue: { aggregateDerivedFleetStatusCounts: jest.fn() } },
         { provide: ModuleRef, useValue: { get: jest.fn() } },
       ],
@@ -172,7 +176,11 @@ describe('Organizations — atomic onboarding HTTP security', () => {
     expect(res.status).toBe(201);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.organization.create).not.toHaveBeenCalled();
-    expect(ensureDefaultRoles).toHaveBeenCalledWith(orgId, adminId);
+    expect(ensureDefaultRoles).toHaveBeenCalledWith(orgId, adminId, expect.anything());
+    expect(assertOrganizationSystemRolesProvisioned).toHaveBeenCalledWith(
+      orgId,
+      expect.anything(),
+    );
     expect(res.body.initialAdmin?.email).toBe('admin@atomic.test');
   });
 
@@ -187,9 +195,12 @@ describe('Organizations — atomic onboarding HTTP security', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(prisma.organization.create).toHaveBeenCalledTimes(1);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(ensureDefaultRoles).toHaveBeenCalledWith(orgId, undefined);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(ensureDefaultRoles).toHaveBeenCalledWith(orgId, undefined, expect.anything());
+    expect(assertOrganizationSystemRolesProvisioned).toHaveBeenCalledWith(
+      orgId,
+      expect.anything(),
+    );
   });
 
   it('tenant cannot POST create organization', async () => {
