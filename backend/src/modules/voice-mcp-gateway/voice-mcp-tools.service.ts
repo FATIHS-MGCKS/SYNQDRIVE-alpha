@@ -1,5 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { OrganizationStatus, Prisma } from '@prisma/client';
+import { assertOrganizationAllowsTenantSurface } from '@shared/auth/organization-lifecycle-access.policy';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CustomersService } from '@modules/customers/customers.service';
 import {
@@ -56,6 +57,7 @@ export class VoiceMcpGatewayMiddlewareService {
 
   async assertTenantBindings(context: VoiceMcpRequestContext): Promise<void> {
     await this.assertGatewayReady(context.organizationId);
+    await this.assertOrganizationOperational(context.organizationId);
 
     const assistant = await this.prisma.voiceAssistant.findFirst({
       where: { id: context.voiceAssistantId, organizationId: context.organizationId },
@@ -77,6 +79,36 @@ export class VoiceMcpGatewayMiddlewareService {
     const activeSubscription = subscriptions.find((row) => row.status === 'ACTIVE');
     if (!activeSubscription) {
       throw new VoiceMcpError('PermissionDenied', 'Voice AI subscription is not active for this organization.');
+    }
+  }
+
+  /** Live organization lifecycle (P3 TENANT_OPERATIONAL) — not issuance-time JWT state. */
+  private async assertOrganizationOperational(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { status: true },
+    });
+    try {
+      assertOrganizationAllowsTenantSurface(org?.status ?? null, 'TENANT_OPERATIONAL');
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new VoiceMcpError('PermissionDenied', 'Organization not found.');
+      }
+      if (error instanceof ForbiddenException) {
+        const body = error.getResponse();
+        const status =
+          typeof body === 'object' &&
+          body !== null &&
+          'organizationStatus' in body &&
+          (body as { organizationStatus?: OrganizationStatus }).organizationStatus
+            ? (body as { organizationStatus: OrganizationStatus }).organizationStatus
+            : OrganizationStatus.SUSPENDED;
+        throw new VoiceMcpError(
+          'PermissionDenied',
+          `Organization lifecycle state ${status} does not allow voice MCP operations.`,
+        );
+      }
+      throw error;
     }
   }
 

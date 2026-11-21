@@ -102,6 +102,24 @@ describe('VoiceMcpProtocolService security', () => {
     ).rejects.toMatchObject({ code: 'RateLimited' });
   });
 
+  it('does not execute tools when tenant lifecycle binding fails', async () => {
+    (middleware.assertTenantBindings as jest.Mock).mockRejectedValueOnce(
+      new VoiceMcpError('PermissionDenied', 'Organization lifecycle state SUSPENDED does not allow voice MCP operations.'),
+    );
+
+    await expect(
+      protocol.handle(baseContext, {
+        jsonrpc: '2.0',
+        id: 6,
+        method: 'tools/call',
+        params: { name: 'identify_customer', arguments: { phone: '+4912345' } },
+      }),
+    ).rejects.toMatchObject({ code: 'PermissionDenied' });
+
+    expect(toolsService.execute).not.toHaveBeenCalled();
+    expect(auditService.recordToolInvocation).not.toHaveBeenCalled();
+  });
+
   it('enforces tenant middleware before tool execution', async () => {
     (toolsService.execute as jest.Mock).mockResolvedValue({ ok: true });
 
