@@ -79,6 +79,60 @@ describe('BillingEmailDeliveryController — MFA HTTP security', () => {
       }
     });
 
+    it('POST resend — STEP_UP_REQUIRED without token', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: BillingEmailDeliveryController,
+        providers: [
+          { provide: BillingEmailDeliveryAuditService, useValue: audit },
+          { provide: BillingEmailResendService, useValue: resend },
+        ],
+      });
+      try {
+        const res = await request(harness.app.getHttpServer())
+          .post('/admin/billing/email-deliveries/delivery-1/resend')
+          .set('Authorization', 'Bearer master-token')
+          .send({ idempotencySuffix: 'retry-1' })
+          .expect(403);
+        expect(res.body).toMatchObject({
+          code: 'STEP_UP_REQUIRED',
+          message: 'Fresh MFA step-up required for this master admin action',
+          action: STEP_UP_ACTION.MASTER_BILLING,
+        });
+        expect(resend.manualResend).not.toHaveBeenCalled();
+        expect(resend.replayDeadLetter).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('POST resend — allows with valid step-up token', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: BillingEmailDeliveryController,
+        providers: [
+          { provide: BillingEmailDeliveryAuditService, useValue: audit },
+          { provide: BillingEmailResendService, useValue: resend },
+        ],
+      });
+      harness.validateGrant.mockResolvedValue(true);
+      try {
+        await request(harness.app.getHttpServer())
+          .post('/admin/billing/email-deliveries/delivery-1/resend')
+          .set('Authorization', 'Bearer master-token')
+          .set('x-step-up-token', 'step-up-token-valid')
+          .send({ idempotencySuffix: 'retry-1' })
+          .expect(201);
+        expectStepUpValidation(harness.validateGrant, STEP_UP_ACTION.MASTER_BILLING);
+        expect(resend.manualResend).toHaveBeenCalledWith(
+          'delivery-1',
+          expect.any(String),
+          'retry-1',
+        );
+        expect(resend.replayDeadLetter).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
     it('GET list — no step-up required', async () => {
       audit.listDeliveries.mockResolvedValue({ items: [], total: 0 });
       const harness = await createMasterAdminMfaHttpHarness({
