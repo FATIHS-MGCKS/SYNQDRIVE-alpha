@@ -171,10 +171,15 @@ export class OrganizationsService {
       return { ...organization, initialAdmin: admin };
     }
 
-    const org = await this.prisma.organization.create({
-      data: this.buildOrganizationCreateInput(mapAdminCreateToServiceInput(dto)),
+    const org = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.organization.create({
+        data: this.buildOrganizationCreateInput(mapAdminCreateToServiceInput(dto)),
+      });
+      await this.organizationRoles.ensureDefaultRoles(created.id, undefined, tx);
+      await this.organizationRoles.assertOrganizationSystemRolesProvisioned(created.id, tx);
+      return created;
     });
-    await this.finalizeOrganizationOnboarding(org.id, null, auditCtx);
+    this.recordMasterAdminOnboardingSuccessAudit(org.id, null, auditCtx);
     return org;
   }
 
@@ -234,10 +239,13 @@ export class OrganizationsService {
         },
       });
 
+      await this.organizationRoles.ensureDefaultRoles(org.id, user.id, tx);
+      await this.organizationRoles.assertOrganizationSystemRolesProvisioned(org.id, tx);
+
       return { organization: org, admin: { id: user.id, email: user.email, name: user.name } };
     });
 
-    await this.finalizeOrganizationOnboarding(
+    this.recordMasterAdminOnboardingSuccessAudit(
       result.organization.id,
       result.admin.id,
       auditCtx,
@@ -246,40 +254,24 @@ export class OrganizationsService {
     return result;
   }
 
-  private async finalizeOrganizationOnboarding(
+  private recordMasterAdminOnboardingSuccessAudit(
     organizationId: string,
     createdByUserId?: string | null,
     auditCtx?: { actorUserId?: string | null },
-  ): Promise<void> {
-    await this.organizationRoles.ensureDefaultRoles(
-      organizationId,
-      createdByUserId ?? undefined,
-    );
-
-    const templateCount = await this.prisma.organizationRole.count({
-      where: { organizationId, isSystemTemplate: true },
+  ): void {
+    if (!auditCtx?.actorUserId) return;
+    void this.audit.record({
+      actorUserId: auditCtx.actorUserId,
+      actorOrganizationId: organizationId,
+      action: ActivityAction.CREATE,
+      entity: ActivityEntity.ORGANIZATION,
+      entityId: organizationId,
+      description: 'Master Admin organization onboarding completed',
+      metaJson: {
+        defaultRoleTemplates: DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length,
+        initialAdminUserId: createdByUserId ?? null,
+      },
     });
-    if (templateCount < DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length) {
-      throw new BadRequestException({
-        code: 'ORGANIZATION_ONBOARDING_INCOMPLETE',
-        message: 'Default organization roles were not provisioned completely',
-      });
-    }
-
-    if (auditCtx?.actorUserId) {
-      void this.audit.record({
-        actorUserId: auditCtx.actorUserId,
-        actorOrganizationId: organizationId,
-        action: ActivityAction.CREATE,
-        entity: ActivityEntity.ORGANIZATION,
-        entityId: organizationId,
-        description: 'Master Admin organization onboarding completed',
-        metaJson: {
-          defaultRoleTemplates: DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length,
-          initialAdminUserId: createdByUserId ?? null,
-        },
-      });
-    }
   }
 
   async findAll(
@@ -419,10 +411,11 @@ export class OrganizationsService {
         },
       });
 
+      await this.organizationRoles.ensureDefaultRoles(orgId, user.id, tx);
+      await this.organizationRoles.assertOrganizationSystemRolesProvisioned(orgId, tx);
+
       return { id: user.id, email: user.email, name: user.name };
     });
-
-    await this.organizationRoles.ensureDefaultRoles(orgId, admin.id);
 
     if (auditCtx?.actorUserId) {
       void this.audit.record({

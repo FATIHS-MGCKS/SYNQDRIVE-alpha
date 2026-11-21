@@ -39,6 +39,7 @@ function auth(user: Record<string, unknown> | null): [string, string] {
 describe('Organizations admin mutation hardening (HTTP)', () => {
   let app: INestApplication;
   const orgId = 'org-a';
+  const txOrganizationCreate = jest.fn();
   const prisma = {
     organization: {
       create: jest.fn(),
@@ -49,6 +50,9 @@ describe('Organizations admin mutation hardening (HTTP)', () => {
     organizationRole: {
       count: jest.fn().mockResolvedValue(10),
     },
+    $transaction: jest.fn(async (fn: (tx: { organization: { create: jest.Mock } }) => unknown) =>
+      fn({ organization: { create: txOrganizationCreate } }),
+    ),
   };
 
   beforeAll(async () => {
@@ -60,7 +64,13 @@ describe('Organizations admin mutation hardening (HTTP)', () => {
         { provide: OrganizationsOperationalService, useValue: {} },
         { provide: PaymentsAccessService, useValue: { setPaymentsEnabled: jest.fn() } },
         { provide: AuditService, useValue: { record: jest.fn() } },
-        { provide: OrganizationRoleService, useValue: { ensureDefaultRoles: jest.fn() } },
+        {
+          provide: OrganizationRoleService,
+          useValue: {
+            ensureDefaultRoles: jest.fn().mockResolvedValue(undefined),
+            assertOrganizationSystemRolesProvisioned: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         { provide: VehiclesService, useValue: { aggregateDerivedFleetStatusCounts: jest.fn() } },
         { provide: ModuleRef, useValue: { get: jest.fn() } },
       ],
@@ -110,11 +120,13 @@ describe('Organizations admin mutation hardening (HTTP)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.organization.create.mockResolvedValue({
+    const createdOrg = {
       id: orgId,
       companyName: 'Test GmbH',
       status: OrganizationStatus.PENDING,
-    });
+    };
+    prisma.organization.create.mockResolvedValue(createdOrg);
+    txOrganizationCreate.mockResolvedValue(createdOrg);
     prisma.organization.update.mockResolvedValue({
       id: orgId,
       companyName: 'Updated',
@@ -141,8 +153,9 @@ describe('Organizations admin mutation hardening (HTTP)', () => {
       .send(wizardPayload);
 
     expect(res.status).toBe(201);
-    expect(prisma.organization.create).toHaveBeenCalledTimes(1);
-    const createArg = prisma.organization.create.mock.calls[0][0].data;
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(txOrganizationCreate).toHaveBeenCalledTimes(1);
+    const createArg = txOrganizationCreate.mock.calls[0][0].data;
     expect(createArg.companyName).toBe(wizardPayload.companyName);
     expect(createArg.status).toBe(OrganizationStatus.PENDING);
   });

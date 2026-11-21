@@ -7,6 +7,7 @@ import {
   MembershipRole,
   MembershipStatus,
   OrganizationRole,
+  OrganizationRoleVersionStatus,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -29,14 +30,21 @@ export class OrganizationRoleService {
     private readonly roleVersionService: OrganizationRoleVersionService,
   ) {}
 
-  async ensureDefaultRoles(orgId: string, createdByUserId?: string): Promise<void> {
-    const count = await this.prisma.organizationRole.count({
+  async ensureDefaultRoles(
+    orgId: string,
+    createdByUserId?: string,
+    client: Pick<
+      PrismaService,
+      'organizationRole' | 'organizationRoleVersion'
+    > = this.prisma,
+  ): Promise<void> {
+    const count = await client.organizationRole.count({
       where: { organizationId: orgId, isSystemTemplate: true },
     });
     if (count >= DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length) return;
 
     for (const template of DEFAULT_ORGANIZATION_ROLE_TEMPLATES) {
-      const role = await this.prisma.organizationRole.upsert({
+      const role = await client.organizationRole.upsert({
         where: {
           organizationId_systemKey: {
             organizationId: orgId,
@@ -59,7 +67,7 @@ export class OrganizationRoleService {
         update: {},
       });
 
-      const versionCount = await this.prisma.organizationRoleVersion.count({
+      const versionCount = await client.organizationRoleVersion.count({
         where: { organizationRoleId: role.id },
       });
       if (versionCount === 0) {
@@ -67,7 +75,48 @@ export class OrganizationRoleService {
           role,
           createdByUserId,
           'System template seed — initial approved version',
+          client,
         );
+      }
+    }
+  }
+
+  /** Validates system templates plus an approved v1 per template (onboarding gate). */
+  async assertOrganizationSystemRolesProvisioned(
+    orgId: string,
+    client: Pick<
+      PrismaService,
+      'organizationRole' | 'organizationRoleVersion'
+    > = this.prisma,
+  ): Promise<void> {
+    for (const template of DEFAULT_ORGANIZATION_ROLE_TEMPLATES) {
+      const role = await client.organizationRole.findFirst({
+        where: {
+          organizationId: orgId,
+          systemKey: template.systemKey,
+          isSystemTemplate: true,
+          isActive: true,
+        },
+      });
+      if (!role) {
+        throw new BadRequestException({
+          code: 'ORGANIZATION_ONBOARDING_INCOMPLETE',
+          message: 'Default organization roles were not provisioned completely',
+        });
+      }
+
+      const approvedVersion = await client.organizationRoleVersion.findFirst({
+        where: {
+          organizationRoleId: role.id,
+          organizationId: orgId,
+          status: OrganizationRoleVersionStatus.APPROVED,
+        },
+      });
+      if (!approvedVersion) {
+        throw new BadRequestException({
+          code: 'ORGANIZATION_ONBOARDING_INCOMPLETE',
+          message: 'Default organization roles were not provisioned completely',
+        });
       }
     }
   }

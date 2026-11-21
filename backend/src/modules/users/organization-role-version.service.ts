@@ -64,8 +64,9 @@ export class OrganizationRoleVersionService {
     },
     actorUserId?: string,
     changeReason = 'Initial approved version',
+    client: Pick<PrismaService, 'organizationRoleVersion'> = this.prisma,
   ) {
-    return this.prisma.organizationRoleVersion.create({
+    return client.organizationRoleVersion.create({
       data: {
         organizationRoleId: role.id,
         organizationId: role.organizationId,

@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { MembershipStatus, OrganizationStatus } from '@prisma/client';
 import { OrganizationsService } from './organizations.service';
 import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from '@modules/users/defaults/organization-role.defaults';
@@ -15,7 +15,10 @@ describe('OrganizationsService — atomic MA onboarding', () => {
     organizationMembership: { create: jest.Mock; findFirst: jest.Mock };
     $transaction: jest.Mock;
   };
-  let roleService: { ensureDefaultRoles: jest.Mock };
+  let roleService: {
+    ensureDefaultRoles: jest.Mock;
+    assertOrganizationSystemRolesProvisioned: jest.Mock;
+  };
   let audit: { record: jest.Mock };
   let service: OrganizationsService;
 
@@ -53,9 +56,10 @@ describe('OrganizationsService — atomic MA onboarding', () => {
       companyName: 'Org only',
       status: OrganizationStatus.PENDING,
     });
-    prisma.organizationRole.count.mockResolvedValue(DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length);
-
-    roleService = { ensureDefaultRoles: jest.fn().mockResolvedValue(undefined) };
+    roleService = {
+      ensureDefaultRoles: jest.fn().mockResolvedValue(undefined),
+      assertOrganizationSystemRolesProvisioned: jest.fn().mockResolvedValue(undefined),
+    };
     audit = { record: jest.fn() };
 
     service = new OrganizationsService(
@@ -73,8 +77,12 @@ describe('OrganizationsService — atomic MA onboarding', () => {
       { actorUserId: 'ma-1' },
     );
     expect(org.id).toBe(orgId);
-    expect(roleService.ensureDefaultRoles).toHaveBeenCalledWith(orgId, undefined);
-    expect(prisma.organizationRole.count).toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(roleService.ensureDefaultRoles).toHaveBeenCalledWith(orgId, undefined, expect.anything());
+    expect(roleService.assertOrganizationSystemRolesProvisioned).toHaveBeenCalledWith(
+      orgId,
+      expect.anything(),
+    );
     expect(audit.record).toHaveBeenCalled();
   });
 
@@ -90,7 +98,11 @@ describe('OrganizationsService — atomic MA onboarding', () => {
     expect((result as { initialAdmin?: { id: string; email: string } }).initialAdmin).toEqual(
       expect.objectContaining({ id: adminId, email }),
     );
-    expect(roleService.ensureDefaultRoles).toHaveBeenCalledWith(orgId, adminId);
+    expect(roleService.ensureDefaultRoles).toHaveBeenCalledWith(orgId, adminId, expect.anything());
+    expect(roleService.assertOrganizationSystemRolesProvisioned).toHaveBeenCalledWith(
+      orgId,
+      expect.anything(),
+    );
   });
 
   it('rejects duplicate admin email inside createWithAdmin transaction', async () => {
@@ -115,12 +127,18 @@ describe('OrganizationsService — atomic MA onboarding', () => {
   });
 
   it('fails closed when default roles are incomplete', async () => {
-    prisma.organizationRole.count.mockResolvedValue(0);
+    roleService.assertOrganizationSystemRolesProvisioned.mockRejectedValue(
+      new BadRequestException({
+        code: 'ORGANIZATION_ONBOARDING_INCOMPLETE',
+        message: 'Default organization roles were not provisioned completely',
+      }),
+    );
     await expect(
       service.create({ companyName: 'Incomplete roles' } as never),
     ).rejects.toMatchObject({
       response: expect.objectContaining({ code: 'ORGANIZATION_ONBOARDING_INCOMPLETE' }),
     });
+    expect(audit.record).not.toHaveBeenCalled();
   });
 
   it('createOrgAdmin uses transaction and rejects duplicate email', async () => {
