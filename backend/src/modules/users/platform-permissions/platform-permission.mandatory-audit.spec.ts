@@ -30,6 +30,7 @@ describe('PlatformPermissionService — mandatory audit (F2)', () => {
       update: jest.fn(),
     },
     activityLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) },
+    $executeRawUnsafe: jest.fn().mockResolvedValue(0),
   };
 
   const prisma = {

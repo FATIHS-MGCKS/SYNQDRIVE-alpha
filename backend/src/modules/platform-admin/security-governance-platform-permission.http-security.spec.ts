@@ -335,6 +335,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
       activityLog: {
         create: jest.fn().mockRejectedValue(new Error('audit persistence failed')),
       },
+      $executeRawUnsafe: jest.fn().mockResolvedValue(0),
     };
     const prisma = {
       $transaction: jest.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),

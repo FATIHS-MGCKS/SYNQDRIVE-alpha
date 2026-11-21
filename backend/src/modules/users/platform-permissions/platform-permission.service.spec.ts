@@ -12,12 +12,17 @@ describe('PlatformPermissionService', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    $executeRawUnsafe: jest.fn().mockResolvedValue(0),
+    $transaction: jest.fn(),
   };
 
   let service: PlatformPermissionService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(async (fn: (inner: typeof prisma) => Promise<unknown>) =>
+      fn(prisma),
+    );
     service = new PlatformPermissionService(prisma as never);
   });
 

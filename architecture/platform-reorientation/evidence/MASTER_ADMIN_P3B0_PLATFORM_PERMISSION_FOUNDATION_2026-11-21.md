@@ -37,6 +37,11 @@
 - **Fix:** `grantMasterBillingWithMandatoryAudit` / `revokeMasterBillingWithMandatoryAudit` run grant/revoke + `activityLog.create` in one Prisma transaction; audit failure rolls back mutation; HTTP does not return success.
 - **Scope:** Platform master-billing grant/revoke only; global `AuditService` best-effort semantics unchanged.
 
+### F2 post-Postgres gate (P2002)
+
+- **Issue:** After unique violation on `user_platform_permission_grant`, PostgreSQL aborts the interactive transaction; follow-up `findFirst` without recovery fails.
+- **Fix:** `SAVEPOINT` before insert; `ROLLBACK TO SAVEPOINT` on `P2002`, then load winning row — keeps mandatory audit in the same outer transaction.
+
 ## Registry
 
 **REGISTRY_REVIEWED:** UNCHANGED (IAM evidence; no module authority promotion).

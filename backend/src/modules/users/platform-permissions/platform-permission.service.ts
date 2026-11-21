@@ -30,6 +30,8 @@ export type PlatformPermissionRevokeResult = {
   grantId: string | null;
 };
 
+const GRANT_MASTER_BILLING_SAVEPOINT = 'p3b0_grant_master_billing_insert';
+
 @Injectable()
 export class PlatformPermissionService {
   constructor(private readonly prisma: PrismaService) {}
@@ -85,20 +87,24 @@ export class PlatformPermissionService {
     });
   }
 
-  /** Non-transactional grant — tests and internal JWT flows without HTTP audit coupling. */
+  /** Grant without mandatory audit — short transaction for P2002 SAVEPOINT safety. */
   async grantMasterBilling(
     targetUserId: string,
     actorUserId: string,
   ): Promise<PlatformPermissionGrantResult> {
-    return this.grantMasterBillingInTx(this.prisma, targetUserId, actorUserId);
+    return this.prisma.$transaction((tx) =>
+      this.grantMasterBillingInTx(tx, targetUserId, actorUserId),
+    );
   }
 
-  /** Non-transactional revoke — tests and internal JWT flows without HTTP audit coupling. */
+  /** Revoke without mandatory audit — short transaction for consistency with grant. */
   async revokeMasterBilling(
     targetUserId: string,
     actorUserId: string,
   ): Promise<PlatformPermissionRevokeResult> {
-    return this.revokeMasterBillingInTx(this.prisma, targetUserId, actorUserId);
+    return this.prisma.$transaction((tx) =>
+      this.revokeMasterBillingInTx(tx, targetUserId, actorUserId),
+    );
   }
 
   private async grantMasterBillingInTx(
@@ -119,6 +125,7 @@ export class PlatformPermissionService {
       return { granted: true, idempotent: true, grantId: existing.id };
     }
 
+    await tx.$executeRawUnsafe(`SAVEPOINT ${GRANT_MASTER_BILLING_SAVEPOINT}`);
     try {
       const grant = await tx.userPlatformPermissionGrant.create({
         data: {
@@ -127,12 +134,14 @@ export class PlatformPermissionService {
           grantedByUserId: actorUserId,
         },
       });
+      await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${GRANT_MASTER_BILLING_SAVEPOINT}`);
       return { granted: true, idempotent: false, grantId: grant.id };
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
+        await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${GRANT_MASTER_BILLING_SAVEPOINT}`);
         const raced = await tx.userPlatformPermissionGrant.findFirst({
           where: {
             userId: targetUserId,
