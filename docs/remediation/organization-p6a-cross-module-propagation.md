@@ -2,13 +2,26 @@
 
 Base: `main` @ P5B3 merge. **No automatic org suspend on billing PAST_DUE** (policy unchanged).
 
+## Evidence precision (P6A closeout)
+
+| Claim type | Meaning |
+|------------|---------|
+| **VERIFIED_PASS** | Runtime or policy unit tests prove behavior for the stated surface. |
+| **PARTIAL** | Static/repo inventory or cohort-query shape only — not per-route HTTP runtime proof. |
+| **NOT_TESTED** | No test or audit reproduction in this workstream. |
+| **PRODUCT_DECISION_REQUIRED** | Code fact established; whether behavior is desired is an owner/product decision. |
+| **NOT_APPLICABLE** | Surface does not apply to the transition. |
+
+Do not upgrade **NOT_TESTED** to **VERIFIED_PASS**.
+
 ## Scenario A — Organization ACTIVE → SUSPENDED
 
 | Surface | Classification | Evidence |
 |---------|----------------|----------|
 | Tenant HTTP operational routes | **VERIFIED_PASS** | P3 `OrgScopingGuard` + `VehicleOwnershipGuard`; P5B1 scenario G (stale JWT); `vehicle-ownership-lifecycle.http-security.integration.spec.ts` |
 | Session refresh / issuance | **VERIFIED_PASS** | `refresh-token-organization-lifecycle.spec.ts` |
-| DIMO snapshot **scheduler** cohort | **POLICY_DECISION** | `dimo-snapshot.scheduler.ts` filters `registryLifecycle: ACTIVE` + connectivity — **no** `organization.status`. P6A test documents intentional telemetry continuity until vehicle offboard. |
+| DIMO snapshot **scheduler** cohort query | **VERIFIED_PASS** (query shape) | `dimo-snapshot.scheduler.ts` + `dimo-snapshot.scheduler.spec.ts` P6A assertion: cohort `where` has **no** `organization` / `organizationId` / `organization.status` filter. |
+| DIMO snapshot **scheduler** — SUSPENDED org telemetry | **PRODUCT_DECISION_REQUIRED** | Confirmed: scheduler does not exclude SUSPENDED organizations. **Not proven** whether continued collection is intended; owner must decide (e.g. continue until vehicle offboard vs pause on org suspend). |
 | DIMO snapshot **processor** | **VERIFIED_PASS** (vehicle registry) | `dimo-snapshot.processor.registry-lifecycle.spec.ts` skips OFFBOARDED |
 | Trip tracking / recovery | **NOT_TESTED** (org status) | Workers scope by vehicle/org id; no org lifecycle gate located |
 | DIMO / provider webhooks | **NOT_TESTED** (org status) | Vehicle binding + org on record; no SUSPENDED org gate in webhook ingress |
@@ -21,7 +34,7 @@ Base: `main` @ P5B3 merge. **No automatic org suspend on billing PAST_DUE** (pol
 |---------|----------------|----------|
 | `ProductLicenseGuard` | **VERIFIED_PASS** | ACTIVE org product row only (`entitlements-policy.ts`) |
 | Vehicle activation | **VERIFIED_PASS** | P5B1 scenario C; `resolveEntitlementCapabilities` — TRIAL/SUSPENDED block activation |
-| Product-gated HTTP | **VERIFIED_PASS** | P6A static test: all `ProductLicenseGuard` controllers include `OrgScopingGuard` |
+| Product-gated HTTP (`ProductLicenseGuard` + `OrgScopingGuard`) | **PARTIAL** | P6A **static controller-file** inventory: every `*.controller.ts` referencing `ProductLicenseGuard` also references `OrgScopingGuard` (0 misses at closeout). Does **not** prove handler-level guard order, method-level overrides, or non-controller routes. Runtime HTTP proof remains P3 org-scoped routes + existing integration specs. |
 | Background jobs | **NOT_APPLICABLE** | Product guard is HTTP-scoped |
 
 ## Scenario C — Billing ACTIVE → PAST_DUE

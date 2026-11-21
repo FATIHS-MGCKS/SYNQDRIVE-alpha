@@ -144,6 +144,7 @@ describe('P6A Scenario D — vehicle OFFBOARDED billing/registry', () => {
   });
 });
 
+/** PARTIAL evidence: controller source files only, not per-route runtime guard execution. */
 describe('P6A — ProductLicenseGuard HTTP surfaces (static pairing inventory)', () => {
   const modulesRoot = join(__dirname, '..');
 
@@ -160,7 +161,7 @@ describe('P6A — ProductLicenseGuard HTTP surfaces (static pairing inventory)',
     return out;
   }
 
-  it('every controller using ProductLicenseGuard also references OrgScopingGuard', () => {
+  it('PARTIAL: every controller file using ProductLicenseGuard also references OrgScopingGuard in source', () => {
     const missing: string[] = [];
     for (const file of listControllerFiles()) {
       const src = readFileSync(file, 'utf8');

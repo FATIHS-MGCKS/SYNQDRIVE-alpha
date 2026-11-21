@@ -113,7 +113,7 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
     );
   });
 
-  it('P6A — enqueue cohort does not filter organization lifecycle (telemetry may continue for SUSPENDED org vehicles)', async () => {
+  it('P6A — enqueue cohort where has no organization status filter (telemetry for SUSPENDED orgs: PRODUCT_DECISION_REQUIRED)', async () => {
     findMany.mockResolvedValue([]);
     await scheduler.enqueueSnapshotJobs();
     const where = findMany.mock.calls[0][0].where as Record<string, unknown>;
