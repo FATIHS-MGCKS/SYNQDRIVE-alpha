@@ -24,6 +24,13 @@
 
 `resolveIamMfaFeatureFlagsForPrincipal({ platformMasterBillingGrant: true })` bypasses org allowlist for platform billing delegates with `organizationId: null`.
 
+## Closeout (P3B0 final security)
+
+- Grant/revoke: `MasterAdminMfaGuard` only (`MASTER_USER_MANAGEMENT`); redundant `StepUpGuard` removed to avoid double step-up token consumption.
+- Concurrent grant: `P2002` on partial unique index → idempotent active-grant response.
+- Delegated billing: denied when grant subject `User.status !== ACTIVE` (DB grant may remain until revoke).
+- MFA login user payload includes `platformPermissions` (parity with password login).
+
 ## Registry
 
 **REGISTRY_REVIEWED:** UNCHANGED (IAM evidence; no module authority promotion).

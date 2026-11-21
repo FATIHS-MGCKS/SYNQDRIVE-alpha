@@ -138,8 +138,6 @@ export class SecurityGovernanceController {
 
   @Post('users/:userId/platform-permissions/master-billing/grant')
   @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
-  @UseGuards(StepUpGuard)
-  @RequireStepUp(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
   @HttpCode(HttpStatus.OK)
   async grantMasterBilling(@Param('userId') userId: string, @Req() req: AuthedRequest) {
     const actorUserId = req.user?.id;
@@ -158,8 +156,6 @@ export class SecurityGovernanceController {
 
   @Post('users/:userId/platform-permissions/master-billing/revoke')
   @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
-  @UseGuards(StepUpGuard)
-  @RequireStepUp(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
   @HttpCode(HttpStatus.OK)
   async revokeMasterBilling(@Param('userId') userId: string, @Req() req: AuthedRequest) {
     const actorUserId = req.user?.id;

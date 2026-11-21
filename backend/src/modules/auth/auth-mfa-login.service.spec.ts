@@ -24,6 +24,7 @@ describe('AuthMfaLoginService', () => {
       {} as never,
       enrollment as never,
       {} as never,
+      { resolveJwtPermissions: jest.fn() } as never,
     );
 
     const result = await service.evaluateMasterAdminLoginGate({
@@ -45,6 +46,7 @@ describe('AuthMfaLoginService', () => {
       {} as never,
       enrollment as never,
       {} as never,
+      { resolveJwtPermissions: jest.fn() } as never,
     );
 
     const result = await service.evaluateMasterAdminLoginGate({
@@ -63,6 +65,7 @@ describe('AuthMfaLoginService', () => {
       {} as never,
       enrollment as never,
       {} as never,
+      { resolveJwtPermissions: jest.fn() } as never,
     );
 
     const result = await service.evaluateMasterAdminLoginGate({

@@ -145,4 +145,68 @@ describePg('PlatformPermissionService (disposable Postgres)', () => {
     await prisma.userPlatformPermissionGrant.deleteMany({ where: { userId: delegate.id } });
     await prisma.user.deleteMany({ where: { id: { in: [masterId, delegateId] } } });
   });
+
+  it('concurrent grants yield one active row', async () => {
+    const suffix = Date.now();
+    const masterId = `p3b0-race-master-${suffix}`;
+    const delegateId = `p3b0-race-delegate-${suffix}`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${masterId}, ${`race-master-${suffix}@test.example`}, 'Master',
+        'ACTIVE'::"UserStatus", ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole", NOW(), NOW()
+      )
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${delegateId}, ${`race-delegate-${suffix}@test.example`}, 'Delegate',
+        'ACTIVE'::"UserStatus", ${UserPlatformRole.USER}::"UserPlatformRole", NOW(), NOW()
+      )
+    `;
+
+    const results = await Promise.all([
+      platformPermissions.grantMasterBilling(delegateId, masterId),
+      platformPermissions.grantMasterBilling(delegateId, masterId),
+    ]);
+    expect(results.every((r) => r.granted)).toBe(true);
+
+    const activeCount = await prisma.userPlatformPermissionGrant.count({
+      where: { userId: delegateId, revokedAt: null },
+    });
+    expect(activeCount).toBe(1);
+
+    await prisma.userPlatformPermissionGrant.deleteMany({ where: { userId: delegateId } });
+    await prisma.user.deleteMany({ where: { id: { in: [masterId, delegateId] } } });
+  });
+
+  it('denies delegated billing when target user is deactivated', async () => {
+    const suffix = Date.now();
+    const masterId = `p3b0-inactive-master-${suffix}`;
+    const delegateId = `p3b0-inactive-delegate-${suffix}`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${masterId}, ${`inactive-master-${suffix}@test.example`}, 'Master',
+        'ACTIVE'::"UserStatus", ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole", NOW(), NOW()
+      )
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${delegateId}, ${`inactive-delegate-${suffix}@test.example`}, 'Delegate',
+        'ACTIVE'::"UserStatus", ${UserPlatformRole.USER}::"UserPlatformRole", NOW(), NOW()
+      )
+    `;
+
+    await platformPermissions.grantMasterBilling(delegateId, masterId);
+    await prisma.$executeRaw`
+      UPDATE users SET status = 'INACTIVE'::"UserStatus", updated_at = NOW() WHERE id = ${delegateId}
+    `;
+
+    await expect(platformPermissions.hasActiveMasterBillingGrant(delegateId)).resolves.toBe(false);
+
+    await prisma.userPlatformPermissionGrant.deleteMany({ where: { userId: delegateId } });
+    await prisma.user.deleteMany({ where: { id: { in: [masterId, delegateId] } } });
+  });
 });

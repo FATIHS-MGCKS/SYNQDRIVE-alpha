@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PlatformPermissionKey, UserPlatformRole, UserStatus } from '@prisma/client';
+import { PlatformPermissionKey, Prisma, UserPlatformRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   PLATFORM_PERMISSION_JWT_VALUES,
@@ -16,6 +16,13 @@ export class PlatformPermissionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async hasActiveMasterBillingGrant(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      return false;
+    }
     return this.hasActiveGrant(userId, PlatformPermissionKey.MASTER_BILLING);
   }
 
@@ -52,14 +59,33 @@ export class PlatformPermissionService {
       return { granted: true, idempotent: true, grantId: existing.id };
     }
 
-    const grant = await this.prisma.userPlatformPermissionGrant.create({
-      data: {
-        userId: targetUserId,
-        permissionKey: PlatformPermissionKey.MASTER_BILLING,
-        grantedByUserId: actorUserId,
-      },
-    });
-    return { granted: true, idempotent: false, grantId: grant.id };
+    try {
+      const grant = await this.prisma.userPlatformPermissionGrant.create({
+        data: {
+          userId: targetUserId,
+          permissionKey: PlatformPermissionKey.MASTER_BILLING,
+          grantedByUserId: actorUserId,
+        },
+      });
+      return { granted: true, idempotent: false, grantId: grant.id };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.prisma.userPlatformPermissionGrant.findFirst({
+          where: {
+            userId: targetUserId,
+            permissionKey: PlatformPermissionKey.MASTER_BILLING,
+            revokedAt: null,
+          },
+        });
+        if (raced) {
+          return { granted: true, idempotent: true, grantId: raced.id };
+        }
+      }
+      throw error;
+    }
   }
 
   async revokeMasterBilling(

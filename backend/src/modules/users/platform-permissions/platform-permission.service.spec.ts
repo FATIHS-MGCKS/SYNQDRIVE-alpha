@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { PlatformPermissionKey, UserPlatformRole, UserStatus } from '@prisma/client';
+import { PlatformPermissionKey, Prisma, UserPlatformRole, UserStatus } from '@prisma/client';
 import { PlatformPermissionService } from './platform-permission.service';
 import { PLATFORM_PERMISSION_JWT_VALUES } from './platform-permission.constants';
 
@@ -66,5 +66,31 @@ describe('PlatformPermissionService', () => {
     (prisma.userPlatformPermissionGrant.findFirst as jest.Mock).mockResolvedValue(null);
     const result = await service.revokeMasterBilling('target', 'admin-1');
     expect(result).toEqual({ revoked: false, idempotent: true, grantId: null });
+  });
+
+  it('grantMasterBilling treats unique-index race (P2002) as idempotent success', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'target',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
+    (prisma.userPlatformPermissionGrant.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'grant-race' });
+    const p2002 = new Prisma.PrismaClientKnownRequestError('unique', {
+      code: 'P2002',
+      clientVersion: 'test',
+    });
+    (prisma.userPlatformPermissionGrant.create as jest.Mock).mockRejectedValue(p2002);
+    const result = await service.grantMasterBilling('target', 'admin-1');
+    expect(result).toEqual({ granted: true, idempotent: true, grantId: 'grant-race' });
+  });
+
+  it('hasActiveMasterBillingGrant denies when user inactive', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      status: UserStatus.INACTIVE,
+    });
+    await expect(service.hasActiveMasterBillingGrant('inactive-user')).resolves.toBe(false);
+    expect(prisma.userPlatformPermissionGrant.findFirst).not.toHaveBeenCalled();
   });
 });
