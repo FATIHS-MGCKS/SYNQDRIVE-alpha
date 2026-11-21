@@ -68,9 +68,6 @@ export function mapAdminUpdateToPrisma(
   if (dto.accentColor !== undefined) data.accentColor = dto.accentColor;
   if (dto.logoDarkUrl !== undefined) data.logoDarkUrl = dto.logoDarkUrl;
   if (dto.pdfLogoUrl !== undefined) data.pdfLogoUrl = dto.pdfLogoUrl;
-  if (dto.legalDocumentFourEyesEnabled !== undefined) {
-    data.legalDocumentFourEyesEnabled = dto.legalDocumentFourEyesEnabled;
-  }
 
   return data;
 }

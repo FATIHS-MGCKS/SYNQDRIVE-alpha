@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsEnum,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -34,7 +35,8 @@ const nullIfEmpty = ({ value }: { value: unknown }) => {
  * Explicit allow-list; unknown properties rejected by global ValidationPipe.
  *
  * Excluded (use dedicated routes or are system-owned):
- * id, paymentsEnabled, nextInvoiceNumber, createdAt, updatedAt, lastActiveAt, relations.
+ * id, paymentsEnabled, nextInvoiceNumber, legalDocumentFourEyesEnabled,
+ * createdAt, updatedAt, lastActiveAt, relations.
  */
 export class AdminUpdateOrganizationDto {
   @IsOptional()
@@ -184,7 +186,7 @@ export class AdminUpdateOrganizationDto {
   invoicePrefix?: string | null;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   @Max(365)
   @Type(() => Number)
@@ -243,8 +245,4 @@ export class AdminUpdateOrganizationDto {
   @IsUrl({ require_protocol: true })
   @MaxLength(500)
   pdfLogoUrl?: string | null;
-
-  @IsOptional()
-  @IsBoolean()
-  legalDocumentFourEyesEnabled?: boolean;
 }

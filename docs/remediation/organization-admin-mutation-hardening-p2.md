@@ -18,7 +18,7 @@ Unchanged:
 
 Platform profile, contact, legal, and lifecycle fields on `Organization` scalars — **excluding**:
 
-- `id`, `paymentsEnabled`, `nextInvoiceNumber`
+- `id`, `paymentsEnabled`, `nextInvoiceNumber`, `legalDocumentFourEyesEnabled` (read via legal-documents workflow settings only; no dedicated MA write route today)
 - `createdAt`, `updatedAt`, `lastActiveAt`
 - Any Prisma relation / nested writes
 

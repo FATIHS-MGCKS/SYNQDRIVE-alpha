@@ -210,6 +210,39 @@ describe('Organizations admin mutation hardening (HTTP)', () => {
     });
   });
 
+  it('PATCH — paymentTermsDays integer accepted', async () => {
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/admin/organizations/${orgId}`)
+      .set(...auth(master))
+      .send({ paymentTermsDays: 14 });
+
+    expect(res.status).toBe(200);
+    expect(prisma.organization.update).toHaveBeenCalledWith({
+      where: { id: orgId },
+      data: { paymentTermsDays: 14 },
+    });
+  });
+
+  it('PATCH — paymentTermsDays decimal rejected (400)', async () => {
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/admin/organizations/${orgId}`)
+      .set(...auth(master))
+      .send({ paymentTermsDays: 14.5 });
+
+    expect(res.status).toBe(400);
+    expect(prisma.organization.update).not.toHaveBeenCalled();
+  });
+
+  it('PATCH — legalDocumentFourEyesEnabled rejected (not a generic PATCH surface)', async () => {
+    const res = await request(app.getHttpServer())
+      .patch(`/api/v1/admin/organizations/${orgId}`)
+      .set(...auth(master))
+      .send({ legalDocumentFourEyesEnabled: true });
+
+    expect(res.status).toBe(400);
+    expect(prisma.organization.update).not.toHaveBeenCalled();
+  });
+
   it('tenant PATCH denied (403)', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/admin/organizations/${orgId}`)
