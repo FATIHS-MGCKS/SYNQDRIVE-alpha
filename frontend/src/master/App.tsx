@@ -308,7 +308,7 @@ export default function App() {
     adminData?: { name: string; email: string; password: string } | null,
   ) => {
     try {
-      const createdOrg = await api.organizations.create({
+      await api.organizations.create({
         companyName: payload.companyName,
         shortCode: payload.shortCode,
         businessType: payload.businessType,
@@ -316,14 +316,14 @@ export default function App() {
         city: payload.city,
         country: payload.country,
         status: payload.status ?? 'PENDING',
+        ...(adminData ? { initialAdmin: adminData } : {}),
       });
 
-      if (adminData && createdOrg?.id) {
-        await api.organizations.createAdmin(createdOrg.id, adminData);
-        toast.success(`Organisation „${payload.companyName}" und Admin erstellt`);
-      } else {
-        toast.success(`Organisation „${payload.companyName}" erstellt`);
-      }
+      toast.success(
+        adminData
+          ? `Organisation „${payload.companyName}" und Admin erstellt`
+          : `Organisation „${payload.companyName}" erstellt`,
+      );
       await reloadFromApi();
     } catch (e: any) {
       toast.error(e?.message || 'Organisation konnte nicht erstellt werden');

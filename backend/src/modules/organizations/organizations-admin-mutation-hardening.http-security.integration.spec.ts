@@ -46,6 +46,9 @@ describe('Organizations admin mutation hardening (HTTP)', () => {
       findUnique: jest.fn(),
       delete: jest.fn(),
     },
+    organizationRole: {
+      count: jest.fn().mockResolvedValue(10),
+    },
   };
 
   beforeAll(async () => {
