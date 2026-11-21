@@ -10,6 +10,39 @@
 | `.cursor/rules/` | Project engineering rules (always apply) |
 | `.cursor/scripts/` | Cloud Agent bootstrap + VPS deploy helpers |
 
+## Product and platform shape (binding)
+
+**Product:** SYNQDRIVE is a **modular, multi-tenant vehicle management and intelligence platform** (fleet, rental, telematics, vehicle health, maintenance, and operations).
+
+**Repository:** **SYNQDRIVE-alpha** is the **active main platform repository** — one NestJS application runtime and **one shared platform database**. Historical **SYNQDRIVE-CORE** extraction is **paused/superseded**; Core remains a **reference fork** only (no automatic merge-back).
+
+| Domain | Owns (summary) | Consumes |
+|--------|----------------|----------|
+| **Core** | Master Admin; IAM and entitlements; canonical vehicles and trips; Trip FSM; DS4/DBI; tire/battery/service intelligence; product-neutral platform capabilities (incl. Communication, WhatsApp, Voice, AI platform surfaces) | — |
+| **Rental** | Bookings; rental customers; contracts; payments; rental-specific workflows and UI | Core via **internal contracts**, ports, NestJS DI, and guards — **not** by duplicating platform stores |
+| **External product apps** (VYMOD, Fleet, etc.) | Product-specific backends when separately deployed | **Versioned Core APIs** + service-client registry when M2M gates are **explicitly armed** — defaults **fail-closed** |
+
+**Dependency invariants:** Core **must not** depend directly on Rental **business-logic services**. Rental consumes Core through documented internal contracts. **Co-located Rental does not require M2M.** External M2M remains **disabled until separately approved** (`CORE_APP_M2M_*` defaults).
+
+Normative detail: [`architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](architecture/platform-reorientation/SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md), [`architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md`](architecture/platform-reorientation/MONOREPO_AGENT_GUARDRAILS.md).
+
+**Lifecycle vocabulary (mandatory):** distinguish **IMPLEMENTED / TESTED / MERGED / DEPLOYED / PRODUCTION_VERIFIED / COMPLIANCE_REVIEWED / CERTIFIED** — never equate merge with deploy, production validation, or certification.
+
+## Mandatory engineering compliance baseline (targets — not certification claims)
+
+Engineering and compliance **targets** for future changes (actionable standard: [`architecture/compliance/ENGINEERING_COMPLIANCE_STANDARD.md`](architecture/compliance/ENGINEERING_COMPLIANCE_STANDARD.md)):
+
+| Framework / law | Role in repository |
+|-----------------|-------------------|
+| ISO/IEC 27001:2022 | Information security management **engineering targets** |
+| ISO/IEC 27701:2025 | Privacy information management **engineering targets** |
+| GDPR / DSGVO | EU data protection requirements for product and platform design |
+| German BDSG | Applicable national requirements where processing occurs |
+| TDDDG §25 | Cookies and end-device access (consent/necessity assessment) |
+| EU Data Act (Reg. (EU) 2023/2854) | Connected-vehicle / user-access data rules where applicable |
+
+These are **not** claims of achieved ISO certification, legal approval, or regulator sign-off.
+
 ## Production deploy — operational standard (mandatory)
 
 **Canonical runbook:** [`architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md`](architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)

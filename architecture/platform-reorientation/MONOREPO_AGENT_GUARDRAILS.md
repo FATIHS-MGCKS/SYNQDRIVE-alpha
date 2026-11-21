@@ -3,6 +3,8 @@
 **Status:** `BINDING` (mirrors owner monorepo decision; enforce alongside [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md))  
 **Promotion note:** Edits to root `AGENTS.md` that embed this policy require PR label `i18n-governance-authority-change` from owner `FATIHS-MGCKS` per i18n governance CI.
 
+**Compliance engineering:** [`../compliance/ENGINEERING_COMPLIANCE_STANDARD.md`](../compliance/ENGINEERING_COMPLIANCE_STANDARD.md) — binding targets for security/privacy-relevant changes (not certification claims).
+
 ## Platform shape
 
 **SYNQDRIVE-alpha** is the **permanent active platform repository**. `SYNQDRIVE-CORE` is a **paused reference fork** — **no physical repository extraction**, no separate Core/Rental production deployables as the current Alpha shape.

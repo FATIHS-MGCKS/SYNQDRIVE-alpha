@@ -63,7 +63,7 @@ Central registry synopsis: [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../
 
 Physical paths remain under single Nest modules until a future owner-scoped refactor. Agents **must** assign new code to the correct capability owner; **must not** treat physical folder name as sole ownership proof.
 
-## Current architecture (verified on `origin/main` — `0a20ccb8f14aa05c679167d4b96d98c0c4a5130e`)
+## Current architecture (verified on `origin/main` — `2e39a894a98f8302e853f34074f41fe6182da8bd`)
 
 **Epistemic:** Repository layout and module inventory are **CONFIRMED** from tree + registry. Production runtime details for new platform slices require separate Production read-only evidence per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md).
 
@@ -94,9 +94,11 @@ Physical paths remain under single Nest modules until a future owner-scoped refa
 | Integration scope | Reuse merged P2/P3 registry + entitlements + guarded APIs — **do not** connect unfinished apps, arm production M2M, or claim readiness without evidence |
 | Co-located Rental | In-process — **not** M2M-mandatory (this section does not change Rental runtime) |
 
-Agent enforcement: [`MONOREPO_AGENT_GUARDRAILS.md`](MONOREPO_AGENT_GUARDRAILS.md); [`.cursor/rules/projektregel.mdc`](../../.cursor/rules/projektregel.mdc); root `AGENTS.md` promotion pending owner i18n authority label when edited.
+Agent enforcement: [`MONOREPO_AGENT_GUARDRAILS.md`](MONOREPO_AGENT_GUARDRAILS.md); [`.cursor/rules/projektregel.mdc`](../../.cursor/rules/projektregel.mdc); root [`AGENTS.md`](../../AGENTS.md) (product shape + compliance baseline — merges require owner label `i18n-governance-authority-change` per i18n governance CI).
 
-**Interface readiness audit (2026-11-20):** repository evidence for VYMOD/Fleet M2M contracts — [`evidence/POST_P6_P10_CORE_EXTERNAL_APP_INTERFACE_READINESS_2026-11-20.md`](evidence/POST_P6_P10_CORE_EXTERNAL_APP_INTERFACE_READINESS_2026-11-20.md); production M2M **not armed**; G1 M2M entitlements **payload** read is **CONDITIONAL_INTERFACE_EXTENSION** only (minimum contract satisfied by token exchange + vehicle read).
+**Interface readiness audit (2026-11-20):** repository evidence for VYMOD/Fleet M2M contracts — [`evidence/POST_P6_P10_CORE_EXTERNAL_APP_INTERFACE_READINESS_2026-11-20.md`](evidence/POST_P6_P10_CORE_EXTERNAL_APP_INTERFACE_READINESS_2026-11-20.md); **MERGED** #2462 @ `0e94cf67d`; production M2M **not armed**; G1 M2M entitlements **payload** read is **CONDITIONAL_INTERFACE_EXTENSION** only (minimum contract satisfied by token exchange + vehicle read).
+
+**Disposable Postgres DB certification (2026-11-20):** P11 HTTP contract on real Postgres — [`evidence/POST_P6_P11_CORE_EXTERNAL_INTERFACE_DATABASE_CERTIFICATION_2026-11-20.md`](evidence/POST_P6_P11_CORE_EXTERNAL_INTERFACE_DATABASE_CERTIFICATION_2026-11-20.md); **MERGED** #2463. **Greenfield migration recovery:** [`evidence/POST_P6_P12_FRESH_DB_MIGRATION_RECOVERY_2026-11-20.md`](evidence/POST_P6_P12_FRESH_DB_MIGRATION_RECOVERY_2026-11-20.md); **MERGED** #2464 — native empty-DB `migrate deploy` still fails at historical `batch_c`; use opt-in greenfield runner on disposable DB only.
 
 ## Product map
 
@@ -183,6 +185,10 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | **P4** | Reviewed Core↔Rental **service** boundary (ports; not all future decoupling) | **P4-PR1–PR4 MERGED** (#2423–#2426); boundary audit **COMPLETE** — [`P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md`](evidence/P4_BOUNDARY_FINAL_AUDIT_2026-11-18.md) | Owner-gated |
 | **P5** | Full MA architecture/security audit | **CLOSEOUT_SUFFICIENT** @ `59182a9de` — B1 attestation recorded; B2 [#2428](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2428)–[#2429](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2429); B3 [#2430](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2430)–[#2434](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2434); B3-PR6 dedup **NOT_REQUIRED**; B4 [#2436](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2436) **DRAFT DEFERRED**; MFA/M2M Production **UNSET** (deferred risk — not security PASS); [`P5_CLOSEOUT_P6_READINESS_2026-11-18.md`](evidence/P5_CLOSEOUT_P6_READINESS_2026-11-18.md) | Owner P6 slice |
 | **P6** | Rental product completion | **UNBLOCKED** (P5 sufficient per owner 2026-11-18) — co-located Rental, no M2M mandate | Owner-gated |
+| **Post-P6 P10** | Core external app interface readiness (docs) | **MERGED** [#2462](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2462) | **NOT_CLAIMED** |
+| **Post-P6 P11** | Core external interface disposable Postgres cert | **MERGED** [#2463](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2463) | **NOT_CLAIMED** (opt-in CI) |
+| **Post-P6 P12** | Greenfield DB migration recovery utility | **MERGED** [#2464](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2464) | **NOT_CLAIMED** (disposable only) |
+| **Post-P6 governance** | Documentation + compliance engineering baseline | In progress — [`ENGINEERING_COMPLIANCE_STANDARD.md`](../compliance/ENGINEERING_COMPLIANCE_STANDARD.md) | **NOT_CLAIMED** |
 | **P7** | VYMOD + further products | Owner priority (sequencing unchanged) | Owner-gated |
 
 ## Non-goals
@@ -220,4 +226,4 @@ Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`
 
 **Owner 2026-11-18:** MFA implementation/activation **deferred** until after Core/Rental workstream; M2M production activation **not authorized**; physical Core extraction **SUPERSEDED**.
 
-**Last updated:** 2026-11-18 (P5 closeout + P6 readiness on `59182a9de`)
+**Last updated:** 2026-11-20 (Post-P6 P10–P12 merged; compliance standard on `2e39a894a`)
