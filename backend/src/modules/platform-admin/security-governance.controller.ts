@@ -25,6 +25,8 @@ import {
   SecurityGovernanceSessionAuditService,
   type SessionRevocationAuditRequest,
 } from './security-governance-session-audit.service';
+import { SecurityGovernancePlatformPermissionAuditService } from './security-governance-platform-permission-audit.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 
 type AuthedRequest = SessionRevocationAuditRequest;
 
@@ -37,6 +39,8 @@ export class SecurityGovernanceController {
     private readonly mfa: IamMfaService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly sessionAudit: SecurityGovernanceSessionAuditService,
+    private readonly platformPermissionAudit: SecurityGovernancePlatformPermissionAuditService,
+    private readonly platformPermissions: PlatformPermissionService,
   ) {}
 
   @Get('attention-summary')
@@ -130,6 +134,48 @@ export class SecurityGovernanceController {
       idempotencyKey: body.idempotencyKey ?? `master-mfa-reset:${userId}:${Date.now()}`,
       reason: body.reason,
     });
+  }
+
+  @Post('users/:userId/platform-permissions/master-billing/grant')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @HttpCode(HttpStatus.OK)
+  async grantMasterBilling(@Param('userId') userId: string, @Req() req: AuthedRequest) {
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      return { granted: false };
+    }
+    return this.platformPermissions.grantMasterBillingWithMandatoryAudit(
+      userId,
+      actorUserId,
+      (result) =>
+        this.platformPermissionAudit.buildMasterBillingGrantAudit({
+          req,
+          targetUserId: userId,
+          grantId: result.grantId,
+          idempotent: result.idempotent,
+        }),
+    );
+  }
+
+  @Post('users/:userId/platform-permissions/master-billing/revoke')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @HttpCode(HttpStatus.OK)
+  async revokeMasterBilling(@Param('userId') userId: string, @Req() req: AuthedRequest) {
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      return { revoked: false };
+    }
+    return this.platformPermissions.revokeMasterBillingWithMandatoryAudit(
+      userId,
+      actorUserId,
+      (result) =>
+        this.platformPermissionAudit.buildMasterBillingRevokeAudit({
+          req,
+          targetUserId: userId,
+          grantId: result.grantId,
+          idempotent: result.idempotent,
+        }),
+    );
   }
 
   @Get('platform-roles')

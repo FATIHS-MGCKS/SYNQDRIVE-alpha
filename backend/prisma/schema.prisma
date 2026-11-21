@@ -282,6 +282,10 @@ enum UserPlatformRole {
   USER
 }
 
+enum PlatformPermissionKey {
+  MASTER_BILLING @map("master-billing")
+}
+
 enum StationStatus {
   ACTIVE
   INACTIVE
@@ -1977,6 +1981,9 @@ model User {
   updatedAt                  DateTime         @updatedAt @map("updated_at")
 
   refreshTokens                        RefreshToken[]
+  platformPermissionGrants             UserPlatformPermissionGrant[]            @relation("PlatformPermissionSubject")
+  platformPermissionGrantsGranted      UserPlatformPermissionGrant[]            @relation("PlatformPermissionGrantedBy")
+  platformPermissionGrantsRevoked        UserPlatformPermissionGrant[]            @relation("PlatformPermissionRevokedBy")
   memberships                          OrganizationMembership[]
   activityLogs                         ActivityLog[]
   mfaFactors                           UserMfaFactor[]
@@ -2092,6 +2099,25 @@ model RefreshToken {
 // ------------------------------------------------
 // MFA (TOTP + WebAuthn-ready)
 // ------------------------------------------------
+
+model UserPlatformPermissionGrant {
+  id              String                @id @default(uuid())
+  userId          String                @map("user_id")
+  permissionKey   PlatformPermissionKey @map("permission_key")
+  grantedByUserId String                @map("granted_by_user_id")
+  grantedAt       DateTime              @default(now()) @map("granted_at")
+  revokedAt       DateTime?             @map("revoked_at")
+  revokedByUserId String?               @map("revoked_by_user_id")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  user      User  @relation("PlatformPermissionSubject", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User  @relation("PlatformPermissionGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  revokedBy User? @relation("PlatformPermissionRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, permissionKey, revokedAt])
+  @@map("user_platform_permission_grants")
+}
 
 model UserMfaFactor {
   id                String        @id @default(uuid())

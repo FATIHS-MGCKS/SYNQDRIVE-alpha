@@ -18,6 +18,7 @@ import {
   RECOVERY_CODE_COUNT,
 } from './iam-mfa.policy';
 import { resolveIamMfaFeatureFlagsForPrincipal } from './iam-mfa-feature-flags.resolver';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import type { TotpEnrollmentConfirmResult, TotpEnrollmentStartResult } from './iam-mfa.types';
 
 const BCRYPT_ROUNDS = 10;
@@ -25,12 +26,23 @@ const ISSUER = 'SynqDrive';
 
 @Injectable()
 export class IamMfaEnrollmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly platformPermissions: PlatformPermissionService,
+  ) {}
 
-  assertEnrollmentEnabled(organizationId: string | null, platformRole?: string | null) {
+  async assertEnrollmentEnabled(
+    userId: string,
+    organizationId: string | null,
+    platformRole?: string | null,
+  ) {
+    const platformMasterBillingGrant = await this.platformPermissions.hasActiveMasterBillingGrant(
+      userId,
+    );
     const flags = resolveIamMfaFeatureFlagsForPrincipal({
       organizationId,
       platformRole,
+      platformMasterBillingGrant,
     });
     if (!flags.mfaEnrollmentEnabled) {
       throw new BadRequestException({
@@ -46,7 +58,7 @@ export class IamMfaEnrollmentService {
     organizationId: string | null,
     platformRole?: string | null,
   ): Promise<TotpEnrollmentStartResult> {
-    this.assertEnrollmentEnabled(organizationId, platformRole);
+    await this.assertEnrollmentEnabled(userId, organizationId, platformRole);
 
     const existing = await this.prisma.userMfaFactor.findUnique({
       where: { userId_factorType: { userId, factorType: MfaFactorType.TOTP } },
@@ -90,8 +102,9 @@ export class IamMfaEnrollmentService {
     code: string,
     organizationId: string | null,
     idempotencyKey: string,
+    platformRole?: string | null,
   ): Promise<TotpEnrollmentConfirmResult> {
-    this.assertEnrollmentEnabled(organizationId);
+    await this.assertEnrollmentEnabled(userId, organizationId, platformRole);
 
     const factor = await this.prisma.userMfaFactor.findUnique({
       where: { userId_factorType: { userId, factorType: MfaFactorType.TOTP } },

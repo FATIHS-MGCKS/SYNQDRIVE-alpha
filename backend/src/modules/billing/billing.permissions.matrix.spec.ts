@@ -347,6 +347,9 @@ describe('Billing permissions matrix — organization boundary hardening', () =>
 
 describe('Billing permissions matrix — master platform operators', () => {
   const reflector = { getAllAndOverride: jest.fn() } as unknown as Reflector;
+  const platformPermissions = {
+    hasActiveMasterBillingGrant: jest.fn(),
+  };
   let guard: MasterBillingGuard;
 
   const ctx = (user?: Record<string, unknown>) => ({
@@ -358,8 +361,9 @@ describe('Billing permissions matrix — master platform operators', () => {
   });
 
   beforeEach(() => {
-    guard = new MasterBillingGuard(reflector);
+    guard = new MasterBillingGuard(reflector, platformPermissions as never);
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue(true);
+    (platformPermissions.hasActiveMasterBillingGrant as jest.Mock).mockResolvedValue(false);
   });
 
   const masterCapabilities = [
@@ -376,31 +380,43 @@ describe('Billing permissions matrix — master platform operators', () => {
 
   it.each(masterCapabilities)(
     'MASTER_ADMIN may access master billing mutations (%s)',
-    () => {
-      expect(guard.canActivate(ctx({ platformRole: 'MASTER_ADMIN' }) as never)).toBe(true);
+    async () => {
+      await expect(
+        guard.canActivate(ctx({ id: 'ma', platformRole: 'MASTER_ADMIN' }) as never),
+      ).resolves.toBe(true);
     },
   );
 
-  it('delegated master-billing operator may access mutations without MASTER_ADMIN role', () => {
-    expect(
+  it('delegated master-billing operator may access mutations without MASTER_ADMIN role', async () => {
+    (platformPermissions.hasActiveMasterBillingGrant as jest.Mock).mockResolvedValue(true);
+    await expect(
       guard.canActivate(
-        ctx({ platformRole: 'USER', platformPermissions: ['master-billing'] }) as never,
+        ctx({
+          id: 'delegate',
+          platformRole: 'USER',
+          platformPermissions: ['master-billing'],
+        }) as never,
       ),
-    ).toBe(true);
+    ).resolves.toBe(true);
   });
 
-  it('tenant ORG_ADMIN cannot access master billing mutations', () => {
-    expect(() =>
+  it('tenant ORG_ADMIN cannot access master billing mutations', async () => {
+    await expect(
       guard.canActivate(
-        ctx({ platformRole: 'USER', membershipRole: 'ORG_ADMIN', organizationId: 'org-a' }) as never,
+        ctx({
+          id: 'oa',
+          platformRole: 'USER',
+          membershipRole: 'ORG_ADMIN',
+          organizationId: 'org-a',
+        }) as never,
       ),
-    ).toThrow(ForbiddenException);
+    ).rejects.toThrow(ForbiddenException);
   });
 
-  it('tenant worker cannot access master billing mutations', () => {
-    expect(() =>
-      guard.canActivate(ctx({ platformRole: 'USER', organizationId: 'org-a' }) as never),
-    ).toThrow(ForbiddenException);
+  it('tenant worker cannot access master billing mutations', async () => {
+    await expect(
+      guard.canActivate(ctx({ id: 'w', platformRole: 'USER', organizationId: 'org-a' }) as never),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
 

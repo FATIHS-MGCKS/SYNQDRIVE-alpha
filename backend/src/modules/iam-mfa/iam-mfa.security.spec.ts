@@ -78,7 +78,10 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
       const prisma = {
         userMfaFactor: { findUnique, upsert },
       } as never;
-      const service = new IamMfaEnrollmentService(prisma);
+      const platformPermissions = {
+        hasActiveMasterBillingGrant: jest.fn().mockResolvedValue(false),
+      } as never;
+      const service = new IamMfaEnrollmentService(prisma, platformPermissions);
 
       const result = await service.startTotpEnrollment(userId, email, orgId);
 
@@ -112,7 +115,10 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
         },
         $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
       } as never;
-      const service = new IamMfaEnrollmentService(prisma);
+      const platformPermissions = {
+        hasActiveMasterBillingGrant: jest.fn().mockResolvedValue(false),
+      } as never;
+      const service = new IamMfaEnrollmentService(prisma, platformPermissions);
 
       const result = await service.confirmTotpEnrollment(
         userId,
@@ -396,6 +402,7 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
         } as never,
         {} as never,
         {} as never,
+        { hasActiveMasterBillingGrant: jest.fn().mockResolvedValue(false) } as never,
       );
 
       const status = await service.getStatus({

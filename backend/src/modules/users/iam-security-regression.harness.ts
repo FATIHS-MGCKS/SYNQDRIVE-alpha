@@ -299,12 +299,17 @@ export function createRefreshTokenHarness() {
   const sessionPolicy = {
     recordAndExecute: jest.fn().mockResolvedValue({ revokedTokenCount: 0 }),
   };
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+    hasActiveMasterBillingGrant: jest.fn().mockResolvedValue(false),
+  };
   const service = new RefreshTokenService(
     prisma as unknown as PrismaService,
     config as unknown as ConfigService,
     sessionPolicy as never,
+    platformPermissions as never,
   );
-  return { prisma, config, sessionPolicy, service };
+  return { prisma, config, sessionPolicy, platformPermissions, service };
 }
 
 export function multiOrgUserFixture() {

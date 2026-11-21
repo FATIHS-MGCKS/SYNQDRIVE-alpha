@@ -71,6 +71,7 @@ export class IamMfaAccountController {
       body.code,
       req.user?.organizationId ?? null,
       body.idempotencyKey,
+      req.user?.platformRole,
     );
   }
 

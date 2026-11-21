@@ -13,6 +13,7 @@ import { resolveIamMfaFeatureFlagsForPrincipal } from './iam-mfa-feature-flags.r
 import { IamMfaEnrollmentService } from './iam-mfa-enrollment.service';
 import { IamMfaChallengeService } from './iam-mfa-challenge.service';
 import { IamMfaResetService } from './iam-mfa-reset.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import type {
   AdminMfaResetInput,
   MfaChallengeResult,
@@ -30,6 +31,7 @@ export class IamMfaService {
     private readonly enrollment: IamMfaEnrollmentService,
     private readonly challengeService: IamMfaChallengeService,
     private readonly resetService: IamMfaResetService,
+    private readonly platformPermissions: PlatformPermissionService,
   ) {}
 
   async getStatus(input: {
@@ -40,9 +42,13 @@ export class IamMfaService {
     permissions?: unknown;
     organizationId?: string | null;
   }): Promise<MfaStatusResult> {
+    const platformMasterBillingGrant = await this.platformPermissions.hasActiveMasterBillingGrant(
+      input.userId,
+    );
     const flags = resolveIamMfaFeatureFlagsForPrincipal({
       organizationId: input.organizationId ?? null,
       platformRole: input.platformRole,
+      platformMasterBillingGrant,
     });
     const enrolled = await this.enrollment.isMfaEnrolled(input.userId);
     const factors = await this.prisma.userMfaFactor.findMany({
@@ -83,12 +89,14 @@ export class IamMfaService {
     code: string,
     organizationId: string | null,
     idempotencyKey: string,
+    platformRole?: string | null,
   ): Promise<TotpEnrollmentConfirmResult> {
     return this.enrollment.confirmTotpEnrollment(
       userId,
       code,
       organizationId,
       idempotencyKey,
+      platformRole,
     );
   }
 

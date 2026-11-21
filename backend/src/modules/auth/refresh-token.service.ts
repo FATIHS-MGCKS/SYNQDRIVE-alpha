@@ -16,6 +16,7 @@ import {
   validateVersionSnapshots,
 } from '@modules/users/policies/refresh-session-binding.policy';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import {
   AuthSessionClaims,
   buildPasswordOnlyClaims,
@@ -68,6 +69,7 @@ export class RefreshTokenService {
     private readonly config: ConfigService,
     @Inject(forwardRef(() => IamSessionPolicyService))
     private readonly sessionPolicy: IamSessionPolicyService,
+    private readonly platformPermissions: PlatformPermissionService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {
     this.jwtSecret = this.config.get<string>('app.jwtSecret')!;
@@ -80,7 +82,8 @@ export class RefreshTokenService {
     membership: RefreshTokenMembershipContext | null,
     context: { userAgent?: string; ipAddress?: string } = {},
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
-    const accessToken = this.signAccessToken(user, membership);
+    const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
+    const accessToken = this.signAccessToken(user, membership, undefined, platformPermissions);
     const refreshToken = await this.createRefreshToken(user, membership, context);
     return { accessToken, refreshToken, expiresIn: this.jwtExpiresIn };
   }
@@ -90,8 +93,14 @@ export class RefreshTokenService {
     membership: RefreshTokenMembershipContext | null,
     sessionClaims: AuthSessionClaims,
   ): Promise<{ accessToken: string; expiresIn: string }> {
+    const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
     return {
-      accessToken: this.signAccessToken(user, membership, sessionClaims),
+      accessToken: this.signAccessToken(
+        user,
+        membership,
+        sessionClaims,
+        platformPermissions,
+      ),
       expiresIn: this.jwtExpiresIn,
     };
   }
@@ -489,7 +498,12 @@ export class RefreshTokenService {
       },
     });
 
-    const accessToken = user ? this.signAccessToken(user, membership) : '';
+    const platformPermissions = user
+      ? await this.platformPermissions.resolveJwtPermissions(user.id)
+      : [];
+    const accessToken = user
+      ? this.signAccessToken(user, membership, undefined, platformPermissions)
+      : '';
 
     return { accessToken, rawRefreshToken: rawToken, refreshTokenId: record.id };
   }
@@ -582,6 +596,7 @@ export class RefreshTokenService {
     user: RefreshTokenUserContext,
     membership: RefreshTokenMembershipContext | null,
     sessionClaims?: AuthSessionClaims,
+    platformPermissions: string[] = [],
   ): string {
     const claims = sessionClaims ?? buildPasswordOnlyClaims(user.sessionVersion ?? 0);
     const payload = {
@@ -589,6 +604,7 @@ export class RefreshTokenService {
       email: user.email,
       name: user.name,
       platformRole: user.platformRole,
+      platformPermissions,
       membershipRole: membership?.role ?? null,
       organizationId: membership?.organizationId ?? null,
       organizationName: membership?.organizationName ?? null,

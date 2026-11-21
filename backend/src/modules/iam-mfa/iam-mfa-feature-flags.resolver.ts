@@ -45,6 +45,7 @@ export function resolveIamMfaGlobalFeatureFlags(): IamMfaGlobalFeatureFlags {
 export function resolveIamMfaFeatureFlagsForPrincipal(input: {
   organizationId: string | null;
   platformRole?: string | null;
+  platformMasterBillingGrant?: boolean;
 }): IamMfaPrincipalFeatureFlags {
   if (input.platformRole === UserPlatformRole.MASTER_ADMIN && resolveIamMfaMasterAdminEnabled()) {
     return {
@@ -54,6 +55,22 @@ export function resolveIamMfaFeatureFlagsForPrincipal(input: {
       mfaEnrollmentEnabled: true,
       mfaStepUpEnforced: true,
       mfaPrivilegedEnrollmentRequired: true,
+    };
+  }
+
+  if (input.platformMasterBillingGrant && input.organizationId == null) {
+    const global = resolveIamMfaGlobalFeatureFlags();
+    const allowlistRaw = process.env[IAM_MFA_FEATURE_FLAG_ENV_KEYS.orgAllowlist]?.trim();
+    const allowlist = allowlistRaw
+      ? allowlistRaw.split(',').map((v) => v.trim()).filter(Boolean)
+      : [];
+    return {
+      organizationId: null,
+      rolloutAllowlistActive: allowlist.length > 0,
+      masterAdminMfaEnabled: false,
+      mfaEnrollmentEnabled: global.mfaEnrollmentEnabled,
+      mfaStepUpEnforced: global.mfaStepUpEnforced,
+      mfaPrivilegedEnrollmentRequired: global.mfaPrivilegedEnrollmentRequired,
     };
   }
 

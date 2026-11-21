@@ -28,6 +28,21 @@ describe('resolveIamMfaFeatureFlagsForPrincipal', () => {
     expect(flags.mfaPrivilegedEnrollmentRequired).toBe(true);
   });
 
+  it('allows platform billing delegates to enroll when org allowlist is active', () => {
+    process.env.IAM_MFA_ENROLLMENT_ENABLED = 'true';
+    process.env.IAM_MFA_ORG_ALLOWLIST = 'org-tenant-only';
+
+    const flags = resolveIamMfaFeatureFlagsForPrincipal({
+      organizationId: null,
+      platformRole: 'USER',
+      platformMasterBillingGrant: true,
+    });
+
+    expect(flags.masterAdminMfaEnabled).toBe(false);
+    expect(flags.mfaEnrollmentEnabled).toBe(true);
+    expect(flags.rolloutAllowlistActive).toBe(true);
+  });
+
   it('does not affect tenant users when master admin flag is on', () => {
     process.env.IAM_MFA_MASTER_ADMIN_ENABLED = 'true';
     process.env.IAM_MFA_ENROLLMENT_ENABLED = 'false';

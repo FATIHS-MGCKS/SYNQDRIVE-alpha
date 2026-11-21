@@ -8,6 +8,7 @@ import { IamMfaEnrollmentService } from '@modules/iam-mfa/iam-mfa-enrollment.ser
 import { IamMfaChallengeService } from '@modules/iam-mfa/iam-mfa-challenge.service';
 import { resolveIamMfaFeatureFlagsForPrincipal } from '@modules/iam-mfa/iam-mfa-feature-flags.resolver';
 import { MFA_ERROR } from '@modules/iam-mfa/iam-mfa.policy';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 
 const MFA_PENDING_TTL_SEC = 5 * 60;
 
@@ -29,6 +30,7 @@ export class AuthMfaLoginService {
     private readonly refreshTokens: RefreshTokenService,
     private readonly enrollment: IamMfaEnrollmentService,
     private readonly challenge: IamMfaChallengeService,
+    private readonly platformPermissions: PlatformPermissionService,
   ) {
     this.jwtSecret = this.config.get<string>('app.jwtSecret')!;
   }
@@ -133,6 +135,8 @@ export class AuthMfaLoginService {
       },
     );
 
+    const platformPermissionsList = await this.platformPermissions.resolveJwtPermissions(user.id);
+
     return {
       ...tokens,
       accessToken: challengeResult.accessToken ?? tokens.accessToken,
@@ -142,6 +146,7 @@ export class AuthMfaLoginService {
         email: user.email,
         name: user.name,
         platformRole: user.platformRole,
+        platformPermissions: platformPermissionsList,
         membershipRole: membership?.role ?? null,
         organizationId: membership?.organizationId ?? null,
         organizationName: membership?.organization?.companyName ?? null,
