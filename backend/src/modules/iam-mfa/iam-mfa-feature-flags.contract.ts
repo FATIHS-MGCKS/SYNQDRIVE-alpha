@@ -17,6 +17,7 @@ export const IAM_MFA_FEATURE_FLAG_ENV_KEYS = {
   mfaPrivilegedEnrollmentRequired: 'IAM_MFA_PRIVILEGED_ENROLLMENT_REQUIRED',
   orgAllowlist: 'IAM_MFA_ORG_ALLOWLIST',
   masterAdminEnabled: 'IAM_MFA_MASTER_ADMIN_ENABLED',
+  masterBillingDelegateEnabled: 'IAM_MFA_MASTER_BILLING_DELEGATE_ENABLED',
 } as const;
 
 export type IamMfaPrincipalFeatureFlags = IamMfaEffectiveFeatureFlags & {

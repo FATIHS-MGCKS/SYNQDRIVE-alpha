@@ -31,11 +31,18 @@ import {
   MasterSubscriptionUpdateDiscountDto,
 } from './dto/master-subscription.dto';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { MasterBillingDelegateMfaGuard } from '@shared/auth/master-billing-delegate-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin/billing/organizations/:orgId/subscription')
-@UseGuards(RolesGuard, PermissionsGuard, MasterBillingGuard, MasterAdminMfaGuard)
+@UseGuards(
+  RolesGuard,
+  PermissionsGuard,
+  MasterBillingGuard,
+  MasterAdminMfaGuard,
+  MasterBillingDelegateMfaGuard,
+)
 @RequireMasterBilling()
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_SUBSCRIPTION)
 export class MasterSubscriptionController {

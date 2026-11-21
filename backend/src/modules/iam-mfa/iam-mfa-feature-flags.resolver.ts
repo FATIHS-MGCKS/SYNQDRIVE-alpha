@@ -21,6 +21,13 @@ export function resolveIamMfaMasterAdminEnabled(): boolean {
   );
 }
 
+export function resolveIamMfaMasterBillingDelegateEnabled(): boolean {
+  return parseBool(
+    process.env[IAM_MFA_FEATURE_FLAG_ENV_KEYS.masterBillingDelegateEnabled],
+    false,
+  );
+}
+
 export function resolveIamMfaGlobalFeatureFlags(): IamMfaGlobalFeatureFlags {
   return {
     mfaEnrollmentEnabled: parseBool(

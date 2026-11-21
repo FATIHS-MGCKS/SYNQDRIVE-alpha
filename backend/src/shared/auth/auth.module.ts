@@ -6,6 +6,7 @@ import { RolesGuard } from './roles.guard';
 import { OrgScopingGuard } from './org-scoping.guard';
 import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
 import { MasterAdminMfaGuard } from './master-admin-mfa.guard';
+import { MasterBillingDelegateMfaGuard } from './master-billing-delegate-mfa.guard';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 
 @Module({
@@ -16,8 +17,16 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
     OrgScopingGuard,
     VehicleOwnershipGuard,
     MasterAdminMfaGuard,
+    MasterBillingDelegateMfaGuard,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [AuthGuard, RolesGuard, OrgScopingGuard, VehicleOwnershipGuard, MasterAdminMfaGuard],
+  exports: [
+    AuthGuard,
+    RolesGuard,
+    OrgScopingGuard,
+    VehicleOwnershipGuard,
+    MasterAdminMfaGuard,
+    MasterBillingDelegateMfaGuard,
+  ],
 })
 export class AuthModule {}

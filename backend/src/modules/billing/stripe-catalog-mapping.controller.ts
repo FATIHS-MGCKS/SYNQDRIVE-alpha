@@ -17,11 +17,18 @@ import { ConnectStripeCatalogMappingDto } from './dto/stripe-catalog-mapping.dto
 import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
 import { SyncStripeCatalogDto } from './dto/stripe-catalog-sync.dto';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { MasterBillingDelegateMfaGuard } from '@shared/auth/master-billing-delegate-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller('admin/billing')
-@UseGuards(RolesGuard, PermissionsGuard, MasterBillingGuard, MasterAdminMfaGuard)
+@UseGuards(
+  RolesGuard,
+  PermissionsGuard,
+  MasterBillingGuard,
+  MasterAdminMfaGuard,
+  MasterBillingDelegateMfaGuard,
+)
 @RequireMasterBilling()
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_BILLING)
 export class StripeCatalogMappingController {

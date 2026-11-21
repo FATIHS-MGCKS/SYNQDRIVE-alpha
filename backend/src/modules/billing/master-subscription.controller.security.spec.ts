@@ -8,6 +8,7 @@ import {
   MASTER_BILLING_PLATFORM_PERMISSION,
 } from '@shared/decorators/require-master-billing.decorator';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { MasterBillingDelegateMfaGuard } from '@shared/auth/master-billing-delegate-mfa.guard';
 import { MasterSubscriptionController } from './master-subscription.controller';
 
 describe('MasterSubscriptionController security characterization', () => {
@@ -30,7 +31,7 @@ describe('MasterSubscriptionController security characterization', () => {
     );
   });
 
-  it('applies RolesGuard, PermissionsGuard, MasterBillingGuard and MasterAdminMfaGuard', () => {
+  it('applies billing auth and MFA guards', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, MasterSubscriptionController) ?? [];
     expect(guards).toEqual(
       expect.arrayContaining([
@@ -38,6 +39,7 @@ describe('MasterSubscriptionController security characterization', () => {
         PermissionsGuard,
         MasterBillingGuard,
         MasterAdminMfaGuard,
+        MasterBillingDelegateMfaGuard,
       ]),
     );
   });
@@ -153,21 +155,7 @@ describe('MasterSubscriptionController access control', () => {
 });
 
 describe('MasterSubscriptionController — delegated billing MFA step-up (characterization)', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    process.env = {
-      ...originalEnv,
-      IAM_MFA_MASTER_ADMIN_ENABLED: 'true',
-      IAM_MFA_STEP_UP_ENFORCED: 'true',
-    };
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  it('master-billing delegate bypasses MasterAdminMfaGuard (platformRole USER)', async () => {
+  it('master-billing delegate bypasses MasterAdminMfaGuard; delegate guard handles billing MFA', async () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue('MASTER_SUBSCRIPTION'),
     } as unknown as import('@nestjs/core').Reflector;

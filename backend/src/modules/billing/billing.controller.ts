@@ -79,6 +79,7 @@ import { PaginationParams } from '@shared/utils/pagination';
 
 import { resolveOrgScope } from './billing-scope.util';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { MasterBillingDelegateMfaGuard } from '@shared/auth/master-billing-delegate-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
@@ -131,7 +132,7 @@ import { TenantBillableVehicleListQueryDto } from './dto/tenant-billing-tariff.d
 
 @Controller()
 
-@UseGuards(RolesGuard, PermissionsGuard, MasterAdminMfaGuard)
+@UseGuards(RolesGuard, PermissionsGuard, MasterAdminMfaGuard, MasterBillingDelegateMfaGuard)
 
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_BILLING)
 
