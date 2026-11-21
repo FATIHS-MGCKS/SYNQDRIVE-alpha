@@ -20,6 +20,7 @@ import {
 } from '@shared/database/pg-advisory-lock.util';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { OrganizationRoleService } from '@modules/users/organization-role.service';
+import { DEFAULT_ORGANIZATION_ROLE_TEMPLATES } from '@modules/users/defaults/organization-role.defaults';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -157,11 +158,23 @@ export class OrganizationsService {
     return map[value] ?? OrganizationStatus.PENDING;
   }
 
-  async create(dto: AdminCreateOrganizationDto) {
+  async create(
+    dto: AdminCreateOrganizationDto,
+    auditCtx?: { actorUserId?: string | null },
+  ) {
+    if (dto.initialAdmin) {
+      const { organization, admin } = await this.createWithAdmin(
+        mapAdminCreateToServiceInput(dto),
+        dto.initialAdmin,
+        auditCtx,
+      );
+      return { ...organization, initialAdmin: admin };
+    }
+
     const org = await this.prisma.organization.create({
       data: this.buildOrganizationCreateInput(mapAdminCreateToServiceInput(dto)),
     });
-    void this.organizationRoles.ensureDefaultRoles(org.id);
+    await this.finalizeOrganizationOnboarding(org.id, null, auditCtx);
     return org;
   }
 
@@ -187,6 +200,7 @@ export class OrganizationsService {
   async createWithAdmin(
     orgData: Record<string, unknown>,
     adminData: { name: string; email: string; password: string },
+    auditCtx?: { actorUserId?: string | null },
   ) {
     const passwordHash = await bcrypt.hash(adminData.password, 10);
 
@@ -223,9 +237,49 @@ export class OrganizationsService {
       return { organization: org, admin: { id: user.id, email: user.email, name: user.name } };
     });
 
-    void this.organizationRoles.ensureDefaultRoles(result.organization.id, result.admin.id);
+    await this.finalizeOrganizationOnboarding(
+      result.organization.id,
+      result.admin.id,
+      auditCtx,
+    );
 
     return result;
+  }
+
+  private async finalizeOrganizationOnboarding(
+    organizationId: string,
+    createdByUserId?: string | null,
+    auditCtx?: { actorUserId?: string | null },
+  ): Promise<void> {
+    await this.organizationRoles.ensureDefaultRoles(
+      organizationId,
+      createdByUserId ?? undefined,
+    );
+
+    const templateCount = await this.prisma.organizationRole.count({
+      where: { organizationId, isSystemTemplate: true },
+    });
+    if (templateCount < DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length) {
+      throw new BadRequestException({
+        code: 'ORGANIZATION_ONBOARDING_INCOMPLETE',
+        message: 'Default organization roles were not provisioned completely',
+      });
+    }
+
+    if (auditCtx?.actorUserId) {
+      void this.audit.record({
+        actorUserId: auditCtx.actorUserId,
+        actorOrganizationId: organizationId,
+        action: ActivityAction.CREATE,
+        entity: ActivityEntity.ORGANIZATION,
+        entityId: organizationId,
+        description: 'Master Admin organization onboarding completed',
+        metaJson: {
+          defaultRoleTemplates: DEFAULT_ORGANIZATION_ROLE_TEMPLATES.length,
+          initialAdminUserId: createdByUserId ?? null,
+        },
+      });
+    }
   }
 
   async findAll(
@@ -325,33 +379,64 @@ export class OrganizationsService {
   async createOrgAdmin(
     orgId: string,
     adminData: { name: string; email: string; password: string },
+    auditCtx?: { actorUserId?: string | null },
   ) {
     const org = await this.prisma.organization.findUnique({ where: { id: orgId } });
     if (!org) throw new NotFoundException('Organization not found');
 
-    const existing = await this.prisma.user.findUnique({ where: { email: adminData.email } });
-    if (existing) throw new ConflictException(`User with email ${adminData.email} already exists`);
-
     const passwordHash = await bcrypt.hash(adminData.password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        name: adminData.name,
-        email: adminData.email,
-        passwordHash,
-        status: 'ACTIVE',
-      },
+
+    const admin = await this.prisma.$transaction(async (tx) => {
+      await acquirePgAdvisoryXactLock(tx, userEmailRegistrationLockKey(adminData.email));
+
+      const existingUser = await tx.user.findUnique({ where: { email: adminData.email } });
+      if (existingUser) {
+        throw new ConflictException(`User with email ${adminData.email} already exists`);
+      }
+
+      const user = await tx.user.create({
+        data: {
+          name: adminData.name,
+          email: adminData.email,
+          passwordHash,
+          status: 'ACTIVE',
+        },
+      });
+
+      const existingMembership = await tx.organizationMembership.findFirst({
+        where: { userId: user.id, organizationId: orgId },
+      });
+      if (existingMembership) {
+        throw new ConflictException('User is already a member of this organization');
+      }
+
+      await tx.organizationMembership.create({
+        data: {
+          userId: user.id,
+          organizationId: orgId,
+          role: 'ORG_ADMIN',
+          status: MembershipStatus.ACTIVE,
+        },
+      });
+
+      return { id: user.id, email: user.email, name: user.name };
     });
 
-    await this.prisma.organizationMembership.create({
-      data: {
-        userId: user.id,
-        organizationId: orgId,
-        role: 'ORG_ADMIN',
-        status: MembershipStatus.ACTIVE,
-      },
-    });
+    await this.organizationRoles.ensureDefaultRoles(orgId, admin.id);
 
-    return { id: user.id, email: user.email, name: user.name };
+    if (auditCtx?.actorUserId) {
+      void this.audit.record({
+        actorUserId: auditCtx.actorUserId,
+        actorOrganizationId: orgId,
+        action: ActivityAction.CREATE,
+        entity: ActivityEntity.USER,
+        entityId: admin.id,
+        description: 'Organization admin account created',
+        metaJson: { organizationId: orgId },
+      });
+    }
+
+    return admin;
   }
 
   async update(id: string, dto: AdminUpdateOrganizationDto) {
