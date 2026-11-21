@@ -35,6 +35,18 @@
 
 ---
 
+## CI / i18n governance gate (expected on #2465)
+
+| Check | Result | Meaning |
+|-------|--------|---------|
+| `i18n-authority-protection` | **FAIL** until labeled | `AGENTS.md` is Layer-0 governance authority; requires owner label `i18n-governance-authority-change` |
+| `i18n-new-debt-gate` | **FAIL** until labeled | `GOVERNANCE_AUTHORITY_CHANGED=YES`; same label enables `--authority-approved` path |
+| `validate-module-registry` | **PASS** | No registry drift |
+
+Local reproduction: `cd frontend && npm run i18n:pr-gate -- --base-sha 2e39a894a` → `MIXED_AUTHORITY_PRODUCT_CHANGE=NO`; fails without `--authority-approved`. **Not a product/i18n debt regression.**
+
+---
+
 ## Production / certification claims (unchanged facts)
 
 - M2M production activation: **not armed** (`CORE_APP_M2M_*` fail-closed)
