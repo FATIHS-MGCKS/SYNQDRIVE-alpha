@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
+import { assertOrganizationAllowsTenantSurface } from './organization-lifecycle-access.policy';
+import { resolveTenantAccessSurfaceFromHttpRequest } from './organization-lifecycle-onboarding.routes';
 
 /**
  * OrgScopingGuard — centralized multi-tenant enforcement for org-scoped routes.
@@ -71,7 +73,11 @@ export class OrgScopingGuard implements CanActivate {
         organizationId: orgId,
         status: 'ACTIVE',
       },
-      select: { id: true, role: true },
+      select: {
+        id: true,
+        role: true,
+        organization: { select: { status: true } },
+      },
     });
 
     if (!membership) {
@@ -81,6 +87,15 @@ export class OrgScopingGuard implements CanActivate {
       this.iamMetrics?.recordCrossTenantDenial('membership');
       throw new ForbiddenException('You do not have access to this organization');
     }
+
+    const surface = resolveTenantAccessSurfaceFromHttpRequest({
+      method: request.method,
+      url: request.url,
+      path: request.route?.path
+        ? `/api/v1${String(request.route.path).replace(/^\/?/, '/')}`
+        : request.path,
+    });
+    assertOrganizationAllowsTenantSurface(membership.organization?.status, surface);
 
     // Stamp tenantId onto request for downstream service use
     request.tenantId = orgId;
