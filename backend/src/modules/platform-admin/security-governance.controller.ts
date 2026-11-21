@@ -144,14 +144,17 @@ export class SecurityGovernanceController {
     if (!actorUserId) {
       return { granted: false };
     }
-    const result = await this.platformPermissions.grantMasterBilling(userId, actorUserId);
-    this.platformPermissionAudit.recordMasterBillingGrant({
-      req,
-      targetUserId: userId,
-      grantId: result.grantId,
-      idempotent: result.idempotent,
-    });
-    return result;
+    return this.platformPermissions.grantMasterBillingWithMandatoryAudit(
+      userId,
+      actorUserId,
+      (result) =>
+        this.platformPermissionAudit.buildMasterBillingGrantAudit({
+          req,
+          targetUserId: userId,
+          grantId: result.grantId,
+          idempotent: result.idempotent,
+        }),
+    );
   }
 
   @Post('users/:userId/platform-permissions/master-billing/revoke')
@@ -162,14 +165,17 @@ export class SecurityGovernanceController {
     if (!actorUserId) {
       return { revoked: false };
     }
-    const result = await this.platformPermissions.revokeMasterBilling(userId, actorUserId);
-    this.platformPermissionAudit.recordMasterBillingRevoke({
-      req,
-      targetUserId: userId,
-      grantId: result.grantId,
-      idempotent: result.idempotent,
-    });
-    return result;
+    return this.platformPermissions.revokeMasterBillingWithMandatoryAudit(
+      userId,
+      actorUserId,
+      (result) =>
+        this.platformPermissionAudit.buildMasterBillingRevokeAudit({
+          req,
+          targetUserId: userId,
+          grantId: result.grantId,
+          idempotent: result.idempotent,
+        }),
+    );
   }
 
   @Get('platform-roles')

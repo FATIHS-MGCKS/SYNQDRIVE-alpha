@@ -51,12 +51,12 @@ function createBillingDelegateAuthGuard() {
 
 describe('SecurityGovernance — master-billing platform permission HTTP security', () => {
   const platformPermissions = {
-    grantMasterBilling: jest.fn().mockResolvedValue({
+    grantMasterBillingWithMandatoryAudit: jest.fn().mockResolvedValue({
       granted: true,
       idempotent: false,
       grantId: 'grant-1',
     }),
-    revokeMasterBilling: jest.fn().mockResolvedValue({
+    revokeMasterBillingWithMandatoryAudit: jest.fn().mockResolvedValue({
       revoked: true,
       idempotent: false,
       grantId: 'grant-1',
@@ -142,9 +142,10 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
           .expect(200);
         expect(validateGrant).toHaveBeenCalledTimes(1);
         expectStepUpValidation(validateGrant, STEP_UP_ACTION.MASTER_USER_MANAGEMENT);
-        expect(platformPermissions.grantMasterBilling).toHaveBeenCalledWith(
+        expect(platformPermissions.grantMasterBillingWithMandatoryAudit).toHaveBeenCalledWith(
           targetUserId,
           MFA_HTTP_MASTER,
+          expect.any(Function),
         );
       } finally {
         await app.close();
@@ -161,9 +162,10 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
           .set('x-step-up-token', 'step-up-token-valid')
           .expect(200);
         expect(validateGrant).toHaveBeenCalledTimes(1);
-        expect(platformPermissions.revokeMasterBilling).toHaveBeenCalledWith(
+        expect(platformPermissions.revokeMasterBillingWithMandatoryAudit).toHaveBeenCalledWith(
           targetUserId,
           MFA_HTTP_MASTER,
+          expect.any(Function),
         );
       } finally {
         await app.close();
@@ -190,7 +192,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
           .expect(403);
         expect(res.body.code).toBe(MFA_ERROR.STEP_UP_REQUIRED);
         expect(harness.validateGrant).not.toHaveBeenCalled();
-        expect(platformPermissions.grantMasterBilling).not.toHaveBeenCalled();
+        expect(platformPermissions.grantMasterBillingWithMandatoryAudit).not.toHaveBeenCalled();
       } finally {
         await closeMasterAdminMfaHttpHarness(harness);
       }
@@ -317,29 +319,47 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
         )
         .set('Authorization', 'Bearer billing-delegate')
         .expect(403);
-      expect(platformPermissions.grantMasterBilling).not.toHaveBeenCalled();
+      expect(platformPermissions.grantMasterBillingWithMandatoryAudit).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }
   });
 
-  it('records audit metadata on grant', async () => {
+  it('returns 500 when mandatory audit cannot be persisted (no false success)', async () => {
+    const tx = {
+      user: { findUnique: jest.fn().mockResolvedValue({ id: targetUserId, status: 'ACTIVE', platformRole: 'USER' }) },
+      userPlatformPermissionGrant: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'grant-1' }),
+      },
+      activityLog: {
+        create: jest.fn().mockRejectedValue(new Error('audit persistence failed')),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),
+      userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) },
+    };
+    const realPlatformPermissions = new PlatformPermissionService(prisma as never);
+
     const moduleRef = await Test.createTestingModule({
       controllers: [SecurityGovernanceController],
       providers: [
         SecurityGovernancePlatformPermissionAuditService,
         SecurityGovernanceSessionAuditService,
         { provide: MasterAdminAuditService, useValue: masterAdminAudit },
-        { provide: PlatformPermissionService, useValue: platformPermissions },
+        { provide: PlatformPermissionService, useValue: realPlatformPermissions },
         { provide: SecurityGovernanceService, useValue: governance },
         { provide: RefreshTokenService, useValue: {} },
         { provide: IamMfaService, useValue: {} },
         { provide: APP_GUARD, useValue: createMasterAdminAuthGuard() },
+        Reflector,
+        MasterAdminMfaGuard,
+        { provide: PrismaService, useValue: prisma },
+        { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn().mockResolvedValue(true) } },
       ],
     })
       .overrideGuard(RolesGuard)
-      .useValue({ canActivate: () => true })
-      .overrideGuard(MasterAdminMfaGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StepUpGuard)
       .useValue({ canActivate: () => true })
@@ -352,18 +372,34 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
           `/admin/security/users/${targetUserId}/platform-permissions/master-billing/grant`,
         )
         .set('Authorization', 'Bearer master-token')
-        .expect(200);
-      expect(masterAdminAudit.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metadata: expect.objectContaining({
-            domain: 'platform_permission',
-            operation: 'GRANT_MASTER_BILLING',
-            targetUserId,
-          }),
-        }),
-      );
+        .expect(500);
+      expect(tx.userPlatformPermissionGrant.create).toHaveBeenCalled();
+      expect(masterAdminAudit.record).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }
+  });
+
+  it('builds grant audit envelope with domain metadata for transactional persist', async () => {
+    const auditService = new SecurityGovernancePlatformPermissionAuditService();
+    const envelope = auditService.buildMasterBillingGrantAudit({
+      req: {
+        user: { id: MFA_HTTP_MASTER, platformRole: UserPlatformRole.MASTER_ADMIN },
+        method: 'POST',
+        headers: { 'x-correlation-id': 'corr-grant-1' },
+      },
+      targetUserId,
+      grantId: 'grant-1',
+      idempotent: false,
+    });
+    expect(envelope.metadata).toEqual(
+      expect.objectContaining({
+        domain: 'platform_permission',
+        operation: 'GRANT_MASTER_BILLING',
+        targetUserId,
+        grantId: 'grant-1',
+      }),
+    );
+    expect(envelope.correlationId).toBe('corr-grant-1');
   });
 });

@@ -2,7 +2,11 @@
  * P3B0 — canonical master-billing grant + JWT contract on disposable Postgres.
  * Opt-in: P3B0_PLATFORM_PERMISSION_PG=1 and DATABASE_URL.
  */
-import { PrismaClient, UserPlatformRole } from '@prisma/client';
+import { ActivityEntity, PrismaClient, UserPlatformRole } from '@prisma/client';
+import {
+  MasterAdminAuditAction,
+  type MasterAdminAuditRecordInput,
+} from '@modules/activity-log/master-admin-audit.contract';
 import * as jwt from 'jsonwebtoken';
 import { PlatformPermissionService } from './platform-permission.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
@@ -206,6 +210,69 @@ describePg('PlatformPermissionService (disposable Postgres)', () => {
 
     await expect(platformPermissions.hasActiveMasterBillingGrant(delegateId)).resolves.toBe(false);
 
+    await prisma.userPlatformPermissionGrant.deleteMany({ where: { userId: delegateId } });
+    await prisma.user.deleteMany({ where: { id: { in: [masterId, delegateId] } } });
+  });
+
+  it('mandatory audit: grant persists activityLog with mutation', async () => {
+    const suffix = Date.now();
+    const masterId = `p3b0-audit-master-${suffix}`;
+    const delegateId = `p3b0-audit-delegate-${suffix}`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${masterId}, ${`audit-master-${suffix}@test.example`}, 'Master',
+        'ACTIVE'::"UserStatus", ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole", NOW(), NOW()
+      )
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${delegateId}, ${`audit-delegate-${suffix}@test.example`}, 'Delegate',
+        'ACTIVE'::"UserStatus", ${UserPlatformRole.USER}::"UserPlatformRole", NOW(), NOW()
+      )
+    `;
+
+    const buildAudit = (): MasterAdminAuditRecordInput => ({
+      auditAction: MasterAdminAuditAction.PLATFORM_USER_UPDATED,
+      actorUserId: masterId,
+      actorPlatformRole: 'MASTER_ADMIN',
+      entityId: delegateId,
+      description: 'grant test',
+      correlationId: `corr-${suffix}`,
+      metadata: {
+        domain: 'platform_permission',
+        operation: 'GRANT_MASTER_BILLING',
+        targetUserId: delegateId,
+      },
+    });
+
+    await platformPermissions.grantMasterBillingWithMandatoryAudit(
+      delegateId,
+      masterId,
+      (result) => ({
+        ...buildAudit(),
+        metadata: {
+          domain: 'platform_permission',
+          operation: 'GRANT_MASTER_BILLING',
+          targetUserId: delegateId,
+          grantId: result.grantId,
+          idempotent: result.idempotent,
+        },
+      }),
+    );
+
+    const auditRow = await prisma.activityLog.findFirst({
+      where: {
+        userId: masterId,
+        entity: ActivityEntity.ADMIN_OPERATION,
+        entityId: delegateId,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(auditRow).not.toBeNull();
+
+    await prisma.activityLog.deleteMany({ where: { userId: masterId } });
     await prisma.userPlatformPermissionGrant.deleteMany({ where: { userId: delegateId } });
     await prisma.user.deleteMany({ where: { id: { in: [masterId, delegateId] } } });
   });

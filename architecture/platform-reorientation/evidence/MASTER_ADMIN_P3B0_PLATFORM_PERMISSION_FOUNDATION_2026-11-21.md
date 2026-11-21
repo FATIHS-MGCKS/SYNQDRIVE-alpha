@@ -31,6 +31,12 @@
 - Delegated billing: denied when grant subject `User.status !== ACTIVE` (DB grant may remain until revoke).
 - MFA login user payload includes `platformPermissions` (parity with password login).
 
+## F2 audit integrity (2026-11-21)
+
+- **Root cause:** Fire-and-forget `MasterAdminAuditService.record` → `AuditService.record` swallows DB errors (`null`); permission mutation could commit without durable audit.
+- **Fix:** `grantMasterBillingWithMandatoryAudit` / `revokeMasterBillingWithMandatoryAudit` run grant/revoke + `activityLog.create` in one Prisma transaction; audit failure rolls back mutation; HTTP does not return success.
+- **Scope:** Platform master-billing grant/revoke only; global `AuditService` best-effort semantics unchanged.
+
 ## Registry
 
 **REGISTRY_REVIEWED:** UNCHANGED (IAM evidence; no module authority promotion).

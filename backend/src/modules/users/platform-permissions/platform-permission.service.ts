@@ -4,12 +4,31 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PlatformPermissionKey, Prisma, UserPlatformRole, UserStatus } from '@prisma/client';
+import {
+  PlatformPermissionKey,
+  Prisma,
+  UserPlatformRole,
+  UserStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { MasterAdminAuditRecordInput } from '@modules/activity-log/master-admin-audit.contract';
 import {
   PLATFORM_PERMISSION_JWT_VALUES,
   PLATFORM_PERMISSION_KEY_TO_JWT,
 } from './platform-permission.constants';
+import { persistPlatformPermissionMandatoryAuditTx } from './platform-permission-mandatory-audit.util';
+
+export type PlatformPermissionGrantResult = {
+  granted: boolean;
+  idempotent: boolean;
+  grantId: string | null;
+};
+
+export type PlatformPermissionRevokeResult = {
+  revoked: boolean;
+  idempotent: boolean;
+  grantId: string | null;
+};
 
 @Injectable()
 export class PlatformPermissionService {
@@ -42,13 +61,54 @@ export class PlatformPermissionService {
     return grants.map((g) => PLATFORM_PERMISSION_KEY_TO_JWT[g.permissionKey]);
   }
 
+  async grantMasterBillingWithMandatoryAudit(
+    targetUserId: string,
+    actorUserId: string,
+    buildAudit: (result: PlatformPermissionGrantResult) => MasterAdminAuditRecordInput,
+  ): Promise<PlatformPermissionGrantResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await this.grantMasterBillingInTx(tx, targetUserId, actorUserId);
+      await persistPlatformPermissionMandatoryAuditTx(tx, buildAudit(result));
+      return result;
+    });
+  }
+
+  async revokeMasterBillingWithMandatoryAudit(
+    targetUserId: string,
+    actorUserId: string,
+    buildAudit: (result: PlatformPermissionRevokeResult) => MasterAdminAuditRecordInput,
+  ): Promise<PlatformPermissionRevokeResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await this.revokeMasterBillingInTx(tx, targetUserId, actorUserId);
+      await persistPlatformPermissionMandatoryAuditTx(tx, buildAudit(result));
+      return result;
+    });
+  }
+
+  /** Non-transactional grant — tests and internal JWT flows without HTTP audit coupling. */
   async grantMasterBilling(
     targetUserId: string,
     actorUserId: string,
-  ): Promise<{ granted: boolean; idempotent: boolean; grantId: string | null }> {
-    await this.assertGrantTargetEligible(targetUserId);
+  ): Promise<PlatformPermissionGrantResult> {
+    return this.grantMasterBillingInTx(this.prisma, targetUserId, actorUserId);
+  }
 
-    const existing = await this.prisma.userPlatformPermissionGrant.findFirst({
+  /** Non-transactional revoke — tests and internal JWT flows without HTTP audit coupling. */
+  async revokeMasterBilling(
+    targetUserId: string,
+    actorUserId: string,
+  ): Promise<PlatformPermissionRevokeResult> {
+    return this.revokeMasterBillingInTx(this.prisma, targetUserId, actorUserId);
+  }
+
+  private async grantMasterBillingInTx(
+    tx: Prisma.TransactionClient,
+    targetUserId: string,
+    actorUserId: string,
+  ): Promise<PlatformPermissionGrantResult> {
+    await this.assertGrantTargetEligibleInTx(tx, targetUserId);
+
+    const existing = await tx.userPlatformPermissionGrant.findFirst({
       where: {
         userId: targetUserId,
         permissionKey: PlatformPermissionKey.MASTER_BILLING,
@@ -60,7 +120,7 @@ export class PlatformPermissionService {
     }
 
     try {
-      const grant = await this.prisma.userPlatformPermissionGrant.create({
+      const grant = await tx.userPlatformPermissionGrant.create({
         data: {
           userId: targetUserId,
           permissionKey: PlatformPermissionKey.MASTER_BILLING,
@@ -73,7 +133,7 @@ export class PlatformPermissionService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        const raced = await this.prisma.userPlatformPermissionGrant.findFirst({
+        const raced = await tx.userPlatformPermissionGrant.findFirst({
           where: {
             userId: targetUserId,
             permissionKey: PlatformPermissionKey.MASTER_BILLING,
@@ -88,11 +148,12 @@ export class PlatformPermissionService {
     }
   }
 
-  async revokeMasterBilling(
+  private async revokeMasterBillingInTx(
+    tx: Prisma.TransactionClient,
     targetUserId: string,
     actorUserId: string,
-  ): Promise<{ revoked: boolean; idempotent: boolean; grantId: string | null }> {
-    const active = await this.prisma.userPlatformPermissionGrant.findFirst({
+  ): Promise<PlatformPermissionRevokeResult> {
+    const active = await tx.userPlatformPermissionGrant.findFirst({
       where: {
         userId: targetUserId,
         permissionKey: PlatformPermissionKey.MASTER_BILLING,
@@ -103,7 +164,7 @@ export class PlatformPermissionService {
       return { revoked: false, idempotent: true, grantId: null };
     }
 
-    const updated = await this.prisma.userPlatformPermissionGrant.update({
+    const updated = await tx.userPlatformPermissionGrant.update({
       where: { id: active.id },
       data: {
         revokedAt: new Date(),
@@ -113,8 +174,11 @@ export class PlatformPermissionService {
     return { revoked: true, idempotent: false, grantId: updated.id };
   }
 
-  private async assertGrantTargetEligible(targetUserId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({
+  private async assertGrantTargetEligibleInTx(
+    tx: Prisma.TransactionClient,
+    targetUserId: string,
+  ): Promise<void> {
+    const user = await tx.user.findUnique({
       where: { id: targetUserId },
       select: { id: true, status: true, platformRole: true },
     });
