@@ -667,6 +667,32 @@ export class UsersService {
       return this.findOrgUserDetail(orgId, userId);
     }
 
+    if (
+      dto.status === 'ACTIVE' &&
+      (membership.status === MembershipStatus.SUSPENDED ||
+        membership.status === MembershipStatus.REACTIVATION_REQUIRED)
+    ) {
+      const stationIds = Array.isArray(membership.stationIds)
+        ? (membership.stationIds as string[])
+        : undefined;
+      await this.lifecycle.reactivate({
+        organizationId: orgId,
+        userId,
+        idempotencyKey: `membership-reactivate:${orgId}:${membership.id}`,
+        actor: { userId: actorUserId },
+        role: membership.role,
+        organizationRoleId: membership.organizationRoleId,
+        roleLabel: membership.roleLabel,
+        stationScope: membership.stationScope,
+        stationIds,
+        permissions: normalizeMembershipPermissions(membership.permissions),
+        fieldAgentAccess: membership.fieldAgentAccess,
+        reason: 'Admin reactivated membership',
+      });
+      await this.iamAudit.processOutboxIds(outboxIds);
+      return this.findOrgUserDetail(orgId, userId);
+    }
+
     const hasMove =
       dto.role !== undefined ||
       dto.permissions !== undefined ||

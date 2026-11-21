@@ -99,6 +99,37 @@ describe('UsersService — security & membership', () => {
     );
   });
 
+  it('reactivates SUSPENDED membership when status ACTIVE via updateOrgUser', async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      id: 'm-suspended',
+      role: MembershipRole.WORKER,
+      status: MembershipStatus.SUSPENDED,
+      roleLabel: null,
+      organizationRoleId: null,
+      stationScope: null,
+      stationIds: null,
+      permissions: null,
+      fieldAgentAccess: false,
+    });
+    jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
+
+    await service.updateOrgUser(
+      orgId,
+      workerUserId,
+      { status: 'ACTIVE' },
+      { id: adminUserId, platformRole: 'MASTER_ADMIN' },
+    );
+
+    expect(lifecycle.reactivate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: orgId,
+        userId: workerUserId,
+        role: MembershipRole.WORKER,
+      }),
+    );
+    expect(lifecycle.suspend).not.toHaveBeenCalled();
+  });
+
   it('reactivates REMOVED membership on createOrgUser', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: workerUserId,

@@ -122,7 +122,8 @@ export function MasterOrganizationIamTab({
         const suspendKey = `suspend:${userId}`;
         const isBusy = busyKey === suspendKey;
         const suspended =
-          row.userSummary.status === 'SUSPENDED' || row.membershipStatus === 'SUSPENDED';
+          row.membershipStatus === 'SUSPENDED' ||
+          row.membershipStatus === 'REACTIVATION_REQUIRED';
         const roleMatch = roles.find(
           (r) => r.name === row.effectiveRoleLabel || r.membershipRole === row.effectiveRole,
         );

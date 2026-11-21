@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Sidebar, type MasterView } from './components/Sidebar';
 import { MasterGlobalChrome } from './components/MasterGlobalChrome';
@@ -143,6 +143,7 @@ function MasterAppInner() {
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [stepUpAction, setStepUpAction] = useState<string | undefined>();
+  const skipMfaCancelCleanupRef = useRef(false);
 
   useEffect(() => {
     const onStepUp = (event: Event) => {
@@ -447,10 +448,15 @@ function MasterAppInner() {
             action={stepUpAction}
             onClose={() => {
               setStepUpOpen(false);
+              if (skipMfaCancelCleanupRef.current) {
+                skipMfaCancelCleanupRef.current = false;
+                return;
+              }
               clearPending();
               iamMutations.clearPending();
             }}
             onSuccess={() => {
+              skipMfaCancelCleanupRef.current = true;
               void (async () => {
                 try {
                   const retriedOrg = await retryPendingAfterStepUp();
@@ -466,6 +472,9 @@ function MasterAppInner() {
                       error: getErrorMessage(e),
                     }),
                   );
+                } finally {
+                  skipMfaCancelCleanupRef.current = false;
+                  setStepUpOpen(false);
                 }
               })();
             }}

@@ -339,7 +339,13 @@ export function OneAutoServiceDialog({
   };
 
   const handleMfaSuccess = () => {
-    void runExecute();
+    void (async () => {
+      try {
+        await runExecute();
+      } finally {
+        setMfaOpen(false);
+      }
+    })();
   };
 
   const handleViewStoredSchedule = async () => {

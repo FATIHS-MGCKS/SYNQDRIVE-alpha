@@ -25,6 +25,39 @@ const activeWorkerMembership = {
 };
 
 describe('IAM membership vs global identity isolation (Prompt 4)', () => {
+  describe('multi-org reactivate', () => {
+    it('reactivates membership in org A only via lifecycle.reactivate', async () => {
+      const { prisma, lifecycle, service } = createUsersServiceHarness();
+      prisma.organizationMembership.findFirst.mockResolvedValue({
+        id: IAM_REGRESSION_IDS.membershipA,
+        role: MembershipRole.WORKER,
+        status: MembershipStatus.SUSPENDED,
+        roleLabel: null,
+        organizationRoleId: null,
+        stationScope: null,
+        stationIds: null,
+        permissions: null,
+        fieldAgentAccess: false,
+      });
+      jest.spyOn(service, 'findOrgUserDetail').mockResolvedValue({} as never);
+
+      await service.updateOrgUser(
+        IAM_REGRESSION_IDS.orgA,
+        IAM_REGRESSION_IDS.multiOrgUser,
+        { status: 'ACTIVE' },
+        { id: IAM_REGRESSION_IDS.adminA, platformRole: 'MASTER_ADMIN' },
+      );
+
+      expect(lifecycle.reactivate).toHaveBeenCalledTimes(1);
+      expect(lifecycle.reactivate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: IAM_REGRESSION_IDS.orgA,
+          userId: IAM_REGRESSION_IDS.multiOrgUser,
+        }),
+      );
+    });
+  });
+
   describe('multi-org suspend', () => {
     it('suspends membership in org A only', async () => {
       const { prisma, service } = createUsersServiceHarness();
