@@ -44,7 +44,12 @@ import { normalizeContextForIntelligenceView } from './intelligence/master-intel
 import type { MasterNavLocationState } from './navigation/master-nav.types';
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser } from './data/platform-data';
-import { api } from '../lib/api';
+import { api, getErrorMessage } from '../lib/api';
+import { useLanguage } from '../i18n/LanguageContext';
+import { OrganizationsOperationalRefreshProvider, useOrganizationsOperationalRefresh } from './organizations/organizations-operational-refresh';
+import { useMasterOrganizationPatch } from './organizations/useMasterOrganizationPatch';
+import { classifyMasterOrgPatchError } from './organizations/master-organization-patch';
+import { classifyCreateOrgRefreshOutcome } from './organizations/organizations-operational-create-outcome';
 import { MasterAdminShell, PageContainer } from './shell';
 import { MasterMfaGate } from './components/MasterMfaGate';
 import { MfaStepUpDialog } from '../components/mfa/MfaStepUpDialog';
@@ -118,8 +123,11 @@ function parseHmTab(value: string | null | undefined): 'vehicles' | 'eligibility
   return undefined;
 }
 
-export default function App() {
+function MasterAppInner() {
   const { isDarkMode } = useAppTheme();
+  const { t } = useLanguage();
+  const { refreshOperationalList } = useOrganizationsOperationalRefresh();
+  const { patchOrganization, retryPendingAfterStepUp, clearPending } = useMasterOrganizationPatch();
   const initialNav = readInitialMasterNavLocation();
   const [currentView, setCurrentView] = useState<MasterView>(initialNav.view);
   const [settingsTab, setSettingsTab] = useState<string>(initialNav.settingsTab ?? 'general');
@@ -319,35 +327,53 @@ export default function App() {
         ...(adminData ? { initialAdmin: adminData } : {}),
       });
 
+      let refreshError: string | null = null;
+      try {
+        await refreshOperationalList();
+      } catch (refreshErr) {
+        refreshError = getErrorMessage(refreshErr);
+      }
+      void reloadFromApi().catch(() => undefined);
+
+      const adminSuffix = adminData ? t('master.organizations.create.successWithAdmin') : '';
+      const refreshOutcome = classifyCreateOrgRefreshOutcome(refreshError);
+      if (refreshOutcome === 'partial') {
+        toast.warning(
+          t('master.organizations.create.successRefreshFailed', {
+            error: refreshError ?? '',
+          }),
+        );
+      }
       toast.success(
-        adminData
-          ? `Organisation „${payload.companyName}" und Admin erstellt`
-          : `Organisation „${payload.companyName}" erstellt`,
+        t('master.organizations.create.success', {
+          name: payload.companyName,
+          adminSuffix,
+        }),
       );
-      await reloadFromApi();
-    } catch (e: any) {
-      toast.error(e?.message || 'Organisation konnte nicht erstellt werden');
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, t('master.organizations.create.failed')));
       throw e;
     }
   };
-  const handleUpdateOrg = async (orgId: string, data: Record<string, unknown>) => {
+
+  const handlePatchOrganization = async (
+    orgId: string,
+    data: Record<string, unknown>,
+    onSuccess?: () => void | Promise<void>,
+  ) => {
     try {
-      await api.organizations.update(orgId, data);
-      toast.success('Organisation aktualisiert');
-      await reloadFromApi();
-    } catch (e: any) {
-      toast.error(e?.message || 'Organisation konnte nicht aktualisiert werden');
-      throw e;
-    }
-  };
-  const handleDeleteOrg = async (id: string, reason: string) => {
-    try {
-      await api.organizations.delete(id, reason);
-      toast.success('Organisation gelöscht');
-      setDetailOrgId(null);
-      await reloadFromApi();
-    } catch (e: any) {
-      toast.error(e?.message || 'Organisation konnte nicht gelöscht werden');
+      await patchOrganization(orgId, data, {
+        onSuccess: async () => {
+          await refreshOperationalList().catch(() => undefined);
+          void reloadFromApi().catch(() => undefined);
+          if (onSuccess) await onSuccess();
+          toast.success(t('master.organizations.update.success'));
+        },
+      });
+    } catch (e: unknown) {
+      if (classifyMasterOrgPatchError(e).enrollmentRequired) {
+        toast.error(t('master.organizations.mfa.enrollmentRequired'));
+      }
       throw e;
     }
   };
@@ -417,8 +443,28 @@ export default function App() {
           <MfaStepUpDialog
             open={stepUpOpen}
             action={stepUpAction}
-            onClose={() => setStepUpOpen(false)}
-            onSuccess={() => toast.success('2FA bestätigt — Aktion erneut ausführen.')}
+            onClose={() => {
+              setStepUpOpen(false);
+              clearPending();
+            }}
+            onSuccess={() => {
+              void (async () => {
+                try {
+                  const retried = await retryPendingAfterStepUp();
+                  if (retried) {
+                    toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
+                    return;
+                  }
+                  toast.success(t('master.organizations.mfa.stepUpSuccessManual'));
+                } catch (e: unknown) {
+                  toast.error(
+                    t('master.organizations.mfa.retryFailed', {
+                      error: getErrorMessage(e),
+                    }),
+                  );
+                }
+              })();
+            }}
           />
         </>
       )}
@@ -449,8 +495,8 @@ export default function App() {
               onBack={() => {
                 pushMasterNavState({ view: 'organizations' });
               }}
-              onUpdateOrg={handleUpdateOrg}
-              onDeleteOrg={handleDeleteOrg}
+              onPatchOrganization={handlePatchOrganization}
+              onRefreshOperationalList={refreshOperationalList}
               onOpenBillingCenter={(orgId) => {
                 setBillingFocusOrgId(orgId);
                 navigateMaster('billing');
@@ -653,5 +699,13 @@ export default function App() {
         )}
       </MasterMfaGate>
     </MasterAdminShell>
+  );
+}
+
+export default function App() {
+  return (
+    <OrganizationsOperationalRefreshProvider>
+      <MasterAppInner />
+    </OrganizationsOperationalRefreshProvider>
   );
 }

@@ -3,7 +3,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  DataTable, StatusChip, ConfirmDialog, EmptyState, MetricCard, SectionHeader,
+  DataTable, StatusChip, EmptyState, MetricCard, SectionHeader,
   HealthStatusChip, StatusDot, fleetVehicleStatusTone, onlineSignalTone,
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
@@ -11,7 +11,8 @@ import {
   MasterPageHeader, MasterLoadingState, MasterErrorState, MasterPageSection,
 } from '../shell';
 import { Button } from '../../components/ui/button';
-import { api } from '../../lib/api';
+import { api, getErrorMessage } from '../../lib/api';
+import { toast } from 'sonner';
 import { useOrganizationDetail } from '../organizations/useOrganizationsOperational';
 import {
   ORG_DETAIL_TABS,
@@ -39,14 +40,20 @@ import {
 } from '../organizations/org.utils';
 import type { OrganizationOperationalDetailDto } from '../organizations/types';
 import { OrganizationProductsTab } from './organization-products/OrganizationProductsTab';
+import { OrganizationLifecycleSettings } from './OrganizationLifecycleSettings';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface OrganizationDetailViewProps {
   orgId: string;
   onBack: () => void;
   onOpenBillingCenter?: (orgId: string) => void;
   onNavigateToVehicle?: (vehicleId: string) => void;
-  onDeleteOrg: (orgId: string, reason: string) => Promise<void>;
-  onUpdateOrg: (orgId: string, data: Record<string, unknown>) => Promise<void>;
+  onPatchOrganization: (
+    orgId: string,
+    data: Record<string, unknown>,
+    onSuccess?: () => void | Promise<void>,
+  ) => Promise<void>;
+  onRefreshOperationalList?: () => Promise<void>;
 }
 
 function IssuesSection({
@@ -203,9 +210,10 @@ export function OrganizationDetailView({
   onBack,
   onOpenBillingCenter,
   onNavigateToVehicle,
-  onDeleteOrg,
-  onUpdateOrg,
+  onPatchOrganization,
+  onRefreshOperationalList,
 }: OrganizationDetailViewProps) {
+  const { t } = useLanguage();
   const { detail, loading, error, refresh } = useOrganizationDetail(orgId);
   const [activeTab, setActiveTab] = useState<OrgDetailTab>(() =>
     (readOrgTabFromUrl() as OrgDetailTab) || 'overview',
@@ -228,14 +236,11 @@ export function OrganizationDetailView({
   const [activityError, setActivityError] = useState<string | null>(null);
   const [activityMode, setActivityMode] = useState<'operational' | 'audit'>('operational');
 
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteReason, setDeleteReason] = useState('');
-  const [deleteConfirmName, setDeleteConfirmName] = useState('');
-  const [deleting, setDeleting] = useState(false);
 
   const [settingsName, setSettingsName] = useState('');
   const [settingsCity, setSettingsCity] = useState('');
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
 
   const changeTab = useCallback((tab: OrgDetailTab) => {
     setActiveTab(tab);
@@ -575,8 +580,30 @@ export function OrganizationDetailView({
         </MasterPageSection>
       )}
 
-      {activeTab === 'settings' && (
+      {activeTab === 'settings' && detail && (
         <div className="space-y-6 max-w-xl">
+          <OrganizationLifecycleSettings
+            orgId={orgId}
+            orgStatus={detail.orgStatus}
+            orgStatusLabel={detail.orgStatusLabel}
+            disabled={settingsSaving || lifecycleBusy}
+            onStatusChange={async (nextStatus) => {
+              setLifecycleBusy(true);
+              try {
+                await onPatchOrganization(
+                  orgId,
+                  { status: nextStatus },
+                  async () => {
+                    await refresh();
+                    if (onRefreshOperationalList) await onRefreshOperationalList();
+                  },
+                );
+              } finally {
+                setLifecycleBusy(false);
+              }
+            }}
+          />
+
           <MasterPageSection title="Metadaten">
             <div className="space-y-3">
               <div>
@@ -597,12 +624,20 @@ export function OrganizationDetailView({
               </div>
               <Button
                 type="button"
-                disabled={settingsSaving}
+                disabled={settingsSaving || lifecycleBusy}
                 onClick={async () => {
                   setSettingsSaving(true);
                   try {
-                    await onUpdateOrg(orgId, { companyName: settingsName, city: settingsCity });
-                    await refresh();
+                    await onPatchOrganization(
+                      orgId,
+                      { companyName: settingsName, city: settingsCity },
+                      async () => {
+                        await refresh();
+                        if (onRefreshOperationalList) await onRefreshOperationalList();
+                      },
+                    );
+                  } catch (e) {
+                    toast.error(getErrorMessage(e, t('master.organizations.update.failed')));
                   } finally {
                     setSettingsSaving(false);
                   }
@@ -613,56 +648,12 @@ export function OrganizationDetailView({
             </div>
           </MasterPageSection>
 
-          <section className="rounded-xl border border-[color:var(--status-critical)]/40 p-5 space-y-3">
-            <SectionHeader title="Gefahrenzone" />
-            <p className="text-sm text-muted-foreground">
-              Entfernt den Mandanten und alle zugehörigen Daten. Diese Aktion kann nicht rückgängig gemacht werden.
-            </p>
-            <Button type="button" variant="destructive" onClick={() => setDeleteOpen(true)}>
-              Organisation löschen…
-            </Button>
+          <section className="rounded-xl border border-border p-5 space-y-2">
+            <SectionHeader title={t('master.organizations.offboarding.title')} />
+            <p className="text-sm text-muted-foreground">{t('master.organizations.offboarding.body')}</p>
           </section>
         </div>
       )}
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Organisation löschen"
-        description={`Geben Sie den Namen „${detail.companyName}" und eine Begründung ein.`}
-        confirmLabel="Endgültig löschen"
-        cancelLabel="Abbrechen"
-        tone="critical"
-        loading={deleting}
-        onConfirm={async () => {
-          if (deleteConfirmName !== detail.companyName || !deleteReason.trim()) return;
-          setDeleting(true);
-          try {
-            await onDeleteOrg(orgId, deleteReason.trim());
-            setDeleteOpen(false);
-            onBack();
-          } finally {
-            setDeleting(false);
-          }
-        }}
-      >
-        <div className="space-y-3 mt-2">
-          <input
-            className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm"
-            placeholder={detail.companyName}
-            value={deleteConfirmName}
-            onChange={(e) => setDeleteConfirmName(e.target.value)}
-            aria-label="Organisationsname bestätigen"
-          />
-          <textarea
-            className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm min-h-[80px]"
-            placeholder="Begründung (Pflicht)"
-            value={deleteReason}
-            onChange={(e) => setDeleteReason(e.target.value)}
-            aria-label="Begründung"
-          />
-        </div>
-      </ConfirmDialog>
     </>
   );
 }
