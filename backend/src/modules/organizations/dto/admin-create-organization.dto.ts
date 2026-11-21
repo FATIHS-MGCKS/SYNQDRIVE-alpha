@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsEmail,
   IsEnum,
@@ -6,8 +6,10 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { BusinessType, OrganizationStatus } from '@prisma/client';
+import { OrganizationInitialAdminDto } from './organization-initial-admin.dto';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -78,4 +80,10 @@ export class AdminCreateOrganizationDto {
   @IsOptional()
   @IsEnum(OrganizationStatus)
   status?: OrganizationStatus;
+
+  /** When set, org + admin + membership are created atomically in one request. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OrganizationInitialAdminDto)
+  initialAdmin?: OrganizationInitialAdminDto;
 }

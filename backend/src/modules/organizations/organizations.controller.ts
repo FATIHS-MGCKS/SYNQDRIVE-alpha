@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
@@ -62,13 +63,21 @@ export class OrganizationsController {
   }
 
   @Post()
-  async create(@Body() body: AdminCreateOrganizationDto) {
-    return this.organizationsService.create(body);
+  async create(@Body() body: AdminCreateOrganizationDto, @Req() req: { user?: { id?: string } }) {
+    return this.organizationsService.create(body, {
+      actorUserId: req.user?.id ?? null,
+    });
   }
 
   @Post(':id/admin')
-  async createAdmin(@Param('id') id: string, @Body() body: CreateOrgAdminDto) {
-    return this.organizationsService.createOrgAdmin(id, body);
+  async createAdmin(
+    @Param('id') id: string,
+    @Body() body: CreateOrgAdminDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.organizationsService.createOrgAdmin(id, body, {
+      actorUserId: req.user?.id ?? null,
+    });
   }
 
   @Get(':id/stats')
