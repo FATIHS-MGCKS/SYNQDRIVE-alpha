@@ -1,4 +1,4 @@
-import { MembershipRole, MembershipStatus, UserStatus } from '@prisma/client';
+import { MembershipRole, MembershipStatus, OrganizationStatus, UserStatus } from '@prisma/client';
 import { OrganizationSwitchService } from './organization-switch.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { IAM_REGRESSION_IDS } from '@modules/users/iam-security-regression.harness';
@@ -36,7 +36,11 @@ describe('OrganizationSwitchService', () => {
     status: MembershipStatus.ACTIVE,
     membershipVersion: 2,
     permissions: { users: { read: true, write: true, manage: true } },
-    organization: { companyName: 'Org B', logoUrl: null },
+    organization: {
+      companyName: 'Org B',
+      logoUrl: null,
+      status: OrganizationStatus.ACTIVE,
+    },
   };
 
   beforeEach(() => {
@@ -65,7 +69,11 @@ describe('OrganizationSwitchService', () => {
         status: MembershipStatus.ACTIVE,
         membershipVersion: 0,
         permissions: null,
-        organization: { companyName: 'Org A', logoUrl: null },
+        organization: {
+          companyName: 'Org A',
+          logoUrl: null,
+          status: OrganizationStatus.ACTIVE,
+        },
       },
       targetMembership,
     ]);
@@ -139,6 +147,38 @@ describe('OrganizationSwitchService', () => {
     ).rejects.toMatchObject({
       response: expect.objectContaining({ code: 'MEMBERSHIP_INACTIVE' }),
     });
+  });
+
+  it('omits suspended organizations from switch response list', async () => {
+    prisma.organizationMembership.findMany.mockResolvedValue([
+      {
+        id: IAM_REGRESSION_IDS.membershipA,
+        userId: IAM_REGRESSION_IDS.multiOrgUser,
+        organizationId: IAM_REGRESSION_IDS.orgA,
+        role: MembershipRole.WORKER,
+        organizationRoleId: null,
+        status: MembershipStatus.ACTIVE,
+        membershipVersion: 0,
+        permissions: null,
+        organization: {
+          companyName: 'Suspended Org',
+          logoUrl: null,
+          status: OrganizationStatus.SUSPENDED,
+        },
+      },
+      targetMembership,
+    ]);
+
+    const result = await service.switchOrganization({
+      userId: IAM_REGRESSION_IDS.multiOrgUser,
+      currentOrganizationId: IAM_REGRESSION_IDS.orgA,
+      targetOrganizationId: IAM_REGRESSION_IDS.orgB,
+      refreshToken: 'old-refresh',
+      context: {},
+    });
+
+    expect(result.organizations).toHaveLength(1);
+    expect(result.organizations[0]?.organizationId).toBe(IAM_REGRESSION_IDS.orgB);
   });
 
   it('rejects switch when already active in target organization', async () => {

@@ -2,6 +2,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
 import { VehiclesController } from './vehicles.controller';
@@ -115,6 +116,17 @@ describe('VehiclesController — vehicle detail security characterization', () =
     it('GET vehicles/:vehicleId has no OrgScopingGuard', () => {
       const guards = guardsOf(VehiclesController.prototype, 'findOne');
       expect(guards).not.toContain(OrgScopingGuard);
+    });
+
+    it('PATCH vehicles/:vehicleId requires VehicleOwnershipGuard + fleet.write', () => {
+      const guards = guardsOf(VehiclesController.prototype, 'update');
+      expect(guards).toEqual(
+        expect.arrayContaining([VehicleOwnershipGuard, PermissionsGuard]),
+      );
+      expect(permissionOf(VehiclesController.prototype, 'update')).toEqual({
+        module: 'fleet',
+        level: 'write',
+      });
     });
   });
 

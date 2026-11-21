@@ -74,6 +74,11 @@ const MEMBERSHIPS: Record<string, MembershipRow> = {
   },
 };
 
+const ORG_STATUS: Record<string, string> = {
+  'org-a': 'ACTIVE',
+  'org-b': 'ACTIVE',
+};
+
 const VEHICLES: Record<string, { id: string; organizationId: string }> = {
   'veh-owned': { id: 'veh-owned', organizationId: 'org-a' },
   'veh-foreign': { id: 'veh-foreign', organizationId: 'org-b' },
@@ -106,7 +111,8 @@ function makePrisma() {
         if (args.where.organizationId && row.organizationId !== args.where.organizationId) {
           return null;
         }
-        return { id: row.id };
+        const status = ORG_STATUS[row.organizationId] ?? 'ACTIVE';
+        return { id: row.id, organization: { status } };
       }),
       delete: jest.fn(),
       deleteMany: jest.fn(),

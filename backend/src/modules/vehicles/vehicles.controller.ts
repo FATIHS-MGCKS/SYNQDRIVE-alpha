@@ -534,7 +534,8 @@ export class VehiclesController {
   }
 
   @Patch('vehicles/:vehicleId')
-  @UseGuards(VehicleOwnershipGuard)
+  @UseGuards(VehicleOwnershipGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async update(
     @Param('vehicleId') vehicleId: string,
     @Body() body: Prisma.VehicleUpdateInput,

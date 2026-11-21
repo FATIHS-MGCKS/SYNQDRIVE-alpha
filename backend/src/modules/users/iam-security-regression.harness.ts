@@ -282,6 +282,9 @@ export function createRefreshTokenHarness() {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    organization: {
+      findUnique: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
+    },
     organizationMembership: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),

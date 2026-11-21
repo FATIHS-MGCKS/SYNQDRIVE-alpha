@@ -22,6 +22,7 @@ export type OrganizationOption = {
   organizationLogoUrl: string | null;
   membershipId: string;
   role: string;
+  organizationStatus?: string | null;
 };
 
 export function mapMembershipsToOrganizationOptions(
@@ -35,6 +36,8 @@ export function mapMembershipsToOrganizationOptions(
       organizationLogoUrl: m.organization?.logoUrl ?? null,
       membershipId: m.id,
       role: m.role,
+      organizationStatus:
+        (m.organization as { status?: string } | null | undefined)?.status ?? null,
     }));
 }
 
