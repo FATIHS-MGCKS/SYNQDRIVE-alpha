@@ -147,6 +147,25 @@ describe('PermissionsGuard', () => {
     expect(prisma.organizationMembership.findFirst).toHaveBeenCalled();
   });
 
+  it('allows MASTER_ADMIN without membership lookup', async () => {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue({
+      module: 'users-roles',
+      level: 'manage',
+    });
+    const ctx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: { id: 'master-1', platformRole: 'MASTER_ADMIN' },
+          params: { orgId: 'org-target' },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    };
+    await expect(guard.canActivate(ctx as never)).resolves.toBe(true);
+    expect(prisma.organizationMembership.findFirst).not.toHaveBeenCalled();
+  });
+
   it('denies worker without users-roles.read', async () => {
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue({
       module: 'users-roles',

@@ -19,9 +19,13 @@ import {
   type BillingOrganizationRow,
   type OrgActivityRow,
   type OrgDetailTab,
-  type OrgUserRow,
   type OrgVehicleRow,
 } from '../organizations/types';
+import {
+  MasterOrganizationIamTab,
+  type MasterOrgIamSecurityNav,
+} from '../organizations/MasterOrganizationIamTab';
+import type { useMasterOrganizationIamMutations } from '../organizations/useMasterOrganizationIamMutations';
 import {
   attentionDrilldownTab,
   attentionReasonLabel,
@@ -54,6 +58,8 @@ interface OrganizationDetailViewProps {
     onSuccess?: () => void | Promise<void>,
   ) => Promise<void>;
   onRefreshOperationalList?: () => Promise<void>;
+  iamMutations: ReturnType<typeof useMasterOrganizationIamMutations>;
+  onNavigateSecurityAccess: (nav: MasterOrgIamSecurityNav) => void;
 }
 
 function IssuesSection({
@@ -212,16 +218,14 @@ export function OrganizationDetailView({
   onNavigateToVehicle,
   onPatchOrganization,
   onRefreshOperationalList,
+  iamMutations,
+  onNavigateSecurityAccess,
 }: OrganizationDetailViewProps) {
   const { t } = useLanguage();
   const { detail, loading, error, refresh } = useOrganizationDetail(orgId);
   const [activeTab, setActiveTab] = useState<OrgDetailTab>(() =>
     (readOrgTabFromUrl() as OrgDetailTab) || 'overview',
   );
-
-  const [users, setUsers] = useState<OrgUserRow[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [usersError, setUsersError] = useState<string | null>(null);
 
   const [vehicles, setVehicles] = useState<OrgVehicleRow[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
@@ -261,17 +265,6 @@ export function OrganizationDetailView({
   }, [detail]);
 
   useEffect(() => {
-    if (activeTab !== 'users') return;
-    setUsersLoading(true);
-    setUsersError(null);
-    api.users
-      .listAll(orgId)
-      .then((res) => setUsers(Array.isArray(res) ? res : []))
-      .catch((e) => setUsersError(e?.message ?? 'Benutzer konnten nicht geladen werden'))
-      .finally(() => setUsersLoading(false));
-  }, [activeTab, orgId]);
-
-  useEffect(() => {
     if (activeTab !== 'vehicles') return;
     setVehiclesLoading(true);
     setVehiclesError(null);
@@ -309,30 +302,6 @@ export function OrganizationDetailView({
       .catch((e) => setActivityError(e?.message ?? 'Aktivität konnte nicht geladen werden'))
       .finally(() => setActivityLoading(false));
   }, [activeTab, orgId, activityMode]);
-
-  const userColumns: DataTableColumn<OrgUserRow>[] = [
-    {
-      key: 'user',
-      header: 'Nutzer',
-      cell: (u) => (
-        <div>
-          <p className="text-sm font-semibold">{u.name}</p>
-          <p className="text-xs text-muted-foreground">{u.email}</p>
-        </div>
-      ),
-    },
-    { key: 'role', header: 'Rolle', cell: (u) => <StatusChip className="!text-xs">{u.role}</StatusChip> },
-    { key: 'status', header: 'Status', cell: (u) => <StatusChip className="!text-xs">{u.status}</StatusChip> },
-    {
-      key: 'last',
-      header: 'Zuletzt aktiv',
-      cell: (u) => (
-        <span className="text-sm text-muted-foreground">
-          {u.lastLoginAt ? formatRelativeDe(u.lastLoginAt) : u.last_login ?? '—'}
-        </span>
-      ),
-    },
-  ];
 
   const vehicleColumns: DataTableColumn<OrgVehicleRow>[] = [
     {
@@ -430,13 +399,11 @@ export function OrganizationDetailView({
       {activeTab === 'overview' && <OverviewTab detail={detail} onTab={changeTab} />}
 
       {activeTab === 'users' && (
-        <MasterPageSection>
-          {usersLoading && <MasterLoadingState variant="rows" count={4} />}
-          {usersError && <MasterErrorState title="Benutzer" error={usersError} />}
-          {!usersLoading && !usersError && (
-            <DataTable columns={userColumns} rows={users} getRowKey={(u) => u.id} dense empty="Keine Benutzer" />
-          )}
-        </MasterPageSection>
+        <MasterOrganizationIamTab
+          orgId={orgId}
+          iamMutations={iamMutations}
+          onNavigateSecurityAccess={onNavigateSecurityAccess}
+        />
       )}
 
       {activeTab === 'vehicles' && (
