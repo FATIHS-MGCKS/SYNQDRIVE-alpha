@@ -57,23 +57,31 @@ export class WhatsAppWebhookService {
     const phoneNumberId = parsed.phoneNumberId;
 
     const config = await this.resolveConfigByPhoneNumberId(phoneNumberId);
-    if (config) {
-      const valid = this.provider.validateSignature(config, rawBody, headers);
-      if (!valid && process.env.NODE_ENV === 'production') {
-        throw new UnauthorizedException('Invalid webhook signature');
-      }
+    if (!config) {
+      throw new UnauthorizedException('WhatsApp webhook configuration not found');
+    }
+
+    const signatureValid = this.provider.validateSignature(config, rawBody, headers);
+    if (!signatureValid) {
+      throw new UnauthorizedException('Invalid webhook signature');
     }
 
     for (const entry of parsed.entries) {
-      await this.processEntryIdempotent(entry, config, phoneNumberId, payload, headers);
+      await this.processEntryIdempotent(
+        entry,
+        config,
+        phoneNumberId,
+        payload,
+        headers,
+        rawBody,
+        signatureValid,
+      );
     }
 
-    if (config) {
-      await this.prisma.orgWhatsAppConfig.update({
-        where: { organizationId: config.organizationId },
-        data: { lastWebhookAt: new Date() },
-      });
-    }
+    await this.prisma.orgWhatsAppConfig.update({
+      where: { organizationId: config.organizationId },
+      data: { lastWebhookAt: new Date() },
+    });
   }
 
   private async processEntryIdempotent(
@@ -105,6 +113,8 @@ export class WhatsAppWebhookService {
     phoneNumberId: string | undefined,
     payload: unknown,
     headers: Record<string, string | string[] | undefined>,
+    rawBody: Buffer,
+    signatureValid: boolean,
   ) {
     const existing = await this.prisma.whatsAppWebhookEvent.findUnique({
       where: { externalEventId: entry.externalEventId },
@@ -124,7 +134,7 @@ export class WhatsAppWebhookService {
             eventType: entry.eventType,
             payload: payload as Prisma.InputJsonValue,
             headers: headers as Prisma.InputJsonValue,
-            signatureValid: config ? this.provider.validateSignature(config, Buffer.from(JSON.stringify(payload)), headers) : null,
+            signatureValid,
           },
         });
       } catch (err: unknown) {

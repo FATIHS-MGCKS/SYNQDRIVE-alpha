@@ -120,10 +120,23 @@ describe('IAM endpoint enforcement triage — expected public/service paths', ()
     expect(controllerGuards(VoiceMcpGatewayController)).toEqual([]);
   });
 
+  it('HighMobilityVehicleRegisterController applies ownership and fleet permissions on mutations', () => {
+    const { HighMobilityVehicleRegisterController } = require('@modules/high-mobility/high-mobility-vehicle-register.controller');
+    const { VehicleOwnershipGuard } = require('./vehicle-ownership.guard');
+    const { PermissionsGuard } = require('./permissions.guard');
+    expect(handlerGuards(HighMobilityVehicleRegisterController, 'activateHmHealth')).toEqual(
+      expect.arrayContaining([VehicleOwnershipGuard, PermissionsGuard]),
+    );
+    expect(handlerGuards(HighMobilityVehicleRegisterController, 'checkAvailability')).toEqual(
+      expect.arrayContaining([PermissionsGuard]),
+    );
+  });
+
   it('WhatsApp webhook controller remains unsigned-route separate from user permissions', () => {
     expect(controllerGuards(WhatsAppWebhookController)).toEqual([]);
   });
 });
+
 
 describe('IAM endpoint enforcement triage — fines tenant scope', () => {
   const prisma = {
