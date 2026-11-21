@@ -38,6 +38,12 @@ import {
   normalizeWebsite,
 } from './utils/tenant-profile-normalizer.util';
 import { assertOrganizationHardDeleteAllowed } from './organization-delete-safety.policy';
+import type { AdminCreateOrganizationDto } from './dto/admin-create-organization.dto';
+import type { AdminUpdateOrganizationDto } from './dto/admin-update-organization.dto';
+import {
+  mapAdminCreateToServiceInput,
+  mapAdminUpdateToPrisma,
+} from './utils/admin-organization-mutation.mapper';
 
 const ORG_STATUS_MAP: Record<string, string> = {
   ACTIVE: 'Active',
@@ -151,9 +157,9 @@ export class OrganizationsService {
     return map[value] ?? OrganizationStatus.PENDING;
   }
 
-  async create(data: Record<string, unknown>) {
+  async create(dto: AdminCreateOrganizationDto) {
     const org = await this.prisma.organization.create({
-      data: this.buildOrganizationCreateInput(data),
+      data: this.buildOrganizationCreateInput(mapAdminCreateToServiceInput(dto)),
     });
     void this.organizationRoles.ensureDefaultRoles(org.id);
     return org;
@@ -348,7 +354,11 @@ export class OrganizationsService {
     return { id: user.id, email: user.email, name: user.name };
   }
 
-  async update(id: string, data: Prisma.OrganizationUpdateInput) {
+  async update(id: string, dto: AdminUpdateOrganizationDto) {
+    const data = mapAdminUpdateToPrisma(dto);
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No updatable fields provided');
+    }
     return this.prisma.organization.update({ where: { id }, data });
   }
 
