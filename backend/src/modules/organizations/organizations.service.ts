@@ -37,6 +37,7 @@ import {
   normalizeTimezoneInput,
   normalizeWebsite,
 } from './utils/tenant-profile-normalizer.util';
+import { assertOrganizationHardDeleteAllowed } from './organization-delete-safety.policy';
 
 const ORG_STATUS_MAP: Record<string, string> = {
   ACTIVE: 'Active',
@@ -352,6 +353,18 @@ export class OrganizationsService {
   }
 
   async delete(id: string, actorUserId?: string | null) {
+    assertOrganizationHardDeleteAllowed();
+    return this.executeOrganizationHardDeleteUnsafe(id, actorUserId);
+  }
+
+  /**
+   * Dormant destructive path — unreachable while {@link assertOrganizationHardDeleteAllowed}
+   * fails closed. Retained for a future retention-aware offboarding implementation.
+   */
+  private async executeOrganizationHardDeleteUnsafe(
+    id: string,
+    actorUserId?: string | null,
+  ): Promise<{ deleted: true }> {
     const zb1P4 = this.resolveZb1RegistrationDocumentP4();
     await zb1P4
       ?.softDeleteRegistrationDocumentsForOrganization({
