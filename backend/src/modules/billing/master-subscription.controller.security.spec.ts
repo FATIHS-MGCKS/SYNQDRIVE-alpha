@@ -7,6 +7,7 @@ import {
   MASTER_BILLING_KEY,
   MASTER_BILLING_PLATFORM_PERMISSION,
 } from '@shared/decorators/require-master-billing.decorator';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { MasterSubscriptionController } from './master-subscription.controller';
 
 describe('MasterSubscriptionController security characterization', () => {
@@ -29,10 +30,15 @@ describe('MasterSubscriptionController security characterization', () => {
     );
   });
 
-  it('applies RolesGuard, PermissionsGuard and MasterBillingGuard', () => {
+  it('applies RolesGuard, PermissionsGuard, MasterBillingGuard and MasterAdminMfaGuard', () => {
     const guards = Reflect.getMetadata(GUARDS_METADATA, MasterSubscriptionController) ?? [];
     expect(guards).toEqual(
-      expect.arrayContaining([RolesGuard, PermissionsGuard, MasterBillingGuard]),
+      expect.arrayContaining([
+        RolesGuard,
+        PermissionsGuard,
+        MasterBillingGuard,
+        MasterAdminMfaGuard,
+      ]),
     );
   });
 
@@ -52,11 +58,11 @@ describe('MasterSubscriptionController security characterization', () => {
 
     expect(subscriptionAdmin.createDraft).toHaveBeenCalledWith(
       'org-target',
-      {
+      expect.objectContaining({
         actorUserId: 'master-1',
         idempotencyKey: 'idem-1',
         lockVersion: 2,
-      },
+      }),
       'EUR',
     );
   });
@@ -133,5 +139,49 @@ describe('MasterSubscriptionController access control', () => {
         }) as never,
       ),
     ).toThrow(ForbiddenException);
+  });
+});
+
+describe('MasterSubscriptionController — delegated billing MFA step-up (characterization)', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...originalEnv,
+      IAM_MFA_MASTER_ADMIN_ENABLED: 'true',
+      IAM_MFA_STEP_UP_ENFORCED: 'true',
+    };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('master-billing delegate bypasses MasterAdminMfaGuard (platformRole USER)', async () => {
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue('MASTER_SUBSCRIPTION'),
+    } as unknown as import('@nestjs/core').Reflector;
+    const mfaGuard = new MasterAdminMfaGuard(
+      reflector,
+      { userMfaFactor: { findFirst: jest.fn() } } as never,
+      { validateGrant: jest.fn() } as never,
+    );
+    const context = {
+      getHandler: () => ({}),
+      getClass: () => MasterSubscriptionController,
+      switchToHttp: () => ({
+        getRequest: () => ({
+          method: 'POST',
+          user: {
+            id: 'billing-delegate-1',
+            platformRole: 'USER',
+            platformPermissions: ['master-billing'],
+          },
+          headers: {},
+        }),
+      }),
+    } as never;
+
+    await expect(mfaGuard.canActivate(context)).resolves.toBe(true);
   });
 });

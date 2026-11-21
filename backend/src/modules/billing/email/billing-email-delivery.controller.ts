@@ -14,9 +14,13 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import { BillingEmailDeliveryAuditService } from './billing-email-delivery-audit.service';
 import { BillingEmailResendService } from './billing-email-resend.service';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 @Controller()
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_BILLING)
 export class BillingEmailDeliveryController {
   constructor(
     private readonly audit: BillingEmailDeliveryAuditService,
