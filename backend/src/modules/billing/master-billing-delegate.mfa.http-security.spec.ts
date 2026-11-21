@@ -14,6 +14,7 @@ import { MASTER_BILLING_PLATFORM_PERMISSION } from '@shared/decorators/require-m
 import { MasterSubscriptionController } from './master-subscription.controller';
 import { BillingSubscriptionAdminService } from './billing-subscription-admin.service';
 import { TenantSubscriptionOverviewService } from './tenant-subscription-overview.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 
 const DELEGATE_ID = 'billing-delegate-1';
 const ORG_ID = '11111111-1111-1111-1111-111111111111';
@@ -72,11 +73,18 @@ describe('Master billing delegate MFA — HTTP (MasterSubscriptionController)', 
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
+    platformPermissionService.hasActiveMasterBillingGrant.mockImplementation(
+      async (userId: string) => userId === DELEGATE_ID,
+    );
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
+
+  const platformPermissionService = {
+    hasActiveMasterBillingGrant: jest.fn(async (userId: string) => userId === DELEGATE_ID),
+  };
 
   async function createApp() {
     const validateGrant = jest.fn();
@@ -88,6 +96,7 @@ describe('Master billing delegate MFA — HTTP (MasterSubscriptionController)', 
         MasterAdminMfaGuard,
         MasterBillingDelegateMfaGuard,
         MasterBillingGuard,
+        { provide: PlatformPermissionService, useValue: platformPermissionService },
         { provide: PrismaService, useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) } } },
         { provide: IamMfaStepUpService, useValue: { validateGrant } },
         { provide: BillingSubscriptionAdminService, useValue: subscriptionAdmin },

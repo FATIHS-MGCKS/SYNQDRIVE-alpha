@@ -14,6 +14,12 @@ import { AuthGuard } from '@shared/auth/auth.guard';
 import { MasterBillingGuard } from '@shared/auth/master-billing.guard';
 import { RequireMasterBilling } from '@shared/decorators/require-master-billing.decorator';
 import { createRefreshTokenHarness } from '@modules/users/iam-security-regression.harness';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
+import { PLATFORM_PERMISSION_JWT_VALUES } from '@modules/users/platform-permissions/platform-permission.constants';
+
+const DELEGATE_ID = 'delegate-with-grant';
+const TENANT_USER_ID = 'tenant-user';
+const MASTER_ID = 'master-admin';
 
 @Controller('api/v1/admin/billing/real-jwt-probe')
 @RequireMasterBilling()
@@ -39,31 +45,82 @@ class AuthThenBillingGuard implements CanActivate {
 }
 
 describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
-  let accessTokenUser: string;
-  let accessTokenMaster: string;
   const priorJwtSecret = process.env.JWT_SECRET;
+  let accessTokenTenant: string;
+  let accessTokenMaster: string;
+  let accessTokenDelegate: string;
+  let accessTokenStaleDelegate: string;
+
+  const platformPermissions = {
+    hasActiveMasterBillingGrant: jest.fn(),
+    resolveJwtPermissions: jest.fn(),
+  };
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-jwt-secret';
-    const { service, prisma } = createRefreshTokenHarness();
-    prisma.refreshToken.create.mockResolvedValue({ id: 'rt-http' });
-    accessTokenUser = (
-      await service.issueTokenPair({
-        id: 'tenant-user',
-        email: 'tenant@test.example',
-        name: 'Tenant',
-        platformRole: UserPlatformRole.USER,
-        sessionVersion: 0,
-      }, null)
+    const harness = createRefreshTokenHarness();
+    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-http' });
+
+    harness.platformPermissions.resolveJwtPermissions.mockImplementation(async (userId: string) => {
+      if (userId === DELEGATE_ID) {
+        return [PLATFORM_PERMISSION_JWT_VALUES.MASTER_BILLING];
+      }
+      if (userId === 'stale-delegate') {
+        return [PLATFORM_PERMISSION_JWT_VALUES.MASTER_BILLING];
+      }
+      return [];
+    });
+
+    accessTokenTenant = (
+      await harness.service.issueTokenPair(
+        {
+          id: TENANT_USER_ID,
+          email: 'tenant@test.example',
+          name: 'Tenant',
+          platformRole: UserPlatformRole.USER,
+          sessionVersion: 0,
+        },
+        null,
+      )
     ).accessToken;
+
     accessTokenMaster = (
-      await service.issueTokenPair({
-        id: 'master-admin',
-        email: 'master@test.example',
-        name: 'Master Admin',
-        platformRole: UserPlatformRole.MASTER_ADMIN,
-        sessionVersion: 0,
-      }, null)
+      await harness.service.issueTokenPair(
+        {
+          id: MASTER_ID,
+          email: 'master@test.example',
+          name: 'Master Admin',
+          platformRole: UserPlatformRole.MASTER_ADMIN,
+          sessionVersion: 0,
+        },
+        null,
+      )
+    ).accessToken;
+
+    accessTokenDelegate = (
+      await harness.service.issueTokenPair(
+        {
+          id: DELEGATE_ID,
+          email: 'delegate@test.example',
+          name: 'Delegate',
+          platformRole: UserPlatformRole.USER,
+          sessionVersion: 0,
+        },
+        null,
+      )
+    ).accessToken;
+
+    accessTokenStaleDelegate = (
+      await harness.service.issueTokenPair(
+        {
+          id: 'stale-delegate',
+          email: 'stale@test.example',
+          name: 'Stale',
+          platformRole: UserPlatformRole.USER,
+          sessionVersion: 0,
+        },
+        null,
+      )
     ).accessToken;
   });
 
@@ -75,6 +132,13 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
     }
   });
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    platformPermissions.hasActiveMasterBillingGrant.mockImplementation(async (userId: string) => {
+      return userId === DELEGATE_ID;
+    });
+  });
+
   async function createApp(): Promise<INestApplication> {
     const moduleRef = await Test.createTestingModule({
       controllers: [RealJwtProbeController],
@@ -83,6 +147,7 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
         AuthGuard,
         MasterBillingGuard,
         AuthThenBillingGuard,
+        { provide: PlatformPermissionService, useValue: platformPermissions },
         {
           provide: APP_GUARD,
           useExisting: AuthThenBillingGuard,
@@ -95,25 +160,84 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
     return app;
   }
 
-  it('USER access JWT from issuer is denied (no platformPermissions claim)', async () => {
+  it('USER without grant is denied', async () => {
     const app = await createApp();
     try {
       await request(app.getHttpServer())
         .post('/api/v1/admin/billing/real-jwt-probe/mutate')
-        .set('Authorization', `Bearer ${accessTokenUser}`)
+        .set('Authorization', `Bearer ${accessTokenTenant}`)
         .expect(403);
     } finally {
       await app.close();
     }
   });
 
-  it('MASTER_ADMIN access JWT from issuer is allowed without platformPermissions', async () => {
+  it('MASTER_ADMIN is allowed without platformPermissions claim', async () => {
     const app = await createApp();
     try {
       await request(app.getHttpServer())
         .post('/api/v1/admin/billing/real-jwt-probe/mutate')
         .set('Authorization', `Bearer ${accessTokenMaster}`)
         .expect(201);
+      expect(platformPermissions.hasActiveMasterBillingGrant).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('delegate with active DB grant and issuer claim is allowed', async () => {
+    const app = await createApp();
+    try {
+      await request(app.getHttpServer())
+        .post('/api/v1/admin/billing/real-jwt-probe/mutate')
+        .set('Authorization', `Bearer ${accessTokenDelegate}`)
+        .expect(201);
+      expect(platformPermissions.hasActiveMasterBillingGrant).toHaveBeenCalledWith(DELEGATE_ID);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('inactive delegate denied even with stale JWT claim', async () => {
+    platformPermissions.hasActiveMasterBillingGrant.mockImplementation(async (userId: string) => {
+      if (userId === 'inactive-delegate') return false;
+      return userId === DELEGATE_ID;
+    });
+    const harness = createRefreshTokenHarness();
+    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-inactive' });
+    harness.platformPermissions.resolveJwtPermissions.mockResolvedValue([
+      PLATFORM_PERMISSION_JWT_VALUES.MASTER_BILLING,
+    ]);
+    const token = (
+      await harness.service.issueTokenPair(
+        {
+          id: 'inactive-delegate',
+          email: 'inactive@test.example',
+          name: 'Inactive',
+          platformRole: UserPlatformRole.USER,
+          sessionVersion: 0,
+        },
+        null,
+      )
+    ).accessToken;
+    const app = await createApp();
+    try {
+      await request(app.getHttpServer())
+        .post('/api/v1/admin/billing/real-jwt-probe/mutate')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('stale JWT denied when DB grant revoked', async () => {
+    const app = await createApp();
+    try {
+      await request(app.getHttpServer())
+        .post('/api/v1/admin/billing/real-jwt-probe/mutate')
+        .set('Authorization', `Bearer ${accessTokenStaleDelegate}`)
+        .expect(403);
     } finally {
       await app.close();
     }

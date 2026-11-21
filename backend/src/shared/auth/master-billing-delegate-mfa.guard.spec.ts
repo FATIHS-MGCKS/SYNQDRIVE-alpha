@@ -136,6 +136,48 @@ describe('MasterBillingDelegateMfaGuard', () => {
     );
   });
 
+  it('audit recordMfaStepUp uses delegate platform role (not MASTER_ADMIN)', async () => {
+    process.env.IAM_MFA_MASTER_BILLING_DELEGATE_ENABLED = 'true';
+    const masterAdminAudit = { recordMfaStepUp: jest.fn().mockResolvedValue(undefined) };
+    const reflector = {
+      getAllAndOverride: jest.fn((key: string) => {
+        if (key === MASTER_ADMIN_MFA_ACTION_KEY) return STEP_UP_ACTION.MASTER_SUBSCRIPTION;
+        if (key === MASTER_BILLING_KEY) return true;
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const stepUp = { validateGrant: jest.fn().mockResolvedValue(true) };
+    const guard = new MasterBillingDelegateMfaGuard(
+      reflector,
+      { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'factor-1' }) } } as never,
+      stepUp as never,
+      undefined,
+      masterAdminAudit as never,
+    );
+    const context = {
+      getHandler: () => ({}),
+      getClass: () => ({}),
+      switchToHttp: () => ({
+        getRequest: () => ({
+          method: 'POST',
+          user: {
+            id: 'd1',
+            platformRole: UserPlatformRole.USER,
+            platformPermissions: ['master-billing'],
+          },
+          headers: { 'x-step-up-token': 'grant-1' },
+        }),
+      }),
+    } as never;
+    await guard.canActivate(context);
+    expect(masterAdminAudit.recordMfaStepUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorPlatformRole: UserPlatformRole.USER,
+        granted: true,
+      }),
+    );
+  });
+
   it('requires enrollment when no enabled factor', async () => {
     process.env.IAM_MFA_MASTER_BILLING_DELEGATE_ENABLED = 'true';
     const reflector = {

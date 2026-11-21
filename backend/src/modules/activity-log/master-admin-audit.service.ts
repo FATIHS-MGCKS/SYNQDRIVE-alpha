@@ -63,6 +63,7 @@ export class MasterAdminAuditService {
   async recordMfaStepUp(input: {
     granted: boolean;
     actorUserId: string;
+    actorPlatformRole?: string;
     stepUpAction: string;
     correlationId: string;
     route?: string;
@@ -70,15 +71,21 @@ export class MasterAdminAuditService {
     userAgent?: string;
     reasonCode?: string | null;
   }): Promise<void> {
+    const actorPlatformRole = input.actorPlatformRole ?? 'MASTER_ADMIN';
+    const isDelegate = actorPlatformRole !== 'MASTER_ADMIN';
     await this.record({
       auditAction: input.granted
         ? MasterAdminAuditAction.MFA_STEP_UP_GRANTED
         : MasterAdminAuditAction.MFA_STEP_UP_DENIED,
       actorUserId: input.actorUserId,
-      actorPlatformRole: 'MASTER_ADMIN',
+      actorPlatformRole,
       description: input.granted
-        ? `Master admin MFA step-up granted for ${input.stepUpAction}`
-        : `Master admin MFA step-up denied for ${input.stepUpAction}`,
+        ? isDelegate
+          ? `Master billing delegate MFA step-up granted for ${input.stepUpAction}`
+          : `Master admin MFA step-up granted for ${input.stepUpAction}`
+        : isDelegate
+          ? `Master billing delegate MFA step-up denied for ${input.stepUpAction}`
+          : `Master admin MFA step-up denied for ${input.stepUpAction}`,
       correlationId: input.correlationId,
       route: input.route,
       ipAddress: input.ipAddress,

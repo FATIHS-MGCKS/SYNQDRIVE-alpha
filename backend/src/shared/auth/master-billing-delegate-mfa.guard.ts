@@ -123,6 +123,7 @@ export class MasterBillingDelegateMfaGuard implements CanActivate {
         void this.masterAdminAudit?.recordMfaStepUp({
           granted: true,
           actorUserId: user.id,
+          actorPlatformRole: user.platformRole,
           stepUpAction: action,
           correlationId: resolveCorrelationId(request),
           route: buildPrivilegedRouteLabel(request),
@@ -136,6 +137,7 @@ export class MasterBillingDelegateMfaGuard implements CanActivate {
       void this.masterAdminAudit?.recordMfaStepUp({
         granted: false,
         actorUserId: user.id,
+        actorPlatformRole: user.platformRole,
         stepUpAction: action,
         correlationId: resolveCorrelationId(request),
         route: buildPrivilegedRouteLabel(request),
@@ -154,6 +156,7 @@ export class MasterBillingDelegateMfaGuard implements CanActivate {
     void this.masterAdminAudit?.recordMfaStepUp({
       granted: false,
       actorUserId: user.id,
+      actorPlatformRole: user.platformRole,
       stepUpAction: action,
       correlationId: resolveCorrelationId(request),
       route: buildPrivilegedRouteLabel(request),
