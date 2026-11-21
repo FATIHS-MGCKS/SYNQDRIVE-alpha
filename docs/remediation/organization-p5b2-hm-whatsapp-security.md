@@ -1,5 +1,10 @@
 # P5B2 — High Mobility tenant isolation + WhatsApp webhook auth
 
+## P5B2 final closeout (F1/F2)
+
+- **F1 lifecycle:** `assertHighMobilityTenantOperationalOrganization` (P3 `TENANT_OPERATIONAL`) on HM discovery (tenant paths), `hm-only-candidates`, controller pre-service for `hm-only`, and service-layer guard before writes.
+- **F2 Master Admin:** discovery / `hm-only-candidates` may use platform scope (`checkAvailability`) without JWT `organizationId`; vehicle mutations resolve org from target vehicle; HM_ONLY still requires explicit `body.organizationId`.
+
 ## High Mobility (`/api/v1/vehicles/register/*`, `/:vehicleId/activate-high-mobility-health`)
 
 - Mutations: `VehicleOwnershipGuard` + `PermissionsGuard` (`fleet.write`).
