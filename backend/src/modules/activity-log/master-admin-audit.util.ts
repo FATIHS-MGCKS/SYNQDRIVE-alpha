@@ -15,6 +15,8 @@ type PrivilegedRequest = Request & {
   };
   masterAdminMfaStepUpUsed?: boolean;
   masterAdminMfaStepUpAction?: string;
+  masterBillingDelegateMfaStepUpUsed?: boolean;
+  masterBillingDelegateMfaStepUpAction?: string;
   params?: Record<string, string>;
 };
 
@@ -87,9 +89,12 @@ export function resolveMfaAuditFields(req: PrivilegedRequest): {
     Boolean(claims?.mfaAuthenticatedAt);
 
   return {
-    mfaStepUpAction: req.masterAdminMfaStepUpAction ?? null,
+    mfaStepUpAction:
+      req.masterAdminMfaStepUpAction ?? req.masterBillingDelegateMfaStepUpAction ?? null,
     mfaAssuranceLevel: assuranceLevel,
-    mfaStepUpUsed: Boolean(req.masterAdminMfaStepUpUsed || freshMfa),
+    mfaStepUpUsed: Boolean(
+      req.masterAdminMfaStepUpUsed || req.masterBillingDelegateMfaStepUpUsed || freshMfa,
+    ),
   };
 }
 
