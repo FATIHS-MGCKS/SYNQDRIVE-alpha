@@ -13,6 +13,7 @@ import { masterIntelligenceNl } from './master.intelligence.nl';
 import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
 import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterOneAutoNl } from './master.oneAuto.nl';
+import { masterOrganizationsNl } from './master.organizations.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 import { masterCvOemSpecsNl } from './master.cv.oemSpecs.nl';
 import { rentalMisuseStressStressGateNl } from './rental.misuseStress.stressGate.i18n';
@@ -212,6 +213,7 @@ export const nl = {
   ...masterMotionPhysicsNl,
 ...masterVehicleIdentityNl,
   ...masterOneAutoNl,
+  ...masterOrganizationsNl,
   ...masterCvTechnicalSpecsNl,
   ...masterCvOemSpecsNl,
   ...batteryV2HvInspectionNL,

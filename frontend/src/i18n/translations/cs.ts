@@ -13,6 +13,7 @@ import { masterIntelligenceCs } from './master.intelligence.cs';
 import { masterMotionPhysicsCs } from './master.motionPhysics.cs';
 import { masterVehicleIdentityCs } from './master.vehicleIdentity.cs';
 import { masterOneAutoCs } from './master.oneAuto.cs';
+import { masterOrganizationsCs } from './master.organizations.cs';
 import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
 import { masterCvOemSpecsCs } from './master.cv.oemSpecs.cs';
 import { rentalMisuseStressStressGateCs } from './rental.misuseStress.stressGate.i18n';
@@ -211,6 +212,7 @@ export const cs = {
   ...masterMotionPhysicsCs,
 ...masterVehicleIdentityCs,
   ...masterOneAutoCs,
+  ...masterOrganizationsCs,
   ...masterCvTechnicalSpecsCs,
   ...masterCvOemSpecsCs,
   ...batteryV2HvInspectionCS,

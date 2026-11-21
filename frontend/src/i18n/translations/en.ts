@@ -66,6 +66,7 @@ import { masterIntelligenceEn } from './master.intelligence.en';
 import { masterMotionPhysicsEn } from './master.motionPhysics.en';
 import { masterVehicleIdentityEn } from './master.vehicleIdentity.en';
 import { masterOneAutoEn } from './master.oneAuto.en';
+import { masterOrganizationsEn } from './master.organizations.en';
 import { masterRegistrationBrakeEn } from './master.registration.brake.en';
 import { masterCvTechnicalSpecsEn } from './master.cv.technicalSpecs.en';
 import { masterCvOemSpecsEn } from './master.cv.oemSpecs.en';
@@ -6019,6 +6020,7 @@ export const en = {
   ...masterMotionPhysicsEn,
 ...masterVehicleIdentityEn,
   ...masterOneAutoEn,
+  ...masterOrganizationsEn,
   ...masterRegistrationBrakeEn,
   ...masterCvTechnicalSpecsEn,
   ...masterCvOemSpecsEn,

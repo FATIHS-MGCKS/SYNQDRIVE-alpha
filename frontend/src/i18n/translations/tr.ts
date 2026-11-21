@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
 import { masterOneAutoTr } from './master.oneAuto.tr';
+import { masterOrganizationsTr } from './master.organizations.tr';
 import { masterCvTechnicalSpecsTr } from './master.cv.technicalSpecs.tr';
 import { masterCvOemSpecsTr } from './master.cv.oemSpecs.tr';
 import { masterIntelligenceTr } from './master.intelligence.tr';
@@ -15,6 +16,7 @@ import { rentalMisuseStressStressGateTr } from './rental.misuseStress.stressGate
 export const tr = {
   ...masterVehicleIdentityTr,
   ...masterOneAutoTr,
+  ...masterOrganizationsTr,
   ...masterCvTechnicalSpecsTr,
   ...masterCvOemSpecsTr,
   ...masterIntelligenceTr,

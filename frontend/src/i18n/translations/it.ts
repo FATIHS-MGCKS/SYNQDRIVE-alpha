@@ -13,6 +13,7 @@ import { masterIntelligenceIt } from './master.intelligence.it';
 import { masterMotionPhysicsIt } from './master.motionPhysics.it';
 import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
 import { masterOneAutoIt } from './master.oneAuto.it';
+import { masterOrganizationsIt } from './master.organizations.it';
 import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
 import { masterCvOemSpecsIt } from './master.cv.oemSpecs.it';
 import { rentalMisuseStressStressGateIt } from './rental.misuseStress.stressGate.i18n';
@@ -211,6 +212,7 @@ export const it = {
   ...masterMotionPhysicsIt,
 ...masterVehicleIdentityIt,
   ...masterOneAutoIt,
+  ...masterOrganizationsIt,
   ...masterCvTechnicalSpecsIt,
   ...masterCvOemSpecsIt,
   ...batteryV2HvInspectionIT,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Building2, Search, Plus, MoreHorizontal, ChevronRight,
   RefreshCw, ChevronLeft,
@@ -12,6 +12,7 @@ import {
 } from '../shell';
 import { Button } from '../../components/ui/button';
 import { useOrganizationsOperational } from '../organizations/useOrganizationsOperational';
+import { useOrganizationsOperationalRefresh } from '../organizations/organizations-operational-refresh';
 import type { OrganizationOperationalRowDto } from '../organizations/types';
 import {
   attentionReasonLabel,
@@ -101,6 +102,12 @@ function OrgMobileCard({
 
 export function OrganizationsView({ onSelectOrg, onAddOrg }: OrganizationsViewProps) {
   const { data, loading, error, query, setQuery, refresh } = useOrganizationsOperational();
+  const { registerOperationalRefresh } = useOrganizationsOperationalRefresh();
+
+  useEffect(() => {
+    registerOperationalRefresh(refresh);
+    return () => registerOperationalRefresh(null);
+  }, [refresh, registerOperationalRefresh]);
   const [showCreate, setShowCreate] = useState(false);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 

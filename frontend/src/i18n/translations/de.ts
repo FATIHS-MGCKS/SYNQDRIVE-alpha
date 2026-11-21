@@ -68,6 +68,7 @@ import { masterIntelligenceDe } from './master.intelligence.de';
 import { masterMotionPhysicsDe } from './master.motionPhysics.de';
 import { masterVehicleIdentityDe } from './master.vehicleIdentity.de';
 import { masterOneAutoDe } from './master.oneAuto.de';
+import { masterOrganizationsDe } from './master.organizations.de';
 import { masterRegistrationBrakeDe } from './master.registration.brake.de';
 import { masterCvTechnicalSpecsDe } from './master.cv.technicalSpecs.de';
 import { masterCvOemSpecsDe } from './master.cv.oemSpecs.de';
@@ -6030,6 +6031,7 @@ export const de: Record<TranslationKey, string> = {
   ...masterMotionPhysicsDe,
 ...masterVehicleIdentityDe,
   ...masterOneAutoDe,
+  ...masterOrganizationsDe,
   ...masterRegistrationBrakeDe,
   ...masterCvTechnicalSpecsDe,
   ...masterCvOemSpecsDe,
