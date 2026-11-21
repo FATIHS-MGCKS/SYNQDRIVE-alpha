@@ -152,10 +152,16 @@ export class OrganizationSwitchService {
       },
     });
 
+    const issuableMemberships = memberships.filter((m) =>
+      m.organization?.status
+        ? canIssueOrganizationSession(m.organization.status)
+        : false,
+    );
+
     return {
       ...tokens,
       user: this.buildUserPayload(membership),
-      organizations: mapMembershipsToOrganizationOptions(memberships),
+      organizations: mapMembershipsToOrganizationOptions(issuableMemberships),
     };
   }
 
