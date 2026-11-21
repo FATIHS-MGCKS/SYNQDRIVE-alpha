@@ -284,11 +284,15 @@ export class HmVehicleActivationService {
   async activateHmHealth(vehicleId: string): Promise<{ success: boolean; message: string }> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { vin: true },
+      select: { vin: true, organizationId: true },
     });
     if (!vehicle?.vin) throw new NotFoundException(`Vehicle ${vehicleId} has no VIN`);
 
-    const availability = await this.linkService.checkAvailability(vehicle.vin);
+    const availability = await this.linkService.checkAvailabilityForOrganization(
+      vehicle.vin,
+      vehicle.organizationId,
+      false,
+    );
     if (!availability.available || !availability.hmVehicleId) {
       return { success: false, message: 'No approved High Mobility record found for this VIN' };
     }
@@ -296,7 +300,10 @@ export class HmVehicleActivationService {
       return { success: false, message: 'High Mobility Health is already linked for this vehicle' };
     }
 
-    await this.linkService.activateHealthLink(availability.hmVehicleId, vehicleId);
+    await this.linkService.activateHealthLink(availability.hmVehicleId, vehicleId, {
+      tenantOrganizationId: vehicle.organizationId,
+      isMasterAdmin: false,
+    });
     this.logger.log(`HM Health activated for vehicle ${vehicleId} via VIN ${vehicle.vin}`);
     return { success: true, message: 'High Mobility Health successfully activated' };
   }

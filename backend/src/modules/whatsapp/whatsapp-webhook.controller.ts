@@ -10,6 +10,7 @@ import {
   RawBodyRequest,
   Req,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { WhatsAppWebhookService } from './whatsapp-webhook.service';
@@ -51,8 +52,10 @@ export class WhatsAppWebhookController {
     @Headers() headers: Record<string, string>,
     @Body() body: unknown,
   ) {
-    const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(body));
-    await this.webhookService.receiveWebhook(rawBody, body, headers);
+    if (!req.rawBody?.length) {
+      throw new UnauthorizedException('Missing raw webhook body');
+    }
+    await this.webhookService.receiveWebhook(req.rawBody, body, headers);
     return { success: true };
   }
 }

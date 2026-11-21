@@ -9,18 +9,34 @@ import {
   BadRequestException,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { PrismaService } from '@shared/database/prisma.service';
 import { HighMobilityVehicleLinkService } from './high-mobility-vehicle-link.service';
 import { HighMobilityRegistrationService } from './high-mobility-registration.service';
 import type { RegisterHmOnlyVehicleDto } from './dto/high-mobility.dto';
+import {
+  assertHighMobilityTenantOperationalOrganization,
+  isMasterAdminActor,
+  resolveHighMobilityTenantOrganizationId,
+  resolveHighMobilityVehicleScopedAccess,
+} from './high-mobility-tenant-access.policy';
+
+type AuthedRequest = {
+  user?: {
+    id?: string;
+    platformRole?: string;
+    organizationId?: string;
+  };
+};
 
 /**
  * Register-flow integration endpoints.
  * Used by the vehicle registration form to detect + activate HM Health or register HM_ONLY vehicles.
- *
- * Phase 1: DIMO_PLUS_HM — detect approved HM HEALTH and activate link
- * Phase 2: HM_ONLY — register full internal vehicle from approved HM provider record
  */
 @Controller('vehicles')
 @UseGuards(RolesGuard)
@@ -28,38 +44,54 @@ export class HighMobilityVehicleRegisterController {
   constructor(
     private readonly vehicleLinkService: HighMobilityVehicleLinkService,
     private readonly registrationService: HighMobilityRegistrationService,
+    private readonly prisma: PrismaService,
   ) {}
-
-  // ── Phase 1: DIMO_PLUS_HM availability check ─────────────────────────────
 
   /** GET /api/v1/vehicles/register/high-mobility-availability?vin=... */
   @Get('register/high-mobility-availability')
-  async checkAvailability(@Query('vin') vin: string) {
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('fleet', 'read')
+  async checkAvailability(@Query('vin') vin: string, @Req() req: AuthedRequest) {
     if (!vin?.trim()) throw new BadRequestException('vin is required');
-    return this.vehicleLinkService.checkAvailability(vin.trim().toUpperCase());
+    const isMa = isMasterAdminActor(req.user);
+    const orgId = resolveHighMobilityTenantOrganizationId(req.user, undefined, {
+      allowMasterAdminWithoutOrg: true,
+    });
+    const normalizedVin = vin.trim().toUpperCase();
+    if (!orgId) {
+      return this.vehicleLinkService.checkAvailability(normalizedVin);
+    }
+    await assertHighMobilityTenantOperationalOrganization(this.prisma, orgId, isMa);
+    return this.vehicleLinkService.checkAvailabilityForOrganization(normalizedVin, orgId, isMa);
   }
 
   /** POST /api/v1/vehicles/:vehicleId/activate-high-mobility-health */
   @Post(':vehicleId/activate-high-mobility-health')
+  @UseGuards(VehicleOwnershipGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async activateHmHealth(
     @Param('vehicleId') vehicleId: string,
     @Body() body: { hmVehicleId: string },
+    @Req() req: AuthedRequest,
   ) {
     if (!body.hmVehicleId) throw new BadRequestException('hmVehicleId is required');
-    await this.vehicleLinkService.activateHealthLink(body.hmVehicleId, vehicleId);
+    const access = await resolveHighMobilityVehicleScopedAccess(this.prisma, vehicleId, req.user);
+    await this.vehicleLinkService.activateHealthLink(body.hmVehicleId, vehicleId, access);
     return { success: true, message: 'High Mobility Health activated' };
   }
 
-  // ── Phase 2: Full Telemetry link ──────────────────────────────────────────
-
   /** POST /api/v1/vehicles/:vehicleId/link-high-mobility-full-telemetry */
   @Post(':vehicleId/link-high-mobility-full-telemetry')
+  @UseGuards(VehicleOwnershipGuard, PermissionsGuard)
+  @RequirePermission('fleet', 'write')
   async linkFullTelemetry(
     @Param('vehicleId') vehicleId: string,
     @Body() body: { hmVehicleId: string },
+    @Req() req: AuthedRequest,
   ) {
     if (!body.hmVehicleId) throw new BadRequestException('hmVehicleId is required');
-    await this.vehicleLinkService.linkFullTelemetry(body.hmVehicleId, vehicleId);
+    const access = await resolveHighMobilityVehicleScopedAccess(this.prisma, vehicleId, req.user);
+    await this.vehicleLinkService.linkFullTelemetry(body.hmVehicleId, vehicleId, access);
     return {
       success: true,
       message: 'High Mobility Full Telemetry structural link created',
@@ -67,27 +99,39 @@ export class HighMobilityVehicleRegisterController {
     };
   }
 
-  // ── Phase 2: HM_ONLY vehicle registration ────────────────────────────────
-
-  /**
-   * POST /api/v1/vehicles/register/hm-only
-   * Create a new internal SynqDrive vehicle from an approved HM_ONLY provider record.
-   * No hardware (DIMO) is required or created.
-   */
+  /** POST /api/v1/vehicles/register/hm-only */
   @Post('register/hm-only')
   @HttpCode(HttpStatus.CREATED)
-  async registerHmOnlyVehicle(@Body() body: RegisterHmOnlyVehicleDto) {
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('fleet', 'write')
+  async registerHmOnlyVehicle(@Body() body: RegisterHmOnlyVehicleDto, @Req() req: AuthedRequest) {
     if (!body.hmVehicleId) throw new BadRequestException('hmVehicleId is required');
-    if (!body.organizationId) throw new BadRequestException('organizationId is required');
-    return this.registrationService.registerHmOnlyVehicle(body);
+    const isMa = isMasterAdminActor(req.user);
+    const orgId = resolveHighMobilityTenantOrganizationId(req.user, body.organizationId, {
+      requireMasterAdminDestinationOrg: isMa,
+    });
+    if (!orgId) {
+      throw new BadRequestException('organizationId is required');
+    }
+    await assertHighMobilityTenantOperationalOrganization(this.prisma, orgId, isMa);
+    return this.registrationService.registerHmOnlyVehicle(
+      { ...body, organizationId: orgId },
+      { tenantOrganizationId: orgId, isMasterAdmin: isMa },
+    );
   }
 
-  /**
-   * GET /api/v1/vehicles/register/hm-only-candidates?vin=...
-   * List approved HM_ONLY records that have not yet been registered as internal vehicles.
-   */
+  /** GET /api/v1/vehicles/register/hm-only-candidates?vin=... */
   @Get('register/hm-only-candidates')
-  async getHmOnlyCandidates(@Query('vin') vin?: string) {
-    return this.registrationService.getHmOnlyCandidates(vin);
+  @UseGuards(PermissionsGuard)
+  @RequirePermission('fleet', 'read')
+  async getHmOnlyCandidates(@Query('vin') vin: string | undefined, @Req() req: AuthedRequest) {
+    const isMa = isMasterAdminActor(req.user);
+    const orgId = resolveHighMobilityTenantOrganizationId(req.user, undefined, {
+      allowMasterAdminWithoutOrg: true,
+    });
+    if (orgId) {
+      await assertHighMobilityTenantOperationalOrganization(this.prisma, orgId, isMa);
+    }
+    return this.registrationService.getHmOnlyCandidates(orgId ?? 'master-admin', isMa, vin);
   }
 }

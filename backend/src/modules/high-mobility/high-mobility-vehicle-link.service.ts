@@ -5,6 +5,9 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  assertHighMobilityRecordTenantAccess,
+} from './high-mobility-tenant-access.policy';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HmAvailabilityDto } from './dto/high-mobility.dto';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
@@ -28,6 +31,63 @@ export class HighMobilityVehicleLinkService {
    * Check if a VIN has an approved HM HEALTH record available for linking.
    * Called from the vehicle register form to show/hide HM activation UI.
    */
+  async checkAvailabilityForOrganization(
+    vin: string,
+    tenantOrganizationId: string,
+    isMasterAdmin: boolean,
+  ): Promise<HmAvailabilityDto> {
+    const dto = await this.checkAvailability(vin);
+    const hmRecord = await this.prisma.highMobilityVehicle.findFirst({
+      where: {
+        vin,
+        packageType: 'HEALTH',
+        isActive: true,
+        OR: [{ appContainerType: 'HM_HEALTH_APP' }, { appContainerType: null }],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (hmRecord) {
+      try {
+        assertHighMobilityRecordTenantAccess(hmRecord, tenantOrganizationId, isMasterAdmin);
+      } catch {
+        return {
+          vin,
+          available: false,
+          packageType: null,
+          clearanceStatus: null,
+          hmVehicleId: null,
+          isLinked: false,
+          linkedVehicleId: null,
+        };
+      }
+    }
+    if (!isMasterAdmin && dto.linkedVehicleId) {
+      const linked = await this.prisma.vehicle.findUnique({
+        where: { id: dto.linkedVehicleId },
+        select: { organizationId: true },
+      });
+      if (linked && linked.organizationId !== tenantOrganizationId) {
+        return {
+          ...dto,
+          isLinked: true,
+          linkedVehicleId: null,
+        };
+      }
+    }
+  if (!isMasterAdmin && dto.hmVehicleId && !hmRecord) {
+      return {
+        vin,
+        available: false,
+        packageType: null,
+        clearanceStatus: null,
+        hmVehicleId: null,
+        isLinked: false,
+        linkedVehicleId: null,
+      };
+    }
+    return dto;
+  }
+
   async checkAvailability(vin: string): Promise<HmAvailabilityDto> {
     const hmRecord = await this.prisma.highMobilityVehicle.findFirst({
       where: {
@@ -67,11 +127,31 @@ export class HighMobilityVehicleLinkService {
    * Link an approved HM HEALTH vehicle record to a SynqDrive vehicle.
    * Creates a VehicleDataSourceLink record and updates the HM vehicle record.
    */
-  async activateHealthLink(hmVehicleId: string, synqdriveVehicleId: string): Promise<void> {
+  async activateHealthLink(
+    hmVehicleId: string,
+    synqdriveVehicleId: string,
+    access: { tenantOrganizationId: string; isMasterAdmin: boolean },
+  ): Promise<void> {
     const hmRecord = await this.prisma.highMobilityVehicle.findUnique({
       where: { id: hmVehicleId },
     });
     if (!hmRecord) throw new NotFoundException(`HM vehicle ${hmVehicleId} not found`);
+
+    const targetVehicle = await this.prisma.vehicle.findUnique({
+      where: { id: synqdriveVehicleId },
+      select: { registryLifecycle: true, organizationId: true },
+    });
+    if (!targetVehicle) {
+      throw new NotFoundException(`Vehicle ${synqdriveVehicleId} not found`);
+    }
+    if (targetVehicle.organizationId !== access.tenantOrganizationId && !access.isMasterAdmin) {
+      throw new NotFoundException(`Vehicle ${synqdriveVehicleId} not found`);
+    }
+    assertHighMobilityRecordTenantAccess(
+      hmRecord,
+      targetVehicle.organizationId,
+      access.isMasterAdmin,
+    );
 
     if (hmRecord.clearanceStatus !== 'APPROVED') {
       throw new BadRequestException(
@@ -79,14 +159,24 @@ export class HighMobilityVehicleLinkService {
       );
     }
 
-    const targetVehicle = await this.prisma.vehicle.findUnique({
-      where: { id: synqdriveVehicleId },
-      select: { registryLifecycle: true },
-    });
-    if (!isVehicleRegistryOperationalActive(targetVehicle?.registryLifecycle)) {
+    if (!isVehicleRegistryOperationalActive(targetVehicle.registryLifecycle)) {
       throw new ConflictException(
         `Vehicle ${synqdriveVehicleId} registry lifecycle does not allow HM link activation`,
       );
+    }
+
+    if (
+      hmRecord.synqdriveVehicleId &&
+      hmRecord.synqdriveVehicleId !== synqdriveVehicleId &&
+      !access.isMasterAdmin
+    ) {
+      const linkedVehicle = await this.prisma.vehicle.findUnique({
+        where: { id: hmRecord.synqdriveVehicleId },
+        select: { organizationId: true },
+      });
+      if (linkedVehicle && linkedVehicle.organizationId !== targetVehicle.organizationId) {
+        throw new BadRequestException('High Mobility record is not available for this organization');
+      }
     }
 
     // Prevent duplicate active links for this SynqDrive vehicle + HM_HEALTH
@@ -209,7 +299,11 @@ export class HighMobilityVehicleLinkService {
    * This prepares the telemetry streaming path but does NOT activate full downstream business logic.
    * DOMAIN RULE: streaming activation is a separate product decision; this is structural linkage only.
    */
-  async linkFullTelemetry(hmVehicleId: string, synqdriveVehicleId: string): Promise<void> {
+  async linkFullTelemetry(
+    hmVehicleId: string,
+    synqdriveVehicleId: string,
+    access: { tenantOrganizationId: string; isMasterAdmin: boolean },
+  ): Promise<void> {
     const hmRecord = await this.prisma.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
     if (!hmRecord) throw new NotFoundException(`HM vehicle ${hmVehicleId} not found`);
 
@@ -226,9 +320,20 @@ export class HighMobilityVehicleLinkService {
 
     const targetVehicle = await this.prisma.vehicle.findUnique({
       where: { id: synqdriveVehicleId },
-      select: { registryLifecycle: true },
+      select: { registryLifecycle: true, organizationId: true },
     });
-    if (!isVehicleRegistryOperationalActive(targetVehicle?.registryLifecycle)) {
+    if (!targetVehicle) {
+      throw new NotFoundException(`Vehicle ${synqdriveVehicleId} not found`);
+    }
+    if (targetVehicle.organizationId !== access.tenantOrganizationId && !access.isMasterAdmin) {
+      throw new NotFoundException(`Vehicle ${synqdriveVehicleId} not found`);
+    }
+    assertHighMobilityRecordTenantAccess(
+      hmRecord,
+      targetVehicle.organizationId,
+      access.isMasterAdmin,
+    );
+    if (!isVehicleRegistryOperationalActive(targetVehicle.registryLifecycle)) {
       throw new ConflictException(
         `Vehicle ${synqdriveVehicleId} registry lifecycle does not allow HM link activation`,
       );

@@ -160,7 +160,10 @@ export class HighMobilityAdminController {
     @Body() body: { synqdriveVehicleId: string },
   ) {
     if (!body.synqdriveVehicleId) throw new BadRequestException('synqdriveVehicleId is required');
-    await this.vehicleLinkService.activateHealthLink(id, body.synqdriveVehicleId);
+    await this.vehicleLinkService.activateHealthLink(id, body.synqdriveVehicleId, {
+      tenantOrganizationId: body.synqdriveVehicleId,
+      isMasterAdmin: true,
+    });
     return { success: true, message: 'HM Health-APP activated for vehicle' };
   }
 
@@ -333,7 +336,10 @@ export class HighMobilityAdminController {
   @Post('vehicles/:id/link-to-vehicle')
   async linkToVehicle(@Param('id') id: string, @Body() body: { synqdriveVehicleId: string }) {
     if (!body.synqdriveVehicleId) throw new BadRequestException('synqdriveVehicleId is required');
-    await this.vehicleLinkService.activateHealthLink(id, body.synqdriveVehicleId);
+    await this.vehicleLinkService.activateHealthLink(id, body.synqdriveVehicleId, {
+      tenantOrganizationId: body.synqdriveVehicleId,
+      isMasterAdmin: true,
+    });
     return { success: true, message: 'HM Health-APP activated for vehicle' };
   }
 
@@ -344,7 +350,10 @@ export class HighMobilityAdminController {
     @Body() body: Omit<RegisterHmOnlyVehicleDto, 'hmVehicleId'>,
   ) {
     if (!body.organizationId) throw new BadRequestException('organizationId is required');
-    return this.registrationService.registerHmOnlyVehicle({ ...body, hmVehicleId: id });
+    return this.registrationService.registerHmOnlyVehicle(
+      { ...body, hmVehicleId: id },
+      { tenantOrganizationId: body.organizationId, isMasterAdmin: true },
+    );
   }
 
   @Get('vehicles/:id/streaming-readiness')
@@ -355,7 +364,10 @@ export class HighMobilityAdminController {
   @Post('vehicles/:id/link-full-telemetry')
   async linkFullTelemetry(@Param('id') id: string, @Body() body: { synqdriveVehicleId: string }) {
     if (!body.synqdriveVehicleId) throw new BadRequestException('synqdriveVehicleId is required');
-    await this.vehicleLinkService.linkFullTelemetry(id, body.synqdriveVehicleId);
+    await this.vehicleLinkService.linkFullTelemetry(id, body.synqdriveVehicleId, {
+      tenantOrganizationId: body.synqdriveVehicleId,
+      isMasterAdmin: true,
+    });
     return { success: true, message: 'HM Telemetry-APP structural link created' };
   }
 
@@ -391,6 +403,6 @@ export class HighMobilityAdminController {
 
   @Get('candidates/hm-only')
   async getHmOnlyCandidates(@Query('vin') vin?: string) {
-    return this.registrationService.getHmOnlyCandidates(vin);
+    return this.registrationService.getHmOnlyCandidates('master-admin', true, vin);
   }
 }

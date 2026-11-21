@@ -5,6 +5,11 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  assertHighMobilityRecordTenantAccess,
+  assertHighMobilityTenantOperationalOrganization,
+  highMobilityRecordOrgWhere,
+} from './high-mobility-tenant-access.policy';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
   RegisterHmOnlyVehicleDto,
@@ -33,12 +38,20 @@ export class HighMobilityRegistrationService {
    * Requires an approved HM vehicle record (clearanceStatus === APPROVED).
    * The resulting vehicle has no DIMO connection and uses HIGH_MOBILITY as its sole source.
    */
-  async registerHmOnlyVehicle(dto: RegisterHmOnlyVehicleDto): Promise<HmOnlyRegistrationResultDto> {
+  async registerHmOnlyVehicle(
+    dto: RegisterHmOnlyVehicleDto,
+    access: { tenantOrganizationId: string; isMasterAdmin: boolean },
+  ): Promise<HmOnlyRegistrationResultDto> {
     const { hmVehicleId, organizationId, vehicleName, licensePlate, notes, mileageKm, fuelType, vehicleType } = dto;
+
+    if (organizationId !== access.tenantOrganizationId && !access.isMasterAdmin) {
+      throw new BadRequestException('organizationId does not match the authenticated organization');
+    }
 
     // Validate HM vehicle record
     const hmRecord = await this.prisma.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
     if (!hmRecord) throw new NotFoundException(`HM vehicle ${hmVehicleId} not found`);
+    assertHighMobilityRecordTenantAccess(hmRecord, organizationId, access.isMasterAdmin);
     if (hmRecord.clearanceStatus !== 'APPROVED') {
       throw new BadRequestException(
         `HM vehicle clearance is not APPROVED (current: ${hmRecord.clearanceStatus})`,
@@ -55,9 +68,11 @@ export class HighMobilityRegistrationService {
       );
     }
 
-    // Validate organization exists
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException(`Organization ${organizationId} not found`);
+    await assertHighMobilityTenantOperationalOrganization(
+      this.prisma,
+      organizationId,
+      access.isMasterAdmin,
+    );
 
     // Prevent duplicate VIN registration within this org
     const existingVehicle = await this.prisma.vehicle.findFirst({
@@ -175,19 +190,36 @@ export class HighMobilityRegistrationService {
    * Return available HM_ONLY candidates (approved, not yet registered) for a given VIN.
    * Used by the registration UI to show available registrations.
    */
-  async getHmOnlyCandidates(vin?: string): Promise<any[]> {
-    const where: any = {
+  async getHmOnlyCandidates(
+    tenantOrganizationId: string,
+    isMasterAdmin: boolean,
+    vin?: string,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
       sourceMode: 'HM_ONLY',
       isActive: true,
       clearanceStatus: 'APPROVED',
       registrationState: { in: ['NOT_REGISTERED', 'REGISTRATION_FAILED'] },
     };
     if (vin) where.vin = vin.toUpperCase();
+    const orgScope = highMobilityRecordOrgWhere(tenantOrganizationId, isMasterAdmin);
+    if (orgScope) where.AND = [orgScope];
 
-    return this.prisma.highMobilityVehicle.findMany({
+    const rows = await this.prisma.highMobilityVehicle.findMany({
       where,
       orderBy: { clearanceApprovedAt: 'desc' },
     });
+    if (isMasterAdmin) return rows;
+    return rows.map((row) => ({
+      id: row.id,
+      vin: row.vin,
+      brand: row.brand,
+      packageType: row.packageType,
+      sourceMode: row.sourceMode,
+      clearanceStatus: row.clearanceStatus,
+      registrationState: row.registrationState,
+      organizationId: row.organizationId,
+    }));
   }
 
   private normalizeFuelType(fuel?: string): string {

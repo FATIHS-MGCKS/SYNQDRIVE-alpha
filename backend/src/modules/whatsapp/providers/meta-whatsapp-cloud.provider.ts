@@ -459,7 +459,7 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
     config: WhatsAppProviderRuntimeConfig,
   ): boolean {
     if (!config.appSecret) {
-      return process.env.NODE_ENV !== 'production';
+      return false;
     }
 
     const signature = headers['x-hub-signature-256'];
