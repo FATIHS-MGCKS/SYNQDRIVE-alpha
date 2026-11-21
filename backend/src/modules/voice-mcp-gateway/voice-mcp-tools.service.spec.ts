@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { OrganizationStatus } from '@prisma/client';
 import { VoiceMcpToolsService, VoiceMcpGatewayMiddlewareService } from './voice-mcp-tools.service';
 import { CustomersService } from '@modules/customers/customers.service';
 import { VOICE_BOOKING_READ_PORT } from './ports/voice-booking-read.port';
@@ -183,6 +184,9 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
     voiceAssistant: {
       findFirst: jest.fn(),
     },
+    organization: {
+      findUnique: jest.fn(),
+    },
   };
   const subscriptions = {
     listByOrganization: jest.fn(),
@@ -190,6 +194,31 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
   const deployments = {
     findById: jest.fn(),
   };
+
+  const tenantBindingContext = {
+    organizationId: 'org-1',
+    voiceAssistantId: 'assistant-1',
+    agentDeploymentId: 'deploy-1',
+    conversationId: 'conv-1',
+    allowedTools: [],
+    scopes: [] as string[],
+    issuedAt: 1,
+    expiresAt: 2,
+    nonce: 'nonce',
+    requestId: 'req',
+    correlationId: 'corr',
+  };
+
+  function mockOperationalTenantBindings() {
+    prisma.organization.findUnique.mockResolvedValue({ status: OrganizationStatus.ACTIVE });
+    prisma.voiceAssistant.findFirst.mockResolvedValue({ id: 'assistant-1' });
+    deployments.findById.mockResolvedValue({
+      id: 'deploy-1',
+      status: 'ACTIVE',
+      voiceAssistantId: 'assistant-1',
+    });
+    subscriptions.listByOrganization.mockResolvedValue([{ status: 'ACTIVE' }]);
+  }
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -208,48 +237,65 @@ describe('VoiceMcpGatewayMiddlewareService', () => {
   });
 
   it('rejects foreign organization assistant bindings', async () => {
+    prisma.organization.findUnique.mockResolvedValue({ status: OrganizationStatus.ACTIVE });
     prisma.voiceAssistant.findFirst.mockResolvedValue(null);
 
     await expect(
       middleware.assertTenantBindings({
-        organizationId: 'org-1',
+        ...tenantBindingContext,
         voiceAssistantId: 'assistant-foreign',
-        agentDeploymentId: 'deploy-1',
-        conversationId: 'conv-1',
-        allowedTools: [],
-        scopes: [],
-        issuedAt: 1,
-        expiresAt: 2,
-        nonce: 'nonce',
-        requestId: 'req',
-        correlationId: 'corr',
-      }),
+      } as never),
     ).rejects.toBeInstanceOf(VoiceMcpError);
   });
 
   it('requires an active voice subscription', async () => {
-    prisma.voiceAssistant.findFirst.mockResolvedValue({ id: 'assistant-1' });
-    deployments.findById.mockResolvedValue({
-      id: 'deploy-1',
-      status: 'ACTIVE',
-      voiceAssistantId: 'assistant-1',
-    });
+    mockOperationalTenantBindings();
     subscriptions.listByOrganization.mockResolvedValue([{ status: 'PENDING' }]);
 
-    await expect(
-      middleware.assertTenantBindings({
-        organizationId: 'org-1',
-        voiceAssistantId: 'assistant-1',
-        agentDeploymentId: 'deploy-1',
-        conversationId: 'conv-1',
-        allowedTools: [],
-        scopes: [],
-        issuedAt: 1,
-        expiresAt: 2,
-        nonce: 'nonce',
-        requestId: 'req',
-        correlationId: 'corr',
-      }),
-    ).rejects.toMatchObject({ code: 'PermissionDenied' });
+    const ctx = tenantBindingContext as never;
+    await expect(middleware.assertTenantBindings(ctx)).rejects.toMatchObject({
+      code: 'PermissionDenied',
+    });
+  });
+
+  it('allows ACTIVE organization tenant bindings', async () => {
+    mockOperationalTenantBindings();
+    await expect(middleware.assertTenantBindings(tenantBindingContext as never)).resolves.toBeUndefined();
+  });
+
+  it.each([
+    OrganizationStatus.PENDING,
+    OrganizationStatus.SUSPENDED,
+    OrganizationStatus.ARCHIVED,
+  ])('denies non-operational organization status %s at request time', async (status) => {
+    prisma.organization.findUnique.mockResolvedValue({ status });
+
+    await expect(middleware.assertTenantBindings(tenantBindingContext as never)).rejects.toMatchObject({
+      code: 'PermissionDenied',
+    });
+    expect(prisma.voiceAssistant.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('denies missing organization (fail closed)', async () => {
+    prisma.organization.findUnique.mockResolvedValue(null);
+
+    await expect(middleware.assertTenantBindings(tenantBindingContext as never)).rejects.toMatchObject({
+      code: 'PermissionDenied',
+      message: 'Organization not found.',
+    });
+    expect(deployments.findById).not.toHaveBeenCalled();
+  });
+
+  it('denies inactive agent deployment', async () => {
+    mockOperationalTenantBindings();
+    deployments.findById.mockResolvedValue({
+      id: 'deploy-1',
+      status: 'INACTIVE',
+      voiceAssistantId: 'assistant-1',
+    });
+
+    await expect(middleware.assertTenantBindings(tenantBindingContext as never)).rejects.toMatchObject({
+      code: 'DataUnavailable',
+    });
   });
 });
