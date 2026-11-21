@@ -15,6 +15,8 @@ import { HighMobilityRegistrationService } from './high-mobility-registration.se
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
 const ORG_SUSPENDED = 'org-suspended';
+const ORG_PENDING = 'org-pending';
+const ORG_ARCHIVED = 'org-archived';
 const VEH_A = 'veh-a';
 const VEH_B = 'veh-b';
 const HM_ORG_A = 'hm-a';
@@ -30,6 +32,12 @@ describe('HighMobilityVehicleRegisterController HTTP security', () => {
   const registrations = { called: 0 };
 
   const linkService = {
+    checkAvailability: jest.fn(async (vin: string) => ({
+      vin,
+      available: true,
+      hmVehicleId: HM_ORG_A,
+      linkedVehicleId: null,
+    })),
     checkAvailabilityForOrganization: jest.fn(async (vin: string, orgId: string) => {
       if (vin === 'VINSECRET' && orgId === ORG_B) {
         return { vin, hmVehicleId: HM_ORG_B, available: true, linkedVehicleId: VEH_B };
@@ -70,6 +78,14 @@ describe('HighMobilityVehicleRegisterController HTTP security', () => {
       role: 'WORKER',
       permissions: { fleet: { read: true, write: true } },
     },
+    [`writer|${ORG_PENDING}`]: {
+      role: 'WORKER',
+      permissions: { fleet: { read: true, write: true } },
+    },
+    [`writer|${ORG_ARCHIVED}`]: {
+      role: 'WORKER',
+      permissions: { fleet: { read: true, write: true } },
+    },
   };
 
   const vehicles: Record<string, { organizationId: string }> = {
@@ -82,6 +98,8 @@ describe('HighMobilityVehicleRegisterController HTTP security', () => {
     [ORG_A]: OrganizationStatus.ACTIVE,
     [ORG_B]: OrganizationStatus.ACTIVE,
     [ORG_SUSPENDED]: OrganizationStatus.SUSPENDED,
+    [ORG_PENDING]: OrganizationStatus.PENDING,
+    [ORG_ARCHIVED]: OrganizationStatus.ARCHIVED,
   };
 
   const prisma = {
@@ -110,7 +128,12 @@ describe('HighMobilityVehicleRegisterController HTTP security', () => {
       findUnique: jest.fn(async (args: { where: { id: string } }) => {
         const row = vehicles[args.where.id];
         if (!row) return null;
-        return { id: args.where.id, organizationId: row.organizationId };
+        const status = orgStatus[row.organizationId];
+        return {
+          id: args.where.id,
+          organizationId: row.organizationId,
+          organization: { status },
+        };
       }),
     },
     organization: {
@@ -219,5 +242,84 @@ describe('HighMobilityVehicleRegisterController HTTP security', () => {
       .set(...authHeader(tenant('reader', ORG_A)))
       .expect(200);
     expect(res.body.hmVehicleId).toBeNull();
+  });
+
+  it('denies PENDING tenant HM_ONLY register before service', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles/register/hm-only')
+      .set(...authHeader(tenant('writer', ORG_PENDING)))
+      .send({ hmVehicleId: HM_ORG_A, organizationId: ORG_PENDING })
+      .expect(403);
+    expect(registrations.called).toBe(0);
+  });
+
+  it('denies ARCHIVED tenant HM_ONLY register before service', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles/register/hm-only')
+      .set(...authHeader(tenant('writer', ORG_ARCHIVED)))
+      .send({ hmVehicleId: HM_ORG_A, organizationId: ORG_ARCHIVED })
+      .expect(403);
+    expect(registrations.called).toBe(0);
+  });
+
+  it('denies PENDING tenant HM discovery', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/vehicles/register/high-mobility-availability?vin=VINSHARED')
+      .set(...authHeader(tenant('reader', ORG_PENDING)))
+      .expect(403);
+    expect(linkService.checkAvailabilityForOrganization).not.toHaveBeenCalled();
+  });
+
+  it('allows Master Admin discovery without tenant org', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/vehicles/register/high-mobility-availability?vin=VINSHARED')
+      .set(
+        ...authHeader({
+          id: 'ma-1',
+          platformRole: UserPlatformRole.MASTER_ADMIN,
+          organizationId: null,
+        }),
+      )
+      .expect(200);
+    expect(linkService.checkAvailability).toHaveBeenCalled();
+  });
+
+  it('allows Master Admin vehicle link without JWT org', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/vehicles/${VEH_A}/activate-high-mobility-health`)
+      .set(
+        ...authHeader({
+          id: 'ma-1',
+          platformRole: UserPlatformRole.MASTER_ADMIN,
+          organizationId: null,
+        }),
+      )
+      .send({ hmVehicleId: HM_ORG_A })
+      .expect((res) => expect([200, 201]).toContain(res.status));
+    expect(linkMutations.activate).toBe(1);
+  });
+
+  it('requires explicit org for Master Admin HM_ONLY', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles/register/hm-only')
+      .set(
+        ...authHeader({
+          id: 'ma-1',
+          platformRole: UserPlatformRole.MASTER_ADMIN,
+          organizationId: null,
+        }),
+      )
+      .send({ hmVehicleId: HM_ORG_A })
+      .expect(400);
+    expect(registrations.called).toBe(0);
+  });
+
+  it('allows ACTIVE tenant HM_ONLY with fleet.write', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles/register/hm-only')
+      .set(...authHeader(tenant('writer', ORG_A)))
+      .send({ hmVehicleId: HM_ORG_A, organizationId: ORG_A })
+      .expect(201);
+    expect(registrations.called).toBe(1);
   });
 });

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   assertHighMobilityRecordTenantAccess,
+  assertHighMobilityTenantOperationalOrganization,
   highMobilityRecordOrgWhere,
 } from './high-mobility-tenant-access.policy';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -67,9 +68,11 @@ export class HighMobilityRegistrationService {
       );
     }
 
-    // Validate organization exists
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException(`Organization ${organizationId} not found`);
+    await assertHighMobilityTenantOperationalOrganization(
+      this.prisma,
+      organizationId,
+      access.isMasterAdmin,
+    );
 
     // Prevent duplicate VIN registration within this org
     const existingVehicle = await this.prisma.vehicle.findFirst({

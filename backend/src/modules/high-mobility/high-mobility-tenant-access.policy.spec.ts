@@ -25,4 +25,24 @@ describe('high-mobility-tenant-access.policy', () => {
       assertHighMobilityRecordTenantAccess({ organizationId: null }, 'org-a', false),
     ).not.toThrow();
   });
+
+  it('allows Master Admin discovery without org context', () => {
+    expect(
+      resolveHighMobilityTenantOrganizationId(
+        { platformRole: 'MASTER_ADMIN', organizationId: null },
+        undefined,
+        { allowMasterAdminWithoutOrg: true },
+      ),
+    ).toBeNull();
+  });
+
+  it('requires Master Admin HM_ONLY destination org', () => {
+    expect(() =>
+      resolveHighMobilityTenantOrganizationId(
+        { platformRole: 'MASTER_ADMIN', organizationId: null },
+        undefined,
+        { requireMasterAdminDestinationOrg: true },
+      ),
+    ).toThrow();
+  });
 });
