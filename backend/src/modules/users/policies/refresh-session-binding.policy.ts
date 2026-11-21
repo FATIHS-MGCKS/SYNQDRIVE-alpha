@@ -3,7 +3,7 @@
  * Pure domain — no Nest/Prisma imports.
  */
 
-import { MembershipStatus } from '@prisma/client';
+import { MembershipStatus, OrganizationStatus } from '@prisma/client';
 
 export const REFRESH_TOKEN_SCOPES = ['ORG_MEMBERSHIP_BOUND', 'LEGACY_UNSCOPED'] as const;
 export type RefreshTokenScopeKind = (typeof REFRESH_TOKEN_SCOPES)[number];
@@ -20,7 +20,11 @@ export type LoginMembershipCandidate = {
   membershipVersion: number;
   permissions?: unknown;
   organizationRoleId?: string | null;
-  organization?: { companyName?: string | null; logoUrl?: string | null } | null;
+  organization?: {
+    companyName?: string | null;
+    logoUrl?: string | null;
+    status?: OrganizationStatus;
+  } | null;
 };
 
 export type LoginMembershipResolution =

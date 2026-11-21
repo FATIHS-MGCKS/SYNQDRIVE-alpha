@@ -31,6 +31,11 @@ describe('IAM tenant isolation — OrgScopingGuard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      id: 'm-1',
+      role: 'WORKER',
+      organization: { status: 'ACTIVE' },
+    });
     guard = new OrgScopingGuard(prisma as never);
   });
 
@@ -60,8 +65,6 @@ describe('IAM tenant isolation — OrgScopingGuard', () => {
   });
 
   it('allows tenant user with matching JWT org and active membership', async () => {
-    prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm-1', role: 'WORKER' });
-
     await expect(
       guard.canActivate(
         buildContext({

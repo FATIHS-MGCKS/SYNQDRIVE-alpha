@@ -21,6 +21,7 @@ import {
   AuthSessionClaims,
   buildPasswordOnlyClaims,
 } from '@shared/auth/auth-session-claims.types';
+import { assertOrganizationAllowsTenantSurface } from '@shared/auth/organization-lifecycle-access.policy';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 
@@ -82,6 +83,7 @@ export class RefreshTokenService {
     membership: RefreshTokenMembershipContext | null,
     context: { userAgent?: string; ipAddress?: string } = {},
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
+    await this.assertOrganizationSessionIssuanceForMembership(membership);
     const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
     const accessToken = this.signAccessToken(user, membership, undefined, platformPermissions);
     const refreshToken = await this.createRefreshToken(user, membership, context);
@@ -93,6 +95,7 @@ export class RefreshTokenService {
     membership: RefreshTokenMembershipContext | null,
     sessionClaims: AuthSessionClaims,
   ): Promise<{ accessToken: string; expiresIn: string }> {
+    await this.assertOrganizationSessionIssuanceForMembership(membership);
     const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
     return {
       accessToken: this.signAccessToken(
@@ -199,6 +202,9 @@ export class RefreshTokenService {
     }
 
     const membership = binding.membership;
+    await this.assertOrganizationSessionIssuanceForOrganizationId(
+      membership?.organizationId ?? stored.organizationId,
+    );
     const membershipContext = membership
       ? this.toMembershipContext(membership)
       : null;
@@ -618,6 +624,24 @@ export class RefreshTokenService {
       securityVersion: claims.securityVersion,
     };
     return jwt.sign(payload, this.jwtSecret, { expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'] });
+  }
+
+  private async assertOrganizationSessionIssuanceForMembership(
+    membership: RefreshTokenMembershipContext | null,
+  ): Promise<void> {
+    if (!membership?.organizationId) return;
+    await this.assertOrganizationSessionIssuanceForOrganizationId(membership.organizationId);
+  }
+
+  private async assertOrganizationSessionIssuanceForOrganizationId(
+    organizationId: string | null | undefined,
+  ): Promise<void> {
+    if (!organizationId) return;
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { status: true },
+    });
+    assertOrganizationAllowsTenantSurface(org?.status, 'SESSION_ISSUANCE');
   }
 
   private async hashToken(rawToken: string): Promise<string> {

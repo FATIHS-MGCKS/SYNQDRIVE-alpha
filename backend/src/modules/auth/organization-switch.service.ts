@@ -16,6 +16,10 @@ import {
   mapMembershipsToOrganizationOptions,
   validateOrganizationSwitchTarget,
 } from '@modules/users/policies/organization-switch.policy';
+import {
+  assertOrganizationAllowsTenantSurface,
+  canIssueOrganizationSession,
+} from '@shared/auth/organization-lifecycle-access.policy';
 import type { LoginMembershipCandidate } from '@modules/users/policies/refresh-session-binding.policy';
 
 export interface SwitchOrganizationInput {
@@ -37,7 +41,12 @@ export class OrganizationSwitchService {
 
   async listActiveOrganizations(userId: string) {
     const memberships = await this.loadActiveMemberships(userId);
-    return mapMembershipsToOrganizationOptions(memberships);
+    const eligible = memberships.filter((m) =>
+      m.organization?.status
+        ? canIssueOrganizationSession(m.organization.status)
+        : false,
+    );
+    return mapMembershipsToOrganizationOptions(eligible);
   }
 
   async switchOrganization(input: SwitchOrganizationInput) {
@@ -72,6 +81,11 @@ export class OrganizationSwitchService {
     }
 
     const membership = validation.membership;
+
+    assertOrganizationAllowsTenantSurface(
+      targetMembership?.organization?.status,
+      'SESSION_ISSUANCE',
+    );
 
     await this.refreshTokens.revoke(
       input.refreshToken,
@@ -178,7 +192,11 @@ export class OrganizationSwitchService {
     status: MembershipStatus;
     membershipVersion: number;
     permissions: unknown;
-    organization: { companyName: string | null; logoUrl: string | null } | null;
+    organization: {
+      companyName: string | null;
+      logoUrl: string | null;
+      status?: import('@prisma/client').OrganizationStatus;
+    } | null;
   }): LoginMembershipCandidate {
     return {
       id: row.id,
