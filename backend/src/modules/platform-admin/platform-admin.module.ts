@@ -8,6 +8,7 @@ import { PlatformAdminController } from './platform-admin.controller';
 import { SecurityGovernanceController } from './security-governance.controller';
 import { SecurityGovernanceService } from './security-governance.service';
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
+import { SecurityGovernancePlatformPermissionAuditService } from './security-governance-platform-permission-audit.service';
 import { PlatformAdminService } from './platform-admin.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import {
@@ -56,6 +57,7 @@ import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-web
   providers: [
     SecurityGovernanceService,
     SecurityGovernanceSessionAuditService,
+    SecurityGovernancePlatformPermissionAuditService,
     PlatformIntegrationsService,
     PlatformAdminService,
     VehicleLogbookService,

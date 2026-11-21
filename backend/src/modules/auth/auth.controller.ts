@@ -28,6 +28,7 @@ import { mapMembershipsToOrganizationOptions } from '@modules/users/policies/org
 import { AuthSessionContextService } from './auth-session-context.service';
 import { OrganizationSwitchService } from './organization-switch.service';
 import { AuthMfaLoginService } from './auth-mfa-login.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
@@ -47,10 +48,25 @@ export class AuthController {
     private readonly organizationSwitch: OrganizationSwitchService,
     private readonly iamMetrics: IamMetricsService,
     private readonly authMfaLogin: AuthMfaLoginService,
+    private readonly platformPermissions: PlatformPermissionService,
   ) {
     // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
     this.jwtSecret = this.configService.get<string>('app.jwtSecret')!;
     this.jwtExpiresIn = this.configService.get<string>('app.jwtExpiresIn', '24h');
+  }
+
+  private async buildAuthedUserResponse(
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+      platformRole: string;
+      mustChangePassword?: boolean;
+    },
+    membership: Parameters<AuthSessionContextService['buildUserResponse']>[1],
+  ) {
+    const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
+    return this.sessionContext.buildUserResponse(user, membership, { platformPermissions });
   }
 
   // Strict rate limit on login: max 10 attempts per minute per IP
@@ -203,7 +219,7 @@ export class AuthController {
       return {
         requiresMfa: true,
         mfaPendingToken: mfaGate.mfaPendingToken,
-        user: this.sessionContext.buildUserResponse(user, membership),
+        user: await this.buildAuthedUserResponse(user, membership),
       };
     }
 
@@ -250,7 +266,7 @@ export class AuthController {
       refreshToken,
       expiresIn,
       mustChangePassword: user.mustChangePassword,
-      user: this.sessionContext.buildUserResponse(user, membership),
+      user: await this.buildAuthedUserResponse(user, membership),
       organizations: mapMembershipsToOrganizationOptions(membershipCandidates),
     };
   }
@@ -429,7 +445,7 @@ export class AuthController {
       expiresIn: result.expiresIn,
       user:
         fullUser && decoded
-          ? this.sessionContext.buildUserResponse(fullUser, membership)
+          ? await this.buildAuthedUserResponse(fullUser, membership)
           : undefined,
     };
   }
@@ -490,7 +506,7 @@ export class AuthController {
       user.membershipId,
     );
 
-    return this.sessionContext.buildUserResponse(fullUser, membership);
+    return this.buildAuthedUserResponse(fullUser, membership);
   }
 
   /**

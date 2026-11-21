@@ -71,12 +71,14 @@ export class AuthSessionContextService {
       mustChangePassword?: boolean;
     },
     membership: LoginMembershipCandidate | null,
+    options?: { platformPermissions?: string[] },
   ) {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       platformRole: user.platformRole,
+      platformPermissions: options?.platformPermissions ?? [],
       mustChangePassword: user.mustChangePassword ?? false,
       membershipRole: membership?.role ?? null,
       organizationId: membership?.organizationId ?? null,

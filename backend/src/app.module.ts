@@ -19,6 +19,7 @@ import { RedisModule } from '@shared/redis/redis.module';
 import { StorageModule } from '@shared/storage/storage.module';
 import { AuthModule } from '@shared/auth/auth.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
+import { PlatformPermissionsModule } from '@modules/users/platform-permissions/platform-permissions.module';
 
 import { PlatformAdminModule } from '@modules/platform-admin/platform-admin.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
@@ -222,6 +223,7 @@ export class AppModule {
         StorageModule,
         AuthModule,
         SharedGuardsModule,
+        PlatformPermissionsModule,
         AuthApiModule,
         CoreAppM2mModule,
         AccountModule,

@@ -87,6 +87,9 @@ describe('MasterSubscriptionController security characterization', () => {
 
 describe('MasterSubscriptionController access control', () => {
   const reflector = { getAllAndOverride: jest.fn() } as unknown as import('@nestjs/core').Reflector;
+  const platformPermissions = {
+    hasActiveMasterBillingGrant: jest.fn(),
+  };
   let guard: MasterBillingGuard;
 
   const ctx = (user?: Record<string, unknown>) => ({
@@ -98,47 +101,54 @@ describe('MasterSubscriptionController access control', () => {
   });
 
   beforeEach(() => {
-    guard = new MasterBillingGuard(reflector);
+    guard = new MasterBillingGuard(reflector, platformPermissions as never);
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue(true);
+    (platformPermissions.hasActiveMasterBillingGrant as jest.Mock).mockResolvedValue(false);
   });
 
-  it('allows master admin', () => {
-    expect(guard.canActivate(ctx({ platformRole: 'MASTER_ADMIN' }) as never)).toBe(true);
+  it('allows master admin', async () => {
+    await expect(
+      guard.canActivate(ctx({ id: 'ma', platformRole: 'MASTER_ADMIN' }) as never),
+    ).resolves.toBe(true);
   });
 
-  it('allows master billing platform permission', () => {
-    expect(
+  it('allows master billing platform permission', async () => {
+    (platformPermissions.hasActiveMasterBillingGrant as jest.Mock).mockResolvedValue(true);
+    await expect(
       guard.canActivate(
         ctx({
+          id: 'delegate',
           platformRole: 'USER',
           platformPermissions: [MASTER_BILLING_PLATFORM_PERMISSION],
         }) as never,
       ),
-    ).toBe(true);
+    ).resolves.toBe(true);
   });
 
-  it('rejects org admin tenant users', () => {
-    expect(() =>
+  it('rejects org admin tenant users', async () => {
+    await expect(
       guard.canActivate(
         ctx({
+          id: 'oa',
           platformRole: 'USER',
           membershipRole: 'ORG_ADMIN',
           organizationId: 'org-a',
         }) as never,
       ),
-    ).toThrow(ForbiddenException);
+    ).rejects.toThrow(ForbiddenException);
   });
 
-  it('rejects workers', () => {
-    expect(() =>
+  it('rejects workers', async () => {
+    await expect(
       guard.canActivate(
         ctx({
+          id: 'w',
           platformRole: 'USER',
           membershipRole: 'WORKER',
           organizationId: 'org-a',
         }) as never,
       ),
-    ).toThrow(ForbiddenException);
+    ).rejects.toThrow(ForbiddenException);
   });
 });
 

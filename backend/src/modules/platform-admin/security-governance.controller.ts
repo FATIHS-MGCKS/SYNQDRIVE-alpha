@@ -25,6 +25,8 @@ import {
   SecurityGovernanceSessionAuditService,
   type SessionRevocationAuditRequest,
 } from './security-governance-session-audit.service';
+import { SecurityGovernancePlatformPermissionAuditService } from './security-governance-platform-permission-audit.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 
 type AuthedRequest = SessionRevocationAuditRequest;
 
@@ -37,6 +39,8 @@ export class SecurityGovernanceController {
     private readonly mfa: IamMfaService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly sessionAudit: SecurityGovernanceSessionAuditService,
+    private readonly platformPermissionAudit: SecurityGovernancePlatformPermissionAuditService,
+    private readonly platformPermissions: PlatformPermissionService,
   ) {}
 
   @Get('attention-summary')
@@ -130,6 +134,46 @@ export class SecurityGovernanceController {
       idempotencyKey: body.idempotencyKey ?? `master-mfa-reset:${userId}:${Date.now()}`,
       reason: body.reason,
     });
+  }
+
+  @Post('users/:userId/platform-permissions/master-billing/grant')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @HttpCode(HttpStatus.OK)
+  async grantMasterBilling(@Param('userId') userId: string, @Req() req: AuthedRequest) {
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      return { granted: false };
+    }
+    const result = await this.platformPermissions.grantMasterBilling(userId, actorUserId);
+    this.platformPermissionAudit.recordMasterBillingGrant({
+      req,
+      targetUserId: userId,
+      grantId: result.grantId,
+      idempotent: result.idempotent,
+    });
+    return result;
+  }
+
+  @Post('users/:userId/platform-permissions/master-billing/revoke')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @HttpCode(HttpStatus.OK)
+  async revokeMasterBilling(@Param('userId') userId: string, @Req() req: AuthedRequest) {
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      return { revoked: false };
+    }
+    const result = await this.platformPermissions.revokeMasterBilling(userId, actorUserId);
+    this.platformPermissionAudit.recordMasterBillingRevoke({
+      req,
+      targetUserId: userId,
+      grantId: result.grantId,
+      idempotent: result.idempotent,
+    });
+    return result;
   }
 
   @Get('platform-roles')
