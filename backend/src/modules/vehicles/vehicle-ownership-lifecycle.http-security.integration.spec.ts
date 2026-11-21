@@ -378,6 +378,46 @@ describe('VehiclesController — vehicle ownership lifecycle HTTP security', () 
       .expect(200);
   });
 
+  it('F2 — same signed JWT after DB suspension denies GET and PATCH', async () => {
+    const token = accessTokenOrgA;
+    ORG_STATUS['org-a'] = OrganizationStatus.ACTIVE;
+
+    await request(app.getHttpServer())
+      .get('/api/v1/vehicles/veh-owned')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(vehiclesService.findById).toHaveBeenCalledTimes(1);
+
+    vehiclesService.findById.mockClear();
+    vehiclesService.update.mockClear();
+
+    await request(app.getHttpServer())
+      .patch('/api/v1/vehicles/veh-owned')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nickname: 'before-suspend' })
+      .expect(200);
+    expect(vehiclesService.update).toHaveBeenCalledTimes(1);
+
+    ORG_STATUS['org-a'] = OrganizationStatus.SUSPENDED;
+    vehiclesService.findById.mockClear();
+    vehiclesService.update.mockClear();
+
+    const deniedGet = await request(app.getHttpServer())
+      .get('/api/v1/vehicles/veh-owned')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    expect(deniedGet.body.code).toBe(ORGANIZATION_LIFECYCLE_DENIED_CODE);
+    expect(vehiclesService.findById).not.toHaveBeenCalled();
+
+    const deniedPatch = await request(app.getHttpServer())
+      .patch('/api/v1/vehicles/veh-owned')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ nickname: 'after-suspend' })
+      .expect(403);
+    expect(deniedPatch.body.code).toBe(ORGANIZATION_LIFECYCLE_DENIED_CODE);
+    expect(vehiclesService.update).not.toHaveBeenCalled();
+  });
+
   it('10 — PATCH success does not run service when lifecycle denies', async () => {
     ORG_STATUS['org-suspended'] = OrganizationStatus.SUSPENDED;
     await request(app.getHttpServer())

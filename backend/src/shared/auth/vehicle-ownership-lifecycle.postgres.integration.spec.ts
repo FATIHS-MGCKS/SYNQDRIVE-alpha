@@ -1,6 +1,6 @@
 /**
  * VehicleOwnershipGuard + live organization.status (PostgreSQL).
- * VEHICLE_OWNERSHIP_LIFECYCLE_PG=1 DATABASE_URL=postgresql://.../synqdrive_vehicle_lifecycle_test npm test -- vehicle-ownership-lifecycle.postgres.integration
+ * VEHICLE_OWNERSHIP_LIFECYCLE_PG=1 DATABASE_URL=postgresql://127.0.0.1:5432/synqdrive_vehicle_ownership_lifecycle_test npm test -- vehicle-ownership-lifecycle.postgres.integration
  */
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
@@ -16,17 +16,12 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
+import {
+  assertVehicleOwnershipLifecycleDisposablePostgresPreflight,
+  isVehicleOwnershipLifecyclePostgresOptIn,
+} from './testing/vehicle-ownership-lifecycle-disposable-postgres-preflight';
 
-const LIVE = process.env.VEHICLE_OWNERSHIP_LIFECYCLE_PG === '1';
-
-function assertDisposableDatabaseUrl(): void {
-  const url = process.env.DATABASE_URL ?? '';
-  if (!url) throw new Error('VEHICLE_OWNERSHIP_LIFECYCLE_PG=1 requires DATABASE_URL');
-  const dbName = new URL(url).pathname.replace(/^\//, '').split('?')[0] ?? '';
-  if (!/synqdrive|test|ci|vehicle_lifecycle/i.test(dbName)) {
-    throw new Error(`Refusing non-disposable database name: ${dbName}`);
-  }
-}
+const LIVE = isVehicleOwnershipLifecyclePostgresOptIn();
 
 function contextFor(user: Record<string, unknown>, vehicleId: string) {
   return {
@@ -49,7 +44,7 @@ function contextFor(user: Record<string, unknown>, vehicleId: string) {
     let guard: VehicleOwnershipGuard;
 
     beforeAll(async () => {
-      assertDisposableDatabaseUrl();
+      assertVehicleOwnershipLifecycleDisposablePostgresPreflight();
       prisma = new PrismaClient();
       await prisma.$connect();
       guard = new VehicleOwnershipGuard(prisma as never);
@@ -119,15 +114,20 @@ function contextFor(user: Record<string, unknown>, vehicleId: string) {
       ).resolves.toBe(true);
     });
 
-    it('denies immediately after org suspended in DB', async () => {
+    it('F2 — same user/org binding after DB suspension denies (JWT would be unchanged)', async () => {
+      const sessionUser = { id: userId, platformRole: 'USER', organizationId };
+
+      await expect(
+        guard.canActivate(contextFor(sessionUser, vehicleId)),
+      ).resolves.toBe(true);
+
       await prisma.organization.update({
         where: { id: organizationId },
         data: { status: OrganizationStatus.SUSPENDED },
       });
+
       await expect(
-        guard.canActivate(
-          contextFor({ id: userId, platformRole: 'USER', organizationId }, vehicleId),
-        ),
+        guard.canActivate(contextFor(sessionUser, vehicleId)),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
