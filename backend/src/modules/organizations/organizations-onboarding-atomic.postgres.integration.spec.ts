@@ -111,9 +111,10 @@ async function cleanupOrg(prisma: PrismaClient, orgId: string, userIds: string[]
 
   it('rejects duplicate admin email without orphaned org rows', async () => {
     const email = `dup-${randomUUID()}@p4.test`;
+    const secondCompany = `Second-${randomUUID()}`;
     const first = await service.create(
       {
-        companyName: `First ${randomUUID().slice(0, 4)}`,
+        companyName: `First-${randomUUID()}`,
         initialAdmin: { name: 'A', email, password: 'Str0ng!Passw0rd1' },
       } as never,
     );
@@ -121,14 +122,14 @@ async function cleanupOrg(prisma: PrismaClient, orgId: string, userIds: string[]
     await expect(
       service.create(
         {
-          companyName: `Second ${randomUUID().slice(0, 4)}`,
+          companyName: secondCompany,
           initialAdmin: { name: 'B', email, password: 'Str0ng!Passw0rd1' },
         } as never,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
 
     const orphan = await prisma.organization.findFirst({
-      where: { companyName: { contains: 'Second' } },
+      where: { companyName: secondCompany },
     });
     expect(orphan).toBeNull();
     const admin = (first as { initialAdmin?: { id: string } }).initialAdmin;
@@ -203,6 +204,56 @@ async function cleanupOrg(prisma: PrismaClient, orgId: string, userIds: string[]
     const org = await prisma.organization.findFirst({ where: { companyName: name } });
     expect(org).toBeNull();
     spy.mockRestore();
+  });
+
+  it('concurrent same-email onboarding commits at most one org and one user', async () => {
+    const runId = randomUUID();
+    const email = `concurrent-${runId}@p4.test`;
+    const companyA = `ConcurrentEmailA-${runId}`;
+    const companyB = `ConcurrentEmailB-${runId}`;
+    const password = 'Str0ng!Passw0rd1';
+
+    const outcomes = await Promise.allSettled([
+      service.create(
+        {
+          companyName: companyA,
+          initialAdmin: { name: 'Alpha', email, password },
+        } as never,
+      ),
+      service.create(
+        {
+          companyName: companyB,
+          initialAdmin: { name: 'Beta', email, password },
+        } as never,
+      ),
+    ]);
+
+    const fulfilled = outcomes.filter((o) => o.status === 'fulfilled');
+    const rejected = outcomes.filter((o) => o.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(
+      rejected.some(
+        (o) => o.status === 'rejected' && o.reason instanceof ConflictException,
+      ),
+    ).toBe(true);
+
+    const users = await prisma.user.findMany({ where: { email } });
+    expect(users).toHaveLength(1);
+
+    const orgA = await prisma.organization.findFirst({ where: { companyName: companyA } });
+    const orgB = await prisma.organization.findFirst({ where: { companyName: companyB } });
+    const survivingOrg = orgA ?? orgB;
+    expect(survivingOrg).not.toBeNull();
+    expect(Boolean(orgA) !== Boolean(orgB)).toBe(true);
+
+    const memberships = await prisma.organizationMembership.count({
+      where: { userId: users[0]!.id, role: 'ORG_ADMIN' },
+    });
+    expect(memberships).toBe(1);
+
+    const adminId = users[0]!.id;
+    await cleanupOrg(prisma, survivingOrg!.id, [adminId]);
   });
 
   it('concurrent org-only creates remain isolated', async () => {

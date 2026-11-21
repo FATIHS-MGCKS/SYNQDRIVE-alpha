@@ -411,10 +411,11 @@ export class OrganizationsService {
         },
       });
 
+      await this.organizationRoles.ensureDefaultRoles(orgId, user.id, tx);
+      await this.organizationRoles.assertOrganizationSystemRolesProvisioned(orgId, tx);
+
       return { id: user.id, email: user.email, name: user.name };
     });
-
-    await this.organizationRoles.ensureDefaultRoles(orgId, admin.id);
 
     if (auditCtx?.actorUserId) {
       void this.audit.record({
