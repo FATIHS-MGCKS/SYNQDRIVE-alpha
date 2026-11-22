@@ -1,0 +1,16 @@
+edges:
+  - from: MAUX-ORCH-SHELL-001
+    relation: downstream_of
+    to: MAUX-DOM-001
+  - from: MAUX-DEC-INDEPENDENT-001
+    relation: decides
+    to: MAUX-DOM-001
+  - from: MAUX-DEC-CONTROL-PLANE-001
+    relation: decides
+    to: MAUX-DOM-001
+  - from: MAUX-EVID-CODE-001
+    relation: supports
+    to: MAUX-ORCH-SHELL-001
+  - from: MAUX-EVID-AUDIT-001
+    relation: supports
+    to: MAUX-DEC-INDEPENDENT-001

@@ -1,0 +1,81 @@
+nodes:
+  - id: RENTUX-DOM-001
+    type: domain
+    title: Rental UI/UX
+    summary: /rental
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/rental/
+  - id: RENTUX-ORCH-SHELL-001
+    type: orchestrator
+    title: Rental AppShell
+    summary: Product shell
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/rental/
+    evidence:
+      - RENTUX-EVID-CODE-001
+  - id: RENTUX-DEC-INDEPENDENT-001
+    type: decision
+    title: Independent authority
+    summary: PR2490
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/decisions/DECISION_REGISTER.md
+    evidence:
+      - RENTUX-EVID-AUDIT-001
+  - id: RENTUX-DEC-REFERENCE-001
+    type: decision
+    title: Positive design reference not default layout donor
+    summary: Positive design reference not default layout donor
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/decisions/DECISION_REGISTER.md
+    evidence:
+      - RENTUX-EVID-CODE-001
+  - id: RENTUX-EVID-AUDIT-001
+    type: evidence
+    title: Bootstrap audit
+    summary: Architecture only
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/AUDIT_MANIFEST.md
+  - id: RENTUX-EVID-CODE-001
+    type: evidence
+    title: Code inspection
+    summary: frontend/src/rental/
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    source_paths:
+      - frontend/src/rental/
+  - id: RENTUX-GAP-INVENTORY-001
+    type: gap
+    title: Deep screen matrix incomplete
+    summary: Deep screen matrix incomplete
+    epistemic_status: INFERRED
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/contradictions/KNOWLEDGE_GAPS.md
+  - id: RENTUX-GAP-PROD-001
+    type: gap
+    title: Production Rental UI not verified
+    summary: Production Rental UI not verified
+    epistemic_status: UNKNOWN
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/contradictions/KNOWLEDGE_GAPS.md
+  - id: RENTUX-HYP-001
+    type: hypothesis
+    title: Rental KPI rhythm ADAPT
+    summary: Density patterns may inform Master without nav copy
+    epistemic_status: INFERRED
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/research/OPEN_HYPOTHESES.md
+  - id: RENTUX-CX-001
+    type: contradiction
+    title: Legacy fleet docs vs view union
+    summary: Historical docs may contradict current Rental routing
+    epistemic_status: HISTORICAL
+    source_paths:
+      - architecture/frontend-ui-ux/products/rental/contradictions/OPEN_CONTRADICTIONS.md

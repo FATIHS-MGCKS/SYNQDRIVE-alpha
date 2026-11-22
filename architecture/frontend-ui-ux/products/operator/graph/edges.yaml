@@ -1,0 +1,16 @@
+edges:
+  - from: OPUX-ORCH-SHELL-001
+    relation: downstream_of
+    to: OPUX-DOM-001
+  - from: OPUX-DEC-INDEPENDENT-001
+    relation: decides
+    to: OPUX-DOM-001
+  - from: OPUX-DEC-MOBILE-SHELL-001
+    relation: decides
+    to: OPUX-DOM-001
+  - from: OPUX-EVID-CODE-001
+    relation: supports
+    to: OPUX-ORCH-SHELL-001
+  - from: OPUX-EVID-AUDIT-001
+    relation: supports
+    to: OPUX-DEC-INDEPENDENT-001

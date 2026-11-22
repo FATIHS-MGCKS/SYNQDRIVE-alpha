@@ -1,0 +1,16 @@
+edges:
+  - from: RENTUX-ORCH-SHELL-001
+    relation: downstream_of
+    to: RENTUX-DOM-001
+  - from: RENTUX-DEC-INDEPENDENT-001
+    relation: decides
+    to: RENTUX-DOM-001
+  - from: RENTUX-DEC-REFERENCE-001
+    relation: decides
+    to: RENTUX-DOM-001
+  - from: RENTUX-EVID-CODE-001
+    relation: supports
+    to: RENTUX-ORCH-SHELL-001
+  - from: RENTUX-EVID-AUDIT-001
+    relation: supports
+    to: RENTUX-DEC-INDEPENDENT-001

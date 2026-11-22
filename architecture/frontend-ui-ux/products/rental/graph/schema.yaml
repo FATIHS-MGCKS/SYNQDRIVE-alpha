@@ -1,0 +1,76 @@
+version: "1.0"
+description: Rental UI/UX knowledge graph schema
+
+node_types:
+  - domain
+  - orchestrator
+  - decision
+  - evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - VALIDATED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+
+evidence_source_types:
+  - CURRENT_CODE
+  - AUDIT_DOCUMENT
+
+evidence_reference_permitted_types:
+  - evidence
+
+relation_types:
+  - downstream_of
+  - decides
+  - supports
+
+relation_semantics_doc: architecture/frontend-ui-ux/products/rental/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: RENTUX-DOM-
+  orchestrator: RENTUX-ORCH-
+  decision: RENTUX-DEC-
+  evidence: RENTUX-EVID-
+  hypothesis: RENTUX-HYP-
+  invariant: RENTUX-INV-
+  gap: RENTUX-GAP-
+  contradiction: RENTUX-CX-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - source_paths
+    - evidence
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to

@@ -1,0 +1,23 @@
+invariants:
+  - id: MAUX-INV-LOCAL-001
+    kind: CONDITIONAL_INVARIANT
+    statement: >
+      Product-local Master UI changes should not mandate Rental or Operator authority updates
+      unless shared foundation contracts or documented import dependencies change.
+    scope: governance
+    epistemic_status: CONFIRMED
+    owning_authority: Master Admin UI/UX
+    risk_if_violated: Cross-product documentation drift and hidden shared edits
+    evidence:
+      - MAUX-EVID-CODE-001
+  - id: MAUX-INV-CONTROL-PLANE-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      Master Admin retains control-plane information architecture; wholesale Rental navigation
+      copy into Master requires an explicit PROPOSED decision in foundation comparison docs.
+    scope: master-navigation
+    epistemic_status: CONFIRMED
+    owning_authority: Master Admin UI/UX
+    risk_if_violated: IA collapse between fleet ops and platform admin
+    evidence:
+      - MAUX-EVID-CODE-001

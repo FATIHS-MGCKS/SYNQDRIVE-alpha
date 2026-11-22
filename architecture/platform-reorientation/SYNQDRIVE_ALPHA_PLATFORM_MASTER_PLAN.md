@@ -212,6 +212,10 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | Module | Registry status (2026-11-17) | Authority path |
 |--------|------------------------------|----------------|
 | Platform product catalog | `AUDIT_IN_PROGRESS` | [`architecture/platform-product-catalog/`](../platform-product-catalog/) |
+| Shared UI Design Foundation | `AUDIT_IN_PROGRESS` (bootstrap 2026-11-22) | [`architecture/frontend-ui-ux/`](../frontend-ui-ux/) |
+| Master Admin UI/UX | `AUDIT_IN_PROGRESS` | [`architecture/frontend-ui-ux/products/master-admin/`](../frontend-ui-ux/products/master-admin/) |
+| Rental UI/UX | `AUDIT_IN_PROGRESS` | [`architecture/frontend-ui-ux/products/rental/`](../frontend-ui-ux/products/rental/) |
+| Operator UI/UX | `AUDIT_IN_PROGRESS` | [`architecture/frontend-ui-ux/products/operator/`](../frontend-ui-ux/products/operator/) |
 | (others) | See central registry | Per [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../SYNQDRIVE_RENTAL_ARCHITECTURE.md) |
 
 Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) gates.
@@ -226,4 +230,4 @@ Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`
 
 **Owner 2026-11-18:** MFA implementation/activation **deferred** until after Core/Rental workstream; M2M production activation **not authorized**; physical Core extraction **SUPERSEDED**.
 
-**Last updated:** 2026-11-20 (Post-P6 P10–P12 merged; compliance standard on `2e39a894a`)
+**Last updated:** 2026-11-22 (Frontend UI/UX authority bootstrap; registry `AUDIT_IN_PROGRESS`)

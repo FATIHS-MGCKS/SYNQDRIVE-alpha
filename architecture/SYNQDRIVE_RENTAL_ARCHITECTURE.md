@@ -71,8 +71,10 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Integrations Hub | Tenant integrations configuration and connection management surface. | `NOT_STARTED` | N/A — inventory only | — |
 | Internationalization (i18n) | Owns locale selection, translation catalogs, runtime translation delivery, Rental UI localization, fallback behavior, translation coverage, hardcoded-copy prevention, and i18n governance/CI. | `AUTHORITY_ACTIVE` | Bootstrap audit V1 (2026-09-10) · Gate A satisfied · runtime-bearing frontend module · product migration debt documented | [`architecture/internationalization/`](internationalization/) |
 | Invoices | **Rental:** booking invoices, invoice documents, payment-check tasks, rental AR flows (`backend/src/modules/invoices`). **Core:** future platform subscription billing — not claimed as separate implemented service. Owner split 2026-11-20 — [`evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md`](platform-reorientation/evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md). | `NOT_STARTED` | N/A — inventory only | — |
+| Master Admin UI/UX | Independent Master Admin (Core) control-plane UI/UX: shell, `?view=` navigation, hubs, page framework, product-specific patterns and findings. Consumes shared design foundation. | `AUDIT_IN_PROGRESS` | Split from FEUX bootstrap · Production UI **NOT_STARTED** | [`architecture/frontend-ui-ux/products/master-admin/`](frontend-ui-ux/products/master-admin/) |
 | Notifications | Multi-channel notification evaluation, preferences, delivery outbox, and in-app notification consumption. | `NOT_STARTED` | N/A — inventory only | — |
 | One Auto Provider (Master VIN Lookup) | Master Admin-only paid One Auto provider integration: catalog, quote/confirm/execute jobs, async 202 + full-data callback completion, OEM VIN-lookup suggestions. | `NOT_STARTED` | N/A — inventory only | — |
+| Operator UI/UX | Independent Operator mobile field UI: shell, bottom navigation, touch interactions, operator-specific layouts. Consumes shared design foundation. | `AUDIT_IN_PROGRESS` | Split from FEUX bootstrap · Production UI **NOT_STARTED** | [`architecture/frontend-ui-ux/products/operator/`](frontend-ui-ux/products/operator/) |
 | Organizations & Tenancy | Multi-tenant organization profiles, operational settings, and tenant-scoped configuration. | `AUDIT_IN_PROGRESS` | P6D2 offboarding prepare foundation 2026-11-22 · Production **NOT_STARTED** | [`architecture/organizations/`](organizations/) |
 | Outbound Email | Resend-based outbound email for org, platform, and booking-document delivery. | `NOT_STARTED` | N/A — inventory only | — |
 | Parts & Accessories | Parts procurement integrations including Alzura and eBay marketplace adapters. | `NOT_STARTED` | N/A — inventory only | — |
@@ -84,9 +86,11 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Rental Driving Analysis | Rental-period driving analysis aggregation for bookings and drivers consuming trip intelligence. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · Consumer Audit V1 traceability · DS4 consumer PR-6 | [`architecture/rental-driving-analysis/`](rental-driving-analysis/) |
 | Rental Health | Fleet-level health aggregation consuming source vehicle health modules without recalculating. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 cross-module governance PR-0 | [`architecture/rental-health/`](rental-health/) |
 | Rental Rules | Org-level rental policy and rules configuration governing bookings and operations. | `NOT_STARTED` | N/A — inventory only | — |
+| Rental UI/UX | Independent Rental operations SPA UI: fleet navigation, view union, density patterns, positive design reference (non-binding for Master). Consumes shared design foundation. | `AUDIT_IN_PROGRESS` | Split from FEUX bootstrap · Production UI **NOT_STARTED** | [`architecture/frontend-ui-ux/products/rental/`](frontend-ui-ux/products/rental/) |
 | Scaling Process | Documents horizontal scaling, multi-replica coordination, scheduler leader election, and production scale gates. | `AUTHORITY_ACTIVE` | Bootstrap established · living architecture authority | [`architecture/scaling-process/`](scaling-process/) |
 | Service Cases | Operational service-case tracking linked to fleet maintenance and vendor work. | `NOT_STARTED` | N/A — inventory only | — |
 | Service Events & Compliance | Oil change, TÜV, service intervals, provider-agnostic deterministic maintenance forecast, and compliance task signals for vehicles. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · Service Info V2 forecast engine · Production baseline `VERIFIED_READ_ONLY` (bounded) | [`architecture/service-events-compliance/`](service-events-compliance/) |
+| Shared UI Design Foundation | Shared frontend design language: `theme.css` tokens, surfaces, `components/ui` + `patterns`, motion/a11y baselines, cross-product dependency and change-impact rules. | `AUDIT_IN_PROGRESS` | Bootstrap V2 2026-11-22 · independent product split · Production UI **NOT_STARTED** | [`architecture/frontend-ui-ux/`](frontend-ui-ux/) |
 | SMS & Twilio Messaging | SMS conversation persistence and Twilio provider provisioning for messaging channels. | `NOT_STARTED` | N/A — inventory only | — |
 | Stations | Rental station locations, geofencing, booking rules, transfers, and Stations V2 configuration. | `NOT_STARTED` | N/A — inventory only | — |
 | Support | Customer and operator support ticket APIs and in-app support surfaces. | `NOT_STARTED` | N/A — inventory only | — |
@@ -275,6 +279,56 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Phases **0–5** complete — Phase **1** @ `REPO_CURRENT` `0b44b146f…`; Phase **2** read-only Production @ `2b54a357…`; Phase **3** CX/GAP promotion-classified; Phase **4** full FSM/execution/authority/failure graph + decision register; Phase **5** Gate A PASS ([evidence](trip-detection-lifecycle/evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md)). |
 | **Mandatory entry documents** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](trip-detection-lifecycle/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](trip-detection-lifecycle/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh` |
+
+---
+
+### Shared UI Design Foundation
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` |
+| **Scope** | Shared design language, `theme.css` + contracts, `components/ui` + `patterns`, L0–L4 surfaces, typography/color/motion/a11y baselines, shared dependency inventory, cross-product change policy. |
+| **Authority directory** | [`architecture/frontend-ui-ux/`](frontend-ui-ux/) |
+| **Ownership boundary** | **Owns** shared foundation only. **Does not own** product shells/navigation (→ Master Admin UI/UX, Rental UI/UX, Operator UI/UX), i18n (→ Internationalization). |
+| **Mandatory entry documents** | [README.md](frontend-ui-ux/README.md) · [AUDIT_MANIFEST.md](frontend-ui-ux/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](frontend-ui-ux/CURRENT_STATE.md) · [AGENT_CONTRACT.md](frontend-ui-ux/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](frontend-ui-ux/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](frontend-ui-ux/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](frontend-ui-ux/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](frontend-ui-ux/evidence/PRODUCTION_BASELINE.md) |
+| **Governance** | [governance/CROSS_PRODUCT_CHANGE_POLICY.md](frontend-ui-ux/governance/CROSS_PRODUCT_CHANGE_POLICY.md) · [governance/RENTAL_MASTER_COMPARISON.md](frontend-ui-ux/governance/RENTAL_MASTER_COMPARISON.md) |
+| **Validation** | `bash architecture/frontend-ui-ux/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
+
+---
+
+### Master Admin UI/UX
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` |
+| **Scope** | Master control-plane UI at `/master`: `MasterAdminShell`, sidebar/top chrome, `?view=` navigation, hubs, page framework, Master-specific gaps and inventories. |
+| **Authority directory** | [`architecture/frontend-ui-ux/products/master-admin/`](frontend-ui-ux/products/master-admin/) |
+| **Mandatory entry documents** | [README.md](frontend-ui-ux/products/master-admin/README.md) · [AUDIT_MANIFEST.md](frontend-ui-ux/products/master-admin/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](frontend-ui-ux/products/master-admin/CURRENT_STATE.md) · [AGENT_CONTRACT.md](frontend-ui-ux/products/master-admin/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](frontend-ui-ux/products/master-admin/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](frontend-ui-ux/products/master-admin/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](frontend-ui-ux/products/master-admin/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](frontend-ui-ux/products/master-admin/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/frontend-ui-ux/products/master-admin/scripts/validate-graph.sh` |
+
+---
+
+### Rental UI/UX
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` |
+| **Scope** | Rental operations SPA at `/rental`: AppShell, fleet navigation, view union, density/KPI patterns; positive design reference for other products (non-binding). |
+| **Authority directory** | [`architecture/frontend-ui-ux/products/rental/`](frontend-ui-ux/products/rental/) |
+| **Mandatory entry documents** | [README.md](frontend-ui-ux/products/rental/README.md) · [AUDIT_MANIFEST.md](frontend-ui-ux/products/rental/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](frontend-ui-ux/products/rental/CURRENT_STATE.md) · [AGENT_CONTRACT.md](frontend-ui-ux/products/rental/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](frontend-ui-ux/products/rental/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](frontend-ui-ux/products/rental/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](frontend-ui-ux/products/rental/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](frontend-ui-ux/products/rental/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/frontend-ui-ux/products/rental/scripts/validate-graph.sh` |
+
+---
+
+### Operator UI/UX
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` |
+| **Scope** | Operator mobile UI at `/operator/*`: `OperatorShell`, bottom navigation, touch targets, field workflows. |
+| **Authority directory** | [`architecture/frontend-ui-ux/products/operator/`](frontend-ui-ux/products/operator/) |
+| **Mandatory entry documents** | [README.md](frontend-ui-ux/products/operator/README.md) · [AUDIT_MANIFEST.md](frontend-ui-ux/products/operator/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](frontend-ui-ux/products/operator/CURRENT_STATE.md) · [AGENT_CONTRACT.md](frontend-ui-ux/products/operator/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](frontend-ui-ux/products/operator/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](frontend-ui-ux/products/operator/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](frontend-ui-ux/products/operator/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](frontend-ui-ux/products/operator/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/frontend-ui-ux/products/operator/scripts/validate-graph.sh` |
 
 ---
 

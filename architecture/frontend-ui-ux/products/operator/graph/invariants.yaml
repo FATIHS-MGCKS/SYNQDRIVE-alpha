@@ -1,0 +1,21 @@
+invariants:
+  - id: OPUX-INV-LOCAL-001
+    kind: CONDITIONAL_INVARIANT
+    statement: >
+      Operator mobile UX is governed separately; sheet flows must not be documented as Rental fleet views.
+    scope: governance
+    epistemic_status: CONFIRMED
+    owning_authority: Operator UI/UX
+    risk_if_violated: Wrong product ownership in redesign workstreams
+    evidence:
+      - OPUX-EVID-CODE-001
+  - id: OPUX-INV-MOBILE-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      OperatorShell requires operator device context or shows desktop notice; do not assume desktop fleet parity.
+    scope: operator-shell
+    epistemic_status: CONFIRMED
+    owning_authority: Operator UI/UX
+    risk_if_violated: Broken field workflows on desktop or unsupported layouts
+    evidence:
+      - OPUX-EVID-CODE-001

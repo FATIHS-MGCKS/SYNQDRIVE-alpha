@@ -1,0 +1,23 @@
+invariants:
+  - id: RENTUX-INV-LOCAL-001
+    kind: CONDITIONAL_INVARIANT
+    statement: >
+      Rental UI documentation and contracts evolve independently; positive design reference
+      status does not obligate Master layout adoption.
+    scope: governance
+    epistemic_status: CONFIRMED
+    owning_authority: Rental UI/UX
+    risk_if_violated: Incorrect cross-product redesign assumptions
+    evidence:
+      - RENTUX-EVID-CODE-001
+  - id: RENTUX-INV-VIEW-UNION-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      Primary Rental navigation is sidebar-driven; retired MainNavTabs must not be reintroduced
+      without a documented decision.
+    scope: rental-navigation
+    epistemic_status: CONFIRMED
+    owning_authority: Rental UI/UX
+    risk_if_violated: Duplicate nav chrome and layout jump regressions
+    evidence:
+      - RENTUX-EVID-CODE-001
