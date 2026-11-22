@@ -8,6 +8,17 @@ describe('OrganizationOffboardingExecutionService', () => {
   const refreshTokens = { revokeAllActiveForOrganization: jest.fn().mockResolvedValue(3) };
   const vehicleOffboard = { offboardVehicle: jest.fn() };
   const masterAudit = { record: jest.fn().mockResolvedValue(undefined) };
+  const providerDisconnect = {
+    assessOrganization: jest.fn().mockResolvedValue({
+      finalizationState: 'NO_EXTERNAL_PROVIDER_DEPENDENCY',
+      activeProviderConsentCount: 0,
+      connectedDimoVehicleCount: 0,
+      historicalProviderConsentCount: 0,
+      everHadDimoVehicleLink: false,
+      dimo: { hadDependency: false, externalOutcome: 'NO_DEPENDENCY' },
+      hm: { hadDependency: false, externalOutcome: 'NO_DEPENDENCY' },
+    }),
+  };
 
   const jobRow = {
     id: 'job-1',
@@ -53,6 +64,7 @@ describe('OrganizationOffboardingExecutionService', () => {
     refreshTokens as never,
     vehicleOffboard as never,
     masterAudit as never,
+    providerDisconnect as never,
   );
 
   beforeEach(() => {

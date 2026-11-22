@@ -28,6 +28,7 @@ import { createVehicleOffboardingServiceForTests } from '@modules/vehicle-onboar
 import { PrismaService } from '@shared/database/prisma.service';
 import { OrganizationOffboardPreflightService } from './organization-offboard-preflight.service';
 import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
+import { OrganizationOffboardingProviderDisconnectService } from './organization-offboarding-provider-disconnect.service';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
 import {
   OFFBOARDING_EXECUTION_CONFIRM_VALUE,
@@ -99,12 +100,14 @@ function execReq(idempotencyKey: string) {
     const vehicleOffboarding = createVehicleOffboardingServiceForTests(prisma);
     vehicleOffboard = new VehicleOnboardingOffboardService(vehiclePreflight, vehicleOffboarding);
     prepare = new OrganizationOffboardingService(prismaService, preflight, masterAudit);
+    const providerDisconnect = new OrganizationOffboardingProviderDisconnectService(prismaService);
     execution = new OrganizationOffboardingExecutionService(
       prismaService,
       preflight,
       refreshTokens,
       vehicleOffboard,
       masterAudit,
+      providerDisconnect,
     );
   });
 

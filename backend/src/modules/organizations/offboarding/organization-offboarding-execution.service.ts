@@ -7,7 +7,6 @@ import {
 import {
   OrganizationOffboardingJobStatus,
   OrganizationStatus,
-  VehicleProviderConsentStatus,
   VehicleRegistryLifecycle,
 } from '@prisma/client';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
@@ -52,8 +51,10 @@ import {
   parseExecutionProgress,
   toProgressJson,
   type OrganizationOffboardingExecutionProgress,
-  type ProviderFinalizationState,
 } from './organization-offboarding-execution.progress';
+import { mapOffboardingJobToExecutionResult } from './organization-offboarding-job-view.mapper';
+import { providerAllowsArchiveAdmission } from './organization-offboarding-provider-admission.util';
+import { OrganizationOffboardingProviderDisconnectService } from './organization-offboarding-provider-disconnect.service';
 import type { OrganizationOffboardingJobView } from './organization-offboarding.types';
 import { ORGANIZATION_OFFBOARDING_ACTIVE_JOB_STATUSES } from './organization-offboard-preflight.reason-codes';
 
@@ -65,23 +66,7 @@ export type OrganizationOffboardingExecutionResult = OrganizationOffboardingJobV
 type JobRow = OffboardingJobLeaseRow;
 
 function jobToView(row: JobRow, executionReplay: boolean): OrganizationOffboardingExecutionResult {
-  const executionProgress = parseExecutionProgress(row.progressJson);
-  return {
-    jobId: row.id,
-    organizationId: row.organizationId,
-    idempotencyKey: row.idempotencyKey,
-    status: row.status,
-    phase: row.phase,
-    correlationId: row.correlationId,
-    requestedByUserId: row.requestedByUserId,
-    requestedAt: row.requestedAt.toISOString(),
-    completedAt: row.completedAt?.toISOString() ?? null,
-    lastErrorCode: row.lastErrorCode,
-    preflight: row.preflightSnapshot as OrganizationOffboardingJobView['preflight'],
-    idempotentReplay: false,
-    executionIdempotentReplay: executionReplay,
-    executionProgress,
-  };
+  return mapOffboardingJobToExecutionResult(row, executionReplay);
 }
 
 function withPhaseCompleted(
@@ -94,17 +79,6 @@ function withPhaseCompleted(
   };
 }
 
-function providerAllowsArchiveAdmission(
-  progress: OrganizationOffboardingExecutionProgress,
-): boolean {
-  const state = progress.providerQuiesce?.finalizationState;
-  return (
-    state === 'NO_EXTERNAL_PROVIDER_DEPENDENCY' ||
-    state === 'LOCAL_QUIESCE_CONFIRMED' ||
-    state === 'EXTERNAL_DISCONNECT_CONFIRMED'
-  );
-}
-
 @Injectable()
 export class OrganizationOffboardingExecutionService {
   constructor(
@@ -113,6 +87,7 @@ export class OrganizationOffboardingExecutionService {
     private readonly refreshTokens: RefreshTokenService,
     private readonly vehicleOffboard: VehicleOnboardingOffboardService,
     private readonly masterAudit: MasterAdminAuditService,
+    private readonly providerDisconnect: OrganizationOffboardingProviderDisconnectService,
   ) {}
 
   async execute(
@@ -556,46 +531,23 @@ export class OrganizationOffboardingExecutionService {
         break;
       }
       case 'PROVIDER_QUIESCE': {
-        const activeProviderConsentCount = await this.prisma.vehicleProviderConsent.count({
-          where: { organizationId, status: VehicleProviderConsentStatus.ACTIVE },
-        });
-        const historicalProviderConsentCount = await this.prisma.vehicleProviderConsent.count({
-          where: {
-            organizationId,
-            provider: { in: ['DIMO', 'HIGH_MOBILITY'] },
-          },
-        });
-        const connectedDimoVehicleCount = await this.prisma.vehicle.count({
-          where: {
-            organizationId,
-            dimoVehicle: { connectionStatus: 'CONNECTED' },
-          },
-        });
-        const everHadDimoVehicleLink =
-          (await this.prisma.vehicle.count({
-            where: { organizationId, dimoVehicleId: { not: null } },
-          })) > 0;
-        const hasActiveExternal =
-          activeProviderConsentCount > 0 || connectedDimoVehicleCount > 0;
-        const everHadExternalDependency =
-          historicalProviderConsentCount > 0 || everHadDimoVehicleLink;
-        let finalizationState: ProviderFinalizationState;
-        if (!everHadExternalDependency && !hasActiveExternal) {
-          finalizationState = 'NO_EXTERNAL_PROVIDER_DEPENDENCY';
-        } else {
-          finalizationState = 'EXTERNAL_DISCONNECT_PENDING';
-        }
+        const assessment = await this.providerDisconnect.assessOrganization(organizationId);
         progress = {
           ...progress,
           providerQuiesce: {
-            activeProviderConsentCount,
-            connectedDimoVehicleCount,
-            historicalProviderConsentCount,
-            everHadDimoVehicleLink,
-            finalizationState,
+            activeProviderConsentCount: assessment.activeProviderConsentCount,
+            connectedDimoVehicleCount: assessment.connectedDimoVehicleCount,
+            historicalProviderConsentCount: assessment.historicalProviderConsentCount,
+            everHadDimoVehicleLink: assessment.everHadDimoVehicleLink,
+            finalizationState: assessment.finalizationState,
+            providerEvidence: {
+              dimo: assessment.dimo,
+              hm: assessment.hm,
+              assessedAt: new Date().toISOString(),
+            },
           },
         };
-        if (finalizationState === 'EXTERNAL_DISCONNECT_PENDING') {
+        if (!providerAllowsArchiveAdmission(progress)) {
           return {
             progress,
             phase,

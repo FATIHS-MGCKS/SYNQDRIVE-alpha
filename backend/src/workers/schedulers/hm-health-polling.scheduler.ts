@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { organizationAllowsRoutineProviderPolling } from '@modules/organizations/policies/organization-routine-polling.policy';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { HmSignalUsageService, HmSignalGroupKey } from '../../modules/high-mobility/high-mobility-signal-usage.service';
@@ -86,6 +87,27 @@ export class HmHealthPollingScheduler {
     }
     if (eligibleLinks.length === 0) return;
 
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { id: { in: eligibleLinks.map((l) => l.vehicleId) } },
+      select: {
+        id: true,
+        organization: { select: { status: true } },
+        tripDetectionState: { select: { state: true } },
+      },
+    });
+    const pollEligibleIds = new Set(
+      vehicles
+        .filter((v) =>
+          organizationAllowsRoutineProviderPolling({
+            organizationStatus: v.organization.status,
+            tripDetectionState: v.tripDetectionState?.state ?? null,
+          }),
+        )
+        .map((v) => v.id),
+    );
+    const orgEligibleLinks = eligibleLinks.filter((l) => pollEligibleIds.has(l.vehicleId));
+    if (orgEligibleLinks.length === 0) return;
+
     const now = new Date();
     const nowHourUtc = now.getUTCHours();
     const nowMinute = now.getUTCMinutes();
@@ -98,7 +120,7 @@ export class HmHealthPollingScheduler {
     // Batch-load all signal-group states in a single query instead of doing
     // 3 × N findFirst calls per cycle. For large HM fleets this was an N+1
     // pattern that scaled linearly with vehicle count.
-    const vehicleIds = eligibleLinks.map((l) => l.vehicleId);
+    const vehicleIds = orgEligibleLinks.map((l) => l.vehicleId);
     const groups: HmSignalGroupKey[] = ['SERVICE', 'TIRE_PRESSURE', 'AI_HEALTH_CARE'];
     const states = await this.prisma.hmSignalGroupState.findMany({
       where: {
@@ -131,7 +153,7 @@ export class HmHealthPollingScheduler {
     let tireCount = 0;
     let aiCount = 0;
 
-    for (const link of eligibleLinks) {
+    for (const link of orgEligibleLinks) {
       const vehicleId = link.vehicleId;
 
       if (isServiceWindow && shouldFetch(vehicleId, 'SERVICE', this.SERVICE_MIN_INTERVAL_MS)) {

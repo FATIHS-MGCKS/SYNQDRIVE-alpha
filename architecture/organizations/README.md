@@ -13,8 +13,8 @@ Recorded in [`CHANGE_RECORD_P6D2_2026-11-22.md`](CHANGE_RECORD_P6D2_2026-11-22.m
 
 - Contract + read-only org preflight + persistent **PREPARE** job only
 - Master Admin HTTP: preflight / prepare / get job
-- **P6D3 (this branch):** controlled execution API + phased job progress (no ARCHIVED)
-- **Deferred (P6D4):** external provider disconnect, ARCHIVED enforcement on PATCH, DIMO scheduler filter
+- **P6D3 (merged):** controlled execution through `READY_FOR_ARCHIVE` (no `ARCHIVED` / job `COMPLETED`)
+- **P6D4 (draft):** archival finalization API, provider disconnect assessment, ARCHIVED PATCH guard, SUSPENDED routine polling policy — [`CHANGE_RECORD_P6D4_2026-11-22.md`](CHANGE_RECORD_P6D4_2026-11-22.md)
 
 ## Validation
 

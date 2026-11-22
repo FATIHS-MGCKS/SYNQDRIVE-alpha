@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-11-22 (Organizations offboarding P6D2/P6D3 + Billing SaaS P6C2 — `AUDIT_IN_PROGRESS`)
+**Last updated:** 2026-11-22 (Organizations offboarding P6D4 archival draft + P6D2/P6D3 + Billing SaaS P6C2 — `AUDIT_IN_PROGRESS`)
 
 ---
 

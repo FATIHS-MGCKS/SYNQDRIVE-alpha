@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { OrganizationStatus } from '@prisma/client';
 import type { AdminCreateOrganizationDto } from '../dto/admin-create-organization.dto';
@@ -36,7 +37,16 @@ export function mapAdminUpdateToPrisma(
     data.shortCode = dto.shortCode === null ? null : normalizeShortCodeInput(dto.shortCode) ?? null;
   }
   if (dto.businessType !== undefined) data.businessType = dto.businessType;
-  if (dto.status !== undefined) data.status = dto.status;
+  if (dto.status !== undefined) {
+    if (dto.status === OrganizationStatus.ARCHIVED) {
+      throw new ConflictException({
+        code: 'ORGANIZATION_ARCHIVED_REQUIRES_OFFBOARDING_FINALIZATION',
+        message:
+          'Organization ARCHIVED status requires controlled offboarding finalization; generic status mutation is not permitted',
+      });
+    }
+    data.status = dto.status;
+  }
   if (dto.email !== undefined) data.email = dto.email;
   if (dto.phone !== undefined) data.phone = dto.phone;
   if (dto.address !== undefined) data.address = dto.address;

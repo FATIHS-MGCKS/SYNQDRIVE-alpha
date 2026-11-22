@@ -45,7 +45,8 @@ import { ApdsV3ShadowService } from '../schedulers/snapshot-polling/adaptive-pol
 import { findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs } from '../schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-historical-lv-visibility';
 import type { DimoSnapshotJobData } from '../snapshot-wake/snapshot-wake.types';
 import { snapshotJobId } from '../snapshot-wake/snapshot-wake.util';
-import { TripDetectionState } from '@prisma/client';
+import { OrganizationStatus, TripDetectionState } from '@prisma/client';
+import { organizationAllowsRoutineProviderPolling } from '@modules/organizations/policies/organization-routine-polling.policy';
 
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
@@ -146,6 +147,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         registryLifecycle: true,
         hardwareType: true,
         fuelType: true,
+        organization: { select: { status: true } },
         dimoVehicle: { select: { connectionStatus: true } },
         tripDetectionState: { select: { state: true } },
         dataSourceLinks: {
@@ -158,6 +160,32 @@ export class DimoSnapshotProcessor extends WorkerHost {
     });
     if (!vehicle?.organizationId) {
       throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
+    }
+
+    const orgStatus = vehicle.organization?.status ?? OrganizationStatus.ACTIVE;
+    if (
+      !organizationAllowsRoutineProviderPolling({
+        organizationStatus: orgStatus,
+        tripDetectionState: vehicle.tripDetectionState?.state ?? null,
+      })
+    ) {
+      const finishedAt = new Date();
+      await this.prisma.dimoPollLog.create({
+        data: {
+          vehicleId,
+          jobType: DimoPollJobType.SNAPSHOT,
+          status: DimoPollStatus.SKIPPED,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          errorMessage: `organization_status=${orgStatus}`,
+        },
+      });
+      this.logger.debug(
+        `Skipping DIMO snapshot for vehicle ${vehicleId}: organization status ${orgStatus}`,
+      );
+      this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'skipped' });
+      return;
     }
 
     if (!isVehicleRegistryOperationalActive(vehicle.registryLifecycle)) {

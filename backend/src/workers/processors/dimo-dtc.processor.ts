@@ -24,6 +24,8 @@ import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dt
 import { resolveActiveDimoBindingForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
 import { requireDtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 import { Dtc02ObservabilityService } from '@modules/vehicle-intelligence/dtc/observability/dtc02-observability.service';
+import { OrganizationStatus } from '@prisma/client';
+import { organizationAllowsRoutineProviderPolling } from '@modules/organizations/policies/organization-routine-polling.policy';
 import { runDtc02AdaptiveSchedulerShadowBatch } from '@modules/vehicle-intelligence/dtc/adaptive/dtc-02-adaptive-shadow.runtime';
 import { logDtc02AdaptiveSchedulerShadowConfigOnBoot } from '@modules/vehicle-intelligence/dtc/adaptive/dtc-02-adaptive-shadow.config';
 
@@ -77,7 +79,10 @@ export class DimoDtcProcessor extends WorkerHost {
     this.logger.log('Starting DTC poll fan-out');
 
     const vehicles = await this.prisma.vehicle.findMany({
-      where: { dimoVehicle: { isNot: null } },
+      where: {
+        dimoVehicle: { isNot: null },
+        organization: { status: OrganizationStatus.ACTIVE },
+      },
       select: {
         id: true,
         registryLifecycle: true,
@@ -175,8 +180,23 @@ export class DimoDtcProcessor extends WorkerHost {
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { registryLifecycle: true },
+      select: {
+        registryLifecycle: true,
+        organization: { select: { status: true } },
+        tripDetectionState: { select: { state: true } },
+      },
     });
+    if (
+      vehicle &&
+      !organizationAllowsRoutineProviderPolling({
+        organizationStatus: vehicle.organization?.status ?? OrganizationStatus.ACTIVE,
+        tripDetectionState: vehicle.tripDetectionState?.state ?? null,
+      })
+    ) {
+      this.dtc02Observability?.recordPollOutcome('unknown', 'skipped_org_status');
+      this.logger.debug(`DTC poll skip vehicle=${vehicleId} organization not eligible for routine polling`);
+      return;
+    }
     const admission = evaluateDtcPollJobAdmission({
       vehicleId,
       registryLifecycle: vehicle?.registryLifecycle,

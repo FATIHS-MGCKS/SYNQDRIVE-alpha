@@ -12,6 +12,8 @@ import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-ret
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { OrganizationOffboardingExecutionService } from './offboarding/organization-offboarding-execution.service';
+import { OrganizationOffboardingFinalizationService } from './offboarding/organization-offboarding-finalization.service';
+import { OrganizationOffboardingProviderDisconnectService } from './offboarding/organization-offboarding-provider-disconnect.service';
 import { OrganizationOffboardingController } from './offboarding/organization-offboarding.controller';
 import { OrganizationOffboardingService } from './offboarding/organization-offboarding.service';
 import { OrganizationOffboardPreflightService } from './offboarding/organization-offboard-preflight.service';
@@ -38,6 +40,8 @@ import { OrganizationOffboardPreflightService } from './offboarding/organization
     OrganizationOffboardingService,
     OrganizationOffboardPreflightService,
     OrganizationOffboardingExecutionService,
+    OrganizationOffboardingFinalizationService,
+    OrganizationOffboardingProviderDisconnectService,
   ],
   exports: [
     OrganizationsService,
@@ -45,6 +49,8 @@ import { OrganizationOffboardPreflightService } from './offboarding/organization
     OrganizationOffboardingService,
     OrganizationOffboardPreflightService,
     OrganizationOffboardingExecutionService,
+    OrganizationOffboardingFinalizationService,
+    OrganizationOffboardingProviderDisconnectService,
   ],
 })
 export class OrganizationsModule {}

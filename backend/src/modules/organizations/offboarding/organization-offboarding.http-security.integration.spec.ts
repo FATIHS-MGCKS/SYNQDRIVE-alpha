@@ -14,6 +14,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrganizationOffboardingController } from './organization-offboarding.controller';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
 import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
+import { OrganizationOffboardingFinalizationService } from './organization-offboarding-finalization.service';
 
 @Injectable()
 class TestAuthGuard implements CanActivate {
@@ -40,6 +41,7 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
     prepare: jest.fn(),
   };
   const execution = { execute: jest.fn() };
+  const finalization = { finalize: jest.fn() };
 
   let mfaEnforced = false;
 
@@ -49,6 +51,7 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
       providers: [
         { provide: OrganizationOffboardingService, useValue: offboarding },
         { provide: OrganizationOffboardingExecutionService, useValue: execution },
+        { provide: OrganizationOffboardingFinalizationService, useValue: finalization },
       ],
     })
       .overrideGuard(RolesGuard)
