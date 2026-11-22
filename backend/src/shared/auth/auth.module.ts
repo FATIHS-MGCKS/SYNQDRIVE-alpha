@@ -32,8 +32,6 @@ import { UiAuditSessionEnforcementGuard } from '@modules/ui-audit/ui-audit-sessi
     VehicleOwnershipGuard,
     MasterAdminMfaGuard,
     MasterBillingDelegateMfaGuard,
-    UiAuditWriteDenyGuard,
-    UiAuditSessionEnforcementGuard,
   ],
 })
 export class AuthModule {}
