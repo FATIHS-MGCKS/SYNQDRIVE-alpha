@@ -31,6 +31,8 @@ import { VehicleIdentityReviewController } from './vehicle-identity-review/vehic
 import { VehicleIdentityP3Service } from './vehicle-identity-review/vehicle-identity-p3.service';
 import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-identity-review.service';
 import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd-integration/fsd-integration.module';
+import { VehicleRegistrationConvergenceService } from './convergence/vehicle-registration-convergence.service';
+import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from './convergence/vehicle-registration-convergence.port';
 
 @Module({
   imports: [
@@ -72,6 +74,11 @@ import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd
     MasterDimoCanonicalRegistrationService,
     VehicleIdentityReviewService,
     VehicleIdentityP3Service,
+    VehicleRegistrationConvergenceService,
+    {
+      provide: VEHICLE_REGISTRATION_CONVERGENCE_PORT,
+      useExisting: VehicleRegistrationConvergenceService,
+    },
   ],
   exports: [
     VehicleOnboardingCaseService,
@@ -84,6 +91,8 @@ import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd
     DimoSourceLinkOperatorAuthorizationService,
     VehicleOnboardingOffboardService,
     MasterDimoCanonicalRegistrationService,
+    VEHICLE_REGISTRATION_CONVERGENCE_PORT,
+    VehicleRegistrationConvergenceService,
   ],
 })
 export class VehicleOnboardingModule {}

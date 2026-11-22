@@ -11,6 +11,14 @@ export { default as vehicleIdentityP2Config } from './vehicle-identity-p2.config
 export { default as oneautoProviderConfig } from './oneauto-provider.config';
 export { default as vehicleIdentityP3Config } from './vehicle-identity-p3.config';
 export { default as zb1RegistrationDocumentP4Config } from './zb1-registration-document-p4.config';
+export {
+  default as vehicleRegistrationConvergenceConfig,
+  VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED_ENV,
+  VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_ENV,
+  loadVehicleRegistrationConvergenceConfigFromEnv,
+  validateVehicleRegistrationConvergenceConfig,
+} from './vehicle-registration-convergence.config';
+export type { VehicleRegistrationConvergenceConfig } from './vehicle-registration-convergence.config';
 export { default as fuelStationEnrichmentConfig } from './fuel-station-enrichment.config';
 export { default as tireDs4ShadowConfig } from './tire-ds4-shadow.config';
 export { default as tireWearV3PriorShadowConfig } from './tire-wear-v3-prior-shadow.config';

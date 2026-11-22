@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
+import vehicleRegistrationConvergenceConfig from '@config/vehicle-registration-convergence.config';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesController } from './vehicles.controller';
 import { VehiclesService } from './vehicles.service';
@@ -24,6 +25,7 @@ import { VehicleOnboardingModule } from '../vehicle-onboarding/vehicle-onboardin
 @Module({
   imports: [
     ConfigModule.forFeature(dimoConfig),
+    ConfigModule.forFeature(vehicleRegistrationConvergenceConfig),
     ActivityLogModule,
     forwardRef(() => DimoModule),
     forwardRef(() => VehicleIntelligenceModule),
