@@ -23,7 +23,14 @@ export const masterCvDimoPrivilegeTr = {
   'master.cv.dimoPrivilege.offboardingJob': 'Offboarding işi',
   'master.cv.dimoPrivilege.jobPhase': 'Aşama',
   'master.cv.dimoPrivilege.ownerActionOutstanding': 'Bu araç için sahip işlemi hâlâ gerekebilir.',
-  'master.cv.dimoPrivilege.ownerActionNone': 'Bu araç için bekleyen sahip işlemi belirtilmedi.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Bekleyen sahip işlemi yok (harici yokluk doğrulandı).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'Bu araç için harici ayrıcalık doğrulaması bilinmiyor — tamamlanmış saymayın.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Bu araç kuruluşun DIMO offboarding envanter listesinde yok.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Yeniden kontrol ve devir kullanılamıyor; araç DIMO envanter anlık görüntüsünde yok.',
   'master.cv.dimoPrivilege.detailCode': 'Ayrıntı / neden kodu',
   'master.cv.dimoPrivilege.externalPrivilege': 'Harici ayrıcalık (araç)',
   'master.cv.dimoPrivilege.stillPrivileged.true': 'Hâlâ ayrıcalıklı (harici)',

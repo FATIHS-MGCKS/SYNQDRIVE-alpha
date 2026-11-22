@@ -23,7 +23,14 @@ export const masterCvDimoPrivilegeCs = {
   'master.cv.dimoPrivilege.offboardingJob': 'Úloha offboardingu',
   'master.cv.dimoPrivilege.jobPhase': 'Fáze',
   'master.cv.dimoPrivilege.ownerActionOutstanding': 'U tohoto vozidla může být stále vyžadována akce vlastníka.',
-  'master.cv.dimoPrivilege.ownerActionNone': 'U tohoto vozidla není uvedena žádná nevyřízená akce vlastníka.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Žádná nevyřízená akce vlastníka (ověřená externí nepřítomnost oprávnění).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'Externí ověření oprávnění tohoto vozidla je neznámé — neposuzovat jako vyřešené.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Toto vozidlo není v inventáři DIMO offboardingu organizace.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Opakované ověření a předání nejsou k dispozici — vozidlo chybí ve snapshotu inventáře DIMO.',
   'master.cv.dimoPrivilege.detailCode': 'Kód detailu / důvodu',
   'master.cv.dimoPrivilege.externalPrivilege': 'Externí oprávnění (vozidlo)',
   'master.cv.dimoPrivilege.stillPrivileged.true': 'Stále privilegované (externě)',

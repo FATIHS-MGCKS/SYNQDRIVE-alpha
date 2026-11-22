@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { ConfirmDialog, StatusChip } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
@@ -11,8 +11,9 @@ import {
   providerCheckStatusTone,
   recheckGateAppearsOff,
   shouldShowDimoPermissionsPanel,
+  canOfferVehicleScopedMutations,
+  resolveVehicleOwnerActionDisposition,
   stillPrivilegedTone,
-  vehicleRequiresOwnerAction,
   vehicleVerificationTone,
 } from './dimo-privilege.presentation';
 import { useConnectedVehicleDimoPrivilege } from './useConnectedVehicleDimoPrivilege';
@@ -83,6 +84,10 @@ export function ConnectedVehicleDimoPermissionsSection({
     dismissMfa,
   } = useConnectedVehicleDimoPrivilege(organizationId, vehicleId, enabled);
 
+  useEffect(() => {
+    setHandoffConfirmOpen(false);
+  }, [organizationId, vehicleId]);
+
   if (!enabled || !organizationId || !vehicleId) {
     return null;
   }
@@ -128,8 +133,18 @@ export function ConnectedVehicleDimoPermissionsSection({
         ? 'master.cv.dimoPrivilege.stillPrivileged.false'
         : 'master.cv.dimoPrivilege.stillPrivileged.unknown';
 
-  const ownerActionRequired = vehicleRequiresOwnerAction(vehicleRow);
+  const ownerActionDisposition = resolveVehicleOwnerActionDisposition(vehicleRow);
+  const vehicleMutationsAvailable = canOfferVehicleScopedMutations(vehicleRow);
   const gateOff = recheckGateAppearsOff(recheckResult?.detailCode ?? status.detailCode);
+
+  const ownerActionMessageKey =
+    ownerActionDisposition === 'required'
+      ? 'master.cv.dimoPrivilege.ownerActionOutstanding'
+      : ownerActionDisposition === 'cleared'
+        ? 'master.cv.dimoPrivilege.ownerActionNone'
+        : ownerActionDisposition === 'not_in_inventory'
+          ? 'master.cv.dimoPrivilege.vehicleNotInDimoInventory'
+          : 'master.cv.dimoPrivilege.ownerActionUnknown';
 
   return (
     <>
@@ -204,16 +219,14 @@ export function ConnectedVehicleDimoPermissionsSection({
           className="rounded-lg border border-border/80 bg-background px-3 py-2 text-xs flex gap-2 items-start"
           role="status"
         >
-          {ownerActionRequired ? (
+          {ownerActionDisposition === 'required' ? (
             <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" aria-hidden />
-          ) : (
+          ) : ownerActionDisposition === 'cleared' ? (
             <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
+          ) : (
+            <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden />
           )}
-          <span>
-            {ownerActionRequired
-              ? t('master.cv.dimoPrivilege.ownerActionOutstanding')
-              : t('master.cv.dimoPrivilege.ownerActionNone')}
-          </span>
+          <span>{t(ownerActionMessageKey as TranslationKey)}</span>
         </div>
 
         {status.detailCode ? (
@@ -253,12 +266,18 @@ export function ConnectedVehicleDimoPermissionsSection({
         ) : null}
         <p className="text-[11px] text-muted-foreground">{t('master.cv.dimoPrivilege.handoff.internalOnlyDisclaimer')}</p>
 
+        {!vehicleMutationsAvailable ? (
+          <p className="text-xs text-muted-foreground" role="note">
+            {t('master.cv.dimoPrivilege.vehicleMutationsUnavailable')}
+          </p>
+        ) : null}
+
         <div className="flex flex-col sm:flex-row gap-2 pt-1">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={recheckLoading || handoffLoading}
+            disabled={!vehicleMutationsAvailable || recheckLoading || handoffLoading}
             onClick={() => void runRecheck()}
           >
             {recheckLoading ? (
@@ -277,7 +296,7 @@ export function ConnectedVehicleDimoPermissionsSection({
             type="button"
             variant="secondary"
             size="sm"
-            disabled={recheckLoading || handoffLoading}
+            disabled={!vehicleMutationsAvailable || recheckLoading || handoffLoading}
             onClick={() => {
               prepareHandoffIdempotency();
               setHandoffConfirmOpen(true);

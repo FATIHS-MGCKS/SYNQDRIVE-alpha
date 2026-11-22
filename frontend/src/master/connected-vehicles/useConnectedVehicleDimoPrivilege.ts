@@ -10,6 +10,10 @@ import { pickVehiclePrivilegeRow } from './dimo-privilege.presentation';
 
 type LoadScope = { organizationId: string; vehicleId: string };
 
+function scopeKey(scope: LoadScope): string {
+  return `${scope.organizationId}:${scope.vehicleId}`;
+}
+
 export function useConnectedVehicleDimoPrivilege(
   organizationId: string | null,
   vehicleId: string | null,
@@ -28,8 +32,36 @@ export function useConnectedVehicleDimoPrivilege(
 
   const loadGenerationRef = useRef(0);
   const pendingActionRef = useRef<'recheck' | 'handoff' | null>(null);
+  const pendingActionScopeRef = useRef<LoadScope | null>(null);
   const handoffIdempotencyRef = useRef<string | null>(null);
-  const scopeRef = useRef<LoadScope | null>(null);
+  const handoffIdempotencyScopeRef = useRef<string | null>(null);
+  const activeScopeRef = useRef<LoadScope | null>(null);
+
+  const clearVehicleSession = useCallback(() => {
+    handoffIdempotencyRef.current = null;
+    handoffIdempotencyScopeRef.current = null;
+    pendingActionRef.current = null;
+    pendingActionScopeRef.current = null;
+    setMfaRequired(false);
+    setRecheckError(null);
+    setRecheckResult(null);
+    setHandoffError(null);
+    setHandoffResult(null);
+  }, []);
+
+  useEffect(() => {
+    if (!organizationId || !vehicleId) {
+      activeScopeRef.current = null;
+      clearVehicleSession();
+      return;
+    }
+    const next: LoadScope = { organizationId, vehicleId };
+    const prev = activeScopeRef.current;
+    if (prev && (prev.organizationId !== next.organizationId || prev.vehicleId !== next.vehicleId)) {
+      clearVehicleSession();
+    }
+    activeScopeRef.current = next;
+  }, [organizationId, vehicleId, clearVehicleSession]);
 
   const resetMutationState = useCallback(() => {
     setRecheckError(null);
@@ -38,6 +70,7 @@ export function useConnectedVehicleDimoPrivilege(
     setHandoffResult(null);
     setMfaRequired(false);
     pendingActionRef.current = null;
+    pendingActionScopeRef.current = null;
   }, []);
 
   const load = useCallback(async () => {
@@ -46,12 +79,11 @@ export function useConnectedVehicleDimoPrivilege(
       setLoadError(null);
       setLoading(false);
       resetMutationState();
-      scopeRef.current = null;
+      activeScopeRef.current = null;
       return;
     }
 
     const generation = ++loadGenerationRef.current;
-    scopeRef.current = { organizationId, vehicleId };
     setLoading(true);
     setLoadError(null);
     resetMutationState();
@@ -59,7 +91,8 @@ export function useConnectedVehicleDimoPrivilege(
     try {
       const dto = await api.organizations.offboarding.getDimoPrivilegeStatus(organizationId);
       if (generation !== loadGenerationRef.current) return;
-      if (scopeRef.current?.organizationId !== organizationId || scopeRef.current?.vehicleId !== vehicleId) {
+      const scope = activeScopeRef.current;
+      if (!scope || scope.organizationId !== organizationId || scope.vehicleId !== vehicleId) {
         return;
       }
       setStatus(dto);
@@ -80,17 +113,28 @@ export function useConnectedVehicleDimoPrivilege(
 
   const vehicleRow = pickVehiclePrivilegeRow(status?.vehicles ?? [], vehicleId);
 
+  const assertActiveScope = useCallback((): LoadScope | null => {
+    if (!organizationId || !vehicleId) return null;
+    const scope = activeScopeRef.current;
+    if (!scope || scope.organizationId !== organizationId || scope.vehicleId !== vehicleId) {
+      return null;
+    }
+    return scope;
+  }, [organizationId, vehicleId]);
+
   const runRecheck = useCallback(async () => {
-    if (!organizationId || !vehicleId) return;
+    const scope = assertActiveScope();
+    if (!scope) return;
     const generation = loadGenerationRef.current;
     setRecheckLoading(true);
     setRecheckError(null);
     setRecheckResult(null);
-  pendingActionRef.current = null;
+    pendingActionRef.current = null;
+    pendingActionScopeRef.current = null;
     try {
-      const result = await api.organizations.offboarding.recheckDimoPrivilege(organizationId);
+      const result = await api.organizations.offboarding.recheckDimoPrivilege(scope.organizationId);
       if (generation !== loadGenerationRef.current) return;
-      if (scopeRef.current?.organizationId !== organizationId) return;
+      if (!assertActiveScope()) return;
       setRecheckResult(result);
       setStatus((prev) =>
         prev
@@ -106,76 +150,105 @@ export function useConnectedVehicleDimoPrivilege(
     } catch (err) {
       if (isStepUpRequiredError(err)) {
         pendingActionRef.current = 'recheck';
+        pendingActionScopeRef.current = { ...scope };
         setMfaRequired(true);
         return;
       }
       if (generation !== loadGenerationRef.current) return;
+      if (!assertActiveScope()) return;
       setRecheckError(err instanceof Error ? err.message : 'RECHECK_FAILED');
     } finally {
       if (generation === loadGenerationRef.current) {
         setRecheckLoading(false);
       }
     }
-  }, [organizationId, vehicleId]);
+  }, [assertActiveScope]);
+
+  const ensureHandoffIdempotencyKey = useCallback(
+    (scope: LoadScope) => {
+      const keyForScope = scopeKey(scope);
+      if (!handoffIdempotencyRef.current || handoffIdempotencyScopeRef.current !== keyForScope) {
+        handoffIdempotencyRef.current = newIdempotencyKey('dimo-owner-handoff');
+        handoffIdempotencyScopeRef.current = keyForScope;
+      }
+      return handoffIdempotencyRef.current;
+    },
+    [],
+  );
 
   const runHandoff = useCallback(async () => {
-    if (!organizationId || !vehicleId) return;
+    const scope = assertActiveScope();
+    if (!scope) return;
     const generation = loadGenerationRef.current;
-    if (!handoffIdempotencyRef.current) {
-      handoffIdempotencyRef.current = newIdempotencyKey('dimo-owner-handoff');
-    }
+    const idempotencyKey = ensureHandoffIdempotencyKey(scope);
     setHandoffLoading(true);
     setHandoffError(null);
     setHandoffResult(null);
     pendingActionRef.current = null;
+    pendingActionScopeRef.current = null;
     try {
-      const result = await api.organizations.offboarding.recordDimoOwnerHandoff(organizationId, {
-        idempotencyKey: handoffIdempotencyRef.current,
-        vehicleIds: [vehicleId],
+      const result = await api.organizations.offboarding.recordDimoOwnerHandoff(scope.organizationId, {
+        idempotencyKey,
+        vehicleIds: [scope.vehicleId],
       });
       if (generation !== loadGenerationRef.current) return;
-      if (scopeRef.current?.organizationId !== organizationId || scopeRef.current?.vehicleId !== vehicleId) {
-        return;
-      }
+      if (!assertActiveScope()) return;
       setHandoffResult(result);
       handoffIdempotencyRef.current = null;
+      handoffIdempotencyScopeRef.current = null;
     } catch (err) {
       if (isStepUpRequiredError(err)) {
         pendingActionRef.current = 'handoff';
+        pendingActionScopeRef.current = { ...scope };
         setMfaRequired(true);
         return;
       }
       if (generation !== loadGenerationRef.current) return;
+      if (!assertActiveScope()) return;
       setHandoffError(err instanceof Error ? err.message : 'HANDOFF_FAILED');
     } finally {
       if (generation === loadGenerationRef.current) {
         setHandoffLoading(false);
       }
     }
-  }, [organizationId, vehicleId]);
+  }, [assertActiveScope, ensureHandoffIdempotencyKey]);
 
   const retryAfterMfa = useCallback(async () => {
     const pending = pendingActionRef.current;
+    const pendingScope = pendingActionScopeRef.current;
+    const active = assertActiveScope();
     setMfaRequired(false);
     pendingActionRef.current = null;
+    pendingActionScopeRef.current = null;
+
+    if (!pending || !pendingScope || !active) {
+      return;
+    }
+    if (
+      pendingScope.organizationId !== active.organizationId ||
+      pendingScope.vehicleId !== active.vehicleId
+    ) {
+      return;
+    }
+
     if (pending === 'recheck') {
       await runRecheck();
     } else if (pending === 'handoff') {
       await runHandoff();
     }
-  }, [runRecheck, runHandoff]);
+  }, [assertActiveScope, runRecheck, runHandoff]);
 
   const dismissMfa = useCallback(() => {
     setMfaRequired(false);
     pendingActionRef.current = null;
+    pendingActionScopeRef.current = null;
   }, []);
 
   const prepareHandoffIdempotency = useCallback(() => {
-    if (!handoffIdempotencyRef.current) {
-      handoffIdempotencyRef.current = newIdempotencyKey('dimo-owner-handoff');
-    }
-    return handoffIdempotencyRef.current;
-  }, []);
+    const scope = assertActiveScope();
+    if (!scope) return null;
+    return ensureHandoffIdempotencyKey(scope);
+  }, [assertActiveScope, ensureHandoffIdempotencyKey]);
 
   return {
     status,

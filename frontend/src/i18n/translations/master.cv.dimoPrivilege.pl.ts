@@ -23,7 +23,14 @@ export const masterCvDimoPrivilegePl = {
   'master.cv.dimoPrivilege.offboardingJob': 'Zadanie offboardingu',
   'master.cv.dimoPrivilege.jobPhase': 'Faza',
   'master.cv.dimoPrivilege.ownerActionOutstanding': 'Dla tego pojazdu może być nadal wymagana akcja właściciela.',
-  'master.cv.dimoPrivilege.ownerActionNone': 'Brak wskazanej oczekującej akcji właściciela dla tego pojazdu.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Brak oczekującej akcji właściciela (zweryfikowana zewnętrzna nieobecność uprawnień).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'Weryfikacja zewnętrznych uprawnień dla tego pojazdu jest nieznana — nie traktuj jako zakończonej.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Ten pojazd nie widnieje na liście inwentarza DIMO offboardingu organizacji.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Ponowna weryfikacja i przekazanie są niedostępne, bo pojazdu nie ma w migawce inwentarza DIMO.',
   'master.cv.dimoPrivilege.detailCode': 'Kod szczegółu / przyczyny',
   'master.cv.dimoPrivilege.externalPrivilege': 'Uprawnienie zewnętrzne (pojazd)',
   'master.cv.dimoPrivilege.stillPrivileged.true': 'Nadal uprawniony (zewnętrznie)',

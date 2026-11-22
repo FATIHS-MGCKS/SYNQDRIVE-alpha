@@ -68,12 +68,28 @@ export function stillPrivilegedTone(value: boolean | null): StatusTone {
   return 'noData';
 }
 
+export type VehicleOwnerActionDisposition = 'required' | 'cleared' | 'unknown' | 'not_in_inventory';
+
+export function resolveVehicleOwnerActionDisposition(
+  row: OrganizationDimoPrivilegeVehicleRow | null,
+): VehicleOwnerActionDisposition {
+  if (!row) return 'not_in_inventory';
+  if (row.stillPrivileged === true) return 'required';
+  if (row.verificationStatus === 'VERIFIED_STILL_PRIVILEGED' || row.verificationStatus === 'REVIEW_REQUIRED') {
+    return 'required';
+  }
+  if (row.verificationStatus === 'VERIFIED_ABSENT' && row.stillPrivileged === false) {
+    return 'cleared';
+  }
+  return 'unknown';
+}
+
 export function vehicleRequiresOwnerAction(row: OrganizationDimoPrivilegeVehicleRow | null): boolean {
-  if (!row) return false;
-  if (row.stillPrivileged === true) return true;
-  return (
-    row.verificationStatus === 'VERIFIED_STILL_PRIVILEGED' || row.verificationStatus === 'REVIEW_REQUIRED'
-  );
+  return resolveVehicleOwnerActionDisposition(row) === 'required';
+}
+
+export function canOfferVehicleScopedMutations(row: OrganizationDimoPrivilegeVehicleRow | null): boolean {
+  return row !== null;
 }
 
 export function recheckGateAppearsOff(detailCode: string | null | undefined): boolean {

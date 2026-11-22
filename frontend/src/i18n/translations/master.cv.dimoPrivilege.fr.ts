@@ -23,7 +23,14 @@ export const masterCvDimoPrivilegeFr = {
   'master.cv.dimoPrivilege.offboardingJob': 'Tâche d’offboarding',
   'master.cv.dimoPrivilege.jobPhase': 'Phase',
   'master.cv.dimoPrivilege.ownerActionOutstanding': 'Une action du propriétaire peut encore être requise pour ce véhicule.',
-  'master.cv.dimoPrivilege.ownerActionNone': 'Aucune action propriétaire en attente indiquée pour ce véhicule.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Aucune action propriétaire en attente (absence externe vérifiée).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'La vérification externe des privilèges pour ce véhicule est inconnue — ne pas considérer comme résolue.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Ce véhicule ne figure pas dans l’inventaire DIMO d’offboarding de l’organisation.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Revérification et passation indisponibles : le véhicule n’est pas dans l’instantané d’inventaire DIMO.',
   'master.cv.dimoPrivilege.detailCode': 'Code détail / raison',
   'master.cv.dimoPrivilege.externalPrivilege': 'Privilège externe (véhicule)',
   'master.cv.dimoPrivilege.stillPrivileged.true': 'Toujours privilégié (externe)',

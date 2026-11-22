@@ -6,7 +6,9 @@ import {
   providerCheckStatusTone,
   recheckGateAppearsOff,
   shouldShowDimoPermissionsPanel,
+  resolveVehicleOwnerActionDisposition,
   vehicleRequiresOwnerAction,
+  canOfferVehicleScopedMutations,
 } from './dimo-privilege.presentation';
 import type { OrganizationDimoPrivilegeStatusDto } from './dimo-privilege.types';
 
@@ -68,6 +70,48 @@ describe('dimo-privilege.presentation', () => {
         verificationStatus: 'VERIFIED_STILL_PRIVILEGED',
       }),
     ).toBe(true);
+  });
+
+  it('never treats UNVERIFIED as cleared owner action', () => {
+    expect(
+      resolveVehicleOwnerActionDisposition({
+        vehicleId: 'v',
+        tokenId: null,
+        localConnectionStatus: null,
+        consentStatus: null,
+        stillPrivileged: null,
+        verificationStatus: 'UNVERIFIED',
+      }),
+    ).toBe('unknown');
+  });
+
+  it('shows cleared only after verified absent with stillPrivileged false', () => {
+    expect(
+      resolveVehicleOwnerActionDisposition({
+        vehicleId: 'v',
+        tokenId: null,
+        localConnectionStatus: null,
+        consentStatus: null,
+        stillPrivileged: false,
+        verificationStatus: 'VERIFIED_ABSENT',
+      }),
+    ).toBe('cleared');
+    expect(
+      resolveVehicleOwnerActionDisposition({
+        vehicleId: 'v',
+        tokenId: null,
+        localConnectionStatus: null,
+        consentStatus: null,
+        stillPrivileged: null,
+        verificationStatus: 'VERIFIED_ABSENT',
+      }),
+    ).toBe('unknown');
+  });
+
+  it('blocks vehicle mutations when inventory row is missing', () => {
+    expect(canOfferVehicleScopedMutations(null)).toBe(false);
+    expect(canOfferVehicleScopedMutations({ vehicleId: 'v', tokenId: 1, localConnectionStatus: null, consentStatus: null, stillPrivileged: null, verificationStatus: 'UNVERIFIED' })).toBe(true);
+    expect(resolveVehicleOwnerActionDisposition(null)).toBe('not_in_inventory');
   });
 
   it('masks token id fallback', () => {

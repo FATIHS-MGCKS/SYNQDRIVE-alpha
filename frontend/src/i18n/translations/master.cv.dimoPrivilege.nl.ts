@@ -23,7 +23,14 @@ export const masterCvDimoPrivilegeNl = {
   'master.cv.dimoPrivilege.offboardingJob': 'Offboardingtaak',
   'master.cv.dimoPrivilege.jobPhase': 'Fase',
   'master.cv.dimoPrivilege.ownerActionOutstanding': 'Voor dit voertuig kan nog een actie van de eigenaar nodig zijn.',
-  'master.cv.dimoPrivilege.ownerActionNone': 'Geen openstaande eigenaaractie voor dit voertuig.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Geen openstaande eigenaaractie (geverifieerde externe afwezigheid).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'Externe privilegeverificatie voor dit voertuig is onbekend — niet als afgerond beschouwen.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Dit voertuig staat niet in de DIMO-offboardinginventaris van de organisatie.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Opnieuw controleren en overdracht zijn niet beschikbaar: voertuig ontbreekt in DIMO-inventarisnapshot.',
   'master.cv.dimoPrivilege.detailCode': 'Detail- / redencode',
   'master.cv.dimoPrivilege.externalPrivilege': 'Extern privilege (voertuig)',
   'master.cv.dimoPrivilege.stillPrivileged.true': 'Nog bevoorrecht (extern)',
