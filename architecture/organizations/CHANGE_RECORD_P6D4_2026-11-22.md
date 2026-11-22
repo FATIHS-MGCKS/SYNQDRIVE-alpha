@@ -61,3 +61,8 @@ Not certified from mocked provider tests. Separate owner approval required for `
 - DIMO privileged Identity read: full `pageInfo`/`endCursor` pagination; missing `tokenId` / incomplete pages fail-closed; historical-only dependency → `REVIEW_REQUIRED`.
 - HM: 409 semantics split (already revoked vs transition conflict); GET confirms terminal `revoked`/`canceled`; cross-tenant VIN gate before DELETE.
 - Disconnect service: removed `NO_DEPENDENCY` → `CONFIRMED` upgrade for historical `hadDependency`; `REVIEW_REQUIRED` blocks finalization.
+
+## P6D4 PROVIDER EVIDENCE COMPLETENESS (append)
+
+- DIMO Identity pages require `nodes[]` + `pageInfo.hasNextPage` boolean; broken `dimoVehicle` relation fails-closed.
+- HM: `HM_COVERAGE_ASSESSMENT` reconciles active/inactive rows, indirect `synqdriveVehicleId` bindings, and cross-org data-source links; unknown VIN ownership blocks DELETE.

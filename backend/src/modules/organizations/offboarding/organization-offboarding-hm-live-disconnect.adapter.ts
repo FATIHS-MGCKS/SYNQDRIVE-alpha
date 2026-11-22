@@ -54,28 +54,26 @@ export class OrganizationOffboardingHmLiveDisconnectAdapter {
       };
     }
 
-    const vehicles = await this.prisma.highMobilityVehicle.findMany({
-      where: { organizationId, isActive: true },
-      select: { id: true, vin: true, clearanceStatus: true },
-    });
+    const coverage = await this.assessHmHistoricalCoverage(organizationId);
+    operations.push({ action: 'HM_COVERAGE_ASSESSMENT', ...coverage.summary });
+
+    if (coverage.blockOutcome) {
+      return {
+        outcome: coverage.blockOutcome.outcome,
+        detailCode: coverage.blockOutcome.detailCode,
+        providerEvidence: {
+          attemptedAt,
+          organizationId,
+          provider: 'HIGH_MOBILITY',
+          operations,
+          summary: coverage.summary,
+        },
+      };
+    }
+
+    const vehicles = coverage.revokableRows;
 
     if (vehicles.length === 0) {
-      const historicalLinks = await this.prisma.vehicleDataSourceLink.count({
-        where: { sourceType: 'HIGH_MOBILITY', vehicle: { organizationId } },
-      });
-      if (historicalLinks > 0) {
-        return {
-          outcome: 'REVIEW_REQUIRED',
-          detailCode: 'HM_HISTORICAL_LINK_WITHOUT_HM_ROW',
-          providerEvidence: {
-            attemptedAt,
-            organizationId,
-            provider: 'HIGH_MOBILITY',
-            operations: [],
-            summary: { historicalDataSourceLinks: historicalLinks },
-          },
-        };
-      }
       return {
         outcome: 'NO_DEPENDENCY',
         detailCode: null,
@@ -83,8 +81,8 @@ export class OrganizationOffboardingHmLiveDisconnectAdapter {
           attemptedAt,
           organizationId,
           provider: 'HIGH_MOBILITY',
-          operations: [],
-          summary: { hmVehicleCount: 0 },
+          operations,
+          summary: coverage.summary,
         },
       };
     }
@@ -134,6 +132,32 @@ export class OrganizationOffboardingHmLiveDisconnectAdapter {
       if (!HM_REVOKE_ATTEMPT.has(status)) {
         operations.push({ hmVehicleId: row.id, vin: row.vin, action: 'SKIP_UNSUPPORTED_STATUS', status });
         anyPending = true;
+        continue;
+      }
+
+      const ownerOrgId = await this.resolveHmRowOwnerOrganizationId({
+        id: row.id,
+        organizationId: row.organizationId,
+        vin: row.vin,
+        synqdriveVehicleId: row.synqdriveVehicleId ?? null,
+      });
+      if (ownerOrgId === null) {
+        operations.push({
+          hmVehicleId: row.id,
+          vin: row.vin,
+          action: 'BLOCK_UNKNOWN_VIN_OWNERSHIP',
+        });
+        anyFailed = true;
+        continue;
+      }
+      if (ownerOrgId !== organizationId) {
+        operations.push({
+          hmVehicleId: row.id,
+          vin: row.vin,
+          action: 'BLOCK_VIN_OWNER_MISMATCH',
+          resolvedOwnerOrgId: ownerOrgId,
+        });
+        anyFailed = true;
         continue;
       }
 
@@ -191,31 +215,166 @@ export class OrganizationOffboardingHmLiveDisconnectAdapter {
     };
   }
 
+  private async assessHmHistoricalCoverage(organizationId: string): Promise<{
+    revokableRows: Array<{
+      id: string;
+      vin: string;
+      clearanceStatus: string;
+      organizationId: string | null;
+      synqdriveVehicleId: string | null;
+    }>;
+    summary: Record<string, unknown>;
+    blockOutcome?: { outcome: 'REVIEW_REQUIRED'; detailCode: string };
+  }> {
+    const directActive = await this.prisma.highMobilityVehicle.findMany({
+      where: { organizationId, isActive: true },
+      select: { id: true, vin: true, clearanceStatus: true, organizationId: true, synqdriveVehicleId: true },
+    });
+
+    const orgVehicleIds = (
+      await this.prisma.vehicle.findMany({ where: { organizationId }, select: { id: true } })
+    ).map((v) => v.id);
+
+    const indirectActive =
+      orgVehicleIds.length > 0
+        ? await this.prisma.highMobilityVehicle.findMany({
+            where: {
+              isActive: true,
+              synqdriveVehicleId: { in: orgVehicleIds },
+              NOT: { organizationId },
+            },
+            select: { id: true, vin: true, clearanceStatus: true, organizationId: true, synqdriveVehicleId: true },
+          })
+        : [];
+
+    const inactiveOrgRows = await this.prisma.highMobilityVehicle.findMany({
+      where: { organizationId, isActive: false },
+      select: { id: true, clearanceStatus: true, vin: true },
+    });
+    const inactiveNonTerminal = inactiveOrgRows.filter(
+      (r) => !HM_TERMINAL_CLEARANCE.has(String(r.clearanceStatus)),
+    );
+
+    const historicalLinks = await this.prisma.vehicleDataSourceLink.count({
+      where: { sourceType: 'HIGH_MOBILITY', vehicle: { organizationId } },
+    });
+    const inactiveHistoricalLinks = await this.prisma.vehicleDataSourceLink.count({
+      where: { sourceType: 'HIGH_MOBILITY', vehicle: { organizationId }, isActive: false },
+    });
+
+    const summary: Record<string, unknown> = {
+      directActiveCount: directActive.length,
+      indirectActiveCount: indirectActive.length,
+      inactiveNonTerminalCount: inactiveNonTerminal.length,
+      historicalDataSourceLinks: historicalLinks,
+      inactiveHistoricalDataSourceLinks: inactiveHistoricalLinks,
+    };
+
+    if (directActive.length === 0 && indirectActive.length > 0) {
+      return {
+        revokableRows: [],
+        summary,
+        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode: 'HM_INDIRECT_VEHICLE_BINDING' },
+      };
+    }
+
+    if (directActive.length === 0 && inactiveNonTerminal.length > 0) {
+      return {
+        revokableRows: [],
+        summary,
+        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode: 'HM_HISTORICAL_INACTIVE_DEPENDENCY' },
+      };
+    }
+
+    if (directActive.length === 0 && historicalLinks > 0) {
+      return {
+        revokableRows: [],
+        summary,
+        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode: 'HM_HISTORICAL_LINK_WITHOUT_HM_ROW' },
+      };
+    }
+
+    if (directActive.length === 0 && inactiveHistoricalLinks > 0) {
+      return {
+        revokableRows: [],
+        summary,
+        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode: 'HM_HISTORICAL_INACTIVE_DATA_SOURCE_LINK' },
+      };
+    }
+
+    if (directActive.length === 0) {
+      return { revokableRows: [], summary };
+    }
+
+    if (inactiveNonTerminal.length > 0) {
+      return {
+        revokableRows: directActive,
+        summary,
+        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode: 'HM_HISTORICAL_INACTIVE_DEPENDENCY' },
+      };
+    }
+
+    return { revokableRows: directActive, summary };
+  }
+
+  private async resolveHmRowOwnerOrganizationId(row: {
+    id: string;
+    organizationId: string | null;
+    vin: string;
+    synqdriveVehicleId: string | null;
+  }): Promise<string | null> {
+    if (row.organizationId) {
+      return row.organizationId;
+    }
+    if (row.synqdriveVehicleId) {
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: row.synqdriveVehicleId },
+        select: { organizationId: true },
+      });
+      return vehicle?.organizationId ?? null;
+    }
+    return null;
+  }
+
   private async vinBlockedByOtherTenant(
     organizationId: string,
     vin: string,
   ): Promise<string | null> {
     const rows = await this.prisma.highMobilityVehicle.findMany({
       where: { vin, isActive: true },
-      select: { organizationId: true, clearanceStatus: true, synqdriveVehicleId: true },
+      select: { id: true, organizationId: true, clearanceStatus: true, synqdriveVehicleId: true },
     });
 
     for (const row of rows) {
-      let ownerOrgId = row.organizationId;
-      if (!ownerOrgId && row.synqdriveVehicleId) {
-        const vehicle = await this.prisma.vehicle.findUnique({
-          where: { id: row.synqdriveVehicleId },
-          select: { organizationId: true },
-        });
-        ownerOrgId = vehicle?.organizationId ?? null;
+      const ownerOrgId = await this.resolveHmRowOwnerOrganizationId({
+        id: row.id,
+        organizationId: row.organizationId,
+        vin,
+        synqdriveVehicleId: row.synqdriveVehicleId,
+      });
+      if (ownerOrgId === null) {
+        return 'HM_UNKNOWN_VIN_OWNERSHIP';
       }
-      if (!ownerOrgId || ownerOrgId === organizationId) {
+      if (ownerOrgId === organizationId) {
         continue;
       }
       if (!HM_TERMINAL_CLEARANCE.has(String(row.clearanceStatus))) {
         return `HM_VIN_SHARED_ORG_${ownerOrgId}`;
       }
     }
+
+    const crossOrgLinks = await this.prisma.vehicleDataSourceLink.count({
+      where: {
+        sourceType: 'HIGH_MOBILITY',
+        isActive: true,
+        vehicle: { organizationId: { not: organizationId } },
+        hmVehicle: { vin },
+      },
+    });
+    if (crossOrgLinks > 0) {
+      return 'HM_VIN_ACTIVE_DATA_SOURCE_LINK_OTHER_ORG';
+    }
+
     return null;
   }
 

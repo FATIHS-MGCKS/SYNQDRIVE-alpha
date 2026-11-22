@@ -67,6 +67,21 @@ export class OrganizationOffboardingDimoLiveDisconnectAdapter {
       },
     });
 
+    const missingRelationLinks = orgTokens.filter((v) => v.dimoVehicle === null);
+    if (missingRelationLinks.length > 0) {
+      return {
+        outcome: 'NOT_AVAILABLE',
+        detailCode: 'DIMO_MISSING_DIMO_VEHICLE_RELATION',
+        providerEvidence: {
+          attemptedAt,
+          organizationId,
+          provider: 'DIMO',
+          operations: [{ action: 'ORG_DIMO_LINKS', missingRelationCount: missingRelationLinks.length }],
+          summary: { vehicleIds: missingRelationLinks.map((v) => v.id) },
+        },
+      };
+    }
+
     const missingTokenLinks = orgTokens.filter(
       (v) => v.dimoVehicle && (v.dimoVehicle.tokenId == null || !Number.isFinite(v.dimoVehicle.tokenId)),
     );
@@ -254,7 +269,16 @@ export class OrganizationOffboardingDimoLiveDisconnectAdapter {
         throw new Error('DIMO_PRIVILEGED_RESPONSE_INCOMPLETE');
       }
 
-      for (const node of vehiclesPage.nodes ?? []) {
+      if (!Array.isArray(vehiclesPage.nodes)) {
+        throw new Error('DIMO_PRIVILEGED_NODES_MISSING');
+      }
+
+      const pageInfo = vehiclesPage.pageInfo;
+      if (!pageInfo || typeof pageInfo.hasNextPage !== 'boolean') {
+        throw new Error('DIMO_PRIVILEGED_PAGEINFO_INVALID');
+      }
+
+      for (const node of vehiclesPage.nodes) {
         nodesRead += 1;
         if (typeof node.tokenId !== 'number' || !Number.isFinite(node.tokenId)) {
           incompleteNodes += 1;
@@ -267,9 +291,8 @@ export class OrganizationOffboardingDimoLiveDisconnectAdapter {
         throw new Error('DIMO_PRIVILEGED_NODE_MISSING_TOKEN_ID');
       }
 
-      const pageInfo = vehiclesPage.pageInfo;
-      hasNextPage = Boolean(pageInfo?.hasNextPage);
-      const endCursor = pageInfo?.endCursor ?? null;
+      hasNextPage = pageInfo.hasNextPage;
+      const endCursor = pageInfo.endCursor ?? null;
 
       if (hasNextPage && (!endCursor || endCursor.length === 0)) {
         throw new Error('DIMO_PRIVILEGED_PAGINATION_CURSOR_MISSING');

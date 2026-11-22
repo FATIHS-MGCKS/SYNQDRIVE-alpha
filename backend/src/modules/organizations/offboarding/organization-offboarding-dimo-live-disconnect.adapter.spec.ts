@@ -134,4 +134,43 @@ describe('OrganizationOffboardingDimoLiveDisconnectAdapter', () => {
     expect(result.outcome).toBe('REVIEW_REQUIRED');
     expect(result.detailCode).toBe('DIMO_HISTORICAL_DEPENDENCY_UNVERIFIED');
   });
+
+  it('fails closed when dimoVehicle relation missing', async () => {
+    prisma.vehicle.findMany.mockResolvedValue([
+      { id: 'v-broken', dimoVehicle: null },
+    ]);
+
+    const adapter = new OrganizationOffboardingDimoLiveDisconnectAdapter(prisma as never, dimo as never);
+    const result = await adapter.verifyOrganizationDisconnect('org-rel');
+    expect(result.outcome).toBe('NOT_AVAILABLE');
+    expect(result.detailCode).toBe('DIMO_MISSING_DIMO_VEHICLE_RELATION');
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when pageInfo missing', async () => {
+    prisma.vehicle.findMany.mockResolvedValue([
+      { id: 'v1', dimoVehicle: { tokenId: 7, connectionStatus: 'DISCONNECTED', externalId: 'e1' } },
+    ]);
+    mockedAxios.post.mockResolvedValue({
+      data: { data: { vehicles: { nodes: [{ tokenId: 1 }] } } },
+    });
+
+    const adapter = new OrganizationOffboardingDimoLiveDisconnectAdapter(prisma as never, dimo as never);
+    const result = await adapter.verifyOrganizationDisconnect('org-page');
+    expect(result.outcome).toBe('NOT_AVAILABLE');
+    expect(result.detailCode).toBe('DIMO_EXTERNAL_VERIFY_IDENTITY_UNAVAILABLE');
+  });
+
+  it('fails closed when nodes array missing', async () => {
+    prisma.vehicle.findMany.mockResolvedValue([
+      { id: 'v1', dimoVehicle: { tokenId: 7, connectionStatus: 'DISCONNECTED', externalId: 'e1' } },
+    ]);
+    mockedAxios.post.mockResolvedValue({
+      data: { data: { vehicles: { pageInfo: { hasNextPage: false, endCursor: null } } } },
+    });
+
+    const adapter = new OrganizationOffboardingDimoLiveDisconnectAdapter(prisma as never, dimo as never);
+    const result = await adapter.verifyOrganizationDisconnect('org-nodes');
+    expect(result.outcome).toBe('NOT_AVAILABLE');
+  });
 });

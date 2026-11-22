@@ -4,6 +4,74 @@ import { OrganizationOffboardingHmLiveDisconnectAdapter } from './organization-o
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
+type HmRow = {
+  id: string;
+  vin: string;
+  clearanceStatus: string;
+  organizationId?: string | null;
+  synqdriveVehicleId?: string | null;
+};
+
+function stubHmPrisma(
+  prisma: {
+    highMobilityVehicle: { findMany: jest.Mock };
+    vehicleDataSourceLink: { count: jest.Mock };
+    vehicle: { findMany: jest.Mock; findUnique: jest.Mock };
+  },
+  opts: {
+    orgId: string;
+    directActive?: HmRow[];
+    inactiveOrg?: HmRow[];
+    indirectActive?: HmRow[];
+    orgVehicleIds?: string[];
+    historicalLinks?: number;
+    inactiveHistoricalLinks?: number;
+    vinPeers?: Array<{
+      id: string;
+      organizationId: string | null;
+      clearanceStatus: string;
+      synqdriveVehicleId: string | null;
+    }>;
+    crossOrgLinkCount?: number;
+  },
+) {
+  prisma.vehicle.findMany.mockResolvedValue((opts.orgVehicleIds ?? []).map((id) => ({ id })));
+  prisma.vehicleDataSourceLink.count.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+    const where = args?.where ?? {};
+    if (where.isActive === false) {
+      return opts.inactiveHistoricalLinks ?? 0;
+    }
+    if (where.vehicle && typeof where.vehicle === 'object' && (where.vehicle as { organizationId?: unknown }).organizationId) {
+      const vo = (where.vehicle as { organizationId?: { not?: string } }).organizationId;
+      if (vo && typeof vo === 'object' && 'not' in vo) {
+        return opts.crossOrgLinkCount ?? 0;
+      }
+    }
+    return opts.historicalLinks ?? 0;
+  });
+
+  prisma.highMobilityVehicle.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
+    const where = args?.where ?? {};
+    if (where.organizationId === opts.orgId && where.isActive === true) {
+      return (opts.directActive ?? []).map((r) => ({
+        synqdriveVehicleId: null,
+        organizationId: opts.orgId,
+        ...r,
+      }));
+    }
+    if (where.organizationId === opts.orgId && where.isActive === false) {
+      return opts.inactiveOrg ?? [];
+    }
+    if (where.synqdriveVehicleId && where.NOT) {
+      return opts.indirectActive ?? [];
+    }
+    if (where.vin && where.isActive === true) {
+      return opts.vinPeers ?? [];
+    }
+    return [];
+  });
+}
+
 describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
   const prisma = {
     highMobilityVehicle: {
@@ -11,7 +79,7 @@ describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
       update: jest.fn(),
     },
     vehicleDataSourceLink: { count: jest.fn().mockResolvedValue(0) },
-    vehicle: { findUnique: jest.fn() },
+    vehicle: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
   };
   const auth = {
     isConfigured: jest.fn(),
@@ -26,10 +94,11 @@ describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
     auth.isConfigured.mockReturnValue(true);
     auth.authHeaders.mockResolvedValue({ Authorization: 'Bearer t' });
     prisma.vehicleDataSourceLink.count.mockResolvedValue(0);
+    prisma.vehicle.findMany.mockResolvedValue([]);
   });
 
   it('scopes revoke queries to organizationId', async () => {
-    prisma.highMobilityVehicle.findMany.mockResolvedValue([]);
+    stubHmPrisma(prisma, { orgId: 'org-scoped' });
     const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(
       prisma as never,
       auth as never,
@@ -42,14 +111,10 @@ describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
   });
 
   it('409 with revoked body confirms via GET', async () => {
-    prisma.highMobilityVehicle.findMany.mockImplementation(async (args: { where?: { organizationId?: string; vin?: string } }) => {
-      if (args?.where?.organizationId === 'org-1') {
-        return [{ id: 'hm-1', vin: 'VIN123', clearanceStatus: 'APPROVED' }];
-      }
-      if (args?.where?.vin === 'VIN123') {
-        return [{ organizationId: 'org-1', clearanceStatus: 'APPROVED', synqdriveVehicleId: null }];
-      }
-      return [];
+    stubHmPrisma(prisma, {
+      orgId: 'org-1',
+      directActive: [{ id: 'hm-1', vin: 'VIN123', clearanceStatus: 'APPROVED', organizationId: 'org-1' }],
+      vinPeers: [{ id: 'hm-1', organizationId: 'org-1', clearanceStatus: 'APPROVED', synqdriveVehicleId: null }],
     });
     mockedAxios.delete.mockRejectedValue({
       response: { status: 409, data: { status: 'revoked' } },
@@ -60,44 +125,34 @@ describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
       data: { status: 'revoked' },
     });
 
-    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(
-      prisma as never,
-      auth as never,
-      hmConfig as never,
-    );
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
     const result = await adapter.disconnectOrganization('org-1');
     expect(result.outcome).toBe('CONFIRMED');
     expect(mockedAxios.get).toHaveBeenCalled();
   });
 
   it('409 with approved body is transition conflict (not confirmed)', async () => {
-    prisma.highMobilityVehicle.findMany.mockImplementation(async (args: { where?: { organizationId?: string } }) => {
-      if (args?.where?.organizationId) {
-        return [{ id: 'hm-1', vin: 'VIN123', clearanceStatus: 'APPROVED' }];
-      }
-      return [];
+    stubHmPrisma(prisma, {
+      orgId: 'org-1',
+      directActive: [{ id: 'hm-1', vin: 'VIN123', clearanceStatus: 'APPROVED', organizationId: 'org-1' }],
+      vinPeers: [{ id: 'hm-1', organizationId: 'org-1', clearanceStatus: 'APPROVED', synqdriveVehicleId: null }],
     });
     mockedAxios.delete.mockRejectedValue({
       response: { status: 409, data: { status: 'approved' } },
       message: 'conflict',
     });
 
-    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(
-      prisma as never,
-      auth as never,
-      hmConfig as never,
-    );
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
     const result = await adapter.disconnectOrganization('org-1');
     expect(result.outcome).toBe('FAILED');
     expect(mockedAxios.get).not.toHaveBeenCalled();
   });
 
   it('DELETE revoking then GET revoked confirms', async () => {
-    prisma.highMobilityVehicle.findMany.mockImplementation(async (args: { where?: { organizationId?: string } }) => {
-      if (args?.where?.organizationId) {
-        return [{ id: 'hm-1', vin: 'VIN123', clearanceStatus: 'APPROVED' }];
-      }
-      return [];
+    stubHmPrisma(prisma, {
+      orgId: 'org-1',
+      directActive: [{ id: 'hm-1', vin: 'VIN123', clearanceStatus: 'APPROVED', organizationId: 'org-1' }],
+      vinPeers: [{ id: 'hm-1', organizationId: 'org-1', clearanceStatus: 'APPROVED', synqdriveVehicleId: null }],
     });
     mockedAxios.delete.mockResolvedValue({
       status: 200,
@@ -108,52 +163,91 @@ describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
       data: { status: 'revoked' },
     });
 
-    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(
-      prisma as never,
-      auth as never,
-      hmConfig as never,
-    );
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
     const result = await adapter.disconnectOrganization('org-1');
     expect(result.outcome).toBe('CONFIRMED');
     expect(result.providerEvidence.operations.some((o) => o.action === 'DELETE_CLEARANCE')).toBe(true);
   });
 
   it('REVIEW_REQUIRED when historical HM link without HM row', async () => {
-    prisma.highMobilityVehicle.findMany.mockResolvedValue([]);
-    prisma.vehicleDataSourceLink.count.mockResolvedValue(2);
+    stubHmPrisma(prisma, { orgId: 'org-hist', historicalLinks: 2 });
 
-    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(
-      prisma as never,
-      auth as never,
-      hmConfig as never,
-    );
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
     const result = await adapter.disconnectOrganization('org-hist');
     expect(result.outcome).toBe('REVIEW_REQUIRED');
     expect(result.detailCode).toBe('HM_HISTORICAL_LINK_WITHOUT_HM_ROW');
   });
 
   it('blocks DELETE when VIN shared with active clearance on another org', async () => {
-    prisma.highMobilityVehicle.findMany.mockImplementation(async (args: { where?: { organizationId?: string; vin?: string; isActive?: boolean } }) => {
-      if (args?.where?.organizationId === 'org-a') {
-        return [{ id: 'hm-1', vin: 'SHAREDVIN', clearanceStatus: 'APPROVED' }];
-      }
-      if (args?.where?.vin === 'SHAREDVIN' && args?.where?.isActive === true) {
-        return [
-          { organizationId: 'org-a', clearanceStatus: 'APPROVED', synqdriveVehicleId: null },
-          { organizationId: 'org-b', clearanceStatus: 'APPROVED', synqdriveVehicleId: null },
-        ];
-      }
-      return [];
+    stubHmPrisma(prisma, {
+      orgId: 'org-a',
+      directActive: [{ id: 'hm-1', vin: 'SHAREDVIN', clearanceStatus: 'APPROVED', organizationId: 'org-a' }],
+      vinPeers: [
+        { id: 'hm-1', organizationId: 'org-a', clearanceStatus: 'APPROVED', synqdriveVehicleId: null },
+        { id: 'hm-2', organizationId: 'org-b', clearanceStatus: 'APPROVED', synqdriveVehicleId: null },
+      ],
     });
 
-    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(
-      prisma as never,
-      auth as never,
-      hmConfig as never,
-    );
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
     const result = await adapter.disconnectOrganization('org-a');
     expect(result.outcome).toBe('FAILED');
     expect(mockedAxios.delete).not.toHaveBeenCalled();
-    expect(result.providerEvidence.operations[0]).toMatchObject({ action: 'BLOCK_CROSS_TENANT_VIN' });
+    expect(result.providerEvidence.operations.some((o) => o.action === 'BLOCK_CROSS_TENANT_VIN')).toBe(true);
+  });
+
+  it('blocks DELETE when VIN ownership cannot be verified', async () => {
+    stubHmPrisma(prisma, {
+      orgId: 'org-unknown',
+      directActive: [
+        {
+          id: 'hm-1',
+          vin: 'UNKVIN',
+          clearanceStatus: 'APPROVED',
+          organizationId: null,
+          synqdriveVehicleId: null,
+        },
+      ],
+      vinPeers: [{ id: 'hm-1', organizationId: null, clearanceStatus: 'APPROVED', synqdriveVehicleId: null }],
+    });
+
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
+    const result = await adapter.disconnectOrganization('org-unknown');
+    expect(result.outcome).toBe('FAILED');
+    expect(mockedAxios.delete).not.toHaveBeenCalled();
+    expect(result.providerEvidence.operations.some((o) => o.action === 'BLOCK_UNKNOWN_VIN_OWNERSHIP')).toBe(true);
+  });
+
+  it('REVIEW_REQUIRED for historical inactive non-terminal dependency', async () => {
+    stubHmPrisma(prisma, {
+      orgId: 'org-inact',
+      inactiveOrg: [{ id: 'hm-old', vin: 'VIN', clearanceStatus: 'APPROVED' }],
+    });
+
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
+    const result = await adapter.disconnectOrganization('org-inact');
+    expect(result.outcome).toBe('REVIEW_REQUIRED');
+    expect(result.detailCode).toBe('HM_HISTORICAL_INACTIVE_DEPENDENCY');
+  });
+
+  it('REVIEW_REQUIRED for indirect vehicle binding without direct org HM row', async () => {
+    stubHmPrisma(prisma, {
+      orgId: 'org-ind',
+      orgVehicleIds: ['veh-1'],
+      indirectActive: [
+        {
+          id: 'hm-ind',
+          vin: 'VIND',
+          clearanceStatus: 'APPROVED',
+          organizationId: null,
+          synqdriveVehicleId: 'veh-1',
+        },
+      ],
+    });
+    prisma.vehicle.findUnique.mockResolvedValue({ organizationId: 'org-ind' });
+
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
+    const result = await adapter.disconnectOrganization('org-ind');
+    expect(result.outcome).toBe('REVIEW_REQUIRED');
+    expect(result.detailCode).toBe('HM_INDIRECT_VEHICLE_BINDING');
   });
 });
