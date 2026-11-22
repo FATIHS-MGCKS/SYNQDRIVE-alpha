@@ -220,10 +220,11 @@ describe('IAM membership vs global identity isolation (Prompt 4)', () => {
           lastName: 'U',
           role: 'WORKER',
         },
-        { id: IAM_REGRESSION_IDS.adminA, membershipRole: MembershipRole.ORG_ADMIN },
+        { id: IAM_REGRESSION_IDS.adminA, platformRole: 'MASTER_ADMIN' },
       );
 
       expect(lifecycle.reactivate).toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 

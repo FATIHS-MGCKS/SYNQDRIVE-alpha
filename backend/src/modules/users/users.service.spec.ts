@@ -184,14 +184,19 @@ describe('UsersService — security & membership', () => {
       organizationRole: null,
     });
 
-    const result = await service.createOrgUser(orgId, {
-      email: 'worker@test.de',
-      firstName: 'W',
-      lastName: 'K',
-      role: 'WORKER',
-    });
+    const result = await service.createOrgUser(
+      orgId,
+      {
+        email: 'worker@test.de',
+        firstName: 'W',
+        lastName: 'K',
+        role: 'WORKER',
+      },
+      { id: adminUserId, platformRole: 'MASTER_ADMIN' },
+    );
 
     expect(lifecycle.reactivate).toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
     expect(result.email).toBe('worker@test.de');
   });
 

@@ -33,6 +33,7 @@ import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 import {
   ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
   ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE,
+  assertOrgAdminReprovisionDoesNotTouchGlobalIdentity,
   assertOrgAdminUpdateDoesNotTouchGlobalIdentity,
 } from './policies/org-membership-admin.policy';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
@@ -382,7 +383,13 @@ export class UsersService {
 
       if (existingMembership) {
         if (existingMembership.status === MembershipStatus.REMOVED) {
-          return this.reactivateOrgUser(orgId, existing.id, dto, existingMembership.id);
+          return this.reactivateOrgUser(
+            orgId,
+            existing.id,
+            dto,
+            existingMembership.id,
+            actor,
+          );
         }
         throw new BadRequestException(
           'User already exists in this organization',
@@ -478,51 +485,33 @@ export class UsersService {
     return mapped;
   }
 
-  private   async reactivateOrgUser(
+  private async reactivateOrgUser(
     orgId: string,
     userId: string,
     dto: CreateOrgUserDto,
     membershipId: string,
-    actor?: PermissionActor,
+    actor: PermissionActor,
   ) {
+    if (dto.password) {
+      throw new BadRequestException(ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE);
+    }
+    if (actor.platformRole !== 'MASTER_ADMIN') {
+      assertOrgAdminReprovisionDoesNotTouchGlobalIdentity(dto);
+    }
+
     const roleFields = await this.resolveMembershipRoleFields(orgId, dto);
     await this.validateStationIds(orgId, roleFields.stationIds);
-
-    const fullName = buildDisplayName(dto.firstName, dto.lastName);
-    let passwordHash: string | undefined;
-    if (dto.password) {
-      this.assertPasswordStrength(dto.password);
-      passwordHash = await bcrypt.hash(dto.password, 10);
-    }
 
     const stationFields = this.resolveStationFields({
       stationScope: roleFields.stationScope,
       stationIds: roleFields.stationIds,
     });
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        name: fullName || undefined,
-        email: dto.email.toLowerCase().trim(),
-        phone: dto.phone || undefined,
-        mobile: dto.mobile || undefined,
-        address: dto.address || undefined,
-        language: dto.language || undefined,
-        timezone: dto.timezone || undefined,
-        dateFormat: dto.dateFormat || undefined,
-        status: UserStatus.ACTIVE,
-        ...(passwordHash ? { passwordHash, mustChangePassword: true } : {}),
-      },
-    });
-
     await this.lifecycle.reactivate({
       organizationId: orgId,
       userId,
       idempotencyKey: `membership-reactivate:${orgId}:${membershipId}`,
-      actor: { userId: actor?.id },
+      actor: { userId: actor.id },
       role: roleFields.role,
       organizationRoleId: roleFields.organizationRoleId,
       roleLabel: roleFields.roleLabel,

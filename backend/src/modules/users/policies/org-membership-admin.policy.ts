@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import type { UpdateOrgUserDto } from '../dto';
+import type { CreateOrgUserDto, UpdateOrgUserDto } from '../dto';
 
 /**
  * Org admins manage organization membership only — not global identity.
@@ -52,6 +52,29 @@ export function assertOrgAdminUpdateDoesNotTouchGlobalIdentity(
   throw new BadRequestException(
     `Cannot modify global identity fields via organization membership administration: ${violations.join(', ')}. ` +
       'Global email and profile changes require verified self-service or master admin support.',
+  );
+}
+
+/** Optional global profile fields — org re-add must not mutate these on User. */
+const REPROVISION_FORBIDDEN_OPTIONAL_GLOBAL_FIELDS = [
+  'phone',
+  'mobile',
+  'address',
+  'language',
+  'timezone',
+  'dateFormat',
+] as const satisfies ReadonlyArray<keyof CreateOrgUserDto>;
+
+export function assertOrgAdminReprovisionDoesNotTouchGlobalIdentity(
+  dto: Pick<CreateOrgUserDto, (typeof REPROVISION_FORBIDDEN_OPTIONAL_GLOBAL_FIELDS)[number]>,
+): void {
+  const violations = REPROVISION_FORBIDDEN_OPTIONAL_GLOBAL_FIELDS.filter(
+    (field) => dto[field] !== undefined,
+  );
+  if (violations.length === 0) return;
+
+  throw new BadRequestException(
+    `Cannot modify global identity fields when re-adding an existing user to an organization: ${violations.join(', ')}.`,
   );
 }
 
