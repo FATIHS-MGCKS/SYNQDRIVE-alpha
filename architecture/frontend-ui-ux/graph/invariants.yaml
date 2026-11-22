@@ -1,0 +1,31 @@
+# Frontend UI/UX — Invariants (bootstrap)
+
+invariants:
+  - id: FEUX-INV-SHARED-TOKEN-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      Global visual changes to design tokens in frontend/src/styles/theme.css affect
+      Master, Rental, and Operator unless explicitly scoped by product-specific CSS.
+    scope: cross-product
+    epistemic_status: CONFIRMED
+  - id: FEUX-INV-NO-PARALLEL-DS-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      Do not introduce a second competing design-system package or CSS root outside
+      theme.css contracts without a documented decision and registry update.
+    scope: repository
+    epistemic_status: CONFIRMED
+  - id: FEUX-INV-I18N-OWNER-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      Locale catalogs and translation governance remain owned by architecture/internationalization;
+      FEUX records UI copy gaps but does not fork i18n architecture.
+    scope: cross-authority
+    epistemic_status: CONFIRMED
+  - id: FEUX-INV-MASTER-CP-001
+    kind: CONDITIONAL_INVARIANT
+    statement: >
+      Master Admin retains control-plane information architecture; Rental layouts must not
+      be copied wholesale into Master without an explicit ADOPT/ADAPT decision record.
+    scope: master-admin
+    epistemic_status: CONFIRMED

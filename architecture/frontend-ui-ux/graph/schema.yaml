@@ -1,0 +1,131 @@
+# Frontend UI/UX Knowledge Graph — Schema
+
+version: "1.0"
+description: >
+  Schema for Frontend UI/UX & Design System living architecture authority.
+
+node_types:
+  - domain
+  - data
+  - pipeline
+  - orchestrator
+  - state
+  - policy
+  - authority
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - DOMAIN_REASONING
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - upstream_of
+  - downstream_of
+  - decides
+  - invokes
+  - uses
+  - input_to
+  - returns_to
+  - governs
+  - projects_to
+  - presents
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - protected_by
+  - does_not_solve
+  - gates
+  - validates
+  - derives_from
+  - enables
+
+relation_semantics_doc: architecture/frontend-ui-ux/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: FEUX-DOM-
+  data: FEUX-DATA-
+  pipeline: FEUX-PIPE-
+  orchestrator: FEUX-ORCH-
+  state: FEUX-STATE-
+  policy: FEUX-POL-
+  authority: FEUX-AUTH-
+  consumer: FEUX-CONS-
+  decision: FEUX-DEC-
+  evidence: FEUX-EVID-
+  test_evidence: FEUX-TEST-
+  hypothesis: FEUX-HYP-
+  invariant: FEUX-INV-
+  gap: FEUX-GAP-
+  contradiction: FEUX-CX-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - source_paths
+    - evidence
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes

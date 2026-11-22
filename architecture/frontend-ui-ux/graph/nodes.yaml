@@ -1,0 +1,295 @@
+# Frontend UI/UX — Knowledge Graph Nodes (bootstrap V1)
+
+nodes:
+  - id: FEUX-DOM-PLATFORM-001
+    type: domain
+    title: Shared frontend UI platform domain
+    epistemic_status: CONFIRMED
+    summary: One Vite SPA repo; shared tokens/patterns; three product UI profiles.
+    source_paths:
+      - architecture/frontend-ui-ux/README.md
+      - frontend/src/App.tsx
+
+  - id: FEUX-DATA-THEME-001
+    type: data
+    title: Design token layer (theme.css)
+    epistemic_status: CONFIRMED
+    summary: Manrope/Geist Mono; brand #4F86E8; L0–L4 surfaces; motion tokens; master shell widths.
+    source_paths:
+      - frontend/src/styles/theme.css
+      - frontend/src/styles/LIQUID_GLASS_SYSTEM.md
+      - frontend/src/styles/THEME_COLOR_CONTRACT.md
+    evidence:
+      - FEUX-EVID-CODE-THEME-001
+
+  - id: FEUX-DATA-PATTERNS-001
+    type: data
+    title: Shared pattern library
+    epistemic_status: CONFIRMED
+    summary: components/ui + patterns + shell AppShell; chrome-tab-bar conventions.
+    source_paths:
+      - frontend/src/components/patterns/index.ts
+      - frontend/src/components/ui/
+      - frontend/src/components/shell/app-shell.tsx
+    evidence:
+      - FEUX-EVID-CODE-PATTERNS-001
+
+  - id: FEUX-ORCH-ROUTES-001
+    type: orchestrator
+    title: SPA route orchestrator
+    epistemic_status: CONFIRMED
+    summary: BrowserRouter mounts MasterApp, RentalApp, OperatorApp.
+    source_paths:
+      - frontend/src/App.tsx
+    evidence:
+      - FEUX-EVID-CODE-ROUTES-001
+
+  - id: FEUX-CONS-MASTER-001
+    type: consumer
+    title: Master Admin UI tree
+    epistemic_status: CONFIRMED
+    summary: /master query-param views; MasterAdminShell; hub modules under frontend/src/master/.
+    source_paths:
+      - frontend/src/master/
+    evidence:
+      - FEUX-EVID-CODE-MASTER-001
+
+  - id: FEUX-CONS-RENTAL-001
+    type: consumer
+    title: Rental UI tree
+    epistemic_status: INFERRED
+    summary: /rental in-memory view state + URL sync patterns; primary pattern consumer.
+    source_paths:
+      - frontend/src/rental/
+    evidence:
+      - FEUX-EVID-CODE-RENTAL-001
+
+  - id: FEUX-CONS-OPERATOR-001
+    type: consumer
+    title: Operator mobile UI tree
+    epistemic_status: CONFIRMED
+    summary: /operator/*; bottom nav; OperatorGlassCard surfaces.
+    source_paths:
+      - frontend/src/operator/
+    evidence:
+      - FEUX-EVID-CODE-OPERATOR-001
+
+  - id: FEUX-AUTH-I18N-BOUNDARY-001
+    type: authority
+    title: i18n authority boundary
+    epistemic_status: CONFIRMED
+    summary: Locale/copy owned by architecture/internationalization; FEUX must not duplicate.
+    source_paths:
+      - architecture/internationalization/README.md
+    evidence:
+      - FEUX-EVID-CROSS-I18N-001
+
+  - id: FEUX-DEC-PLATFORM-PROFILES-001
+    type: decision
+    title: Shared DS authority + three product profiles
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Owner architecture decision 2026-11-22.
+    source_paths:
+      - architecture/frontend-ui-ux/decisions/DECISION_REGISTER.md
+    evidence:
+      - FEUX-EVID-AUDIT-BOOTSTRAP-001
+
+  - id: FEUX-DEC-SHARED-TOKEN-SSOT-001
+    type: decision
+    title: theme.css as shared visual SSOT
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: No parallel CSS authority; legacy sq-* documented as aliases.
+    source_paths:
+      - architecture/frontend-ui-ux/decisions/DECISION_REGISTER.md
+    evidence:
+      - FEUX-EVID-CODE-THEME-001
+
+  - id: FEUX-DEC-RENTAL-REFERENCE-001
+    type: decision
+    title: Rental as positive reference only
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: ADOPT/ADAPT/RETAIN matrix; no automatic layout copy.
+    source_paths:
+      - architecture/frontend-ui-ux/decisions/DECISION_REGISTER.md
+    evidence:
+      - FEUX-EVID-CODE-RENTAL-001
+      - FEUX-EVID-CODE-MASTER-001
+
+  - id: FEUX-DEC-NO-I18N-DUP-001
+    type: decision
+    title: No duplicate i18n authority
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Copy/locale owned by internationalization authority.
+    source_paths:
+      - architecture/frontend-ui-ux/decisions/DECISION_REGISTER.md
+    evidence:
+      - FEUX-EVID-CROSS-I18N-001
+
+  - id: FEUX-GAP-001
+    type: gap
+    title: Figma productive artifacts unknown
+    epistemic_status: UNKNOWN
+    summary: No in-repo Figma SSOT referenced in docs/ui.
+    source_paths:
+      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: FEUX-GAP-002
+    type: gap
+    title: Production UI baseline missing
+    epistemic_status: UNKNOWN
+    summary: Blocks AUTHORITY_ACTIVE promotion.
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_BASELINE.md
+    evidence:
+      - FEUX-EVID-GAP-PROD-UI-001
+
+  - id: FEUX-GAP-003
+    type: gap
+    title: Responsive verification matrix missing
+    epistemic_status: UNKNOWN
+    summary: No systematic 375/768/1440 capture.
+    source_paths:
+      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: FEUX-GAP-004
+    type: gap
+    title: Rental deep screen inventory incomplete
+    epistemic_status: INFERRED
+    summary: Partial rental audit beyond shell and view union.
+    source_paths:
+      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: FEUX-GAP-005
+    type: gap
+    title: Animation performance profiling
+    epistemic_status: UNKNOWN
+    summary: backdrop-filter cost not measured.
+    source_paths:
+      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: FEUX-GAP-006
+    type: gap
+    title: Master chrome i18n debt
+    epistemic_status: CONFIRMED
+    summary: tMasterNav DE-only outside LanguageProvider.
+    source_paths:
+      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: FEUX-GAP-007
+    type: gap
+    title: Orphan Master RightSidebar component
+    epistemic_status: CONFIRMED
+    summary: File exists; not mounted in App.tsx.
+    source_paths:
+      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: FEUX-HYP-001
+    type: hypothesis
+    title: Master i18n migration highest redesign leverage
+    epistemic_status: INFERRED
+    summary: Hypothesis for prioritization only.
+    source_paths:
+      - architecture/frontend-ui-ux/research/OPEN_HYPOTHESES.md
+
+  - id: FEUX-HYP-002
+    type: hypothesis
+    title: Rental KPI rhythm ADAPT improves Master dashboard
+    epistemic_status: INFERRED
+    summary: Design hypothesis; not user-tested.
+    source_paths:
+      - architecture/frontend-ui-ux/research/OPEN_HYPOTHESES.md
+
+  - id: FEUX-EVID-AUDIT-BOOTSTRAP-001
+    type: evidence
+    title: Bootstrap audit workstream
+    summary: Architecture-only authority bootstrap PR evidence.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/AUDIT_MANIFEST.md
+
+  - id: FEUX-EVID-AUDIT-READONLY-2026-11-22
+    type: evidence
+    title: Prior read-only UI audit baseline
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Cloud agent audit SHA 01bd08a4 reconciled to 413175e8c for UI paths.
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/EVIDENCE_INDEX.md
+
+  - id: FEUX-EVID-CODE-THEME-001
+    type: evidence
+    title: theme.css inspection
+    summary: Shared design token layer at audited SHA.
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/styles/theme.css
+
+  - id: FEUX-EVID-CODE-PATTERNS-001
+    type: evidence
+    title: patterns/ui inspection
+    summary: Shared pattern library barrel and ui primitives.
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/components/patterns/index.ts
+
+  - id: FEUX-EVID-CODE-ROUTES-001
+    type: evidence
+    title: App.tsx routes
+    summary: Three-product SPA route mount points.
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/App.tsx
+
+  - id: FEUX-EVID-CODE-MASTER-001
+    type: evidence
+    title: Master App inspection
+    summary: Master control-plane shell and view switch.
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/master/App.tsx
+
+  - id: FEUX-EVID-CODE-RENTAL-001
+    type: evidence
+    title: Rental App partial inspection
+    summary: Rental view union and AppShell usage.
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    source_paths:
+      - frontend/src/rental/App.tsx
+
+  - id: FEUX-EVID-CODE-OPERATOR-001
+    type: evidence
+    title: Operator shell inspection
+    summary: Mobile operator shell and bottom nav.
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/operator/OperatorShell.tsx
+
+  - id: FEUX-EVID-CROSS-I18N-001
+    type: evidence
+    title: i18n boundary cross-check
+    summary: Master tMasterNav vs i18n authority boundary.
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/master/navigation/master-nav-i18n.ts
+      - architecture/internationalization/README.md
+
+  - id: FEUX-EVID-GAP-PROD-UI-001
+    type: evidence
+    title: Production UI gap record
+    summary: Production UI not audited in bootstrap.
+    source_type: DOMAIN_REASONING
+    epistemic_status: UNKNOWN
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_BASELINE.md

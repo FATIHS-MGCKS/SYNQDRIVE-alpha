@@ -143,6 +143,7 @@
 | CORE-EXTRACT-TRAJECTORY | Post–copy-out extraction as **primary** trajectory: separate Core backend + separate Rental application + secured API/M2M **between separate deployments** (not claimed shipped; **no** automatic merge-back to Alpha claimed) | Owner 2026-11-16 **PAUSED** — Alpha permanent platform; CORE reference fork; selective manual ports only — [`SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md`](SYNQDRIVE_ALPHA_PLATFORM_MASTER_PLAN.md) § Historical trajectory |
 | RENTAL-M2M-MANDATORY-COLOCATED | Co-located Rental **must** use M2M to Core (incl. historical extraction plan) | **REJECTED** for in-process Rental — user JWT + guards; M2M optional binding slug only |
 | TAXI-PRODUCTSLUG | TAXI as assignable platform product | P2-PR4C — slug retired for new assigns; historical rows preserved |
+| FEUX-BOOTSTRAP-001 | 2026-11-22 | Governance | _(pending PR)_ | — | **OPEN** | **NO** | **NOT_CLAIMED** | Bootstrap `architecture/frontend-ui-ux/` shared design-system authority + Master/Rental/Operator UI profiles; registry `AUDIT_IN_PROGRESS`; no product code | [`architecture/frontend-ui-ux/`](../frontend-ui-ux/) · [`AUDIT_MANIFEST.md`](../frontend-ui-ux/AUDIT_MANIFEST.md) | `validate-graph.sh` + `validate-module-registry.sh` | Production UI baseline; `AUTHORITY_ACTIVE` promotion |
 
 ---
 

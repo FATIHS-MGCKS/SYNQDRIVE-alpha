@@ -1,0 +1,61 @@
+edges:
+  - from: FEUX-CONS-MASTER-001
+    relation: downstream_of
+    to: FEUX-DATA-PATTERNS-001
+  - from: FEUX-CONS-RENTAL-001
+    relation: downstream_of
+    to: FEUX-DATA-PATTERNS-001
+  - from: FEUX-CONS-OPERATOR-001
+    relation: downstream_of
+    to: FEUX-DATA-PATTERNS-001
+  - from: FEUX-CONS-MASTER-001
+    relation: downstream_of
+    to: FEUX-ORCH-ROUTES-001
+  - from: FEUX-CONS-RENTAL-001
+    relation: downstream_of
+    to: FEUX-ORCH-ROUTES-001
+  - from: FEUX-CONS-OPERATOR-001
+    relation: downstream_of
+    to: FEUX-ORCH-ROUTES-001
+  - from: FEUX-DATA-PATTERNS-001
+    relation: downstream_of
+    to: FEUX-DATA-THEME-001
+  - from: FEUX-DOM-PLATFORM-001
+    relation: governs
+    to: FEUX-DATA-THEME-001
+  - from: FEUX-DEC-PLATFORM-PROFILES-001
+    relation: decides
+    to: FEUX-DOM-PLATFORM-001
+  - from: FEUX-DEC-SHARED-TOKEN-SSOT-001
+    relation: decides
+    to: FEUX-DATA-THEME-001
+  - from: FEUX-DEC-RENTAL-REFERENCE-001
+    relation: decides
+    to: FEUX-CONS-RENTAL-001
+  - from: FEUX-DEC-NO-I18N-DUP-001
+    relation: decides
+    to: FEUX-AUTH-I18N-BOUNDARY-001
+  - from: FEUX-EVID-CODE-THEME-001
+    relation: supports
+    to: FEUX-DATA-THEME-001
+  - from: FEUX-EVID-CODE-PATTERNS-001
+    relation: supports
+    to: FEUX-DATA-PATTERNS-001
+  - from: FEUX-EVID-CODE-ROUTES-001
+    relation: supports
+    to: FEUX-ORCH-ROUTES-001
+  - from: FEUX-EVID-CODE-MASTER-001
+    relation: supports
+    to: FEUX-CONS-MASTER-001
+  - from: FEUX-EVID-CODE-RENTAL-001
+    relation: supports
+    to: FEUX-CONS-RENTAL-001
+  - from: FEUX-EVID-CODE-OPERATOR-001
+    relation: supports
+    to: FEUX-CONS-OPERATOR-001
+  - from: FEUX-EVID-CROSS-I18N-001
+    relation: supports
+    to: FEUX-AUTH-I18N-BOUNDARY-001
+  - from: FEUX-EVID-GAP-PROD-UI-001
+    relation: supports
+    to: FEUX-GAP-002

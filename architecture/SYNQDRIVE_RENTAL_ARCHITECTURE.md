@@ -64,6 +64,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Evaluations Analytics | Entity-scoped evaluation analytics including insights, quality, and recommendation layers. | `NOT_STARTED` | N/A — inventory only | — |
 | Evaluations Finance | Financial evaluation analytics APIs for rental operational finance views. | `NOT_STARTED` | N/A — inventory only | — |
 | Fines | Traffic and parking fine record management for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
+| Frontend UI/UX & Design System | Shared frontend design tokens, surfaces, patterns, and product UI contracts for Master Admin, Rental, and Operator SPA surfaces. | `AUDIT_IN_PROGRESS` | Bootstrap audit V1 2026-11-22 · Production UI **NOT_STARTED** | [`architecture/frontend-ui-ux/`](frontend-ui-ux/) |
 | High Mobility Integration | HM telemetry ingestion, vehicle registration, compatibility intelligence, and webhooks. | `NOT_STARTED` | N/A — inventory only | — |
 | IAM Data Retention | GDPR user deletion, IAM retention policies, and master-admin deletion workflows. | `NOT_STARTED` | N/A — inventory only | — |
 | IAM MFA | Multi-factor authentication enrollment, step-up grants, and MFA administration. | `NOT_STARTED` | N/A — inventory only | — |
@@ -275,6 +276,22 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Phases **0–5** complete — Phase **1** @ `REPO_CURRENT` `0b44b146f…`; Phase **2** read-only Production @ `2b54a357…`; Phase **3** CX/GAP promotion-classified; Phase **4** full FSM/execution/authority/failure graph + decision register; Phase **5** Gate A PASS ([evidence](trip-detection-lifecycle/evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md)). |
 | **Mandatory entry documents** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](trip-detection-lifecycle/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](trip-detection-lifecycle/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh` |
+
+---
+
+### Frontend UI/UX & Design System
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap 2026-11-22; **not** `AUTHORITY_ACTIVE`; Production UI baseline **open** |
+| **Scope** | Shared frontend design tokens (`theme.css`, Liquid Glass contracts), `components/ui` + `patterns`, surface L0–L4 semantics, interaction/a11y contracts, shared component import graph; **product UI profiles** for Master Admin (control plane), Rental (operations SPA), Operator (mobile shell). Cross-boundary with **i18n authority** (copy/locale only — no duplicate i18n authority). |
+| **Authority directory** | [`architecture/frontend-ui-ux/`](frontend-ui-ux/) |
+| **Authority-native status** | **Bootstrap V1** (2026-11-22) · repository read-only audit · graph validator active · Production UI **NOT_STARTED** |
+| **Ownership boundary** | **Owns** design-system documentation, product UI/UX contracts, screen/nav inventories, Rental→Master **PROPOSED** comparison matrix (non-binding). **Does NOT own** i18n runtime/catalogs (→ Internationalization), Figma source files, backend API shapes, rental business rules, feature implementation in `frontend/src/**`. Flat `docs/ui/**` and prior Cloud audit @ `01bd08a4…` are **supporting evidence**; `docs/ui` URL-based nav claims may be **CONTRADICTED** vs current `?view=` Master routing. |
+| **Reconstruction status** | Phase **0–4** bootstrap complete in-repo; Phase **2** Production read-only UI **deferred** (owner/task scope); Phase **5** promotion **not eligible** until Gate A Production UI evidence. |
+| **Mandatory entry documents** | [README.md](frontend-ui-ux/README.md) · [AUDIT_MANIFEST.md](frontend-ui-ux/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](frontend-ui-ux/CURRENT_STATE.md) · [AGENT_CONTRACT.md](frontend-ui-ux/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](frontend-ui-ux/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](frontend-ui-ux/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](frontend-ui-ux/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](frontend-ui-ux/evidence/PRODUCTION_BASELINE.md) |
+| **Supplementary profiles** | [design-system/SHARED_DESIGN_SYSTEM.md](frontend-ui-ux/design-system/SHARED_DESIGN_SYSTEM.md) · [products/master-admin/](frontend-ui-ux/products/master-admin/) · [products/rental/](frontend-ui-ux/products/rental/) · [products/operator/](frontend-ui-ux/products/operator/) · [inventories/](frontend-ui-ux/inventories/) |
+| **Validation** | `bash architecture/frontend-ui-ux/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` |
 
 ---
 
