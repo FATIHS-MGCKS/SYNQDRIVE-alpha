@@ -34,6 +34,7 @@ import {
   ORGANIZATION_OFFBOARDING_FINALIZE_MOCK_INADMISSIBLE_CODE,
 } from './organization-offboarding-finalization.policy';
 import { isPhaseComplete } from './organization-offboarding-execution.phases';
+import { mergeOffboardingProgressPreservingDimoOperatorFields } from './organization-offboarding-dimo-progress-preservation';
 import {
   parseExecutionProgress,
   toProgressJson,
@@ -349,11 +350,12 @@ export class OrganizationOffboardingFinalizationService {
 
       await assertArchivalCommitHardBlockers(tx, input.organizationId);
 
-      const mergedProgress: OrganizationOffboardingExecutionProgress = {
-        ...stored,
-        ...input.progress,
-        finalizeLease: stored.finalizeLease,
-      };
+      const mergedProgress: OrganizationOffboardingExecutionProgress =
+        mergeOffboardingProgressPreservingDimoOperatorFields(stored, {
+          ...stored,
+          ...input.progress,
+          finalizeLease: stored.finalizeLease,
+        });
       this.assertProviderEvidenceAdmissible(mergedProgress);
       if (!providerAllowsArchiveAdmission(mergedProgress)) {
         throw new ConflictException({
@@ -489,11 +491,13 @@ export class OrganizationOffboardingFinalizationService {
       const row = await tx.organizationOffboardingJob.findUniqueOrThrow({ where: { id: jobId } });
       const stored = parseExecutionProgress(row.progressJson);
       requireActiveFinalizeLeaseToken(stored, leaseToken);
-      const merged = releaseFinalizeLease({
-        ...stored,
-        ...progress,
-        finalizeLease: stored.finalizeLease,
-      });
+      const merged = releaseFinalizeLease(
+        mergeOffboardingProgressPreservingDimoOperatorFields(stored, {
+          ...stored,
+          ...progress,
+          finalizeLease: stored.finalizeLease,
+        }),
+      );
       await tx.organizationOffboardingJob.update({
         where: { id: jobId },
         data: {

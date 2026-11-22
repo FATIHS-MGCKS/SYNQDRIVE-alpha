@@ -6,6 +6,7 @@ import {
   ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_EXPIRED_CODE,
 } from './organization-offboarding-execution.policy';
 import { isExecutionLeaseActive, executionLeaseTtlMs, releaseExecutionLease } from './organization-offboarding-execution.lease';
+import { mergeOffboardingProgressPreservingDimoOperatorFields } from './organization-offboarding-dimo-progress-preservation';
 import {
   parseExecutionProgress,
   toProgressJson,
@@ -61,7 +62,7 @@ function renewLeaseExpiry(
   };
 }
 
-async function lockJobRow(
+export async function lockOffboardingJobRowForUpdate(
   tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
   jobId: string,
 ): Promise<OffboardingJobLeaseRow> {
@@ -84,15 +85,17 @@ export async function persistJobUnderActiveLease(
   },
 ): Promise<OffboardingJobLeaseRow> {
   return prisma.$transaction(async (tx) => {
-    const row = await lockJobRow(tx, input.jobId);
+    const row = await lockOffboardingJobRowForUpdate(tx, input.jobId);
     const stored = parseExecutionProgress(row.progressJson);
     requireActiveLeaseToken(stored, input.leaseToken);
-    const merged: OrganizationOffboardingExecutionProgress = renewLeaseExpiry({
-      ...stored,
-      ...input.progress,
-      executionLease: stored.executionLease,
-      execution: stored.execution ?? input.progress.execution,
-    });
+    const merged: OrganizationOffboardingExecutionProgress = renewLeaseExpiry(
+      mergeOffboardingProgressPreservingDimoOperatorFields(stored, {
+        ...stored,
+        ...input.progress,
+        executionLease: stored.executionLease,
+        execution: stored.execution ?? input.progress.execution,
+      }),
+    );
     return tx.organizationOffboardingJob.update({
       where: { id: input.jobId },
       data: {
@@ -112,7 +115,7 @@ export async function releaseJobLeaseUnderActiveToken(
   leaseToken: string,
 ): Promise<OrganizationOffboardingExecutionProgress> {
   return prisma.$transaction(async (tx) => {
-    const row = await lockJobRow(tx, jobId);
+    const row = await lockOffboardingJobRowForUpdate(tx, jobId);
     const stored = parseExecutionProgress(row.progressJson);
     requireActiveLeaseToken(stored, leaseToken);
     const cleared = releaseExecutionLease(stored);

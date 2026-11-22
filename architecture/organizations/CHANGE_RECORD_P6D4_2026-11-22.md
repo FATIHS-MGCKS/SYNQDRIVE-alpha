@@ -78,3 +78,9 @@ Not certified from mocked provider tests. Separate owner approval required for `
 - **Privileged recheck:** `POST …/offboarding/dimo-privilege-recheck` — `verifyOrganizationPrivilegedReadOnly` when `ORGANIZATION_OFFBOARDING_DIMO_PRIVILEGE_RECHECK_ENABLED=1` (separate from `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE`); failure preserves prior `dimoPrivilegeVerification`.
 - **Operator handoff:** `POST …/offboarding/dimo-owner-handoff` — append-only `dimoOwnerHandoffs[]` + transactional `ActivityLog` (`RECORDED` only; not delivery proof).
 - **Progress schema:** `dimoPrivilegeVerification`, `dimoOwnerHandoffs` on job `progressJson`.
+
+## P6D4 DIMO HANDOFF PROGRESS CONCURRENCY (append)
+
+- **Merge policy:** `mergeOffboardingProgressPreservingDimoOperatorFields` on execution/finalization lease persists — newer verification + longer handoff list wins.
+- **Atomic DIMO writers:** `FOR UPDATE` row lock via `persistDimoPrivilegeVerificationUnderLock` / `persistDimoOwnerHandoffUnderLock`; block when org `ARCHIVED` or job `COMPLETED`.
+- **PG evidence:** opt-in `ORGANIZATION_OFFBOARDING_DIMO_PROGRESS_CONCURRENCY_POSTGRES=1` on disposable DBs.

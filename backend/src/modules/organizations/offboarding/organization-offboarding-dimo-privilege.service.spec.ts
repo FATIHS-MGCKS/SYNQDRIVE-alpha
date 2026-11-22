@@ -1,3 +1,9 @@
+jest.mock('./organization-offboarding-dimo-progress-persist', () => ({
+  persistDimoPrivilegeVerificationUnderLock: jest.fn().mockResolvedValue({}),
+  persistDimoOwnerHandoffUnderLock: jest.fn(),
+}));
+
+import { persistDimoPrivilegeVerificationUnderLock } from './organization-offboarding-dimo-progress-persist';
 import { OrganizationOffboardingDimoPrivilegeService } from './organization-offboarding-dimo-privilege.service';
 import { OrganizationOffboardingDimoLiveDisconnectAdapter } from './organization-offboarding-dimo-live-disconnect.adapter';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
@@ -123,6 +129,6 @@ describe('OrganizationOffboardingDimoPrivilegeService', () => {
 
     expect(dimoLive.verifyOrganizationPrivilegedReadOnly).toHaveBeenCalledWith('org-1');
     expect(result.providerCheckStatus).toBe('CONFIRMED_ABSENT');
-    expect(prisma.organizationOffboardingJob.update).toHaveBeenCalled();
+    expect(persistDimoPrivilegeVerificationUnderLock).toHaveBeenCalled();
   });
 });

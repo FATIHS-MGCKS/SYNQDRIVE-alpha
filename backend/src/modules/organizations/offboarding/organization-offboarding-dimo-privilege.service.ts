@@ -21,6 +21,7 @@ import {
   isDimoPrivilegeRecheckEnabled,
 } from './organization-offboarding-dimo-privilege.policy';
 import type {
+  DimoOwnerHandoffRecord,
   OrganizationDimoOwnerHandoffRequest,
   OrganizationDimoOwnerHandoffResult,
   OrganizationDimoPrivilegeRecheckResult,
@@ -38,11 +39,8 @@ import {
 import {
   ORGANIZATION_OFFBOARDING_ACTIVE_JOB_STATUSES,
 } from './organization-offboard-preflight.reason-codes';
-import {
-  parseExecutionProgress,
-  toProgressJson,
-  type OrganizationOffboardingExecutionProgress,
-} from './organization-offboarding-execution.progress';
+import { persistDimoOwnerHandoffUnderLock, persistDimoPrivilegeVerificationUnderLock } from './organization-offboarding-dimo-progress-persist';
+import { parseExecutionProgress } from './organization-offboarding-execution.progress';
 
 function organizationOffboardingDimoHandoffLockKey(organizationId: string): string {
   return `organization-offboarding-dimo-handoff:${organizationId}`;
@@ -101,8 +99,8 @@ export class OrganizationOffboardingDimoPrivilegeService {
     }
 
     const { job, orgStatus } = await this.assertActiveOffboardingContext(organizationId);
-    const progressBefore = parseExecutionProgress(job.progressJson);
     const inventory = await this.loadOrgDimoInventory(organizationId);
+    const progressBefore = parseExecutionProgress(job.progressJson);
     const previousSnapshot = extractPrivilegedSnapshot(progressBefore);
 
     if (!isDimoPrivilegeRecheckEnabled()) {
@@ -152,14 +150,10 @@ export class OrganizationOffboardingDimoPrivilegeService {
       providerEvidenceSummary: summarizeProviderEvidence(live),
     };
 
-    const nextProgress: OrganizationOffboardingExecutionProgress = {
-      ...progressBefore,
-      dimoPrivilegeVerification: verificationBlock,
-    };
-
-    await this.prisma.organizationOffboardingJob.update({
-      where: { id: job.id },
-      data: { progressJson: toProgressJson(nextProgress) },
+    await persistDimoPrivilegeVerificationUnderLock(this.prisma, {
+      organizationId,
+      jobId: job.id,
+      verification: verificationBlock,
     });
 
     void this.masterAudit.record({
@@ -236,6 +230,7 @@ export class OrganizationOffboardingDimoPrivilegeService {
           status: { in: [...ORGANIZATION_OFFBOARDING_ACTIVE_JOB_STATUSES] },
         },
         orderBy: { createdAt: 'desc' },
+        select: { id: true, correlationId: true },
       });
       if (!job) {
         throw new ConflictException({
@@ -255,18 +250,6 @@ export class OrganizationOffboardingDimoPrivilegeService {
         });
       }
 
-      const progress = parseExecutionProgress(job.progressJson);
-      const existingHandoffs = progress.dimoOwnerHandoffs ?? [];
-      const replay = existingHandoffs.find((h) => h.idempotencyKey === request.idempotencyKey);
-      if (replay) {
-        return {
-          handoff: replay,
-          idempotentReplay: true,
-          handoffsRecorded: existingHandoffs.length,
-        };
-      }
-
-      const snapshotRef = progress.dimoPrivilegeVerification?.verificationSnapshotReference ?? null;
       const handoff = {
         handoffId: randomUUID(),
         requestedAt: new Date().toISOString(),
@@ -275,20 +258,32 @@ export class OrganizationOffboardingDimoPrivilegeService {
         jobId: job.id,
         idempotencyKey: request.idempotencyKey,
         affectedVehicleIds,
-        verificationSnapshotReference: snapshotRef,
+        verificationSnapshotReference: null,
         status: 'RECORDED' as const,
       };
 
-      const mergedHandoffs = [...existingHandoffs, handoff].slice(-DIMO_OWNER_HANDOFF_MAX_RECORDS);
-      const nextProgress: OrganizationOffboardingExecutionProgress = {
-        ...progress,
-        dimoOwnerHandoffs: mergedHandoffs,
-      };
+      let idempotentReplay = false;
+      let replayHandoff: DimoOwnerHandoffRecord = handoff;
+      let mergedHandoffs: DimoOwnerHandoffRecord[] = [];
 
-      await tx.organizationOffboardingJob.update({
-        where: { id: job.id },
-        data: { progressJson: toProgressJson(nextProgress) },
+      const persisted = await persistDimoOwnerHandoffUnderLock(tx, {
+        organizationId,
+        jobId: job.id,
+        appendHandoff: handoff,
+        maxRecords: DIMO_OWNER_HANDOFF_MAX_RECORDS,
+        onDuplicateIdempotency: (existing) => {
+          idempotentReplay = true;
+          replayHandoff = existing;
+        },
       });
+      mergedHandoffs = persisted.handoffs;
+      if (idempotentReplay) {
+        return {
+          handoff: replayHandoff,
+          idempotentReplay: true,
+          handoffsRecorded: mergedHandoffs.length,
+        };
+      }
 
       await tx.activityLog.create({
         data: {
@@ -305,7 +300,7 @@ export class OrganizationOffboardingDimoPrivilegeService {
             handoffId: handoff.handoffId,
             idempotencyKey: request.idempotencyKey,
             affectedVehicleCount: affectedVehicleIds.length,
-            verificationSnapshotReference: snapshotRef,
+            verificationSnapshotReference: handoff.verificationSnapshotReference,
             status: handoff.status,
           },
         },
@@ -324,12 +319,12 @@ export class OrganizationOffboardingDimoPrivilegeService {
           handoffId: handoff.handoffId,
           idempotencyKey: request.idempotencyKey,
           affectedVehicleIds,
-          verificationSnapshotReference: snapshotRef,
+          verificationSnapshotReference: handoff.verificationSnapshotReference,
         },
       });
 
       return {
-        handoff,
+        handoff: persisted.handoffs[persisted.handoffs.length - 1] ?? handoff,
         idempotentReplay: false,
         handoffsRecorded: mergedHandoffs.length,
       };
