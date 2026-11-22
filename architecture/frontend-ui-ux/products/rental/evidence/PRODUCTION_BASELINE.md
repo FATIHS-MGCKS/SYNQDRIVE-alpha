@@ -8,6 +8,6 @@
 | **Route** | `GET https://app.synqdrive.eu/rental` → `200` shell, title “Rental Operations – SynqDrive” (CONFIRMED) |
 | **Bundle trace** | `FleetHubView`, `/rental` in deployed JS (CONFIRMED) |
 
-**AUTHENTICATED_FUNCTIONAL_UI_VERIFIED:** **UNKNOWN**.
+**AUTHENTICATED_FUNCTIONAL_UI_VERIFIED:** **BLOCKED** — P8 no approved session.
 
 **Cross-product report:** [`../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md`](../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md)

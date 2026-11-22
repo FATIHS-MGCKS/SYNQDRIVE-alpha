@@ -8,6 +8,6 @@
 | **Routes** | `/operator`, `/operator/vehicles/<uuid>` → `200` SPA shell (CONFIRMED) |
 | **Bundle trace** | `OperatorShell`, `/operator` in deployed JS (CONFIRMED) |
 
-**AUTHENTICATED_FUNCTIONAL_UI_VERIFIED:** **UNKNOWN** (touch/E2E/deep-link client behavior not session-tested).
+**AUTHENTICATED_FUNCTIONAL_UI_VERIFIED:** **BLOCKED** — P8 no approved session (touch/device not tested).
 
 **Cross-product report:** [`../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md`](../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md)

@@ -1,18 +1,18 @@
 # Current State — Shared UI Design Foundation
 
-**Repository UI SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` (screen contracts) · **Repository `main`:** `874f69e61bbed8465c5e94cd88d91408ee281acc` (#2490 merged).
+**Repository UI SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` (screen contracts) · **Repository `main`:** `cac0065679cffedbeab41c7a758534d140db5f80` (#2492 merged).
 
-## Production (P7 read-only, CONFIRMED infra)
+## Production (P7 infra + P8 functional attempt)
 
 | Field | Value |
 |-------|-------|
 | Production release SHA | `1e6a267c8c7951e2a11633e89ab96714844ea846` (`2026-11-11`) |
-| Drift | **91** frontend paths `NOT_DEPLOYED` (`1e6a267c`→`413175e8c`); docs-only `main` delta needs **no** deploy for parity |
+| Drift | **108** paths `NOT_DEPLOYED` (`1e6a267c`→`main`); P7 **91** prod→inventory unchanged |
 | Served bundle | Single SPA: `index-Cn8n4pFR.js` + `index-DmctIvoe.css` |
 | Shared coupling at runtime | **CONFIRMED** — one bundle serves Master, Rental, Operator |
-| Authenticated UI | **UNKNOWN** |
+| Authenticated UI | **BLOCKED** — `AUTHENTICATED_ACCESS=BLOCKED_NO_APPROVED_SESSION` (P8) |
 
-Detail: [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md), [`evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md`](./evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md).
+Detail: [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md), [`evidence/AUTHENTICATED_UI_FUNCTIONAL_AUDIT_2026-11-22.md`](./evidence/AUTHENTICATED_UI_FUNCTIONAL_AUDIT_2026-11-22.md).
 
 ## Executive summary
 
