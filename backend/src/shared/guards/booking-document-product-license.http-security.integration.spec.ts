@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { OrgProductStatus, ProductSlug } from '@prisma/client';
+import { OrganizationStatus, OrgProductStatus, ProductSlug } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
@@ -66,17 +66,28 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
         }) => {
           if (args.where.status && args.where.status !== 'ACTIVE') return null;
           if (args.where.organizationId === ORG_A && args.where.userId === 'worker-a') {
-            return { id: 'mem-1', role: 'WORKER', permissions: {} };
+            return {
+              id: 'mem-1',
+              role: 'WORKER',
+              permissions: {},
+              organization: { status: OrganizationStatus.ACTIVE },
+            };
           }
           if (args.where.organizationId === ORG_A && args.where.userId === 'worker-perm-a') {
             return {
               id: 'mem-1p',
               role: 'WORKER',
               permissions: { bookings: { read: true, write: false, manage: false } },
+              organization: { status: OrganizationStatus.ACTIVE },
             };
           }
           if (args.where.organizationId === ORG_B && args.where.userId === 'worker-b') {
-            return { id: 'mem-2', role: 'WORKER', permissions: { bookings: { read: true } } };
+            return {
+              id: 'mem-2',
+              role: 'WORKER',
+              permissions: { bookings: { read: true } },
+              organization: { status: OrganizationStatus.ACTIVE },
+            };
           }
           return null;
         },
