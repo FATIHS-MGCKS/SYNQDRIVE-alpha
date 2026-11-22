@@ -1,0 +1,40 @@
+import { ForbiddenException } from '@nestjs/common';
+
+export const ORGANIZATION_OFFBOARDING_EXECUTION_DISABLED_CODE =
+  'ORGANIZATION_OFFBOARDING_EXECUTION_DISABLED';
+
+export const ORGANIZATION_OFFBOARDING_EXECUTION_CONFIRMATION_CODE =
+  'ORGANIZATION_OFFBOARDING_EXECUTION_CONFIRM_REQUIRED';
+
+export const ORGANIZATION_OFFBOARDING_NO_PREPARED_JOB_CODE =
+  'ORGANIZATION_OFFBOARDING_NO_PREPARED_JOB';
+
+export const ORGANIZATION_OFFBOARDING_EXECUTION_CONFLICT_CODE =
+  'ORGANIZATION_OFFBOARDING_EXECUTION_CONFLICT';
+
+export const ORGANIZATION_OFFBOARDING_EXECUTION_REVALIDATE_BLOCKED_CODE =
+  'ORGANIZATION_OFFBOARDING_EXECUTION_REVALIDATE_BLOCKED';
+
+export const ORGANIZATION_OFFBOARDING_VEHICLE_BATCH_BLOCKED_CODE =
+  'ORGANIZATION_OFFBOARDING_VEHICLE_BATCH_BLOCKED';
+
+export const ORGANIZATION_OFFBOARDING_PROVIDER_QUIESCE_INCOMPLETE_CODE =
+  'ORGANIZATION_OFFBOARDING_PROVIDER_QUIESCE_INCOMPLETE';
+
+export const OFFBOARDING_EXECUTION_CONFIRM_VALUE = 'CONFIRM_ORGANIZATION_OFFBOARDING_EXECUTION';
+
+export function isOrganizationOffboardingExecutionEnabled(): boolean {
+  return process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED === '1';
+}
+
+/** Fail-closed in production until owner arms execution (P6D3/P6D4 certification). */
+export function assertOrganizationOffboardingExecutionAdmitted(): void {
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  if (nodeEnv === 'production' && !isOrganizationOffboardingExecutionEnabled()) {
+    throw new ForbiddenException({
+      code: ORGANIZATION_OFFBOARDING_EXECUTION_DISABLED_CODE,
+      message:
+        'Organization offboarding execution is disabled in production until P6D4 certification',
+    });
+  }
+}
