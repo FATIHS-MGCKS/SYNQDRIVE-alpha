@@ -11,6 +11,8 @@ import {
   acquirePgAdvisoryXactLock,
   organizationOffboardingPrepareLockKey,
 } from '@shared/database/pg-advisory-lock.util';
+import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
+import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { OrganizationOffboardPreflightService } from './organization-offboard-preflight.service';
 import { fingerprintOffboardingPrepareRequest } from './organization-offboarding.fingerprint';
 import type {
@@ -62,6 +64,7 @@ export class OrganizationOffboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly preflight: OrganizationOffboardPreflightService,
+    private readonly masterAudit: MasterAdminAuditService,
   ) {}
 
   async getPreflight(organizationId: string): Promise<OrganizationOffboardPreflightSnapshot> {
@@ -89,14 +92,7 @@ export class OrganizationOffboardingService {
     request: OrganizationOffboardPrepareRequest,
     actorUserId: string | null,
   ): Promise<OrganizationOffboardingJobView> {
-    const idempotencyKey = request.idempotencyKey.trim();
-    if (!idempotencyKey) {
-      throw new ConflictException({
-        code: 'ORGANIZATION_OFFBOARDING_INVALID_REQUEST',
-        message: 'idempotencyKey is required',
-      });
-    }
-
+    const idempotencyKey = request.idempotencyKey;
     const fingerprint = fingerprintOffboardingPrepareRequest(request);
     const snapshot = await this.preflight.assess(organizationId);
 
@@ -116,11 +112,32 @@ export class OrganizationOffboardingService {
     }
 
     if (snapshot.hardBlockers.length > 0) {
+      const denialCorrelationId = randomUUID();
+      void this.masterAudit.record({
+        auditAction: MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED,
+        actorUserId: actorUserId ?? undefined,
+        targetOrganizationId: organizationId,
+        entityId: organizationId,
+        correlationId: denialCorrelationId,
+        description: 'Organization offboarding prepare denied (preflight blocked)',
+        reasonCode: ORGANIZATION_OFFBOARDING_PREFLIGHT_BLOCKED_CODE,
+        route: 'POST /admin/organizations/:organizationId/offboarding/prepare',
+        httpMethod: 'POST',
+        httpStatus: 409,
+        metadata: {
+          hardBlockerCount: snapshot.hardBlockers.length,
+          hardBlockers: snapshot.hardBlockers,
+          organizationStatus: snapshot.organizationStatus,
+          idempotencyKeyPresent: true,
+        },
+        level: 'WARN',
+      });
       throw new ConflictException({
         code: ORGANIZATION_OFFBOARDING_PREFLIGHT_BLOCKED_CODE,
         message: 'Organization offboarding preflight blocked',
         hardBlockers: snapshot.hardBlockers,
         preflight: snapshot,
+        correlationId: denialCorrelationId,
       });
     }
 
@@ -177,6 +194,28 @@ export class OrganizationOffboardingService {
         });
         return { row, replay: false as const };
       });
+
+      if (!created.replay) {
+        void this.masterAudit.record({
+          auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
+          actorUserId: actorUserId ?? undefined,
+          targetOrganizationId: organizationId,
+          entityId: created.row.id,
+          correlationId: created.row.correlationId,
+          description: 'Organization offboarding prepare job created',
+          reasonCode: 'ORG_OFFBOARDING_PREPARE_PREPARED',
+          route: 'POST /admin/organizations/:organizationId/offboarding/prepare',
+          httpMethod: 'POST',
+          httpStatus: 201,
+          metadata: {
+            jobId: created.row.id,
+            jobStatus: created.row.status,
+            idempotencyKeyLength: idempotencyKey.length,
+            notePresent: Boolean(request.note?.trim()),
+          },
+          level: 'INFO',
+        });
+      }
 
       return toJobView(created.row, created.replay);
     } catch (error) {

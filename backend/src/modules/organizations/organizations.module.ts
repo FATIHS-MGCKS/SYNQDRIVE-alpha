@@ -9,6 +9,7 @@ import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { VehicleOnboardingModule } from '@modules/vehicle-onboarding/vehicle-onboarding.module';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { OrganizationOffboardingController } from './offboarding/organization-offboarding.controller';
 import { OrganizationOffboardingService } from './offboarding/organization-offboarding.service';
 import { OrganizationOffboardPreflightService } from './offboarding/organization-offboard-preflight.service';
@@ -21,6 +22,7 @@ import { OrganizationOffboardPreflightService } from './offboarding/organization
     BillingModule,
     forwardRef(() => VehicleOnboardingModule),
     IamDataRetentionModule,
+    ActivityLogModule,
   ],
   controllers: [
     OrganizationsController,

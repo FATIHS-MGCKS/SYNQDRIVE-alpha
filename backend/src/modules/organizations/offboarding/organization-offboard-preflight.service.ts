@@ -43,11 +43,13 @@ export class OrganizationOffboardPreflightService {
 
     if (org.status === OrganizationStatus.ARCHIVED) {
       hardBlockers.push('ORGANIZATION_ALREADY_ARCHIVED');
+    } else if (org.status === OrganizationStatus.PENDING) {
+      hardBlockers.push('INVALID_ORGANIZATION_STATUS');
     } else if (
       org.status !== OrganizationStatus.ACTIVE &&
       org.status !== OrganizationStatus.SUSPENDED
     ) {
-      warnings.push('NON_ACTIVE_ORGANIZATION_STATUS');
+      hardBlockers.push('INVALID_ORGANIZATION_STATUS');
     }
 
     const activeVehicles = await this.prisma.vehicle.findMany({

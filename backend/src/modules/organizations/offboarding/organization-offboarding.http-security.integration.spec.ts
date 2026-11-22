@@ -115,6 +115,34 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
     expect(res.status).toBe(403);
   });
 
+  it('D1 — prepare rejects missing idempotencyKey with 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/admin/organizations/${orgId}/offboarding/prepare`)
+      .set(...auth(master))
+      .send({});
+    expect(res.status).toBe(400);
+    expect(offboarding.prepare).not.toHaveBeenCalled();
+  });
+
+  it('D2 — prepare rejects null body with 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/admin/organizations/${orgId}/offboarding/prepare`)
+      .set(...auth(master))
+      .set('Content-Type', 'application/json')
+      .send('null');
+    expect(res.status).toBe(400);
+    expect(offboarding.prepare).not.toHaveBeenCalled();
+  });
+
+  it('D3 — prepare rejects unknown fields with 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/admin/organizations/${orgId}/offboarding/prepare`)
+      .set(...auth(master))
+      .send({ idempotencyKey: 'k', organizationId: 'evil' });
+    expect(res.status).toBe(400);
+    expect(offboarding.prepare).not.toHaveBeenCalled();
+  });
+
   it('E — prepare delegates to service', async () => {
     offboarding.prepare.mockResolvedValue({
       jobId: 'job-1',

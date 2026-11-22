@@ -6,7 +6,7 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
-import type { OrganizationOffboardPrepareRequest } from './organization-offboarding.types';
+import { parseOrganizationOffboardingPrepareBody } from './organization-offboarding-prepare.validation';
 
 type AuthedRequest = Request & { user?: { id?: string; sub?: string } };
 
@@ -30,10 +30,11 @@ export class OrganizationOffboardingController {
   @HttpCode(201)
   prepare(
     @Param('organizationId') organizationId: string,
-    @Body() body: OrganizationOffboardPrepareRequest,
+    @Body() body: unknown,
     @Req() req: AuthedRequest,
   ) {
-    return this.offboarding.prepare(organizationId, body, this.actorId(req));
+    const parsed = parseOrganizationOffboardingPrepareBody(body);
+    return this.offboarding.prepare(organizationId, parsed, this.actorId(req));
   }
 
   @Get()

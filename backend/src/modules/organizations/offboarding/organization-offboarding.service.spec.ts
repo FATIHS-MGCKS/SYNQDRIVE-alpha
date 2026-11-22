@@ -20,7 +20,13 @@ describe('OrganizationOffboardingService', () => {
     $transaction: jest.fn(),
   };
 
-  const service = new OrganizationOffboardingService(prisma as never, preflight);
+  const masterAudit = { record: jest.fn().mockResolvedValue(undefined) };
+
+  const service = new OrganizationOffboardingService(
+    prisma as never,
+    preflight,
+    masterAudit as never,
+  );
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -99,5 +105,11 @@ describe('OrganizationOffboardingService', () => {
         code: 'ORGANIZATION_OFFBOARDING_PREFLIGHT_BLOCKED',
       }),
     });
+    expect(masterAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reasonCode: 'ORGANIZATION_OFFBOARDING_PREFLIGHT_BLOCKED',
+        targetOrganizationId: 'org-1',
+      }),
+    );
   });
 });
