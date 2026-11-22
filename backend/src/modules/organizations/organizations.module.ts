@@ -21,6 +21,7 @@ import { OrganizationOffboardingController } from './offboarding/organization-of
 import { OrganizationOffboardingService } from './offboarding/organization-offboarding.service';
 import { OrganizationOffboardPreflightService } from './offboarding/organization-offboard-preflight.service';
 import { OrganizationOffboardingDimoLiveDisconnectAdapter } from './offboarding/organization-offboarding-dimo-live-disconnect.adapter';
+import { OrganizationOffboardingDimoPrivilegeService } from './offboarding/organization-offboarding-dimo-privilege.service';
 import { OrganizationOffboardingHmLiveDisconnectAdapter } from './offboarding/organization-offboarding-hm-live-disconnect.adapter';
 
 @Module({
@@ -51,6 +52,7 @@ import { OrganizationOffboardingHmLiveDisconnectAdapter } from './offboarding/or
     OrganizationOffboardingProviderDisconnectService,
     OrganizationOffboardingHmLiveDisconnectAdapter,
     OrganizationOffboardingDimoLiveDisconnectAdapter,
+    OrganizationOffboardingDimoPrivilegeService,
   ],
   exports: [
     OrganizationsService,

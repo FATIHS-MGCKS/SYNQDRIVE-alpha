@@ -41,7 +41,24 @@ export class OrganizationOffboardingDimoLiveDisconnectAdapter {
     @Inject(dimoConfig.KEY) private readonly dimo: ConfigType<typeof dimoConfig>,
   ) {}
 
+  /**
+   * Paginated Identity privileged read + org token compare only (no local connection gate).
+   * Used for operator privilege recheck — not org disconnect confirmation.
+   */
+  async verifyOrganizationPrivilegedReadOnly(
+    organizationId: string,
+  ): Promise<OrganizationProviderLiveChannelResult> {
+    return this.verifyOrganizationIdentityPrivileged(organizationId, { requireLocalDisconnected: false });
+  }
+
   async verifyOrganizationDisconnect(organizationId: string): Promise<OrganizationProviderLiveChannelResult> {
+    return this.verifyOrganizationIdentityPrivileged(organizationId, { requireLocalDisconnected: true });
+  }
+
+  private async verifyOrganizationIdentityPrivileged(
+    organizationId: string,
+    options: { requireLocalDisconnected: boolean },
+  ): Promise<OrganizationProviderLiveChannelResult> {
     const attemptedAt = new Date().toISOString();
     const operations: Array<Record<string, unknown>> = [];
 
@@ -188,19 +205,21 @@ export class OrganizationOffboardingDimoLiveDisconnectAdapter {
       };
     }
 
-    const connectedCount = orgTokens.filter((v) => v.dimoVehicle?.connectionStatus === 'CONNECTED').length;
-    if (connectedCount > 0) {
-      return {
-        outcome: 'NOT_AVAILABLE',
-        detailCode: 'DIMO_LOCAL_CONNECTION_STILL_CONNECTED',
-        providerEvidence: {
-          attemptedAt,
-          organizationId,
-          provider: 'DIMO',
-          operations,
-          summary: { connectedCount },
-        },
-      };
+    if (options.requireLocalDisconnected) {
+      const connectedCount = orgTokens.filter((v) => v.dimoVehicle?.connectionStatus === 'CONNECTED').length;
+      if (connectedCount > 0) {
+        return {
+          outcome: 'NOT_AVAILABLE',
+          detailCode: 'DIMO_LOCAL_CONNECTION_STILL_CONNECTED',
+          providerEvidence: {
+            attemptedAt,
+            organizationId,
+            provider: 'DIMO',
+            operations,
+            summary: { connectedCount },
+          },
+        };
+      }
     }
 
     return {

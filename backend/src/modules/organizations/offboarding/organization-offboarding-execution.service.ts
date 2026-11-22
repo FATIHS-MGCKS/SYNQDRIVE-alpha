@@ -47,6 +47,7 @@ import {
   isPhaseComplete,
   type OrganizationOffboardingExecutionPhase,
 } from './organization-offboarding-execution.phases';
+import { mergeOffboardingProgressPreservingDimoOperatorFields } from './organization-offboarding-dimo-progress-preservation';
 import {
   parseExecutionProgress,
   toProgressJson,
@@ -331,12 +332,15 @@ export class OrganizationOffboardingExecutionService {
         membershipVersionsBumped: memberships.length,
       };
 
-      const merged: OrganizationOffboardingExecutionProgress = {
-        ...stored,
-        ...workingProgress,
-        sessions,
-        executionLease: stored.executionLease,
-      };
+      const merged: OrganizationOffboardingExecutionProgress = mergeOffboardingProgressPreservingDimoOperatorFields(
+        stored,
+        {
+          ...stored,
+          ...workingProgress,
+          sessions,
+          executionLease: stored.executionLease,
+        },
+      );
       if (stored.executionLease) {
         merged.executionLease = {
           ...stored.executionLease,

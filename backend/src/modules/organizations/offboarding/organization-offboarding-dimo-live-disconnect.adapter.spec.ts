@@ -24,6 +24,25 @@ describe('OrganizationOffboardingDimoLiveDisconnectAdapter', () => {
     prisma.vehicleProviderConsent.count.mockResolvedValue(0);
   });
 
+  it('privileged read-only confirms absent despite CONNECTED local status', async () => {
+    prisma.vehicle.findMany.mockResolvedValue([
+      { id: 'v1', dimoVehicle: { tokenId: 999, connectionStatus: 'CONNECTED', externalId: 'e1' } },
+    ]);
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        data: { vehicles: { nodes: [], pageInfo: pageInfoDone } },
+      },
+    });
+
+    const adapter = new OrganizationOffboardingDimoLiveDisconnectAdapter(prisma as never, dimo as never);
+    const disconnect = await adapter.verifyOrganizationDisconnect('org-priv-ro');
+    expect(disconnect.outcome).toBe('NOT_AVAILABLE');
+    expect(disconnect.detailCode).toBe('DIMO_LOCAL_CONNECTION_STILL_CONNECTED');
+
+    const readOnly = await adapter.verifyOrganizationPrivilegedReadOnly('org-priv-ro');
+    expect(readOnly.outcome).toBe('CONFIRMED');
+  });
+
   it('fails closed when org tokens still privileged', async () => {
     prisma.vehicle.findMany.mockResolvedValue([
       { id: 'v1', dimoVehicle: { tokenId: 42, connectionStatus: 'DISCONNECTED', externalId: 'e1' } },

@@ -8,6 +8,8 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
 import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
 import { OrganizationOffboardingFinalizationService } from './organization-offboarding-finalization.service';
+import { OrganizationOffboardingDimoPrivilegeService } from './organization-offboarding-dimo-privilege.service';
+import { parseOrganizationDimoOwnerHandoffBody } from './organization-offboarding-dimo-owner-handoff.validation';
 import { parseOrganizationOffboardingPrepareBody } from './organization-offboarding-prepare.validation';
 import { parseOrganizationOffboardingExecuteBody } from './organization-offboarding-execute.validation';
 import { parseOrganizationOffboardingFinalizeBody } from './organization-offboarding-finalize.validation';
@@ -23,6 +25,7 @@ export class OrganizationOffboardingController {
     private readonly offboarding: OrganizationOffboardingService,
     private readonly execution: OrganizationOffboardingExecutionService,
     private readonly finalization: OrganizationOffboardingFinalizationService,
+    private readonly dimoPrivilege: OrganizationOffboardingDimoPrivilegeService,
   ) {}
 
   private actorId(req: AuthedRequest): string | null {
@@ -70,5 +73,27 @@ export class OrganizationOffboardingController {
   @Get()
   getJob(@Param('organizationId') organizationId: string) {
     return this.offboarding.getLatestJob(organizationId);
+  }
+
+  @Get('dimo-privilege-status')
+  getDimoPrivilegeStatus(@Param('organizationId') organizationId: string) {
+    return this.dimoPrivilege.getDimoPrivilegeStatus(organizationId);
+  }
+
+  @Post('dimo-privilege-recheck')
+  @HttpCode(200)
+  recheckDimoPrivileges(@Param('organizationId') organizationId: string, @Req() req: AuthedRequest) {
+    return this.dimoPrivilege.recheckDimoPrivileges(organizationId, this.actorId(req));
+  }
+
+  @Post('dimo-owner-handoff')
+  @HttpCode(201)
+  recordDimoOwnerHandoff(
+    @Param('organizationId') organizationId: string,
+    @Body() body: unknown,
+    @Req() req: AuthedRequest,
+  ) {
+    const parsed = parseOrganizationDimoOwnerHandoffBody(body);
+    return this.dimoPrivilege.recordDimoOwnerHandoff(organizationId, parsed, this.actorId(req));
   }
 }

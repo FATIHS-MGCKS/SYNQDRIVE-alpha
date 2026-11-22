@@ -22,5 +22,6 @@
 ## Production gates (remain OFF)
 
 - `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE=1` — required for live adapter path
+- `ORGANIZATION_OFFBOARDING_DIMO_PRIVILEGE_RECHECK_ENABLED=1` — read-only Identity recheck for operator handoff (no HM DELETE / no local quiesce)
 - `ORGANIZATION_OFFBOARDING_PROVIDER_MOCK_ALLOWED` — test-only mocks
 - `ORGANIZATION_OFFBOARDING_FINALIZATION_ENABLED` — separate P6D4 gate

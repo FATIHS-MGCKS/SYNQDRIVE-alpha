@@ -15,6 +15,7 @@ Recorded in [`CHANGE_RECORD_P6D2_2026-11-22.md`](CHANGE_RECORD_P6D2_2026-11-22.m
 - Master Admin HTTP: preflight / prepare / get job
 - **P6D3 (merged):** controlled execution through `READY_FOR_ARCHIVE` (no `ARCHIVED` / job `COMPLETED`)
 - **P6D4 (draft):** archival finalization API, provider disconnect assessment, ARCHIVED PATCH guard, SUSPENDED routine polling policy — [`CHANGE_RECORD_P6D4_2026-11-22.md`](CHANGE_RECORD_P6D4_2026-11-22.md)
+- **P6D4 DIMO owner handoff (backend):** read-only privilege status, explicit Identity recheck, operator handoff records — same change record append
 
 ## Validation
 
