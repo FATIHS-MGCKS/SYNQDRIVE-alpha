@@ -12,8 +12,8 @@
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` (code inspected for UI contracts) |
 | **REPO_AUDIT_BASELINE_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
-| **AUDIT_BRANCH_SHA** | `4256fc8b785e228c10d3bcf88b7466d8bef493ed` (PR #2490 repository closeout) |
-| **VALIDATION_RUN_SHA** | `4256fc8b785e228c10d3bcf88b7466d8bef493ed` (last green `validate-graph.sh` + registry on branch) |
+| **AUDIT_BRANCH_SHA** | `12cb2e87330a984df32d6cdd74c79e60883eb9fe` (PR #2490 repository closeout) |
+| **VALIDATION_RUN_SHA** | `12cb2e87330a984df32d6cdd74c79e60883eb9fe` (last green `validate-graph.sh` + registry on branch) |
 | **PRIOR_READ_ONLY_AUDIT_SHA** | `01bd08a4cca0a846441f5a96d12d93fca9ba1fb8` (Cloud Agent UI/UX audit — reconciled where code unchanged) |
 | **PRODUCTION_AUDITED_AT** | `N/A` |
 | **PRODUCTION_ACCESS** | `PRODUCTION_ACCESS_UNAVAILABLE` (task forbids Production writes; no owner-authorized UI browser audit) |
