@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Sidebar, type MasterView } from './components/Sidebar';
 import { MasterGlobalChrome } from './components/MasterGlobalChrome';
@@ -48,6 +48,7 @@ import { api, getErrorMessage } from '../lib/api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { OrganizationsOperationalRefreshProvider, useOrganizationsOperationalRefresh } from './organizations/organizations-operational-refresh';
 import { useMasterOrganizationPatch } from './organizations/useMasterOrganizationPatch';
+import { useMasterOrganizationIamMutations } from './organizations/useMasterOrganizationIamMutations';
 import { classifyMasterOrgPatchError } from './organizations/master-organization-patch';
 import { classifyCreateOrgRefreshOutcome } from './organizations/organizations-operational-create-outcome';
 import { MasterAdminShell, PageContainer } from './shell';
@@ -128,6 +129,7 @@ function MasterAppInner() {
   const { t } = useLanguage();
   const { refreshOperationalList } = useOrganizationsOperationalRefresh();
   const { patchOrganization, retryPendingAfterStepUp, clearPending } = useMasterOrganizationPatch();
+  const iamMutations = useMasterOrganizationIamMutations();
   const initialNav = readInitialMasterNavLocation();
   const [currentView, setCurrentView] = useState<MasterView>(initialNav.view);
   const [settingsTab, setSettingsTab] = useState<string>(initialNav.settingsTab ?? 'general');
@@ -141,6 +143,7 @@ function MasterAppInner() {
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [stepUpAction, setStepUpAction] = useState<string | undefined>();
+  const skipMfaCancelCleanupRef = useRef(false);
 
   useEffect(() => {
     const onStepUp = (event: Event) => {
@@ -445,13 +448,20 @@ function MasterAppInner() {
             action={stepUpAction}
             onClose={() => {
               setStepUpOpen(false);
+              if (skipMfaCancelCleanupRef.current) {
+                skipMfaCancelCleanupRef.current = false;
+                return;
+              }
               clearPending();
+              iamMutations.clearPending();
             }}
             onSuccess={() => {
+              skipMfaCancelCleanupRef.current = true;
               void (async () => {
                 try {
-                  const retried = await retryPendingAfterStepUp();
-                  if (retried) {
+                  const retriedOrg = await retryPendingAfterStepUp();
+                  const retriedIam = await iamMutations.retryPendingAfterStepUp();
+                  if (retriedOrg || retriedIam) {
                     toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
                     return;
                   }
@@ -462,6 +472,9 @@ function MasterAppInner() {
                       error: getErrorMessage(e),
                     }),
                   );
+                } finally {
+                  skipMfaCancelCleanupRef.current = false;
+                  setStepUpOpen(false);
                 }
               })();
             }}
@@ -497,6 +510,17 @@ function MasterAppInner() {
               }}
               onPatchOrganization={handlePatchOrganization}
               onRefreshOperationalList={refreshOperationalList}
+              iamMutations={iamMutations}
+              onNavigateSecurityAccess={(nav) => {
+                navigateMaster('security-access', { orgId: selectedOrgId, keepOrg: true });
+                syncSecurityAccessUrl({
+                  section: nav.section,
+                  organizationId: selectedOrgId,
+                  userId: nav.userId ?? null,
+                  roleId: nav.roleId ?? null,
+                  roleScope: nav.section === 'roles' ? 'organization' : null,
+                });
+              }}
               onOpenBillingCenter={(orgId) => {
                 setBillingFocusOrgId(orgId);
                 navigateMaster('billing');

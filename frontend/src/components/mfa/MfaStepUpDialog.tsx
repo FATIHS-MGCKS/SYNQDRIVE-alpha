@@ -39,7 +39,6 @@ export function MfaStepUpDialog({ open, action, onClose, onSuccess }: MfaStepUpD
       setCode('');
       setRecoveryCode('');
       onSuccess();
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {

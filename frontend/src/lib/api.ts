@@ -3058,6 +3058,7 @@ export interface OrgUserDto {
   permissions: MembershipPermissionsMap | null;
   status: string;
   membershipStatus: string;
+  globalUserStatus?: string;
   lastActive: string;
   lastLoginAt: string;
   createdAt: string;

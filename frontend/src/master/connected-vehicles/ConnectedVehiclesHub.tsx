@@ -267,6 +267,8 @@ export function ConnectedVehiclesHub({
         return;
       }
       toast.error(err instanceof Error ? err.message : t('master.cv.offboard.error.generic'));
+    } finally {
+      setMfaOpen(false);
     }
   }, [finishOffboardSuccess, offboard, t]);
 

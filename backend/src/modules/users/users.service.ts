@@ -30,7 +30,12 @@ import { UserAccessAuditAction } from './user-access-audit.service';
 import { IamAuditService } from './iam-audit.service';
 import { IamMembershipLifecycleService } from './iam-membership-lifecycle.service';
 import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
-import { ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE } from './policies/org-membership-admin.policy';
+import {
+  ORG_ADMIN_DIRECT_PASSWORD_WRITE_MESSAGE,
+  ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE,
+  assertOrgAdminReprovisionDoesNotTouchGlobalIdentity,
+  assertOrgAdminUpdateDoesNotTouchGlobalIdentity,
+} from './policies/org-membership-admin.policy';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
 
 const ROLE_DISPLAY: Record<string, string> = {
@@ -378,7 +383,13 @@ export class UsersService {
 
       if (existingMembership) {
         if (existingMembership.status === MembershipStatus.REMOVED) {
-          return this.reactivateOrgUser(orgId, existing.id, dto, existingMembership.id);
+          return this.reactivateOrgUser(
+            orgId,
+            existing.id,
+            dto,
+            existingMembership.id,
+            actor,
+          );
         }
         throw new BadRequestException(
           'User already exists in this organization',
@@ -421,19 +432,7 @@ export class UsersService {
           },
         });
       } else if (passwordHash) {
-        await tx.user.update({
-          where: { id: user.id },
-          data: {
-            passwordHash,
-            mustChangePassword: true,
-            firstName: dto.firstName || user.firstName,
-            lastName: dto.lastName || user.lastName,
-            name: fullName || user.name,
-            phone: dto.phone || user.phone,
-            mobile: dto.mobile || user.mobile,
-            address: dto.address || user.address,
-          },
-        });
+        throw new BadRequestException(ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE);
       }
 
       const membership = await tx.organizationMembership.create({
@@ -486,51 +485,33 @@ export class UsersService {
     return mapped;
   }
 
-  private   async reactivateOrgUser(
+  private async reactivateOrgUser(
     orgId: string,
     userId: string,
     dto: CreateOrgUserDto,
     membershipId: string,
-    actor?: PermissionActor,
+    actor: PermissionActor,
   ) {
+    if (dto.password) {
+      throw new BadRequestException(ORG_ADMIN_EXISTING_USER_PASSWORD_MESSAGE);
+    }
+    if (actor.platformRole !== 'MASTER_ADMIN') {
+      assertOrgAdminReprovisionDoesNotTouchGlobalIdentity(dto);
+    }
+
     const roleFields = await this.resolveMembershipRoleFields(orgId, dto);
     await this.validateStationIds(orgId, roleFields.stationIds);
-
-    const fullName = buildDisplayName(dto.firstName, dto.lastName);
-    let passwordHash: string | undefined;
-    if (dto.password) {
-      this.assertPasswordStrength(dto.password);
-      passwordHash = await bcrypt.hash(dto.password, 10);
-    }
 
     const stationFields = this.resolveStationFields({
       stationScope: roleFields.stationScope,
       stationIds: roleFields.stationIds,
     });
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        name: fullName || undefined,
-        email: dto.email.toLowerCase().trim(),
-        phone: dto.phone || undefined,
-        mobile: dto.mobile || undefined,
-        address: dto.address || undefined,
-        language: dto.language || undefined,
-        timezone: dto.timezone || undefined,
-        dateFormat: dto.dateFormat || undefined,
-        status: UserStatus.ACTIVE,
-        ...(passwordHash ? { passwordHash, mustChangePassword: true } : {}),
-      },
-    });
-
     await this.lifecycle.reactivate({
       organizationId: orgId,
       userId,
       idempotencyKey: `membership-reactivate:${orgId}:${membershipId}`,
-      actor: { userId: actor?.id },
+      actor: { userId: actor.id },
       role: roleFields.role,
       organizationRoleId: roleFields.organizationRoleId,
       roleLabel: roleFields.roleLabel,
@@ -568,6 +549,10 @@ export class UsersService {
         USERS_ROLES_MODULE,
         'manage',
       );
+    }
+
+    if (actor.platformRole !== 'MASTER_ADMIN') {
+      assertOrgAdminUpdateDoesNotTouchGlobalIdentity(dto);
     }
 
     if (dto.role !== undefined && dto.role !== membership.role) {
@@ -616,10 +601,7 @@ export class UsersService {
       if (dto.language !== undefined) userUpdate.language = dto.language;
       if (dto.timezone !== undefined) userUpdate.timezone = dto.timezone;
       if (dto.dateFormat !== undefined) userUpdate.dateFormat = dto.dateFormat;
-      if (dto.status !== undefined) {
-        userUpdate.status =
-          dto.status === 'SUSPENDED' ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
-      }
+      // Organization-scoped dto.status drives membership lifecycle only — never global User.status.
 
       if (Object.keys(userUpdate).length > 0) {
         await tx.user.update({ where: { id: userId }, data: userUpdate });
@@ -662,6 +644,32 @@ export class UsersService {
         idempotencyKey: `membership-suspend:${orgId}:${membership.id}`,
         actor: { userId: actorUserId },
         reason: 'Admin suspended membership',
+      });
+      await this.iamAudit.processOutboxIds(outboxIds);
+      return this.findOrgUserDetail(orgId, userId);
+    }
+
+    if (
+      dto.status === 'ACTIVE' &&
+      (membership.status === MembershipStatus.SUSPENDED ||
+        membership.status === MembershipStatus.REACTIVATION_REQUIRED)
+    ) {
+      const stationIds = Array.isArray(membership.stationIds)
+        ? (membership.stationIds as string[])
+        : undefined;
+      await this.lifecycle.reactivate({
+        organizationId: orgId,
+        userId,
+        idempotencyKey: `membership-reactivate:${orgId}:${membership.id}`,
+        actor: { userId: actorUserId },
+        role: membership.role,
+        organizationRoleId: membership.organizationRoleId,
+        roleLabel: membership.roleLabel,
+        stationScope: membership.stationScope,
+        stationIds,
+        permissions: normalizeMembershipPermissions(membership.permissions),
+        fieldAgentAccess: membership.fieldAgentAccess,
+        reason: 'Admin reactivated membership',
       });
       await this.iamAudit.processOutboxIds(outboxIds);
       return this.findOrgUserDetail(orgId, userId);
@@ -873,6 +881,7 @@ export class UsersService {
             ? 'Removed'
             : USER_STATUS_MAP[u.status] || 'Active',
       membershipStatus,
+      globalUserStatus: u.status,
       lastActive: u.lastLoginAt?.toISOString() || u.updatedAt?.toISOString() || '',
       lastLoginAt: u.lastLoginAt?.toISOString() || '',
       createdAt: u.createdAt?.toISOString() || '',
