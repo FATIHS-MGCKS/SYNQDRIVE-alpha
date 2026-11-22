@@ -17,6 +17,7 @@ export {
   VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_ENV,
   loadVehicleRegistrationConvergenceConfigFromEnv,
   validateVehicleRegistrationConvergenceConfig,
+  VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_NOT_ARMABLE_PR1,
 } from './vehicle-registration-convergence.config';
 export type { VehicleRegistrationConvergenceConfig } from './vehicle-registration-convergence.config';
 export { default as fuelStationEnrichmentConfig } from './fuel-station-enrichment.config';

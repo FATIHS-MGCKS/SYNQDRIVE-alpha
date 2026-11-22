@@ -8,8 +8,6 @@ import {
   Optional,
 } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import vehicleRegistrationConvergenceConfig from '@config/vehicle-registration-convergence.config';
-import { shouldSuppressLegacyVehicleCreateBillingHook } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
 import {
   Vehicle,
   Prisma,
@@ -388,9 +386,6 @@ export class VehiclesService {
     private readonly batteryCapabilityRefresh?: BatteryCapabilityRefreshService,
     @Optional()
     private readonly vehicleDetailObservability?: VehicleDetailObservabilityService,
-    @Optional()
-    @Inject(vehicleRegistrationConvergenceConfig.KEY)
-    private readonly registrationConvergence?: ConfigType<typeof vehicleRegistrationConvergenceConfig>,
   ) {}
 
   /** Invalidate cached fleet-map payload after booking/handover/status mutations. */
@@ -1628,22 +1623,20 @@ export class VehiclesService {
       throw error;
     }
 
-    if (!shouldSuppressLegacyVehicleCreateBillingHook(this.registrationConvergence)) {
-      void this.billingQuantity
-        ?.onVehicleProvisioned({
+    void this.billingQuantity
+      ?.onVehicleProvisioned({
+        organizationId,
+        vehicleId: vehicle.id,
+        actorUserId: createdByUserId ?? null,
+      })
+      .catch((error) => {
+        this.logger.warn({
+          msg: 'billing.quantity.vehicle_provision_hook_failed',
           organizationId,
           vehicleId: vehicle.id,
-          actorUserId: createdByUserId ?? null,
-        })
-        .catch((error) => {
-          this.logger.warn({
-            msg: 'billing.quantity.vehicle_provision_hook_failed',
-            organizationId,
-            vehicleId: vehicle.id,
-            error: error instanceof Error ? error.message : String(error),
-          });
+          error: error instanceof Error ? error.message : String(error),
         });
-    }
+      });
 
     return vehicle;
   }

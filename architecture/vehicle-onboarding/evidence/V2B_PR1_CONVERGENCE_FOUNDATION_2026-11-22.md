@@ -17,12 +17,12 @@
 ## Flags (default `false`)
 
 - `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED`
-- `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` (requires HM canonical — startup throws otherwise)
+- `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` (**NOT_ARMABLE in PR1** — startup throws if `true`; prevents silent manual billing loss)
 
 ## Production behavior @ defaults
 
 - HM_ONLY: **legacy** inline transaction unchanged.
-- Manual create: **legacy** billing hook unchanged.
+- Manual create: **legacy** billing hook unchanged (never suppressed in PR1).
 - DIMO: **unchanged** (no convergence wiring on Master DIMO path).
 
 ## Next

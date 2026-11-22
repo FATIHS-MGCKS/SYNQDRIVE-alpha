@@ -23,13 +23,15 @@ export interface VehicleRegistrationConvergenceConfig {
   billingSingleRailEnabled: boolean;
 }
 
+/** V2B-PR1: billing single-rail cannot be armed until manual canonical emits VEHICLE_ACTIVATED. */
+export const VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_NOT_ARMABLE_PR1 =
+  'VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL is not armable in V2B-PR1 (manual canonical activation not shipped)';
+
 export function validateVehicleRegistrationConvergenceConfig(
   config: VehicleRegistrationConvergenceConfig,
 ): void {
-  if (config.billingSingleRailEnabled && !config.hmOnlyCanonicalEnabled) {
-    throw new Error(
-      'FATAL: VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL requires VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED=true (fail-closed until manual convergence ships)',
-    );
+  if (config.billingSingleRailEnabled) {
+    throw new Error(`FATAL: ${VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_NOT_ARMABLE_PR1}`);
   }
 }
 
