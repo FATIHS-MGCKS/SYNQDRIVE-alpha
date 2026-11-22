@@ -24,6 +24,11 @@ import { OrganizationOffboardingExecutionService } from './organization-offboard
 import { OrganizationOffboardingFinalizationService } from './organization-offboarding-finalization.service';
 import { OrganizationOffboardingProviderDisconnectService } from './organization-offboarding-provider-disconnect.service';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
+import {
+  fenceOrganizationOperationalAdmission,
+  ORGANIZATION_OFFBOARDING_OPERATIONAL_ADMISSION_DENIED_CODE,
+} from './organization-offboarding-operational-admission-fence';
+import { TripDecisionEngine } from '@modules/vehicle-intelligence/trips/decision/trip-decision.engine';
 import { OFFBOARDING_EXECUTION_CONFIRM_VALUE } from './organization-offboarding-execution.policy';
 import {
   OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
@@ -508,5 +513,94 @@ function finReq(jobId: string, key: string) {
     expect(log.entityId).toBe(job.id);
     expect(JSON.stringify(log.metaJson)).toContain('ORG_OFFBOARDING_ARCHIVED');
     expect(JSON.stringify(log.metaJson)).toContain('durableArchivalCommit');
+  });
+
+  it('Concurrency Cert — booking admission on SUSPENDED org blocked under shared finalize fence', async () => {
+    const orgId = await seedOrg();
+    await runToReady(orgId, `exec-cert-fence-${orgId}`);
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id: orgId } })).status).toBe(
+      OrganizationStatus.SUSPENDED,
+    );
+    try {
+      await prisma.$transaction(async (tx) => {
+        await fenceOrganizationOperationalAdmission(tx, orgId, 'BOOKING');
+      });
+      throw new Error('expected booking admission fence to reject SUSPENDED org');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: ORGANIZATION_OFFBOARDING_OPERATIONAL_ADMISSION_DENIED_CODE,
+        organizationStatus: OrganizationStatus.SUSPENDED,
+      });
+    }
+  });
+
+  it('Concurrency Cert — finalize cannot commit ARCHIVED with concurrent ACTIVE booking insert', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-cert-race-bk-${orgId}`);
+    const customer = await seedCustomer(orgId);
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `RACE-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+
+    const settled = await Promise.allSettled([
+      finalization.finalize(orgId, finReq(job.id, `fin-cert-race-bk-${orgId}`), 'ma-1'),
+      prisma.booking.create({
+        data: {
+          organizationId: orgId,
+          customerId: customer.id,
+          vehicleId: vehicle.id,
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 86_400_000),
+          status: 'ACTIVE',
+        },
+      }),
+    ]);
+
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
+    const activeBookings = await prisma.booking.count({
+      where: { organizationId: orgId, status: 'ACTIVE' },
+    });
+    if (org.status === OrganizationStatus.ARCHIVED) {
+      expect(activeBookings).toBe(0);
+    } else {
+      expect(org.status).toBe(OrganizationStatus.SUSPENDED);
+      expect(settled.some((s) => s.status === 'rejected')).toBe(true);
+    }
+  });
+
+  it('Concurrency Cert — TripDecisionEngine cannot start trip while organization is SUSPENDED', async () => {
+    const orgId = await seedOrg();
+    await runToReady(orgId, `exec-cert-trip-${orgId}`);
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `TRSTART-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+      },
+    });
+    const engine = new TripDecisionEngine(prisma as unknown as PrismaService);
+    await expect(
+      engine.createTrip({ vehicleId: vehicle.id, organizationId: orgId, startTime: new Date() }),
+    ).rejects.toMatchObject({
+      response: {
+        code: ORGANIZATION_OFFBOARDING_OPERATIONAL_ADMISSION_DENIED_CODE,
+        organizationStatus: OrganizationStatus.SUSPENDED,
+      },
+    });
   });
 });

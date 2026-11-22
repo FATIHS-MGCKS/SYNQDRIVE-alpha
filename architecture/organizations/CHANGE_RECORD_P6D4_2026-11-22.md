@@ -38,3 +38,13 @@ Not certified from mocked provider tests. Separate owner approval required for `
 - **Final commit atomicity:** `assertArchivalCommitHardBlockers` inside archival transaction (advisory lock + row lock); no out-of-tx preflight snapshot at commit.
 - **Durable audit:** `ActivityLog` row created in same transaction as ARCHIVED/COMPLETED; `archived.auditActivityLogId` on job progress; post-commit `MasterAdminAuditService.record` best-effort only.
 - **PG Integrity A–D** appended to `organization-offboarding-finalization.postgres.integration.spec.ts` (12/12 incl. legacy A–H).
+
+## P6D4 CONCURRENCY CERT (append)
+
+**Booking admission:** Tenant HTTP already denied via `OrgScopingGuard` + `assertOrganizationAllowsTenantSurface` (`ORGANIZATION_LIFECYCLE_DENIED` on SUSPENDED/ARCHIVED). Service-layer create now shares `organizationOffboardingFinalizeLockKey` through `fenceOrganizationOperationalAdmission` (serializes with archival commit).
+
+**Trip admission:** New `ONGOING` trips only via `TripDecisionEngine.createTrip` (registry ACTIVE + org fence). SUSPENDED allows in-flight trip *completion* polling only (`organization-routine-polling.policy`).
+
+**Archival commit:** `assertArchivalCommitHardBlockers` runs before durable audit and again immediately before `ARCHIVED` update inside the same transaction.
+
+**PG Concurrency Cert:** three disposable scenarios (fence, finalize vs bypass booking, trip start on SUSPENDED).

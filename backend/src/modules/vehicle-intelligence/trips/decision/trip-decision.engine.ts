@@ -6,6 +6,7 @@ import {
   isVehicleRegistryOperationalActive,
   VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
 } from '@modules/vehicles/registry/vehicle-registry-admission';
+import { fenceOrganizationOperationalAdmission } from '@modules/organizations/offboarding/organization-offboarding-operational-admission-fence';
 import type { VehicleTrip } from '@prisma/client';
 import type { DetectorFinding } from '../detectors/detector.interfaces';
 import { TRIP_OWNERSHIP } from '../TRIP_OWNERSHIP';
@@ -277,18 +278,22 @@ export class TripDecisionEngine {
    * for lifecycle purposes.
    */
   async createTrip(params: CreateTripParams): Promise<VehicleTrip> {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: params.vehicleId },
-      select: { registryLifecycle: true },
-    });
-    if (!vehicle || !isVehicleRegistryOperationalActive(vehicle.registryLifecycle)) {
-      throw new BadRequestException({
-        code: VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
-        message: 'Cannot start a new trip for a vehicle that is not registry ACTIVE',
-        vehicleId: params.vehicleId,
-        registryLifecycle: vehicle?.registryLifecycle ?? null,
+    return this.prisma.$transaction(async (tx) => {
+      const vehicle = await tx.vehicle.findUnique({
+        where: { id: params.vehicleId },
+        select: { registryLifecycle: true, organizationId: true },
       });
-    }
+      if (!vehicle || !isVehicleRegistryOperationalActive(vehicle.registryLifecycle)) {
+        throw new BadRequestException({
+          code: VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
+          message: 'Cannot start a new trip for a vehicle that is not registry ACTIVE',
+          vehicleId: params.vehicleId,
+          registryLifecycle: vehicle?.registryLifecycle ?? null,
+        });
+      }
+      if (vehicle.organizationId) {
+        await fenceOrganizationOperationalAdmission(tx, vehicle.organizationId, 'TRIP_START');
+      }
 
     const lifecycleRecoveryMeta = params.lifecycleRecovery
       ? {
@@ -302,7 +307,7 @@ export class TripDecisionEngine {
         }
       : undefined;
 
-    const trip = await this.prisma.vehicleTrip.create({
+    const trip = await tx.vehicleTrip.create({
       data: {
         vehicleId: params.vehicleId,
         dimoSegmentId: params.dimoSegmentId,
@@ -331,6 +336,7 @@ export class TripDecisionEngine {
     );
 
     return trip;
+    });
   }
 
   /**

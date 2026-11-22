@@ -387,6 +387,8 @@ export class OrganizationOffboardingFinalizationService {
         },
       });
 
+      await assertArchivalCommitHardBlockers(tx, input.organizationId);
+
       await tx.organization.update({
         where: { id: input.organizationId },
         data: { status: OrganizationStatus.ARCHIVED },

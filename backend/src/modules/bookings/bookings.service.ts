@@ -85,6 +85,7 @@ import {
   resolvePatchStatusTransition,
 } from './booking-lifecycle-status.matrix';
 import { bookingVehicleOverlapLockKey } from './booking-input.sanitizer';
+import { fenceOrganizationOperationalAdmission } from '@modules/organizations/offboarding/organization-offboarding-operational-admission-fence';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -338,6 +339,7 @@ export class BookingsService {
     const bookingData = this.stripBookingCreateScalars(data as Record<string, unknown>);
 
     const booking = await this.prisma.$transaction(async (tx) => {
+      await fenceOrganizationOperationalAdmission(tx, orgId, 'BOOKING');
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${bookingVehicleOverlapLockKey(orgId, vehicleId)}))`;
       await this.assertNoVehicleOverlap(
         {
