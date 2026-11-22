@@ -48,3 +48,10 @@ Not certified from mocked provider tests. Separate owner approval required for `
 **Archival commit:** `assertArchivalCommitHardBlockers` runs before durable audit and again immediately before `ARCHIVED` update inside the same transaction.
 
 **PG Concurrency Cert:** three disposable scenarios (fence, finalize vs bypass booking, trip start on SUSPENDED).
+
+## P6D4 LIVE PROVIDER DISCONNECT ADAPTERS (append)
+
+- **HM live:** `OrganizationOffboardingHmLiveDisconnectAdapter` — org-scoped `DELETE /v1/fleets/vehicles/{vin}` via existing Health app auth; 409 idempotent; 5xx retry; evidence on `providerEvidence`.
+- **DIMO live:** `OrganizationOffboardingDimoLiveDisconnectAdapter` — Identity privileged read + org token compare; **no** fabricated revoke API; `DIMO_PRIVILEGE_STILL_ACTIVE` when developer privilege remains.
+- **Disconnect service:** live path when `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE=1`; mocks unchanged in test.
+- **Evidence:** `architecture/organizations/evidence/P6D4_PROVIDER_LIVE_DISCONNECT_CAPABILITY_2026-11-22.md`.

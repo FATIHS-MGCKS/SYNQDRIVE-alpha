@@ -1,4 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import dimoConfig from '@config/dimo.config';
+import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { OrganizationsController } from './organizations.controller';
 import { TenantOrganizationProfileController } from './tenant-organization-profile.controller';
 import { OrganizationsService } from './organizations.service';
@@ -17,6 +20,8 @@ import { OrganizationOffboardingProviderDisconnectService } from './offboarding/
 import { OrganizationOffboardingController } from './offboarding/organization-offboarding.controller';
 import { OrganizationOffboardingService } from './offboarding/organization-offboarding.service';
 import { OrganizationOffboardPreflightService } from './offboarding/organization-offboard-preflight.service';
+import { OrganizationOffboardingDimoLiveDisconnectAdapter } from './offboarding/organization-offboarding-dimo-live-disconnect.adapter';
+import { OrganizationOffboardingHmLiveDisconnectAdapter } from './offboarding/organization-offboarding-hm-live-disconnect.adapter';
 
 @Module({
   imports: [
@@ -28,6 +33,8 @@ import { OrganizationOffboardPreflightService } from './offboarding/organization
     IamDataRetentionModule,
     ActivityLogModule,
     AuthApiModule,
+    HighMobilityModule,
+    ConfigModule.forFeature(dimoConfig),
   ],
   controllers: [
     OrganizationsController,
@@ -42,6 +49,8 @@ import { OrganizationOffboardPreflightService } from './offboarding/organization
     OrganizationOffboardingExecutionService,
     OrganizationOffboardingFinalizationService,
     OrganizationOffboardingProviderDisconnectService,
+    OrganizationOffboardingHmLiveDisconnectAdapter,
+    OrganizationOffboardingDimoLiveDisconnectAdapter,
   ],
   exports: [
     OrganizationsService,

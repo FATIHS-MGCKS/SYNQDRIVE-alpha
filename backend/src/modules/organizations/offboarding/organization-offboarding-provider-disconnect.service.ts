@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { VehicleProviderConsentStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { ProviderFinalizationState } from './organization-offboarding-execution.progress';
 import { readProviderMockOutcome } from './organization-offboarding-provider-mock.policy';
+import { OrganizationOffboardingDimoLiveDisconnectAdapter } from './organization-offboarding-dimo-live-disconnect.adapter';
+import { OrganizationOffboardingHmLiveDisconnectAdapter } from './organization-offboarding-hm-live-disconnect.adapter';
+import type { OrganizationProviderLiveEvidence } from './organization-offboarding-provider-live.types';
 
 export type ProviderExternalOutcome =
   | 'CONFIRMED'
@@ -19,6 +22,7 @@ export type ProviderDisconnectChannelResult = {
   externalOutcome: ProviderExternalOutcome;
   evidenceSource: ProviderDisconnectEvidenceSource;
   detailCode: string | null;
+  providerEvidence?: OrganizationProviderLiveEvidence;
 };
 
 export type OrganizationProviderDisconnectAssessment = {
@@ -41,7 +45,11 @@ function isLiveExternalDisconnectEnabled(): boolean {
  */
 @Injectable()
 export class OrganizationOffboardingProviderDisconnectService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly hmLive?: OrganizationOffboardingHmLiveDisconnectAdapter,
+    @Optional() private readonly dimoLive?: OrganizationOffboardingDimoLiveDisconnectAdapter,
+  ) {}
 
   async assessOrganization(organizationId: string): Promise<OrganizationProviderDisconnectAssessment> {
     const activeProviderConsentCount = await this.prisma.vehicleProviderConsent.count({
@@ -111,8 +119,8 @@ export class OrganizationOffboardingProviderDisconnectService {
       },
     });
 
-    const dimo = await this.resolveChannel('DIMO', dimoHad, localRevoked.dimo);
-    const hm = await this.resolveChannel('HIGH_MOBILITY', hmHad, localRevoked.hm);
+    const dimo = await this.resolveChannel('DIMO', dimoHad, localRevoked.dimo, organizationId);
+    const hm = await this.resolveChannel('HIGH_MOBILITY', hmHad, localRevoked.hm, organizationId);
 
     const finalizationState = this.deriveFinalizationState({
       dimo,
@@ -190,6 +198,7 @@ export class OrganizationOffboardingProviderDisconnectService {
     provider: 'DIMO' | 'HIGH_MOBILITY',
     hadDependency: boolean,
     localRevoked: boolean,
+    organizationId: string,
   ): Promise<ProviderDisconnectChannelResult> {
     if (!hadDependency) {
       return {
@@ -225,13 +234,58 @@ export class OrganizationOffboardingProviderDisconnectService {
       };
     }
 
-    return {
+    return this.resolveLiveChannel(provider, organizationId, hadDependency, localRevoked);
+  }
+
+  private async resolveLiveChannel(
+    provider: 'DIMO' | 'HIGH_MOBILITY',
+    organizationId: string,
+    hadDependency: boolean,
+    localRevoked: boolean,
+  ): Promise<ProviderDisconnectChannelResult> {
+    const base = {
       provider,
-      hadDependency: true,
+      hadDependency,
       localRevoked,
-      externalOutcome: 'NOT_AVAILABLE',
-      evidenceSource: 'LIVE',
-      detailCode: `${provider}_EXTERNAL_REVOKE_LIVE_PATH_NOT_IMPLEMENTED`,
+      evidenceSource: 'LIVE' as const,
+    };
+
+    if (provider === 'HIGH_MOBILITY') {
+      if (!this.hmLive) {
+        return {
+          ...base,
+          externalOutcome: 'NOT_AVAILABLE',
+          detailCode: 'HM_EXTERNAL_REVOKE_LIVE_ADAPTER_UNAVAILABLE',
+        };
+      }
+      const live = await this.hmLive.disconnectOrganization(organizationId);
+      const externalOutcome =
+        live.outcome === 'NO_DEPENDENCY' && hadDependency
+          ? 'CONFIRMED'
+          : live.outcome;
+      return {
+        ...base,
+        externalOutcome,
+        detailCode: live.detailCode,
+        providerEvidence: live.providerEvidence,
+      };
+    }
+
+    if (!this.dimoLive) {
+      return {
+        ...base,
+        externalOutcome: 'NOT_AVAILABLE',
+        detailCode: 'DIMO_EXTERNAL_REVOKE_LIVE_ADAPTER_UNAVAILABLE',
+      };
+    }
+    const live = await this.dimoLive.verifyOrganizationDisconnect(organizationId);
+    const externalOutcome =
+      live.outcome === 'NO_DEPENDENCY' && hadDependency ? 'CONFIRMED' : live.outcome;
+    return {
+      ...base,
+      externalOutcome,
+      detailCode: live.detailCode,
+      providerEvidence: live.providerEvidence,
     };
   }
 
