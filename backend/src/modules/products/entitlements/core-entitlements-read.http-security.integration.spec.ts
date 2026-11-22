@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { OrgProductPlan, OrgProductStatus, ProductSlug } from '@prisma/client';
+import { OrgProductPlan, OrgProductStatus, OrganizationStatus, ProductSlug } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
@@ -17,10 +17,21 @@ const USER_FOREIGN = 'user-foreign';
 const USER_SUSPENDED = 'user-suspended';
 const MASTER_ADMIN = 'master-admin';
 
-const MEMBERSHIPS: Record<string, { id: string; role: string } | null> = {
-  [`${USER_MEMBER}|${ORG_A}`]: { id: 'mem-1', role: 'WORKER' },
+const MEMBERSHIPS: Record<
+  string,
+  { id: string; role: string; organization: { status: OrganizationStatus } } | null
+> = {
+  [`${USER_MEMBER}|${ORG_A}`]: {
+    id: 'mem-1',
+    role: 'WORKER',
+    organization: { status: OrganizationStatus.ACTIVE },
+  },
   [`${USER_FOREIGN}|${ORG_A}`]: null,
-  [`${USER_FOREIGN}|${ORG_B}`]: { id: 'mem-2', role: 'WORKER' },
+  [`${USER_FOREIGN}|${ORG_B}`]: {
+    id: 'mem-2',
+    role: 'WORKER',
+    organization: { status: OrganizationStatus.ACTIVE },
+  },
   [`${USER_SUSPENDED}|${ORG_A}`]: null,
 };
 
