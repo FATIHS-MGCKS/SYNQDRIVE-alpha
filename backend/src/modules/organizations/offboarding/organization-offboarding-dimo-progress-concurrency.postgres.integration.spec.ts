@@ -161,10 +161,55 @@ const LIVE = process.env.ORGANIZATION_OFFBOARDING_DIMO_PROGRESS_CONCURRENCY_POST
       lastErrorCode: null,
     });
 
+    const afterExec = parseExecutionProgress(
+      (await prisma.organizationOffboardingJob.findUniqueOrThrow({ where: { id: jobId } })).progressJson,
+    );
+    expect(afterExec.dimoPrivilegeVerification?.verificationSnapshotReference).toBe('snap-recheck');
+  });
+
+  it('parallel recheck — newer B survives when stale A finishes last', async () => {
+    const newer = {
+      lastVerifiedAt: '2026-04-02T12:00:00.000Z',
+      providerCheckStatus: 'CONFIRMED_ABSENT',
+      detailCode: null,
+      verificationSnapshotReference: 'snap-parallel-b',
+      privilegedStillActiveTokenIds: [] as number[],
+      providerEvidenceSummary: {},
+    };
+    const older = {
+      ...newer,
+      lastVerifiedAt: '2026-04-01T08:00:00.000Z',
+      providerCheckStatus: 'PRIVILEGE_STILL_ACTIVE',
+      detailCode: 'DIMO_PRIVILEGE_STILL_ACTIVE',
+      verificationSnapshotReference: 'snap-parallel-a',
+      privilegedStillActiveTokenIds: [7],
+    };
+
+    const startedEarlierFinishesLast = (async () => {
+      await new Promise((r) => setImmediate(r));
+      const bResult = await persistDimoPrivilegeVerificationUnderLock(prisma, {
+        organizationId,
+        jobId,
+        verification: newer,
+      });
+      return persistDimoPrivilegeVerificationUnderLock(prisma, {
+        organizationId,
+        jobId,
+        verification: older,
+      }).then((aResult) => ({ aResult, bResult }));
+    })();
+
+    const { aResult, bResult } = await startedEarlierFinishesLast;
+    expect(bResult.verificationApplied).toBe(true);
+    expect(aResult.verificationApplied).toBe(false);
+    expect(aResult.effectiveVerification.verificationSnapshotReference).toBe('snap-parallel-b');
+    expect(aResult.effectiveVerification.providerCheckStatus).toBe('CONFIRMED_ABSENT');
+
     const after = parseExecutionProgress(
       (await prisma.organizationOffboardingJob.findUniqueOrThrow({ where: { id: jobId } })).progressJson,
     );
-    expect(after.dimoPrivilegeVerification?.verificationSnapshotReference).toBe('snap-recheck');
+    expect(after.dimoPrivilegeVerification?.verificationSnapshotReference).toBe('snap-parallel-b');
+    expect(after.executionLease?.token).toBe(leaseToken);
   });
 
   it('duplicate concurrent handoff idempotency key yields single record', async () => {

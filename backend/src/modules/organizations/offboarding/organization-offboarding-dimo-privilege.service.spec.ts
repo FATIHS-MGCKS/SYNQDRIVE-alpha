@@ -1,5 +1,9 @@
 jest.mock('./organization-offboarding-dimo-progress-persist', () => ({
-  persistDimoPrivilegeVerificationUnderLock: jest.fn().mockResolvedValue({}),
+  persistDimoPrivilegeVerificationUnderLock: jest.fn().mockImplementation(async (_p, input) => ({
+    progress: { dimoPrivilegeVerification: input.verification },
+    verificationApplied: true,
+    effectiveVerification: input.verification,
+  })),
   persistDimoOwnerHandoffUnderLock: jest.fn(),
 }));
 
@@ -24,6 +28,11 @@ describe('OrganizationOffboardingDimoPrivilegeService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     delete process.env.ORGANIZATION_OFFBOARDING_DIMO_PRIVILEGE_RECHECK_ENABLED;
+    (persistDimoPrivilegeVerificationUnderLock as jest.Mock).mockImplementation(async (_p, input) => ({
+      progress: { dimoPrivilegeVerification: input.verification },
+      verificationApplied: true,
+      effectiveVerification: input.verification,
+    }));
   });
 
   it('GET builds local inventory without provider calls', async () => {

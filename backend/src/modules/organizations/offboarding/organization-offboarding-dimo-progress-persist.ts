@@ -11,7 +11,18 @@ import {
   toProgressJson,
   type OrganizationOffboardingExecutionProgress,
 } from './organization-offboarding-execution.progress';
+import { pickNewerDimoPrivilegeVerification } from './organization-offboarding-dimo-progress-preservation';
 import { lockOffboardingJobRowForUpdate } from './organization-offboarding-execution.lease-persist';
+
+type DimoVerificationBlock = NonNullable<
+  OrganizationOffboardingExecutionProgress['dimoPrivilegeVerification']
+>;
+
+export type PersistDimoPrivilegeVerificationResult = {
+  progress: OrganizationOffboardingExecutionProgress;
+  verificationApplied: boolean;
+  effectiveVerification: DimoVerificationBlock;
+};
 
 type TxClient = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
 
@@ -51,20 +62,36 @@ export async function persistDimoPrivilegeVerificationUnderLock(
   input: {
     organizationId: string;
     jobId: string;
-    verification: NonNullable<OrganizationOffboardingExecutionProgress['dimoPrivilegeVerification']>;
+    verification: DimoVerificationBlock;
   },
-): Promise<OrganizationOffboardingExecutionProgress> {
+): Promise<PersistDimoPrivilegeVerificationResult> {
   return prisma.$transaction(async (tx) => {
     const { stored } = await assertDimoProgressMutationAllowed(tx, input.organizationId, input.jobId);
+    const effectiveVerification = pickNewerDimoPrivilegeVerification(
+      stored.dimoPrivilegeVerification,
+      input.verification,
+    ) as DimoVerificationBlock;
+    const verificationApplied =
+      !stored.dimoPrivilegeVerification ||
+      effectiveVerification.verificationSnapshotReference === input.verification.verificationSnapshotReference;
+
     const merged: OrganizationOffboardingExecutionProgress = {
       ...stored,
-      dimoPrivilegeVerification: input.verification,
+      dimoPrivilegeVerification: effectiveVerification,
     };
-    await tx.organizationOffboardingJob.update({
-      where: { id: input.jobId },
-      data: { progressJson: toProgressJson(merged) },
-    });
-    return merged;
+
+    if (verificationApplied) {
+      await tx.organizationOffboardingJob.update({
+        where: { id: input.jobId },
+        data: { progressJson: toProgressJson(merged) },
+      });
+    }
+
+    return {
+      progress: verificationApplied ? merged : stored,
+      verificationApplied,
+      effectiveVerification,
+    };
   });
 }
 

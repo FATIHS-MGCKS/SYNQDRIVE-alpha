@@ -84,3 +84,4 @@ Not certified from mocked provider tests. Separate owner approval required for `
 - **Merge policy:** `mergeOffboardingProgressPreservingDimoOperatorFields` on execution/finalization lease persists — newer verification + longer handoff list wins.
 - **Atomic DIMO writers:** `FOR UPDATE` row lock via `persistDimoPrivilegeVerificationUnderLock` / `persistDimoOwnerHandoffUnderLock`; block when org `ARCHIVED` or job `COMPLETED`.
 - **PG evidence:** opt-in `ORGANIZATION_OFFBOARDING_DIMO_PROGRESS_CONCURRENCY_POSTGRES=1` on disposable DBs.
+- **Parallel recheck:** `persistDimoPrivilegeVerificationUnderLock` uses `pickNewerDimoPrivilegeVerification`; stale recheck returns stored evidence (`evidencePreserved: true`) without DB write.

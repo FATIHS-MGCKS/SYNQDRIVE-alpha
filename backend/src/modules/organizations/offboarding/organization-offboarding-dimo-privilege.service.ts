@@ -150,11 +150,19 @@ export class OrganizationOffboardingDimoPrivilegeService {
       providerEvidenceSummary: summarizeProviderEvidence(live),
     };
 
-    await persistDimoPrivilegeVerificationUnderLock(this.prisma, {
+    const persisted = await persistDimoPrivilegeVerificationUnderLock(this.prisma, {
       organizationId,
       jobId: job.id,
       verification: verificationBlock,
     });
+
+    const effective = persisted.effectiveVerification;
+    const evidencePreserved = !persisted.verificationApplied;
+    const responseStatus = effective.providerCheckStatus as OrganizationDimoPrivilegeRecheckResult['providerCheckStatus'];
+    const responseDetail = effective.detailCode;
+    const responseVerifiedAt = effective.lastVerifiedAt;
+    const responseSnapshotRef = effective.verificationSnapshotReference;
+    const responseStillActive = effective.privilegedStillActiveTokenIds;
 
     void this.masterAudit.record({
       auditAction: MasterAdminAuditAction.ORGANIZATION_OFFBOARDING_DIMO_PRIVILEGE_RECHECK,
@@ -167,27 +175,28 @@ export class OrganizationOffboardingDimoPrivilegeService {
       httpMethod: 'POST',
       metadata: {
         organizationStatus: orgStatus,
-        providerCheckStatus,
-        detailCode: live.detailCode,
-        evidencePreserved: false,
-        privilegedStillActiveCount: stillActive.length,
+        providerCheckStatus: responseStatus,
+        detailCode: responseDetail,
+        evidencePreserved,
+        privilegedStillActiveCount: responseStillActive.length,
+        staleRecheckRejected: evidencePreserved,
       },
     });
 
     const vehicles = buildVehiclePrivilegeRows(inventory, {
-      stillPrivilegedTokenIds: stillActive,
-      providerCheckStatus,
+      stillPrivilegedTokenIds: responseStillActive,
+      providerCheckStatus: responseStatus,
     });
 
     return {
       organizationId,
       jobId: job.id,
-      providerCheckStatus,
-      detailCode: live.detailCode,
-      lastVerifiedAt: verifiedAt,
-      verificationSnapshotReference,
+      providerCheckStatus: responseStatus,
+      detailCode: responseDetail,
+      lastVerifiedAt: responseVerifiedAt,
+      verificationSnapshotReference: responseSnapshotRef,
       vehicles,
-      evidencePreserved: false,
+      evidencePreserved,
     };
   }
 
