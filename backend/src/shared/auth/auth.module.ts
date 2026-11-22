@@ -10,6 +10,7 @@ import { MasterBillingDelegateMfaGuard } from './master-billing-delegate-mfa.gua
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { UiAuditModule } from '@modules/ui-audit/ui-audit.module';
 import { UiAuditWriteDenyGuard } from '@modules/ui-audit/ui-audit-write-deny.guard';
+import { UiAuditSessionEnforcementGuard } from '@modules/ui-audit/ui-audit-session-enforcement.guard';
 
 @Module({
   imports: [PrismaModule, forwardRef(() => IamMfaModule), UiAuditModule],
@@ -21,6 +22,7 @@ import { UiAuditWriteDenyGuard } from '@modules/ui-audit/ui-audit-write-deny.gua
     MasterAdminMfaGuard,
     MasterBillingDelegateMfaGuard,
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: UiAuditSessionEnforcementGuard },
     { provide: APP_GUARD, useClass: UiAuditWriteDenyGuard },
   ],
   exports: [
@@ -31,6 +33,7 @@ import { UiAuditWriteDenyGuard } from '@modules/ui-audit/ui-audit-write-deny.gua
     MasterAdminMfaGuard,
     MasterBillingDelegateMfaGuard,
     UiAuditWriteDenyGuard,
+    UiAuditSessionEnforcementGuard,
   ],
 })
 export class AuthModule {}

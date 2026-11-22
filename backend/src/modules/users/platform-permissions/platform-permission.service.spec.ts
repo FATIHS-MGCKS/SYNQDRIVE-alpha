@@ -5,7 +5,7 @@ import { PLATFORM_PERMISSION_JWT_VALUES } from './platform-permission.constants'
 
 describe('PlatformPermissionService', () => {
   const prisma = {
-    user: { findUnique: jest.fn() },
+    user: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) },
     organizationMembership: { findFirst: jest.fn().mockResolvedValue(null) },
     userPlatformPermissionGrant: {
       findFirst: jest.fn(),
@@ -109,6 +109,25 @@ describe('PlatformPermissionService', () => {
     await expect(
       service.grantUiAuditPermission('target', 'admin-1', PlatformPermissionKey.UI_AUDIT_RENTAL),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('revokeUiAudit increments sessionVersion', async () => {
+    (prisma.userPlatformPermissionGrant.findFirst as jest.Mock).mockResolvedValue({
+      id: 'grant-audit',
+    });
+    (prisma.userPlatformPermissionGrant.update as jest.Mock).mockResolvedValue({ id: 'grant-audit' });
+
+    await service.revokeUiAuditPermission(
+      'target',
+      'admin-1',
+      PlatformPermissionKey.UI_AUDIT_RENTAL,
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'target' },
+        data: { sessionVersion: { increment: 1 } },
+      }),
+    );
   });
 
   it('rejects UI audit grant when user has active ORG_ADMIN membership', async () => {

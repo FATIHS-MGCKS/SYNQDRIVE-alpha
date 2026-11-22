@@ -26,6 +26,8 @@
 | `PlatformPermissionKey` | `ui-audit-master` · `ui-audit-rental` · `ui-audit-operator` |
 | JWT `platformPermissions` | Issued only from DB grants (existing resolver) |
 | `UiAuditWriteDenyGuard` | Global deny mutations; **fail-closed GET allowlist** via `ui-audit-read-allowlist.ts` + product JWT grant |
+| `UiAuditSessionEnforcementGuard` | Live grant re-check, `sessionVersion`, active user, ORG_ADMIN/MASTER_ADMIN JWT incompatibility |
+| `ui-audit-master-endpoint.policy.ts` | Per-endpoint BLOCKED_SENSITIVE vs operational aggregate verdicts |
 | `RolesGuard` | Narrow Master read: `ui-audit-master` + allowlisted GET/HEAD on admin routes (no `MASTER_ADMIN` role) |
 | `PermissionsGuard` | No `ORG_ADMIN`/`MASTER_ADMIN` bypass when audit-bound; write/manage levels denied |
 | Master SPA | `allowUiAuditMasterShell` on `/master` when JWT includes `ui-audit-master` |

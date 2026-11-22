@@ -58,7 +58,7 @@ describe('UiAuditWriteDenyGuard', () => {
       guard.canActivate(
         mockContext(
           'GET',
-          '/api/v1/organizations/org-1/vehicles',
+          '/api/v1/organizations/org-1/bookings',
           auditUser,
         ),
       ),

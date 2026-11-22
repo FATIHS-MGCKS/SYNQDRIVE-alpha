@@ -38,7 +38,7 @@ import {
   resolvePermissionOrgId,
 } from './permission.util';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
-import { isUiAuditBoundUser } from '@modules/ui-audit/ui-audit.context';
+import { isUiAuditBoundUser, resolveUiAuditJwtPermissions } from '@modules/ui-audit/ui-audit.context';
 
 /**
  * Permission-based authorization using `OrganizationMembership.permissions` JSON.
@@ -75,6 +75,10 @@ export class PermissionsGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('Authentication required');
+    }
+
+    if (resolveUiAuditJwtPermissions(user).length > 0 && user.platformRole === 'MASTER_ADMIN') {
+      throw new ForbiddenException('UI audit JWT incompatible with MASTER_ADMIN');
     }
 
     if (user.platformRole === 'MASTER_ADMIN' && !isUiAuditBoundUser(user)) return true;

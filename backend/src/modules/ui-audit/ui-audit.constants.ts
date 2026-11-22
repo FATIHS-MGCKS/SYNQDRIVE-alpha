@@ -31,4 +31,8 @@ export const UI_AUDIT_SENSITIVE_GET_DENYLIST: readonly RegExp[] = [
   /^\/api\/v1\/.*\/secrets/i,
   /^\/api\/v1\/users\/.*\/platform-permissions/i,
   /^\/api\/v1\/master-admin-smoke/i,
+  /^\/api\/v1\/organizations\/[^/]+\/settings(\/|$)/i,
+  /^\/api\/v1\/organizations\/[^/]+\/.*\/export/i,
+  /^\/api\/v1\/organizations\/[^/]+\/users/i,
+  /^\/api\/v1\/organizations\/[^/]+\/invites/i,
 ];

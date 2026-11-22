@@ -275,6 +275,16 @@ export class PlatformPermissionService {
       where: { id: active.id },
       data: { revokedAt: new Date(), revokedByUserId: actorUserId },
     });
+    if (
+      permissionKey === PlatformPermissionKey.UI_AUDIT_MASTER ||
+      permissionKey === PlatformPermissionKey.UI_AUDIT_RENTAL ||
+      permissionKey === PlatformPermissionKey.UI_AUDIT_OPERATOR
+    ) {
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: { sessionVersion: { increment: 1 } },
+      });
+    }
     return { revoked: true, idempotent: false, grantId: updated.id };
   }
 

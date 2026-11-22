@@ -43,4 +43,29 @@ describe('PermissionsGuard — UI audit bound users', () => {
     await expect(guard.canActivate(ctx as never)).rejects.toThrow(ForbiddenException);
     expect(prisma.organizationMembership.findFirst).toHaveBeenCalled();
   });
+
+  it('denies MASTER_ADMIN bearer token that still carries audit JWT claims', async () => {
+    reflector.getAllAndOverride = jest
+      .fn()
+      .mockReturnValueOnce({ module: 'bookings', level: 'read' })
+      .mockReturnValue(undefined);
+
+    const ctx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: 'ma-1',
+            platformRole: 'MASTER_ADMIN',
+            organizationId: 'org-1',
+            platformPermissions: ['ui-audit-rental'],
+          },
+          params: { orgId: 'org-1' },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    };
+
+    await expect(guard.canActivate(ctx as never)).rejects.toThrow(ForbiddenException);
+  });
 });

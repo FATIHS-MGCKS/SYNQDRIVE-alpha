@@ -1,4 +1,5 @@
 import { UI_AUDIT_JWT_PERMISSIONS } from './ui-audit.constants';
+import { UI_AUDIT_MASTER_ALLOWED_PATHS } from './ui-audit-master-endpoint.policy';
 
 export type UiAuditProductScope = 'master' | 'rental' | 'operator' | 'shared';
 
@@ -26,21 +27,13 @@ const SHARED_READ_RULES: UiAuditReadRule[] = [
   },
 ];
 
-const MASTER_READ_PATHS: ReadonlyArray<{ id: string; path: string }> = [
-  { id: 'A-dashboard', path: '/api/v1/admin/dashboard/operational' },
-  { id: 'A-organizations', path: '/api/v1/admin/organizations' },
-  { id: 'B-billing-overview', path: '/api/v1/admin/billing/overview/operational' },
-  { id: 'C-vehicles-overview', path: '/api/v1/admin/vehicles/operational/overview' },
-  { id: 'C-connectivity', path: '/api/v1/admin/connectivity/platform-summary' },
-  { id: 'D-ops-overview', path: '/api/v1/admin/ops/overview' },
-  { id: 'D-ops-incidents', path: '/api/v1/admin/ops/incidents' },
-  { id: 'E-security-attention', path: '/api/v1/admin/security/attention-summary' },
-  { id: 'E-security-users', path: '/api/v1/admin/security/users' },
-  { id: 'F-integrations-directory', path: '/api/v1/admin/platform-integrations/directory' },
-  { id: 'F-integrations-attention', path: '/api/v1/admin/platform-integrations/attention-summary' },
-];
+const MASTER_READ_PATHS: ReadonlyArray<{ id: string; path: string }> =
+  UI_AUDIT_MASTER_ALLOWED_PATHS.map((path) => ({
+    id: `master-${path.split('/').slice(-2).join('-')}`,
+    path,
+  }));
 
-/** Master read surfaces — aligned with master-admin-smoke-readonly.runner (explicit only). */
+/** Master read surfaces — explicit operational aggregates only (see master endpoint policy). */
 const MASTER_READ_RULES: UiAuditReadRule[] = MASTER_READ_PATHS.map(({ id, path }) => ({
   id,
   scope: 'master' as const,
@@ -48,33 +41,55 @@ const MASTER_READ_RULES: UiAuditReadRule[] = MASTER_READ_PATHS.map(({ id, path }
   match: path,
 }));
 
-/** Rental org-scoped read prefixes (fail-closed: unlisted org routes denied). */
+/** Rental org-scoped reads — explicit segments (no `settings` subtree). */
 const RENTAL_READ_RULES: UiAuditReadRule[] = [
-  {
-    id: 'rental-org-reads',
-    scope: 'rental',
-    methods: new Set(['GET', 'HEAD']),
-    match:
-      /^\/api\/v1\/organizations\/[^/]+\/(dashboard|bookings|customers|vehicles|stations|tasks|invoices|fines|settings|fleet|evaluations|data-analyse)(\/|$)/,
-  },
-];
+  'dashboard',
+  'bookings',
+  'customers',
+  'vehicles',
+  'stations',
+  'tasks',
+  'invoices',
+  'fines',
+  'fleet',
+  'evaluations',
+  'data-analyse',
+].map((segment) => ({
+  id: `rental-${segment}`,
+  scope: 'rental' as const,
+  methods: new Set(['GET', 'HEAD']),
+  match: new RegExp(
+    `^/api/v1/organizations/[^/]+/${segment.replace(/-/g, '\\-')}(\\/|$)`,
+  ),
+}));
 
 /** Operator field reads (worker context — narrower than rental). */
 const OPERATOR_READ_RULES: UiAuditReadRule[] = [
   {
-    id: 'operator-org-reads',
+    id: 'operator-today-bookings',
     scope: 'operator',
     methods: new Set(['GET', 'HEAD']),
-    match:
-      /^\/api\/v1\/organizations\/[^/]+\/(bookings\/today|vehicles|tasks|damages|stations)(\/|$)/,
+    match: /^\/api\/v1\/organizations\/[^/]+\/bookings\/today(\/|$)/,
+  },
+  {
+    id: 'operator-tasks',
+    scope: 'operator',
+    methods: new Set(['GET', 'HEAD']),
+    match: /^\/api\/v1\/organizations\/[^/]+\/tasks(\/|$)/,
+  },
+  {
+    id: 'operator-damages',
+    scope: 'operator',
+    methods: new Set(['GET', 'HEAD']),
+    match: /^\/api\/v1\/organizations\/[^/]+\/damages(\/|$)/,
   },
 ];
 
 export const UI_AUDIT_READ_ALLOWLIST: readonly UiAuditReadRule[] = [
   ...SHARED_READ_RULES,
   ...MASTER_READ_RULES,
-  ...RENTAL_READ_RULES,
   ...OPERATOR_READ_RULES,
+  ...RENTAL_READ_RULES,
 ];
 
 export function matchUiAuditReadRule(

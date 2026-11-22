@@ -28,4 +28,10 @@ describe('UI audit read allowlist', () => {
       matchUiAuditReadRule('GET', '/api/v1/admin/users/search'),
     ).toBeNull();
   });
+
+  it('denies blocked master organizations directory', () => {
+    expect(
+      matchUiAuditReadRule('GET', '/api/v1/admin/organizations'),
+    ).toBeNull();
+  });
 });

@@ -7,7 +7,9 @@ Statuses: `SUPPORTED_READ_ONLY` | `REQUIRES_NEW_READ_CAPABILITY` | `BLOCKED_SENS
 | Screen | Status | Notes |
 |--------|--------|-------|
 | Dashboard | SUPPORTED_READ_ONLY | Allowlisted `GET /api/v1/admin/dashboard/operational` + `RolesGuard` audit path; SPA `ui-audit-master` |
-| Organizations | SUPPORTED_READ_ONLY | Allowlisted `GET /api/v1/admin/organizations` |
+| Organizations | BLOCKED_SENSITIVE | Cross-tenant directory — removed from audit allowlist |
+| Security users | BLOCKED_SENSITIVE | Identity directory — removed from audit allowlist |
+| Billing operational overview | BLOCKED_SENSITIVE | Billing intelligence — removed from audit allowlist |
 | Security & Access | BLOCKED_SENSITIVE | User/role surfaces — partial read via admin security GETs only with MASTER path |
 | Product Management | REQUIRES_NEW_READ_CAPABILITY | |
 | Platform Operations | REQUIRES_NEW_READ_CAPABILITY | |
