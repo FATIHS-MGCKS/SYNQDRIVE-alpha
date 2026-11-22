@@ -14,6 +14,20 @@ function scopeKey(scope: LoadScope): string {
   return `${scope.organizationId}:${scope.vehicleId}`;
 }
 
+function isStaleScopedMutation(
+  mutationGeneration: number,
+  requestScope: LoadScope,
+  loadGeneration: number,
+  activeScope: LoadScope | null,
+): boolean {
+  if (mutationGeneration !== loadGeneration) return true;
+  if (!activeScope) return true;
+  return (
+    activeScope.organizationId !== requestScope.organizationId ||
+    activeScope.vehicleId !== requestScope.vehicleId
+  );
+}
+
 export function useConnectedVehicleDimoPrivilege(
   organizationId: string | null,
   vehicleId: string | null,
@@ -149,6 +163,11 @@ export function useConnectedVehicleDimoPrivilege(
       );
     } catch (err) {
       if (isStepUpRequiredError(err)) {
+        if (
+          isStaleScopedMutation(generation, scope, loadGenerationRef.current, activeScopeRef.current)
+        ) {
+          return;
+        }
         pendingActionRef.current = 'recheck';
         pendingActionScopeRef.current = { ...scope };
         setMfaRequired(true);
@@ -198,6 +217,11 @@ export function useConnectedVehicleDimoPrivilege(
       handoffIdempotencyScopeRef.current = null;
     } catch (err) {
       if (isStepUpRequiredError(err)) {
+        if (
+          isStaleScopedMutation(generation, scope, loadGenerationRef.current, activeScopeRef.current)
+        ) {
+          return;
+        }
         pendingActionRef.current = 'handoff';
         pendingActionScopeRef.current = { ...scope };
         setMfaRequired(true);

@@ -124,6 +124,90 @@ describe('useConnectedVehicleDimoPrivilege vehicle scope', () => {
     expect(handoff).toHaveBeenCalledTimes(1);
   });
 
+  it('does not open MFA when delayed recheck STEP_UP arrives after vehicle switch', async () => {
+    let rejectRecheck!: (error: Error) => void;
+    recheck.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectRecheck = reject;
+      }),
+    );
+
+    const vehiclesForB = {
+      ...statusDto,
+      vehicles: [
+        {
+          vehicleId: 'v-b',
+          tokenId: 2,
+          localConnectionStatus: null,
+          consentStatus: null,
+          stillPrivileged: null,
+          verificationStatus: 'UNVERIFIED',
+        },
+      ],
+    };
+    getStatus.mockResolvedValueOnce(statusDto).mockResolvedValue(vehiclesForB);
+
+    const { result, rerender } = renderHook(
+      ({ vehicleId }) => useConnectedVehicleDimoPrivilege('org-1', vehicleId, true),
+      { initialProps: { vehicleId: 'v-a' } },
+    );
+    await waitForHook(() => !result.current.loading);
+
+    void result.current.runRecheck();
+    rerender({ vehicleId: 'v-b' });
+    await waitForHook(() => !result.current.loading);
+
+    await act(async () => {
+      rejectRecheck(new Error('STEP_UP_REQUIRED'));
+      await Promise.resolve();
+    });
+
+    expect(result.current.mfaRequired).toBe(false);
+  });
+
+  it('does not open MFA when delayed handoff STEP_UP arrives after vehicle switch', async () => {
+    let rejectHandoff!: (error: Error) => void;
+    handoff.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectHandoff = reject;
+      }),
+    );
+
+    getStatus
+      .mockResolvedValueOnce(statusDto)
+      .mockResolvedValueOnce({
+        ...statusDto,
+        vehicles: [
+          {
+            vehicleId: 'v-b',
+            tokenId: 2,
+            localConnectionStatus: null,
+            consentStatus: null,
+            stillPrivileged: null,
+            verificationStatus: 'UNVERIFIED',
+          },
+        ],
+      });
+
+    const { result, rerender } = renderHook(
+      ({ vehicleId }) => useConnectedVehicleDimoPrivilege('org-1', vehicleId, true),
+      { initialProps: { vehicleId: 'v-a' } },
+    );
+    await waitForHook(() => !result.current.loading);
+
+    result.current.prepareHandoffIdempotency();
+    void result.current.runHandoff();
+    rerender({ vehicleId: 'v-b' });
+    await waitForHook(() => !result.current.loading);
+
+    await act(async () => {
+      rejectHandoff(new Error('STEP_UP_REQUIRED'));
+      await Promise.resolve();
+    });
+
+    expect(result.current.mfaRequired).toBe(false);
+  });
+
   it('drops stale handoff success when vehicle changes during request', async () => {
     let resolveHandoff!: (v: unknown) => void;
     handoff.mockReturnValueOnce(
