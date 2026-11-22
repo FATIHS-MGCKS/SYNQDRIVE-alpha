@@ -7,3 +7,4 @@
 | 2026-11-22 | FEUX-CLOSEOUT-003 | Complete MODULE_AUTHORITY_STANDARD decision fields; manifest SHA metadata; inventory + validator semantic gates (no product code) | FEUX-EVID-AUDIT-BOOTSTRAP-001 |
 | 2026-11-22 | FEUX-P7-PROD-001 | Owner read-only Production VPS + HTTP audit; Gate A conditional; consolidated PRODUCTION_GATE_A report | FEUX-EVID-PROD-INFRA-2026-11-22 |
 | 2026-11-22 | FEUX-P7-RECON-001 | Full-tree git drift reconciliation; source provenance epistemics; SPA asset-200 finding | FEUX-EVID-PROD-DRIFT-2026-11-22 |
+| 2026-11-22 | FEUX-P8-AUTH-001 | Authenticated functional UI audit blocked (no approved session); matrix + drift recheck 108 paths | FEUX-EVID-P8-AUTH-GATE-001 |

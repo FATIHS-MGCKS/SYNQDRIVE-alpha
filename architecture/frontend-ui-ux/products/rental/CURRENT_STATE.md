@@ -1,6 +1,6 @@
 # Current State — Rental UI/UX
 
-**Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** infra VERIFIED @ `1e6a267c`; auth UI UNKNOWN  
+**Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** infra VERIFIED @ `1e6a267c`; auth UI **BLOCKED** (P8, no approved session)  
 **Route:** `/rental` · **Epistemic:** CONFIRMED where `rental/App.tsx` + `Sidebar.tsx` inspected; PARTIAL for every nested tab.
 
 ## Executive summary

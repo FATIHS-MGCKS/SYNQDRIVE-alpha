@@ -312,3 +312,30 @@ nodes:
     epistemic_status: CONFIRMED
     source_paths:
       - architecture/frontend-ui-ux/evidence/PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md
+
+  - id: FEUX-EVID-P8-AUTH-GATE-001
+    type: evidence
+    title: P8 authenticated access gate
+    summary: BLOCKED_NO_APPROVED_SESSION; no ad-hoc login.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/AUTHENTICATED_UI_FUNCTIONAL_AUDIT_2026-11-22.md
+
+  - id: FEUX-EVID-P8-RUNTIME-2026-11-22
+    type: evidence
+    title: P8 runtime reconciliation
+    summary: Prod SHA unchanged; 108-path frontend NOT_DEPLOYED vs main.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/P8_RUNTIME_RECONCILIATION_2026-11-22.md
+
+  - id: FEUX-EVID-P8-MATRIX-2026-11-22
+    type: evidence
+    title: P8 authenticated UI evidence matrix
+    summary: Per-flow statuses; functional rows BLOCKED.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/AUTHENTICATED_UI_EVIDENCE_MATRIX_2026-11-22.md

@@ -5,3 +5,4 @@
 | RENTUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | `413175e8c` | RENTUX screen + fleet hub closeout | CONFIRMED | Docs-only |
 | RENTUX-EVID-CODE-001 | CODE | `413175e8c` | App.tsx view union + fleet types | CONFIRMED | No browser |
 | RENTUX-EVID-PROD-001 | PRODUCTION_OBSERVATION | prod `1e6a267c` | `/rental` shell + `FleetHubView` in bundle | CONFIRMED | No auth session |
+| RENTUX-EVID-P8-FUNC-BULK-001 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Screen matrix functional pass | BLOCKED | No approved session |

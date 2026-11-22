@@ -59,6 +59,18 @@ Independent of source-commit attestation:
 
 Do **not** upgrade `PRODUCTION_FRONTEND_SOURCE_SHA` to CONFIRMED without deploy-time build attestation (e.g. embedded commit in CI artifact metadata).
 
+---
+
+## P8 addendum (`2026-11-22`)
+
+| Comparison | `frontend/` paths | Notes |
+|------------|-------------------|-------|
+| `1e6a267c` → `413175e8c` | **91** | Unchanged vs P7 |
+| `413175e8c` → `cac006567` | **27** | Mostly connected-vehicle DIMO privilege + i18n |
+| `1e6a267c` → `cac006567` | **108** | Cumulative **NOT_DEPLOYED** |
+
+Production release SHA **unchanged** at P8. See [`P8_RUNTIME_RECONCILIATION_2026-11-22.md`](./P8_RUNTIME_RECONCILIATION_2026-11-22.md).
+
 ## Complete path list (91)
 
 Reproduce:

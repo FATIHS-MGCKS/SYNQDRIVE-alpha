@@ -8,8 +8,8 @@
 | **Route** | `GET https://app.synqdrive.eu/master` → `200` SPA shell (CONFIRMED) |
 | **Bundle trace** | `master-nav`, `/master` strings in `index-Cn8n4pFR.js` (CONFIRMED) |
 
-**AUTHENTICATED_FUNCTIONAL_UI_VERIFIED:** **UNKNOWN** (no session).
+**AUTHENTICATED_FUNCTIONAL_UI_VERIFIED:** **BLOCKED** — `AUTHENTICATED_ACCESS=BLOCKED_NO_APPROVED_SESSION` (P8).
 
-**Cross-product report:** [`../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md`](../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md)
+**Cross-product reports:** [`../../../evidence/AUTHENTICATED_UI_FUNCTIONAL_AUDIT_2026-11-22.md`](../../../evidence/AUTHENTICATED_UI_FUNCTIONAL_AUDIT_2026-11-22.md) · [`../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md`](../../../evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md)
 
 **Evidence:** `MAUX-EVID-PROD-001` (see product `EVIDENCE_INDEX.md`).
