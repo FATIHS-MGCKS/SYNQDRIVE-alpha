@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { isAuthenticated, getStoredUser } from './lib/auth';
+import { isAuthenticated, getStoredUser, hasUiAuditMasterShellAccess, resolveUiAuditProductLandingPath } from './lib/auth';
 import { AppThemeProvider } from './context/AppThemeContext';
 import { LanguageProvider } from './i18n/LanguageContext';
 import MasterApp from './master/App';
@@ -10,14 +10,25 @@ import VerificationDonePage from './pages/VerificationDonePage';
 import ServiceInfoV3DevFixturePage from './pages/dev/ServiceInfoV3DevFixturePage';
 import HealthErrorsServiceModalDevPage from './pages/dev/HealthErrorsServiceModalDevPage';
 
-function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
+function ProtectedRoute({
+  children,
+  requiredRole,
+  allowUiAuditMasterShell,
+}: {
+  children: React.ReactNode;
+  requiredRole?: string;
+  allowUiAuditMasterShell?: boolean;
+}) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
   if (requiredRole) {
     const user = getStoredUser();
-    if (user && user.platformRole !== requiredRole) {
-      return <Navigate to="/rental" replace />;
+    const roleOk = user && user.platformRole === requiredRole;
+    const auditMasterOk =
+      allowUiAuditMasterShell && requiredRole === 'MASTER_ADMIN' && hasUiAuditMasterShellAccess();
+    if (user && !roleOk && !auditMasterOk) {
+      return <Navigate to={resolveUiAuditProductLandingPath()} replace />;
     }
   }
   return <>{children}</>;
@@ -25,11 +36,7 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode;
 
 function LoginRoute() {
   if (isAuthenticated()) {
-    const user = getStoredUser();
-    if (user?.platformRole === 'MASTER_ADMIN') {
-      return <Navigate to="/master" replace />;
-    }
-    return <Navigate to="/rental" replace />;
+    return <Navigate to={resolveUiAuditProductLandingPath()} replace />;
   }
   return <LoginPage />;
 }
@@ -38,11 +45,7 @@ function DefaultRedirect() {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
-  const user = getStoredUser();
-  if (user?.platformRole === 'MASTER_ADMIN') {
-    return <Navigate to="/master" replace />;
-  }
-  return <Navigate to="/rental" replace />;
+  return <Navigate to={resolveUiAuditProductLandingPath()} replace />;
 }
 
 export default function App() {
@@ -62,7 +65,7 @@ export default function App() {
             <Route
               path="/master"
               element={
-                <ProtectedRoute requiredRole="MASTER_ADMIN">
+                <ProtectedRoute requiredRole="MASTER_ADMIN" allowUiAuditMasterShell>
                   <MasterApp />
                 </ProtectedRoute>
               }

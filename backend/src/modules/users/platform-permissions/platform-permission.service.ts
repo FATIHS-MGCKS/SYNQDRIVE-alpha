@@ -211,4 +211,111 @@ export class PlatformPermissionService {
       }
     }
   }
+
+  async grantUiAuditPermission(
+    targetUserId: string,
+    actorUserId: string,
+    permissionKey:
+      | typeof PlatformPermissionKey.UI_AUDIT_MASTER
+      | typeof PlatformPermissionKey.UI_AUDIT_RENTAL
+      | typeof PlatformPermissionKey.UI_AUDIT_OPERATOR,
+  ): Promise<PlatformPermissionGrantResult> {
+    return this.prisma.$transaction((tx) =>
+      this.grantUiAuditPermissionInTx(tx, targetUserId, actorUserId, permissionKey),
+    );
+  }
+
+  async revokeUiAuditPermission(
+    targetUserId: string,
+    actorUserId: string,
+    permissionKey:
+      | typeof PlatformPermissionKey.UI_AUDIT_MASTER
+      | typeof PlatformPermissionKey.UI_AUDIT_RENTAL
+      | typeof PlatformPermissionKey.UI_AUDIT_OPERATOR,
+  ): Promise<PlatformPermissionRevokeResult> {
+    return this.prisma.$transaction((tx) =>
+      this.revokeUiAuditPermissionInTx(tx, targetUserId, actorUserId, permissionKey),
+    );
+  }
+
+  private async grantUiAuditPermissionInTx(
+    tx: Prisma.TransactionClient,
+    targetUserId: string,
+    actorUserId: string,
+    permissionKey: PlatformPermissionKey,
+  ): Promise<PlatformPermissionGrantResult> {
+    await this.assertUiAuditGrantTargetEligibleInTx(tx, targetUserId);
+
+    const existing = await tx.userPlatformPermissionGrant.findFirst({
+      where: { userId: targetUserId, permissionKey, revokedAt: null },
+    });
+    if (existing) {
+      return { granted: true, idempotent: true, grantId: existing.id };
+    }
+
+    const grant = await tx.userPlatformPermissionGrant.create({
+      data: { userId: targetUserId, permissionKey, grantedByUserId: actorUserId },
+    });
+    return { granted: true, idempotent: false, grantId: grant.id };
+  }
+
+  private async revokeUiAuditPermissionInTx(
+    tx: Prisma.TransactionClient,
+    targetUserId: string,
+    actorUserId: string,
+    permissionKey: PlatformPermissionKey,
+  ): Promise<PlatformPermissionRevokeResult> {
+    const active = await tx.userPlatformPermissionGrant.findFirst({
+      where: { userId: targetUserId, permissionKey, revokedAt: null },
+    });
+    if (!active) {
+      return { revoked: false, idempotent: true, grantId: null };
+    }
+    const updated = await tx.userPlatformPermissionGrant.update({
+      where: { id: active.id },
+      data: { revokedAt: new Date(), revokedByUserId: actorUserId },
+    });
+    if (
+      permissionKey === PlatformPermissionKey.UI_AUDIT_MASTER ||
+      permissionKey === PlatformPermissionKey.UI_AUDIT_RENTAL ||
+      permissionKey === PlatformPermissionKey.UI_AUDIT_OPERATOR
+    ) {
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: { sessionVersion: { increment: 1 } },
+      });
+    }
+    return { revoked: true, idempotent: false, grantId: updated.id };
+  }
+
+  private async assertUiAuditGrantTargetEligibleInTx(
+    tx: Prisma.TransactionClient,
+    targetUserId: string,
+  ): Promise<void> {
+    const user = await tx.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, status: true, platformRole: true },
+    });
+    if (!user) {
+      throw new NotFoundException('Target user not found');
+    }
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('Target user is not active');
+    }
+    if (user.platformRole === UserPlatformRole.MASTER_ADMIN) {
+      throw new BadRequestException(
+        'UI audit grants are not permitted for MASTER_ADMIN identities',
+      );
+    }
+
+    const orgAdmin = await tx.organizationMembership.findFirst({
+      where: { userId: targetUserId, role: 'ORG_ADMIN', status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (orgAdmin) {
+      throw new BadRequestException(
+        'UI audit grants are not permitted for ORG_ADMIN memberships',
+      );
+    }
+  }
 }
