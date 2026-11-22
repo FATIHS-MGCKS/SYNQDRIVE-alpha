@@ -80,7 +80,7 @@ describe('UiAuditWriteDenyGuard', () => {
   it('allows master GET with master grant', () => {
     expect(
       guard.canActivate(
-        mockContext('GET', '/api/v1/admin/dashboard/operational', {
+        mockContext('GET', '/api/v1/admin/connectivity/platform-summary', {
           ...auditUser,
           platformPermissions: ['ui-audit-master'],
         }),

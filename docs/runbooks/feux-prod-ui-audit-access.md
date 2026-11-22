@@ -37,7 +37,9 @@ npx playwright test -c e2e/feux-prod-audit-playwright.config.ts feux-prod-audit-
 
 **Origin policy:** `FEUX_PROD_AUDIT_APPROVED_ORIGINS` (comma-separated) defaults to `https://app.synqdrive.eu`. Armed prod audit mode **rejects** `localhost` / `127.0.0.1`.
 
-**Server read policy:** `backend/src/modules/ui-audit/ui-audit-read-allowlist.ts` + `ui-audit-master-endpoint.policy.ts` — explicit GET/HEAD allowlist with product scopes; cross-tenant master directory/billing/security-user reads are **BLOCKED_SENSITIVE** for audit identities.
+**Server read policy:** `ui-audit-read-allowlist.ts` + `ui-audit-master-endpoint.policy.ts` — response-level master verdicts in `P9_MASTER_ENDPOINT_RESPONSE_EVIDENCE.md`. Master audit allowlist currently: **only** `GET /api/v1/admin/connectivity/platform-summary`.
+
+**Rental/Operator overlap:** overlapping paths (e.g. `bookings/today/*`) accept **either** `ui-audit-rental` **or** `ui-audit-operator` when both rules match (`userSatisfiesUiAuditReadRules`).
 
 **Session enforcement:** `UiAuditSessionEnforcementGuard` re-validates DB grants and `sessionVersion` on every request; UI audit revoke increments `sessionVersion`.
 

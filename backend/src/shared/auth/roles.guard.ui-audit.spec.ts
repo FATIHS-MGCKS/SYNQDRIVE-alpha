@@ -11,7 +11,7 @@ describe('RolesGuard — UI audit master read', () => {
       switchToHttp: () => ({
         getRequest: () => ({
           method: 'GET',
-          url: '/api/v1/admin/dashboard/operational',
+          url: '/api/v1/admin/connectivity/platform-summary',
           user: {
             id: 'audit-ma',
             platformRole: 'USER',

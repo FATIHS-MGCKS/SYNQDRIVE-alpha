@@ -1,4 +1,5 @@
 import { UI_AUDIT_JWT_PERMISSIONS } from './ui-audit.constants';
+import { userHasJwtGrant } from './ui-audit.context';
 import { UI_AUDIT_MASTER_ALLOWED_PATHS } from './ui-audit-master-endpoint.policy';
 
 export type UiAuditProductScope = 'master' | 'rental' | 'operator' | 'shared';
@@ -92,20 +93,55 @@ export const UI_AUDIT_READ_ALLOWLIST: readonly UiAuditReadRule[] = [
   ...RENTAL_READ_RULES,
 ];
 
+function ruleMatches(rule: UiAuditReadRule, method: string, normalizedPath: string): boolean {
+  const m = method.toUpperCase();
+  if (!rule.methods.has(m)) return false;
+  if (typeof rule.match === 'string') {
+    return rule.match === normalizedPath;
+  }
+  return rule.match.test(normalizedPath);
+}
+
+export function findAllUiAuditReadRules(
+  method: string,
+  normalizedPath: string,
+): UiAuditReadRule[] {
+  const matches: UiAuditReadRule[] = [];
+  for (const rule of UI_AUDIT_READ_ALLOWLIST) {
+    if (ruleMatches(rule, method, normalizedPath)) {
+      matches.push(rule);
+    }
+  }
+  return matches;
+}
+
+function specificityScore(rule: UiAuditReadRule): number {
+  if (typeof rule.match === 'string') return 10_000 + rule.match.length;
+  return 1_000;
+}
+
+/** Single rule for master RolesGuard bypass (most specific product match). */
 export function matchUiAuditReadRule(
   method: string,
   normalizedPath: string,
 ): UiAuditReadRule | null {
-  const m = method.toUpperCase();
-  for (const rule of UI_AUDIT_READ_ALLOWLIST) {
-    if (!rule.methods.has(m)) continue;
-    if (typeof rule.match === 'string') {
-      if (rule.match === normalizedPath) return rule;
-    } else if (rule.match.test(normalizedPath)) {
-      return rule;
-    }
-  }
-  return null;
+  const matches = findAllUiAuditReadRules(method, normalizedPath);
+  if (matches.length === 0) return null;
+  return [...matches].sort((a, b) => specificityScore(b) - specificityScore(a))[0] ?? null;
+}
+
+/** Product grant check: shared rules need no grant; overlapping routes accept ANY applicable grant. */
+export function userSatisfiesUiAuditReadRules(
+  user: { platformPermissions?: string[] },
+  rules: readonly UiAuditReadRule[],
+): boolean {
+  if (rules.length === 0) return false;
+  const productRules = rules.filter((r) => r.scope !== 'shared');
+  if (productRules.length === 0) return true;
+  return productRules.some((rule) => {
+    const grant = requiredJwtGrantForScope(rule.scope);
+    return grant ? userHasJwtGrant(user, grant) : true;
+  });
 }
 
 export function requiredJwtGrantForScope(scope: UiAuditProductScope): string | null {

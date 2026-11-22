@@ -341,6 +341,13 @@ describe('UI audit — HTTP security integration', () => {
       .expect(403);
   });
 
+  it('allows rental grant on bookings/today when operator rule also matches', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/organizations/${ORG_A}/bookings/today/pickups`)
+      .set('Authorization', `Bearer ${tokenRentalA}`)
+      .expect(200);
+  });
+
   it('denies operator grant on rental dashboard path', async () => {
     await request(app.getHttpServer())
       .get(`/api/v1/organizations/${ORG_A}/dashboard`)
@@ -362,11 +369,11 @@ describe('UI audit — HTTP security integration', () => {
       .expect(403);
   });
 
-  it('allows master audit on allowlisted operational dashboard', async () => {
+  it('denies master audit on dashboard/operational (response-level sensitive)', async () => {
     await request(app.getHttpServer())
       .get('/api/v1/admin/dashboard/operational')
       .set('Authorization', `Bearer ${tokenMasterAudit}`)
-      .expect(200);
+      .expect(403);
   });
 
   it('denies master audit on blocked organizations directory', async () => {

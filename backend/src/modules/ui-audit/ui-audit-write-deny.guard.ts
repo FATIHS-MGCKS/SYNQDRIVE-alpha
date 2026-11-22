@@ -9,10 +9,10 @@ import {
   UI_AUDIT_AUTH_SESSION_WRITE_ALLOWLIST,
   UI_AUDIT_SENSITIVE_GET_DENYLIST,
 } from './ui-audit.constants';
-import { isUiAuditBoundUser, userHasJwtGrant } from './ui-audit.context';
+import { isUiAuditBoundUser } from './ui-audit.context';
 import {
-  matchUiAuditReadRule,
-  requiredJwtGrantForScope,
+  findAllUiAuditReadRules,
+  userSatisfiesUiAuditReadRules,
 } from './ui-audit-read-allowlist';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -40,12 +40,11 @@ function assertReadAllowlistProductScope(
   method: string,
   path: string,
 ): void {
-  const rule = matchUiAuditReadRule(method, path);
-  if (!rule) {
+  const rules = findAllUiAuditReadRules(method, path);
+  if (rules.length === 0) {
     throw new ForbiddenException('UI audit scope: read not allowlisted');
   }
-  const requiredGrant = requiredJwtGrantForScope(rule.scope);
-  if (requiredGrant && !userHasJwtGrant(user, requiredGrant)) {
+  if (!userSatisfiesUiAuditReadRules(user, rules)) {
     throw new ForbiddenException('UI audit scope: product grant required');
   }
 }

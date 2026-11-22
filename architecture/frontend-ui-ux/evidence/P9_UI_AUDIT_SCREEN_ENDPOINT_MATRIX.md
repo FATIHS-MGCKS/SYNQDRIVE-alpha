@@ -6,8 +6,11 @@ Statuses: `SUPPORTED_READ_ONLY` | `REQUIRES_NEW_READ_CAPABILITY` | `BLOCKED_SENS
 
 | Screen | Status | Notes |
 |--------|--------|-------|
-| Dashboard | SUPPORTED_READ_ONLY | Allowlisted `GET /api/v1/admin/dashboard/operational` + `RolesGuard` audit path; SPA `ui-audit-master` |
+| Dashboard | BLOCKED_SENSITIVE | Operational DTO includes org attention, billing, support PII — not on audit allowlist |
 | Organizations | BLOCKED_SENSITIVE | Cross-tenant directory — removed from audit allowlist |
+| Security attention | BLOCKED_SENSITIVE | `topItems` expose emails/user IDs |
+| Ops overview / incidents | BLOCKED_SENSITIVE | Tenant-linked incident context |
+| Connectivity summary | SUPPORTED_READ_ONLY | Aggregate counts only (`ui-audit-master`) |
 | Security users | BLOCKED_SENSITIVE | Identity directory — removed from audit allowlist |
 | Billing operational overview | BLOCKED_SENSITIVE | Billing intelligence — removed from audit allowlist |
 | Security & Access | BLOCKED_SENSITIVE | User/role surfaces — partial read via admin security GETs only with MASTER path |

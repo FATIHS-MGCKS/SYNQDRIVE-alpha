@@ -39,7 +39,7 @@
 
 | Product | Verdict class | Notes |
 |---------|---------------|-------|
-| **Master** | **SUPPORTED_READ_ONLY** (server + SPA shell) | Allowlisted admin GETs + `RolesGuard` audit path; **no** blanket `/admin` bypass |
+| **Master** | **CONDITIONAL** (shell only) | SPA loads with `ui-audit-master`; **one** allowlisted GET (`connectivity/platform-summary`); all other master surfaces **BLOCKED_SENSITIVE** pending sanitized projections |
 | **Rental** | **SUPPORTED_READ_ONLY** (target) | Module `read` flags + `ui-audit-rental` grant + guard stack |
 | **Operator** | **SUPPORTED_READ_ONLY** (target) | WORKER + read modules + `ui-audit-operator` grant |
 | **Not deployed UI** | **NOT_DEPLOYED** | Repository features ahead of prod bundle |

@@ -7,12 +7,15 @@ describe('UI audit read allowlist', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('classifies master operational reads', () => {
+  it('allows only connectivity master aggregate read', () => {
     const rule = matchUiAuditReadRule(
       'GET',
-      '/api/v1/admin/dashboard/operational',
+      '/api/v1/admin/connectivity/platform-summary',
     );
     expect(rule?.scope).toBe('master');
+    expect(
+      matchUiAuditReadRule('GET', '/api/v1/admin/dashboard/operational'),
+    ).toBeNull();
   });
 
   it('classifies rental org reads', () => {

@@ -10,3 +10,4 @@
 | 2026-11-22 | FEUX-P9-FOUNDATION-001 | UI audit platform permissions; UiAuditWriteDenyGuard; matrix + runbook | FEUX-EVID-P9-AUDIT-FOUNDATION-001 |
 | 2026-11-22 | FEUX-P9B-SECURITY-001 | Product-scoped read allowlist; RolesGuard master audit reads; SPA master shell; Playwright origin/storageState harness | FEUX-EVID-P9B-SECURITY-CLOSEOUT-001 |
 | 2026-11-22 | FEUX-P9B-TENANT-REVOKE-001 | Master sensitive endpoint denial; session enforcement guard; HTTP tenant/revocation integration tests | FEUX-EVID-P9B-TENANT-REVOKE-001 |
+| 2026-11-22 | FEUX-P9B-REAL-ENDPOINT-001 | Response-level master endpoint blocking; connectivity-only allow; overlap grant OR; PlatformAdminController audit HTTP tests | FEUX-EVID-P9B-REAL-ENDPOINT-001 |
