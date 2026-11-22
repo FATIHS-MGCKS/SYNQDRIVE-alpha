@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Validate Tankstellenerkennung knowledge graph YAML — docs only.
- * Usage: node architecture/internationalization/scripts/validate-graph.mjs
+ * Usage: node architecture/frontend-ui-ux/scripts/validate-graph.mjs
  */
 import fs from 'fs';
 import path from 'path';
@@ -9,12 +9,12 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repo = path.resolve(__dirname, '../../..');
+const repo = path.resolve(__dirname, '../../../../../');
 const require = createRequire(import.meta.url);
 const yaml = require(path.join(repo, 'backend/node_modules/js-yaml'));
 
-const graphDir = path.join(repo, 'architecture/internationalization/graph');
-const authorityDir = path.join(repo, 'architecture/internationalization');
+const graphDir = path.join(repo, 'architecture/frontend-ui-ux/products/operator/graph');
+const authorityDir = path.join(repo, 'architecture/frontend-ui-ux/products/operator');
 
 const errors = [];
 function fail(msg) {
@@ -54,7 +54,7 @@ function parseDecisionStatusesFromMarkdown(filePath) {
   const map = new Map();
   if (!fs.existsSync(filePath)) return map;
   const text = fs.readFileSync(filePath, 'utf8');
-  const sectionRe = /## (I18N-DEC-[A-Z0-9-]+)[^\n]*\n[\s\S]*?\| \*\*STATUS\*\* \| ([^|]+) \|/g;
+  const sectionRe = /## (OPUX-DEC-[A-Z0-9-]+)[^\n]*\n[\s\S]*?\| \*\*STATUS\*\* \| ([^|]+) \|/g;
   for (const m of text.matchAll(sectionRe)) {
     const id = m[1];
     const status = m[2].trim().replace(/\s*\([^)]*\)\s*/g, '').trim();
@@ -67,7 +67,7 @@ function parseKnowledgeGraphDecisionTable(filePath) {
   const map = new Map();
   if (!fs.existsSync(filePath)) return map;
   const text = fs.readFileSync(filePath, 'utf8');
-  const rowRe = /\| (I18N-DEC-[A-Z0-9-]+) \|[^|]+\| ([A-Z_]+(?: \([^)]+\))?) \|/g;
+  const rowRe = /\| (OPUX-DEC-[A-Z0-9-]+) \|[^|]+\| ([A-Z_]+(?: \([^)]+\))?) \|/g;
   for (const m of text.matchAll(rowRe)) {
     const id = m[1];
     const status = m[2].trim().replace(/\s*\([^)]*\)\s*/g, '').trim();
@@ -80,7 +80,7 @@ function parseDecisionRegisterEvidenceFields(filePath) {
   const entries = [];
   if (!fs.existsSync(filePath)) return entries;
   const text = fs.readFileSync(filePath, 'utf8');
-  const sectionRe = /## (I18N-DEC-[A-Z0-9-]+)[^\n]*\n([\s\S]*?)(?=\n## I18N-DEC-|\n*$)/g;
+  const sectionRe = /## (OPUX-DEC-[A-Z0-9-]+)[^\n]*\n([\s\S]*?)(?=\n## OPUX-DEC-|\n*$)/g;
   for (const m of text.matchAll(sectionRe)) {
     const decisionId = m[1];
     const body = m[2];
@@ -93,7 +93,7 @@ function parseDecisionRegisterEvidenceFields(filePath) {
       hasExactlyOneEvidenceField: evidenceCount === 1,
       raw: primaryMatch?.[1] ?? null,
       refs: primaryMatch
-        ? [...primaryMatch[1].matchAll(/I18N-[A-Z0-9-]+/g)].map((x) => x[0])
+        ? [...primaryMatch[1].matchAll(/OPUX-[A-Z0-9-]+/g)].map((x) => x[0])
         : [],
     });
   }
@@ -104,7 +104,7 @@ function parseDecisionRegisterSectionIds(filePath) {
   const ids = [];
   if (!fs.existsSync(filePath)) return ids;
   const text = fs.readFileSync(filePath, 'utf8');
-  for (const m of text.matchAll(/## (I18N-DEC-[A-Z0-9-]+)/g)) ids.push(m[1]);
+  for (const m of text.matchAll(/## (OPUX-DEC-[A-Z0-9-]+)/g)) ids.push(m[1]);
   return ids;
 }
 
@@ -119,8 +119,8 @@ function assertEvidenceReferenceAllowed(ownerLabel, ref, nodeById, evidenceRefTy
       `${ownerLabel} evidence ref ${ref} has invalid type ${node.type}; permitted: ${evidenceRefTypes.join(', ')}`,
     );
   }
-  if (!ref.startsWith('I18N-EVID-') && !ref.startsWith('I18N-TEST-')) {
-    fail(`${ownerLabel} evidence ref ${ref} must use I18N-EVID-* or I18N-TEST-* prefix`);
+  if (!ref.startsWith('OPUX-EVID-') && !ref.startsWith('OPUX-TEST-')) {
+    fail(`${ownerLabel} evidence ref ${ref} must use OPUX-EVID-* or OPUX-TEST-* prefix`);
   }
 }
 
@@ -252,7 +252,7 @@ console.log('==> YAML syntax');
 const schema = load('schema.yaml');
 for (const name of ['nodes.yaml', 'edges.yaml', 'invariants.yaml']) {
   load(name);
-  console.log('  OK architecture/internationalization/graph/' + name);
+  console.log('  OK architecture/frontend-ui-ux/products/operator/graph/' + name);
 }
 
 for (const [key, label] of [
@@ -362,7 +362,7 @@ for (const inv of invariants) {
   if (invIds.has(inv.id)) fail(`Duplicate invariant id: ${inv.id}`);
   invIds.add(inv.id);
 
-  if (!inv.id.startsWith('I18N-INV-')) fail(`Invariant ${inv.id} must use I18N-INV- prefix`);
+  if (!inv.id.startsWith('OPUX-INV-')) fail(`Invariant ${inv.id} must use OPUX-INV- prefix`);
   if (!schema.invariant_kinds?.includes(inv.kind)) {
     fail(`Invariant ${inv.id} has invalid kind: ${inv.kind}`);
   }
@@ -388,11 +388,11 @@ const missingPaths = [...paths].filter((p) => !fs.existsSync(path.join(repo, p))
 for (const p of missingPaths) fail(`MISSING source_path: ${p}`);
 console.log('==> Source paths:', paths.size, missingPaths.length ? 'FAIL' : 'OK');
 
-const gapPattern = /I18N-GAP-[A-Z0-9-]+/g;
-const hypPattern = /I18N-HYP-[A-Z0-9-]+/g;
-const contraPattern = /I18N-CX-[0-9]+/g;
-const supersededPattern = /I18N-SUPERSEDED-[A-Z0-9-]+/g;
-const rejectPattern = /I18N-REJECT-[A-Z0-9-]+/g;
+const gapPattern = /OPUX-GAP-[A-Z0-9-]+/g;
+const hypPattern = /OPUX-HYP-[A-Z0-9-]+/g;
+const contraPattern = /OPUX-CX-[0-9]+/g;
+const supersededPattern = /OPUX-SUPERSEDED-[A-Z0-9-]+/g;
+const rejectPattern = /OPUX-REJECT-[A-Z0-9-]+/g;
 
 const indexedGaps = collectStableIdsFromMarkdown(authorityDir, gapPattern);
 const indexedHyps = collectStableIdsFromMarkdown(authorityDir, hypPattern);
@@ -484,7 +484,7 @@ for (const decisionId of registerDecisionIds) {
   }
   exactlyOneEvidenceCount += 1;
   if (entry.refs.length === 0) {
-    fail(`DECISION_REGISTER ${decisionId} EVIDENCE field has no I18N-* references`);
+    fail(`DECISION_REGISTER ${decisionId} EVIDENCE field has no OPUX-* references`);
     continue;
   }
   for (const ref of entry.refs) {

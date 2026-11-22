@@ -23,8 +23,11 @@ edges:
   - from: FEUX-DOM-PLATFORM-001
     relation: governs
     to: FEUX-DATA-THEME-001
-  - from: FEUX-DEC-PLATFORM-PROFILES-001
+  - from: FEUX-DEC-INDEPENDENT-AUTHORITIES-002
     relation: decides
+    to: FEUX-DOM-PLATFORM-001
+  - from: FEUX-DEC-CHANGE-ISOLATION-001
+    relation: governs
     to: FEUX-DOM-PLATFORM-001
   - from: FEUX-DEC-SHARED-TOKEN-SSOT-001
     relation: decides

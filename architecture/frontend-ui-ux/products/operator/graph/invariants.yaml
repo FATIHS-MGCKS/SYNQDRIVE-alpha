@@ -1,0 +1,7 @@
+invariants:
+  - id: OPUX-INV-LOCAL-001
+    kind: CONDITIONAL_INVARIANT
+    statement: >
+      Product-local UI changes do not mandate sibling product authority updates unless shared foundation contracts change.
+    scope: governance
+    epistemic_status: CONFIRMED

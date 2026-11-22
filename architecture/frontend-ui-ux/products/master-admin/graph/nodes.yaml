@@ -1,0 +1,88 @@
+nodes:
+  - id: MAUX-DOM-001
+    type: domain
+    title: Master Admin UI/UX
+    summary: /master
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/master/
+  - id: MAUX-ORCH-SHELL-001
+    type: orchestrator
+    title: MasterAdminShell
+    summary: Product shell
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/master/
+    evidence:
+      - MAUX-EVID-CODE-001
+  - id: MAUX-DEC-INDEPENDENT-001
+    type: decision
+    title: Independent authority
+    summary: PR2490
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/decisions/DECISION_REGISTER.md
+    evidence:
+      - MAUX-EVID-AUDIT-001
+  - id: MAUX-DEC-CONTROL-PLANE-001
+    type: decision
+    title: Master retains independent control-plane IA
+    summary: Master retains independent control-plane IA
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/decisions/DECISION_REGISTER.md
+    evidence:
+      - MAUX-EVID-CODE-001
+  - id: MAUX-EVID-AUDIT-001
+    type: evidence
+    title: Bootstrap audit
+    summary: Architecture only
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/AUDIT_MANIFEST.md
+  - id: MAUX-EVID-CODE-001
+    type: evidence
+    title: Code inspection
+    summary: frontend/src/master/
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    source_paths:
+      - frontend/src/master/
+  - id: MAUX-GAP-I18N-001
+    type: gap
+    title: Master chrome tMasterNav DE-only
+    summary: Master chrome tMasterNav DE-only
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/contradictions/KNOWLEDGE_GAPS.md
+  - id: MAUX-GAP-ORPHAN-001
+    type: gap
+    title: RightSidebar unmounted
+    summary: RightSidebar unmounted
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/contradictions/KNOWLEDGE_GAPS.md
+  - id: MAUX-GAP-PROD-001
+    type: gap
+    title: Production Master UI not verified
+    summary: Production Master UI not verified
+    epistemic_status: UNKNOWN
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/contradictions/KNOWLEDGE_GAPS.md
+  - id: MAUX-HYP-001
+    type: hypothesis
+    title: Master i18n migration leverage
+    summary: Hub title i18n may dominate redesign cost
+    epistemic_status: INFERRED
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/research/OPEN_HYPOTHESES.md
+  - id: MAUX-CX-001
+    type: contradiction
+    title: Legacy docs/ui URL nav vs ?view= routing
+    summary: Historical docs may contradict current Master routing
+    epistemic_status: HISTORICAL
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/contradictions/OPEN_CONTRADICTIONS.md

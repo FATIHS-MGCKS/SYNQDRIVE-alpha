@@ -212,7 +212,10 @@ Evidence: [`CHANGE_RECORD_P3_PR1_2026-11-17.md`](../platform-product-catalog/CHA
 | Module | Registry status (2026-11-17) | Authority path |
 |--------|------------------------------|----------------|
 | Platform product catalog | `AUDIT_IN_PROGRESS` | [`architecture/platform-product-catalog/`](../platform-product-catalog/) |
-| Frontend UI/UX & Design System | `AUDIT_IN_PROGRESS` (bootstrap 2026-11-22) | [`architecture/frontend-ui-ux/`](../frontend-ui-ux/) |
+| Shared UI Design Foundation | `AUDIT_IN_PROGRESS` (bootstrap 2026-11-22) | [`architecture/frontend-ui-ux/`](../frontend-ui-ux/) |
+| Master Admin UI/UX | `AUDIT_IN_PROGRESS` | [`architecture/frontend-ui-ux/products/master-admin/`](../frontend-ui-ux/products/master-admin/) |
+| Rental UI/UX | `AUDIT_IN_PROGRESS` | [`architecture/frontend-ui-ux/products/rental/`](../frontend-ui-ux/products/rental/) |
+| Operator UI/UX | `AUDIT_IN_PROGRESS` | [`architecture/frontend-ui-ux/products/operator/`](../frontend-ui-ux/products/operator/) |
 | (others) | See central registry | Per [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../SYNQDRIVE_RENTAL_ARCHITECTURE.md) |
 
 Do **not** promote to `AUTHORITY_ACTIVE` without [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) gates.

@@ -5,7 +5,7 @@ nodes:
     type: domain
     title: Shared frontend UI platform domain
     epistemic_status: CONFIRMED
-    summary: One Vite SPA repo; shared tokens/patterns; three product UI profiles.
+    summary: One Vite SPA repo; shared tokens/patterns; three independent product UI authorities.
     source_paths:
       - architecture/frontend-ui-ux/README.md
       - frontend/src/App.tsx
@@ -86,12 +86,34 @@ nodes:
 
   - id: FEUX-DEC-PLATFORM-PROFILES-001
     type: decision
-    title: Shared DS authority + three product profiles
-    epistemic_status: CONFIRMED
-    decision_status: VALIDATED
-    summary: Owner architecture decision 2026-11-22.
+    title: Shared DS + three product profiles only
+    epistemic_status: HISTORICAL
+    decision_status: SUPERSEDED
+    summary: Superseded by independent product authorities FEUX-DEC-INDEPENDENT-AUTHORITIES-002.
     source_paths:
       - architecture/frontend-ui-ux/decisions/DECISION_REGISTER.md
+    evidence:
+      - FEUX-EVID-AUDIT-BOOTSTRAP-001
+
+  - id: FEUX-DEC-INDEPENDENT-AUTHORITIES-002
+    type: decision
+    title: Shared foundation + three independent product authorities
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Owner PR2490 remediation 2026-11-22.
+    source_paths:
+      - architecture/frontend-ui-ux/decisions/DECISION_REGISTER.md
+    evidence:
+      - FEUX-EVID-AUDIT-BOOTSTRAP-001
+
+  - id: FEUX-DEC-CHANGE-ISOLATION-001
+    type: decision
+    title: Cross-product UI change isolation policy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: PRODUCT_LOCAL_CHANGE and SHARED_FOUNDATION_CHANGE rules.
+    source_paths:
+      - architecture/frontend-ui-ux/governance/CROSS_PRODUCT_CHANGE_POLICY.md
     evidence:
       - FEUX-EVID-AUDIT-BOOTSTRAP-001
 
@@ -155,14 +177,6 @@ nodes:
     source_paths:
       - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
 
-  - id: FEUX-GAP-004
-    type: gap
-    title: Rental deep screen inventory incomplete
-    epistemic_status: INFERRED
-    summary: Partial rental audit beyond shell and view union.
-    source_paths:
-      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
-
   - id: FEUX-GAP-005
     type: gap
     title: Animation performance profiling
@@ -170,38 +184,6 @@ nodes:
     summary: backdrop-filter cost not measured.
     source_paths:
       - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
-
-  - id: FEUX-GAP-006
-    type: gap
-    title: Master chrome i18n debt
-    epistemic_status: CONFIRMED
-    summary: tMasterNav DE-only outside LanguageProvider.
-    source_paths:
-      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
-
-  - id: FEUX-GAP-007
-    type: gap
-    title: Orphan Master RightSidebar component
-    epistemic_status: CONFIRMED
-    summary: File exists; not mounted in App.tsx.
-    source_paths:
-      - architecture/frontend-ui-ux/contradictions/KNOWLEDGE_GAPS.md
-
-  - id: FEUX-HYP-001
-    type: hypothesis
-    title: Master i18n migration highest redesign leverage
-    epistemic_status: INFERRED
-    summary: Hypothesis for prioritization only.
-    source_paths:
-      - architecture/frontend-ui-ux/research/OPEN_HYPOTHESES.md
-
-  - id: FEUX-HYP-002
-    type: hypothesis
-    title: Rental KPI rhythm ADAPT improves Master dashboard
-    epistemic_status: INFERRED
-    summary: Design hypothesis; not user-tested.
-    source_paths:
-      - architecture/frontend-ui-ux/research/OPEN_HYPOTHESES.md
 
   - id: FEUX-EVID-AUDIT-BOOTSTRAP-001
     type: evidence

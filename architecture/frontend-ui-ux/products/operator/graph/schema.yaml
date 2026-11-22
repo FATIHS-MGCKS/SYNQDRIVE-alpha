@@ -1,0 +1,73 @@
+version: "1.0"
+description: Operator UI/UX knowledge graph schema
+
+node_types:
+  - domain
+  - orchestrator
+  - decision
+  - evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+
+decision_status_values:
+  - PROPOSED
+  - VALIDATED
+
+decision_status_permitted_types:
+  - decision
+
+invariant_kinds:
+  - CONDITIONAL_INVARIANT
+
+evidence_source_types:
+  - CURRENT_CODE
+  - AUDIT_DOCUMENT
+
+evidence_reference_permitted_types:
+  - evidence
+
+relation_types:
+  - downstream_of
+  - decides
+  - supports
+
+relation_semantics_doc: architecture/frontend-ui-ux/products/operator/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: OPUX-DOM-
+  orchestrator: OPUX-ORCH-
+  decision: OPUX-DEC-
+  evidence: OPUX-EVID-
+  hypothesis: OPUX-HYP-
+  invariant: OPUX-INV-
+  gap: OPUX-GAP-
+  contradiction: OPUX-CX-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - source_paths
+    - evidence
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to

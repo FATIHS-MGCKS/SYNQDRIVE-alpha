@@ -1,0 +1,74 @@
+nodes:
+  - id: OPUX-DOM-001
+    type: domain
+    title: Operator UI/UX
+    summary: /operator/*
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/operator/
+  - id: OPUX-ORCH-SHELL-001
+    type: orchestrator
+    title: OperatorShell
+    summary: Product shell
+    epistemic_status: CONFIRMED
+    source_paths:
+      - frontend/src/operator/
+    evidence:
+      - OPUX-EVID-CODE-001
+  - id: OPUX-DEC-INDEPENDENT-001
+    type: decision
+    title: Independent authority
+    summary: PR2490
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/frontend-ui-ux/products/operator/decisions/DECISION_REGISTER.md
+    evidence:
+      - OPUX-EVID-AUDIT-001
+  - id: OPUX-DEC-MOBILE-SHELL-001
+    type: decision
+    title: Operator owns mobile field shell UX
+    summary: Operator owns mobile field shell UX
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/frontend-ui-ux/products/operator/decisions/DECISION_REGISTER.md
+    evidence:
+      - OPUX-EVID-CODE-001
+  - id: OPUX-EVID-AUDIT-001
+    type: evidence
+    title: Bootstrap audit
+    summary: Architecture only
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    source_paths:
+      - architecture/frontend-ui-ux/products/operator/AUDIT_MANIFEST.md
+  - id: OPUX-EVID-CODE-001
+    type: evidence
+    title: Code inspection
+    summary: frontend/src/operator/
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    source_paths:
+      - frontend/src/operator/
+  - id: OPUX-GAP-PROD-001
+    type: gap
+    title: Production Operator UI not verified
+    summary: Production Operator UI not verified
+    epistemic_status: UNKNOWN
+    source_paths:
+      - architecture/frontend-ui-ux/products/operator/contradictions/KNOWLEDGE_GAPS.md
+  - id: OPUX-GAP-TOUCH-001
+    type: gap
+    title: Touch target audit not run
+    summary: Touch target audit not run
+    epistemic_status: INFERRED
+    source_paths:
+      - architecture/frontend-ui-ux/products/operator/contradictions/KNOWLEDGE_GAPS.md
+  - id: OPUX-CX-001
+    type: contradiction
+    title: Legacy mobile docs vs OperatorShell
+    summary: Historical operator UX docs may be outdated
+    epistemic_status: HISTORICAL
+    source_paths:
+      - architecture/frontend-ui-ux/products/operator/contradictions/OPEN_CONTRADICTIONS.md

@@ -44,7 +44,7 @@ From `MASTER_NAV_ITEMS` / groups in `master-nav.config.ts`:
 
 ## Hub / screen matrix (top-level)
 
-See [`../../inventories/MASTER_SCREEN_MATRIX.md`](../../inventories/MASTER_SCREEN_MATRIX.md).
+See [`./inventories/MASTER_SCREEN_MATRIX.md`](./inventories/MASTER_SCREEN_MATRIX.md).
 
 ## Page framework (governing contract)
 

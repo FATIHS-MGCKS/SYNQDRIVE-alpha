@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **MODULE** | Frontend UI/UX & Design System |
+| **MODULE** | Shared UI Design Foundation |
 | **MODULE_SLUG** | `frontend-ui-ux` |
 | **AUDIT_STARTED_AT** | `2026-11-22T16:00:00Z` |
 | **AUDIT_COMPLETED_AT** | `IN_PROGRESS` (Gate A **not** claimed — Production UI audit deferred) |

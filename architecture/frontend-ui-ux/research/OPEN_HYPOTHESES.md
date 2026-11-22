@@ -1,6 +1,8 @@
-# Open Hypotheses — Frontend UI/UX
+# Open Hypotheses — Shared UI Design Foundation
 
-| ID | Hypothesis | Status | Notes |
-|----|------------|--------|-------|
-| FEUX-HYP-001 | Consolidating Master hub titles into platform i18n will reduce redesign cost more than token tweaks | PROPOSED | Depends on i18n authority prioritization |
-| FEUX-HYP-002 | Selective `ADAPT` of Rental dashboard KPI rhythm into Master dashboard improves perceived quality without fleet nav copy | PROPOSED | See comparison matrix |
+Cross-product hypotheses are owned by product authorities:
+
+- Master: `architecture/frontend-ui-ux/products/master-admin/research/OPEN_HYPOTHESES.md`
+- Rental: `architecture/frontend-ui-ux/products/rental/research/OPEN_HYPOTHESES.md`
+
+No shared FEUX-HYP-* entries at foundation layer in bootstrap V2.

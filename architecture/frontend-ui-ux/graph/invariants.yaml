@@ -22,10 +22,10 @@ invariants:
       FEUX records UI copy gaps but does not fork i18n architecture.
     scope: cross-authority
     epistemic_status: CONFIRMED
-  - id: FEUX-INV-MASTER-CP-001
-    kind: CONDITIONAL_INVARIANT
+  - id: FEUX-INV-CHANGE-ISOLATION-001
+    kind: CONFIRMED_INVARIANT
     statement: >
-      Master Admin retains control-plane information architecture; Rental layouts must not
-      be copied wholesale into Master without an explicit ADOPT/ADAPT decision record.
-    scope: master-admin
+      PRODUCT_LOCAL_CHANGE and SHARED_FOUNDATION_CHANGE rules in governance/CROSS_PRODUCT_CHANGE_POLICY.md
+      govern documentation and review obligations; they do not imply full runtime CSS isolation.
+    scope: cross-product
     epistemic_status: CONFIRMED
