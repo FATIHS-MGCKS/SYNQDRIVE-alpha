@@ -71,6 +71,7 @@ import { masterOneAutoDe } from './master.oneAuto.de';
 import { masterOrganizationsDe } from './master.organizations.de';
 import { masterRegistrationBrakeDe } from './master.registration.brake.de';
 import { masterCvTechnicalSpecsDe } from './master.cv.technicalSpecs.de';
+import { masterCvDimoPrivilegeDe } from './master.cv.dimoPrivilege.de';
 import { masterCvOemSpecsDe } from './master.cv.oemSpecs.de';
 
 export const de: Record<TranslationKey, string> = {
@@ -6034,6 +6035,7 @@ export const de: Record<TranslationKey, string> = {
   ...masterOrganizationsDe,
   ...masterRegistrationBrakeDe,
   ...masterCvTechnicalSpecsDe,
+  ...masterCvDimoPrivilegeDe,
   ...masterCvOemSpecsDe,
   ...batteryV2HvInspectionDE,
   ...tireWearV3De,

@@ -1,0 +1,63 @@
+export const masterCvDimoPrivilegeNl = {
+  'master.cv.dimoPrivilege.sectionTitle': 'DIMO-machtigingen',
+  'master.cv.dimoPrivilege.connectivityNote':
+    'Connectiviteit en mapping tonen de lokale integratiestatus. Externe privilegeverificatie is apart en verandert niet alleen omdat een voertuig verbonden lijkt.',
+  'master.cv.dimoPrivilege.loading': 'DIMO-machtigingsstatus laden…',
+  'master.cv.dimoPrivilege.loadError': 'DIMO-machtigingsstatus kon niet worden geladen.',
+  'master.cv.dimoPrivilege.retry': 'Opnieuw proberen',
+  'master.cv.dimoPrivilege.providerStatus.label': 'Externe privilegeverificatie',
+  'master.cv.dimoPrivilege.providerStatus.NOT_VERIFIED': 'Nog niet geverifieerd',
+  'master.cv.dimoPrivilege.providerStatus.CONFIRMED_ABSENT': 'Geen bevoorrechte toegang gedetecteerd',
+  'master.cv.dimoPrivilege.providerStatus.PRIVILEGE_STILL_ACTIVE': 'Privilege nog actief',
+  'master.cv.dimoPrivilege.providerStatus.NOT_AVAILABLE': 'Verificatie niet beschikbaar',
+  'master.cv.dimoPrivilege.providerStatus.REVIEW_REQUIRED': 'Beoordeling vereist',
+  'master.cv.dimoPrivilege.providerStatus.NO_DIMO_DEPENDENCY': 'Geen DIMO-afhankelijkheid',
+  'master.cv.dimoPrivilege.vehicleVerification.label': 'Dit voertuig (verificatie)',
+  'master.cv.dimoPrivilege.vehicleVerification.VERIFIED_ABSENT': 'Geverifieerd: geen privilege',
+  'master.cv.dimoPrivilege.vehicleVerification.VERIFIED_STILL_PRIVILEGED': 'Geverifieerd: nog bevoorrecht',
+  'master.cv.dimoPrivilege.vehicleVerification.UNVERIFIED': 'Niet geverifieerd',
+  'master.cv.dimoPrivilege.vehicleVerification.REVIEW_REQUIRED': 'Beoordeling vereist',
+  'master.cv.dimoPrivilege.localConnection': 'Lokale DIMO-verbinding',
+  'master.cv.dimoPrivilege.lastVerified': 'Laatst geverifieerd',
+  'master.cv.dimoPrivilege.tokenId': 'Token-ID (gemaskeerd)',
+  'master.cv.dimoPrivilege.offboardingJob': 'Offboardingtaak',
+  'master.cv.dimoPrivilege.jobPhase': 'Fase',
+  'master.cv.dimoPrivilege.ownerActionOutstanding': 'Voor dit voertuig kan nog een actie van de eigenaar nodig zijn.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Geen openstaande eigenaaractie (geverifieerde externe afwezigheid).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'Externe privilegeverificatie voor dit voertuig is onbekend — niet als afgerond beschouwen.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Dit voertuig staat niet in de DIMO-offboardinginventaris van de organisatie.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Opnieuw controleren en overdracht zijn niet beschikbaar: voertuig ontbreekt in DIMO-inventarisnapshot.',
+  'master.cv.dimoPrivilege.detailCode': 'Detail- / redencode',
+  'master.cv.dimoPrivilege.externalPrivilege': 'Extern privilege (voertuig)',
+  'master.cv.dimoPrivilege.stillPrivileged.true': 'Nog bevoorrecht (extern)',
+  'master.cv.dimoPrivilege.stillPrivileged.false': 'Geen privilege (extern)',
+  'master.cv.dimoPrivilege.stillPrivileged.unknown': 'Extern privilege onbekend',
+  'master.cv.dimoPrivilege.notRevokedHint':
+    '«Niet beschikbaar» betekent niet dat het privilege is ingetrokken — alleen dat verificatie niet is voltooid.',
+  'master.cv.dimoPrivilege.recheck.action': 'Extern privilege opnieuw controleren',
+  'master.cv.dimoPrivilege.recheck.loading': 'Controleren…',
+  'master.cv.dimoPrivilege.recheck.success': 'Privilegecontrole voltooid.',
+  'master.cv.dimoPrivilege.recheck.evidencePreserved': 'Nieuwere bewijzen behouden (verouderde controle afgewezen).',
+  'master.cv.dimoPrivilege.recheck.gateOff':
+    'Live privilegecontrole is in deze omgeving niet ingeschakeld. Alleen opgeslagen status wordt getoond.',
+  'master.cv.dimoPrivilege.recheck.error': 'Privilegecontrole mislukt.',
+  'master.cv.dimoPrivilege.handoff.action': 'Eigenaaroverdracht vastleggen (intern)',
+  'master.cv.dimoPrivilege.handoff.confirmTitle': 'DIMO-eigenaaroverdracht vastleggen?',
+  'master.cv.dimoPrivilege.handoff.confirmBody':
+    'Dit legt een interne operatoroverdracht vast voor auditdoeleinden. Het informeert de voertuigeigenaar niet en wijzigt geen blockchain-privilege.',
+  'master.cv.dimoPrivilege.handoff.confirmAction': 'Overdracht vastleggen',
+  'master.cv.dimoPrivilege.handoff.cancel': 'Annuleren',
+  'master.cv.dimoPrivilege.handoff.loading': 'Vastleggen…',
+  'master.cv.dimoPrivilege.handoff.success': 'Overdracht vastgelegd voor audit.',
+  'master.cv.dimoPrivilege.handoff.replay': 'Idempotente herhaling — bestaand record hergebruikt.',
+  'master.cv.dimoPrivilege.handoff.internalOnlyDisclaimer':
+    'Intern vastgelegd — geen bewijs van levering aan de voertuigeigenaar.',
+  'master.cv.dimoPrivilege.handoff.error': 'Overdracht kon niet worden vastgelegd.',
+  'master.cv.dimoPrivilege.mfa.title': 'Bevestig bevoorrechte actie',
+  'master.cv.dimoPrivilege.mfa.hint': 'Step-up-authenticatie is vereist voor DIMO-offboardingacties.',
+  'master.cv.dimoPrivilege.aria.section': 'DIMO-machtigingen en offboardingstatus',
+};

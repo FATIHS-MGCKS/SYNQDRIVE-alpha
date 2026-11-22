@@ -1,0 +1,63 @@
+export const masterCvDimoPrivilegeTr = {
+  'master.cv.dimoPrivilege.sectionTitle': 'DIMO izinleri',
+  'master.cv.dimoPrivilege.connectivityNote':
+    'Bağlantı ve eşleme yerel entegrasyon durumunu yansıtır. Harici ayrıcalık doğrulaması ayrıdır; araç bağlı görünüyor diye değişmez.',
+  'master.cv.dimoPrivilege.loading': 'DIMO izin durumu yükleniyor…',
+  'master.cv.dimoPrivilege.loadError': 'DIMO izin durumu yüklenemedi.',
+  'master.cv.dimoPrivilege.retry': 'Tekrar dene',
+  'master.cv.dimoPrivilege.providerStatus.label': 'Harici ayrıcalık doğrulaması',
+  'master.cv.dimoPrivilege.providerStatus.NOT_VERIFIED': 'Henüz doğrulanmadı',
+  'master.cv.dimoPrivilege.providerStatus.CONFIRMED_ABSENT': 'Ayrıcalıklı erişim tespit edilmedi',
+  'master.cv.dimoPrivilege.providerStatus.PRIVILEGE_STILL_ACTIVE': 'Ayrıcalık hâlâ aktif',
+  'master.cv.dimoPrivilege.providerStatus.NOT_AVAILABLE': 'Doğrulama kullanılamıyor',
+  'master.cv.dimoPrivilege.providerStatus.REVIEW_REQUIRED': 'İnceleme gerekli',
+  'master.cv.dimoPrivilege.providerStatus.NO_DIMO_DEPENDENCY': 'DIMO bağımlılığı yok',
+  'master.cv.dimoPrivilege.vehicleVerification.label': 'Bu araç (doğrulama)',
+  'master.cv.dimoPrivilege.vehicleVerification.VERIFIED_ABSENT': 'Doğrulandı: ayrıcalık yok',
+  'master.cv.dimoPrivilege.vehicleVerification.VERIFIED_STILL_PRIVILEGED': 'Doğrulandı: hâlâ ayrıcalıklı',
+  'master.cv.dimoPrivilege.vehicleVerification.UNVERIFIED': 'Doğrulanmadı',
+  'master.cv.dimoPrivilege.vehicleVerification.REVIEW_REQUIRED': 'İnceleme gerekli',
+  'master.cv.dimoPrivilege.localConnection': 'Yerel DIMO bağlantısı',
+  'master.cv.dimoPrivilege.lastVerified': 'Son doğrulama',
+  'master.cv.dimoPrivilege.tokenId': 'Token kimliği (maskeli)',
+  'master.cv.dimoPrivilege.offboardingJob': 'Offboarding işi',
+  'master.cv.dimoPrivilege.jobPhase': 'Aşama',
+  'master.cv.dimoPrivilege.ownerActionOutstanding': 'Bu araç için sahip işlemi hâlâ gerekebilir.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'Bekleyen sahip işlemi yok (harici yokluk doğrulandı).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'Bu araç için harici ayrıcalık doğrulaması bilinmiyor — tamamlanmış saymayın.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'Bu araç kuruluşun DIMO offboarding envanter listesinde yok.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Yeniden kontrol ve devir kullanılamıyor; araç DIMO envanter anlık görüntüsünde yok.',
+  'master.cv.dimoPrivilege.detailCode': 'Ayrıntı / neden kodu',
+  'master.cv.dimoPrivilege.externalPrivilege': 'Harici ayrıcalık (araç)',
+  'master.cv.dimoPrivilege.stillPrivileged.true': 'Hâlâ ayrıcalıklı (harici)',
+  'master.cv.dimoPrivilege.stillPrivileged.false': 'Ayrıcalık yok (harici)',
+  'master.cv.dimoPrivilege.stillPrivileged.unknown': 'Harici ayrıcalık bilinmiyor',
+  'master.cv.dimoPrivilege.notRevokedHint':
+    '“Kullanılamıyor”, ayrıcalığın kaldırıldığı anlamına gelmez — yalnızca doğrulama tamamlanamadı.',
+  'master.cv.dimoPrivilege.recheck.action': 'Harici ayrıcalığı yeniden kontrol et',
+  'master.cv.dimoPrivilege.recheck.loading': 'Kontrol ediliyor…',
+  'master.cv.dimoPrivilege.recheck.success': 'Ayrıcalık yeniden kontrolü tamamlandı.',
+  'master.cv.dimoPrivilege.recheck.evidencePreserved': 'Daha yeni kanıt korundu (eski kontrol reddedildi).',
+  'master.cv.dimoPrivilege.recheck.gateOff':
+    'Canlı ayrıcalık kontrolü bu ortamda etkin değil. Yalnızca kayıtlı durum gösterilir.',
+  'master.cv.dimoPrivilege.recheck.error': 'Ayrıcalık yeniden kontrolü başarısız.',
+  'master.cv.dimoPrivilege.handoff.action': 'Sahip devrini kaydet (dahili)',
+  'master.cv.dimoPrivilege.handoff.confirmTitle': 'DIMO sahip devri kaydedilsin mi?',
+  'master.cv.dimoPrivilege.handoff.confirmBody':
+    'Bu, yalnızca denetim için dahili operatör devrini kaydeder. Araç sahibine bildirim göndermez ve blockchain ayrıcalığını değiştirmez.',
+  'master.cv.dimoPrivilege.handoff.confirmAction': 'Devri kaydet',
+  'master.cv.dimoPrivilege.handoff.cancel': 'İptal',
+  'master.cv.dimoPrivilege.handoff.loading': 'Kaydediliyor…',
+  'master.cv.dimoPrivilege.handoff.success': 'Devir denetim için kaydedildi.',
+  'master.cv.dimoPrivilege.handoff.replay': 'İdempotent tekrar — mevcut kayıt kullanıldı.',
+  'master.cv.dimoPrivilege.handoff.internalOnlyDisclaimer':
+    'Dahili kayıt — araç sahibine iletim kanıtı değildir.',
+  'master.cv.dimoPrivilege.handoff.error': 'Devir kaydedilemedi.',
+  'master.cv.dimoPrivilege.mfa.title': 'Ayrıcalıklı işlemi onayla',
+  'master.cv.dimoPrivilege.mfa.hint': 'DIMO offboarding işlemleri için step-up kimlik doğrulaması gerekir.',
+  'master.cv.dimoPrivilege.aria.section': 'DIMO izinleri ve offboarding durumu',
+};

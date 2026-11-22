@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-11-22 | **Master Connected Vehicles — DIMO owner handoff UI (P6D4)** — `ConnectedVehicleDetailDrawer` DIMO-Mapping subsection: org-scoped privilege status GET, MFA step-up recheck/handoff POST via `api.admin.organizations.offboarding.*`; no new routes/pages; 9-locale `master.cv.dimoPrivilege.*`; actions only when active offboarding job | Master Admin Connected Vehicles surface; consumes organizations offboarding HTTP (#2489); no provider mutations / flags unchanged |
 | 2026-11-03 | **OEM PATCH optimistic concurrency fix** — explicit `updatedAt` on conditional `updateMany` (lost-update when `@updatedAt` skipped on bulk update); dual-connection PG regression (7 tests) | Master PATCH; evidence `ONEAUTO_OEM_SPEC_PRB_MASTER_API_UI.md` |
 | 2026-11-03 | **One Auto OEM spec PR-C2 idempotency hardening** — materialization compares stored snapshots with `isDeepStrictEqual` (jsonb key order); `snapshotCreatedAt` tied to `responseFetchedAt` for stable normalized payloads | Same module; evidence `ONEAUTO_OEM_SPEC_PRC2_SNAPSHOT.md` |
 | 2026-11-03 | **One Auto OEM spec PR-C2 blocker repair** — scheduler registry entry `oneauto_oem_suggestion_snapshot_cleanup`; bounded recovery batch for missing snapshots; CI script runs OneAuto PG before OEM PATCH 7-pack; evidence `ONEAUTO_OEM_SPEC_PRC2_SNAPSHOT.md` updated | Same module; no auto-confirm |

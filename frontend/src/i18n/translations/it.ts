@@ -15,6 +15,7 @@ import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
 import { masterOneAutoIt } from './master.oneAuto.it';
 import { masterOrganizationsIt } from './master.organizations.it';
 import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
+import { masterCvDimoPrivilegeIt } from './master.cv.dimoPrivilege.it';
 import { masterCvOemSpecsIt } from './master.cv.oemSpecs.it';
 import { rentalMisuseStressStressGateIt } from './rental.misuseStress.stressGate.i18n';
 
@@ -214,6 +215,7 @@ export const it = {
   ...masterOneAutoIt,
   ...masterOrganizationsIt,
   ...masterCvTechnicalSpecsIt,
+  ...masterCvDimoPrivilegeIt,
   ...masterCvOemSpecsIt,
   ...batteryV2HvInspectionIT,
   ...tireWearV3It,

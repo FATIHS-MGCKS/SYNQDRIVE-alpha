@@ -22,6 +22,7 @@ import { useConnectedVehicleTechnicalSpecs } from './useConnectedVehicleTechnica
 import { ConnectedVehicleOemSpecificationsSection } from './ConnectedVehicleOemSpecificationsSection';
 import { useConnectedVehicleOemSpecifications } from './useConnectedVehicleOemSpecifications';
 import { ConnectedVehicleIntelligenceSection } from './ConnectedVehicleIntelligenceSection';
+import { ConnectedVehicleDimoPermissionsSection } from './ConnectedVehicleDimoPermissionsSection';
 
 interface ConnectedVehicleDetailDrawerProps {
   open: boolean;
@@ -375,6 +376,15 @@ export function ConnectedVehicleDetailDrawer({
                   </dd>
                 </div>
               </dl>
+              <ConnectedVehicleDimoPermissionsSection
+                organizationId={detail.organizationId}
+                vehicleId={vehicleId}
+                enabled={Boolean(
+                  open && detail.organizationId && vehicleId && (dimoVehicleId || detail.dimoLinkStatus === 'linked'),
+                )}
+                tokenIdMasked={detail.mapping.tokenIdMasked}
+                dimoConnectivityLabel={detail.integrationConnectivityLabel}
+              />
             </section>
 
             {detail.auditEvents.length > 0 ? (

@@ -1,0 +1,63 @@
+export const masterCvDimoPrivilegeEn = {
+  'master.cv.dimoPrivilege.sectionTitle': 'DIMO permissions',
+  'master.cv.dimoPrivilege.connectivityNote':
+    'Connectivity and mapping reflect local integration state. External privilege verification is separate and does not change when a vehicle merely appears connected.',
+  'master.cv.dimoPrivilege.loading': 'Loading DIMO permission status…',
+  'master.cv.dimoPrivilege.loadError': 'DIMO permission status could not be loaded.',
+  'master.cv.dimoPrivilege.retry': 'Try again',
+  'master.cv.dimoPrivilege.providerStatus.label': 'External privilege verification',
+  'master.cv.dimoPrivilege.providerStatus.NOT_VERIFIED': 'Not verified yet',
+  'master.cv.dimoPrivilege.providerStatus.CONFIRMED_ABSENT': 'No privileged access detected',
+  'master.cv.dimoPrivilege.providerStatus.PRIVILEGE_STILL_ACTIVE': 'Privileged access still active',
+  'master.cv.dimoPrivilege.providerStatus.NOT_AVAILABLE': 'Verification unavailable',
+  'master.cv.dimoPrivilege.providerStatus.REVIEW_REQUIRED': 'Review required',
+  'master.cv.dimoPrivilege.providerStatus.NO_DIMO_DEPENDENCY': 'No DIMO dependency',
+  'master.cv.dimoPrivilege.vehicleVerification.label': 'This vehicle (verification)',
+  'master.cv.dimoPrivilege.vehicleVerification.VERIFIED_ABSENT': 'Verified absent',
+  'master.cv.dimoPrivilege.vehicleVerification.VERIFIED_STILL_PRIVILEGED': 'Verified still privileged',
+  'master.cv.dimoPrivilege.vehicleVerification.UNVERIFIED': 'Unverified',
+  'master.cv.dimoPrivilege.vehicleVerification.REVIEW_REQUIRED': 'Review required',
+  'master.cv.dimoPrivilege.localConnection': 'Local DIMO connection',
+  'master.cv.dimoPrivilege.lastVerified': 'Last verified',
+  'master.cv.dimoPrivilege.tokenId': 'Token ID (masked)',
+  'master.cv.dimoPrivilege.offboardingJob': 'Offboarding job',
+  'master.cv.dimoPrivilege.jobPhase': 'Phase',
+  'master.cv.dimoPrivilege.ownerActionOutstanding': 'Owner action may still be required for this vehicle.',
+  'master.cv.dimoPrivilege.ownerActionNone':
+    'No outstanding owner action indicated for this vehicle (verified external absence).',
+  'master.cv.dimoPrivilege.ownerActionUnknown':
+    'External privilege verification for this vehicle is unknown — do not treat as cleared.',
+  'master.cv.dimoPrivilege.vehicleNotInDimoInventory':
+    'This vehicle is not listed in the organization DIMO offboarding inventory.',
+  'master.cv.dimoPrivilege.vehicleMutationsUnavailable':
+    'Recheck and handoff are unavailable because this vehicle is not in the DIMO inventory snapshot.',
+  'master.cv.dimoPrivilege.detailCode': 'Detail / reason code',
+  'master.cv.dimoPrivilege.externalPrivilege': 'External privilege (vehicle)',
+  'master.cv.dimoPrivilege.stillPrivileged.true': 'Still privileged (external)',
+  'master.cv.dimoPrivilege.stillPrivileged.false': 'Not privileged (external)',
+  'master.cv.dimoPrivilege.stillPrivileged.unknown': 'External privilege unknown',
+  'master.cv.dimoPrivilege.notRevokedHint':
+    '“Unavailable” does not mean privilege was revoked — only that verification could not be completed.',
+  'master.cv.dimoPrivilege.recheck.action': 'Recheck external privilege',
+  'master.cv.dimoPrivilege.recheck.loading': 'Rechecking…',
+  'master.cv.dimoPrivilege.recheck.success': 'Privilege recheck completed.',
+  'master.cv.dimoPrivilege.recheck.evidencePreserved': 'Newer verification evidence was preserved (stale recheck rejected).',
+  'master.cv.dimoPrivilege.recheck.gateOff':
+    'Live privilege recheck is not armed in this environment. Persisted status is shown only.',
+  'master.cv.dimoPrivilege.recheck.error': 'Privilege recheck failed.',
+  'master.cv.dimoPrivilege.handoff.action': 'Record owner handoff (internal)',
+  'master.cv.dimoPrivilege.handoff.confirmTitle': 'Record DIMO owner handoff?',
+  'master.cv.dimoPrivilege.handoff.confirmBody':
+    'This records an internal operator handoff for audit purposes only. It does not notify the vehicle owner and does not change blockchain privilege.',
+  'master.cv.dimoPrivilege.handoff.confirmAction': 'Record handoff',
+  'master.cv.dimoPrivilege.handoff.cancel': 'Cancel',
+  'master.cv.dimoPrivilege.handoff.loading': 'Recording…',
+  'master.cv.dimoPrivilege.handoff.success': 'Handoff recorded for audit.',
+  'master.cv.dimoPrivilege.handoff.replay': 'Idempotent replay — existing handoff record reused.',
+  'master.cv.dimoPrivilege.handoff.internalOnlyDisclaimer':
+    'Recorded internally — not proof of delivery to the vehicle owner.',
+  'master.cv.dimoPrivilege.handoff.error': 'Could not record handoff.',
+  'master.cv.dimoPrivilege.mfa.title': 'Confirm privileged action',
+  'master.cv.dimoPrivilege.mfa.hint': 'Step-up authentication is required for DIMO offboarding actions.',
+  'master.cv.dimoPrivilege.aria.section': 'DIMO permissions and offboarding privilege status',
+};

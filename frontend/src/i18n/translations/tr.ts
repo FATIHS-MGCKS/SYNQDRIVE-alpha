@@ -3,6 +3,7 @@ import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
 import { masterOneAutoTr } from './master.oneAuto.tr';
 import { masterOrganizationsTr } from './master.organizations.tr';
 import { masterCvTechnicalSpecsTr } from './master.cv.technicalSpecs.tr';
+import { masterCvDimoPrivilegeTr } from './master.cv.dimoPrivilege.tr';
 import { masterCvOemSpecsTr } from './master.cv.oemSpecs.tr';
 import { masterIntelligenceTr } from './master.intelligence.tr';
 import { tireWearV3Tr } from './tire.wearV3.tr';
@@ -18,6 +19,7 @@ export const tr = {
   ...masterOneAutoTr,
   ...masterOrganizationsTr,
   ...masterCvTechnicalSpecsTr,
+  ...masterCvDimoPrivilegeTr,
   ...masterCvOemSpecsTr,
   ...masterIntelligenceTr,
   'master.registration.lvBatteryConstructionType.label': 'LV yapı tipi',
