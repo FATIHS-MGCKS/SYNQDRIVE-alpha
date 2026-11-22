@@ -312,3 +312,12 @@ nodes:
     epistemic_status: CONFIRMED
     source_paths:
       - architecture/frontend-ui-ux/evidence/PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md
+
+  - id: FEUX-EVID-P9-AUDIT-FOUNDATION-001
+    type: evidence
+    title: P9 secure UI audit access foundation
+    summary: Platform ui-audit grants, write-deny guard, runbook P9A-P9B.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/P9_SECURE_AUDIT_ACCESS_FOUNDATION.md

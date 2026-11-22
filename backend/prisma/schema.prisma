@@ -293,6 +293,9 @@ enum UserPlatformRole {
 
 enum PlatformPermissionKey {
   MASTER_BILLING @map("master-billing")
+  UI_AUDIT_MASTER  @map("ui-audit-master")
+  UI_AUDIT_RENTAL  @map("ui-audit-rental")
+  UI_AUDIT_OPERATOR @map("ui-audit-operator")
 }
 
 enum StationStatus {

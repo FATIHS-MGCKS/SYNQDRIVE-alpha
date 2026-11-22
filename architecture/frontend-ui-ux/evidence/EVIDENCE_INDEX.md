@@ -18,4 +18,5 @@
 | FEUX-EVID-PROD-HTTP-2026-11-22 | PRODUCTION_READ_ONLY | `1e6a267c` | Unauthenticated HTTP routes + headers | CONFIRMED | 200 shell ≠ authenticated UI |
 | FEUX-EVID-PROD-BUNDLE-2026-11-22 | PRODUCTION_OBSERVATION | `1e6a267c` | SPA asset IDs, hashes, route strings in JS | CONFIRMED (artifacts only) | Frontend **source** commit INFERRED |
 | FEUX-EVID-PROD-DRIFT-2026-11-22 | AUDIT_DOCUMENT | `1e6a267c`→`413175e8c` | Full-tree frontend drift (91 paths) | CONFIRMED | git diff local |
-| FEUX-EVID-GAP-PROD-UI-001 | DOMAIN_REASONING | `1e6a267c` / P7 audit | Authenticated functional product UI | UNKNOWN | Infra superseded; session UI still open |
+| FEUX-EVID-GAP-PROD-UI-001 | DOMAIN_REASONING | `1e6a267c` / P7–P9 | Authenticated functional product UI | BLOCKED | Pending P9C session |
+| FEUX-EVID-P9-AUDIT-FOUNDATION-001 | AUDIT_DOCUMENT | `cac006567` / P9B | Secure audit permission foundation | CONFIRMED | No prod provision |
