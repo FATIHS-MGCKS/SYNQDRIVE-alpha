@@ -269,9 +269,37 @@ nodes:
 
   - id: FEUX-EVID-GAP-PROD-UI-001
     type: evidence
-    title: Production UI gap record
-    summary: Production UI not audited in bootstrap.
+    title: Production authenticated UI gap
+    summary: P7 verified infra and unauthenticated shell; authenticated screens UNKNOWN.
     source_type: DOMAIN_REASONING
     epistemic_status: UNKNOWN
     source_paths:
       - architecture/frontend-ui-ux/evidence/PRODUCTION_BASELINE.md
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md
+
+  - id: FEUX-EVID-PROD-INFRA-2026-11-22
+    type: evidence
+    title: Production VPS infrastructure read-only snapshot
+    summary: Release symlink, git SHA, pm2, nginx upstreams.
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md
+
+  - id: FEUX-EVID-PROD-HTTP-2026-11-22
+    type: evidence
+    title: Production HTTP SPA route sample
+    summary: Unauthenticated GET /master /rental /operator and health.
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md
+
+  - id: FEUX-EVID-PROD-BUNDLE-2026-11-22
+    type: evidence
+    title: Production SPA bundle provenance
+    summary: index-Cn8n4pFR.js and CSS hashes; shared bundle strings.
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md

@@ -2,5 +2,6 @@
 
 | Evidence ID | Type | SHA / window | Claim supported | Epistemic | Limitations |
 |-------------|------|--------------|-----------------|-----------|-------------|
-| MAUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | `413175e8c` | MAUX authority bootstrap + hub subnav closeout | CONFIRMED | Docs-only PR |
+| MAUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | `413175e8c` | MAUX authority bootstrap + hub subnav closeout | CONFIRMED | Docs-only |
 | MAUX-EVID-CODE-001 | CODE | `413175e8c` | 24 nav views + hub URL sync contracts | CONFIRMED | Not all TSX opened |
+| MAUX-EVID-PROD-001 | PRODUCTION_OBSERVATION | prod `1e6a267c` | `/master` shell + bundle `master-nav` strings | CONFIRMED | No auth session |
