@@ -71,3 +71,10 @@ Not certified from mocked provider tests. Separate owner approval required for `
 
 - HM mixed direct + indirect + historical coverage → `REVIEW_REQUIRED` (`HM_MIXED_DIRECT_AND_INDIRECT_DEPENDENCY`) before any DELETE.
 - Disposable PG evidence: P6D4 finalization 15/15 on `synqdrive_org_offboarding_p6d4`; P6D3 execution 10/10 on `synqdrive_org_offboarding_p6d2`.
+
+## P6D4 DIMO OWNER HANDOFF BACKEND (append)
+
+- **Read-only status:** `GET …/offboarding/dimo-privilege-status` — persisted evidence + org DIMO inventory; no `assessOrganization`, no local quiesce.
+- **Privileged recheck:** `POST …/offboarding/dimo-privilege-recheck` — `verifyOrganizationPrivilegedReadOnly` when `ORGANIZATION_OFFBOARDING_DIMO_PRIVILEGE_RECHECK_ENABLED=1` (separate from `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE`); failure preserves prior `dimoPrivilegeVerification`.
+- **Operator handoff:** `POST …/offboarding/dimo-owner-handoff` — append-only `dimoOwnerHandoffs[]` + transactional `ActivityLog` (`RECORDED` only; not delivery proof).
+- **Progress schema:** `dimoPrivilegeVerification`, `dimoOwnerHandoffs` on job `progressJson`.

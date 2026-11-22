@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { DimoOwnerHandoffRecord } from './organization-offboarding-dimo-privilege.types';
 import type { OrganizationOffboardingExecutionPhase } from './organization-offboarding-execution.phases';
 
 export type ProviderFinalizationState =
@@ -65,6 +66,15 @@ export type OrganizationOffboardingExecutionProgress = {
     archivedAt: string;
     auditActivityLogId?: string;
   };
+  dimoPrivilegeVerification?: {
+    lastVerifiedAt: string;
+    providerCheckStatus: string;
+    detailCode: string | null;
+    verificationSnapshotReference: string;
+    privilegedStillActiveTokenIds: number[];
+    providerEvidenceSummary: Record<string, unknown>;
+  };
+  dimoOwnerHandoffs?: DimoOwnerHandoffRecord[];
 };
 
 export function parseExecutionProgress(raw: unknown): OrganizationOffboardingExecutionProgress {
@@ -112,6 +122,19 @@ export function parseExecutionProgress(raw: unknown): OrganizationOffboardingExe
       : {}),
     ...(record.archived && typeof record.archived === 'object'
       ? { archived: record.archived as OrganizationOffboardingExecutionProgress['archived'] }
+      : {}),
+    ...(record.dimoPrivilegeVerification && typeof record.dimoPrivilegeVerification === 'object'
+      ? {
+          dimoPrivilegeVerification:
+            record.dimoPrivilegeVerification as OrganizationOffboardingExecutionProgress['dimoPrivilegeVerification'],
+        }
+      : {}),
+    ...(Array.isArray(record.dimoOwnerHandoffs)
+      ? {
+          dimoOwnerHandoffs: record.dimoOwnerHandoffs.filter(
+            (h): h is DimoOwnerHandoffRecord => h != null && typeof h === 'object',
+          ),
+        }
       : {}),
   };
 }

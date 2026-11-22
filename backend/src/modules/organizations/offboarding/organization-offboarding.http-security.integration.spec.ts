@@ -15,6 +15,7 @@ import { OrganizationOffboardingController } from './organization-offboarding.co
 import { OrganizationOffboardingService } from './organization-offboarding.service';
 import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
 import { OrganizationOffboardingFinalizationService } from './organization-offboarding-finalization.service';
+import { OrganizationOffboardingDimoPrivilegeService } from './organization-offboarding-dimo-privilege.service';
 
 @Injectable()
 class TestAuthGuard implements CanActivate {
@@ -42,6 +43,11 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
   };
   const execution = { execute: jest.fn() };
   const finalization = { finalize: jest.fn() };
+  const dimoPrivilege = {
+    getDimoPrivilegeStatus: jest.fn(),
+    recheckDimoPrivileges: jest.fn(),
+    recordDimoOwnerHandoff: jest.fn(),
+  };
 
   let mfaEnforced = false;
 
@@ -52,6 +58,7 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
         { provide: OrganizationOffboardingService, useValue: offboarding },
         { provide: OrganizationOffboardingExecutionService, useValue: execution },
         { provide: OrganizationOffboardingFinalizationService, useValue: finalization },
+        { provide: OrganizationOffboardingDimoPrivilegeService, useValue: dimoPrivilege },
       ],
     })
       .overrideGuard(RolesGuard)
@@ -172,5 +179,31 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
       .send({ idempotencyKey: 'idem-1' });
     expect(res.status).toBe(201);
     expect(offboarding.prepare).toHaveBeenCalledWith(orgId, { idempotencyKey: 'idem-1' }, master.id);
+  });
+
+  it('F — dimo privilege status requires MASTER_ADMIN', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/admin/organizations/${orgId}/offboarding/dimo-privilege-status`)
+      .set(...auth(tenant));
+    expect(res.status).toBe(403);
+    expect(dimoPrivilege.getDimoPrivilegeStatus).not.toHaveBeenCalled();
+  });
+
+  it('G — dimo privilege recheck enforces MFA when armed', async () => {
+    mfaEnforced = true;
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/admin/organizations/${orgId}/offboarding/dimo-privilege-recheck`)
+      .set(...auth(master));
+    expect(res.status).toBe(403);
+    expect(dimoPrivilege.recheckDimoPrivileges).not.toHaveBeenCalled();
+  });
+
+  it('H — dimo owner handoff rejects short idempotency key', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/admin/organizations/${orgId}/offboarding/dimo-owner-handoff`)
+      .set(...auth(master))
+      .send({ idempotencyKey: 'short' });
+    expect(res.status).toBe(400);
+    expect(dimoPrivilege.recordDimoOwnerHandoff).not.toHaveBeenCalled();
   });
 });
