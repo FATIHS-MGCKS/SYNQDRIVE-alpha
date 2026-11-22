@@ -1,7 +1,7 @@
 # Current State — Master Admin UI/UX
 
 **Last verified (repository):** 2026-11-22 (Europe/Berlin) · **SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
-**Production (P7):** infra **VERIFIED_READ_ONLY** @ `1e6a267c`; **authenticated UI UNKNOWN**  
+**Production (P8):** infra **VERIFIED_READ_ONLY** @ `1e6a267c`; **authenticated UI BLOCKED** (no approved session); DIMO privilege UI **NOT_DEPLOYED** on prod vs `main`  
 **Epistemic legend:** CONFIRMED = inspected source; INFERRED = structural conclusion; HISTORICAL = prior docs; UNKNOWN = not verified live.
 
 ## Executive summary
