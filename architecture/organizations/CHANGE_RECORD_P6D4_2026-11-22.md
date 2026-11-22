@@ -48,3 +48,26 @@ Not certified from mocked provider tests. Separate owner approval required for `
 **Archival commit:** `assertArchivalCommitHardBlockers` runs before durable audit and again immediately before `ARCHIVED` update inside the same transaction.
 
 **PG Concurrency Cert:** three disposable scenarios (fence, finalize vs bypass booking, trip start on SUSPENDED).
+
+## P6D4 LIVE PROVIDER DISCONNECT ADAPTERS (append)
+
+- **HM live:** `OrganizationOffboardingHmLiveDisconnectAdapter` — org-scoped `DELETE /v1/fleets/vehicles/{vin}` via existing Health app auth; 409 idempotent; 5xx retry; evidence on `providerEvidence`.
+- **DIMO live:** `OrganizationOffboardingDimoLiveDisconnectAdapter` — Identity privileged read + org token compare; **no** fabricated revoke API; `DIMO_PRIVILEGE_STILL_ACTIVE` when developer privilege remains.
+- **Disconnect service:** live path when `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE=1`; mocks unchanged in test.
+- **Evidence:** `architecture/organizations/evidence/P6D4_PROVIDER_LIVE_DISCONNECT_CAPABILITY_2026-11-22.md`.
+
+## P6D4 LIVE PROVIDER SAFETY CLOSEOUT (append)
+
+- DIMO privileged Identity read: full `pageInfo`/`endCursor` pagination; missing `tokenId` / incomplete pages fail-closed; historical-only dependency → `REVIEW_REQUIRED`.
+- HM: 409 semantics split (already revoked vs transition conflict); GET confirms terminal `revoked`/`canceled`; cross-tenant VIN gate before DELETE.
+- Disconnect service: removed `NO_DEPENDENCY` → `CONFIRMED` upgrade for historical `hadDependency`; `REVIEW_REQUIRED` blocks finalization.
+
+## P6D4 PROVIDER EVIDENCE COMPLETENESS (append)
+
+- DIMO Identity pages require `nodes[]` + `pageInfo.hasNextPage` boolean; broken `dimoVehicle` relation fails-closed.
+- HM: `HM_COVERAGE_ASSESSMENT` reconciles active/inactive rows, indirect `synqdriveVehicleId` bindings, and cross-org data-source links; unknown VIN ownership blocks DELETE.
+
+## P6D4 PROVIDER MERGE GATE (append)
+
+- HM mixed direct + indirect + historical coverage → `REVIEW_REQUIRED` (`HM_MIXED_DIRECT_AND_INDIRECT_DEPENDENCY`) before any DELETE.
+- Disposable PG evidence: P6D4 finalization 15/15 on `synqdrive_org_offboarding_p6d4`; P6D3 execution 10/10 on `synqdrive_org_offboarding_p6d2`.
