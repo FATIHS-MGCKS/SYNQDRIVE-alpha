@@ -43,9 +43,9 @@ Shared MFA step-up — Master (confirmed), Rental settings (confirmed).
 
 | Path | Owner authority | Global impact |
 |------|-----------------|---------------|
-| `styles/theme.css` | **Frontend UI/UX** (this) | **All products** |
-| `components/ui/*` | **Frontend UI/UX** | High |
-| `components/patterns/*` | **Frontend UI/UX** | High |
+| `styles/theme.css` | **Shared UI Design Foundation** | **All products** |
+| `components/ui/*` | **Shared UI Design Foundation** | High |
+| `components/patterns/*` | **Shared UI Design Foundation** | High |
 | `master/shell/*` | Master product profile | Master only |
 | `rental/components/Sidebar.tsx` | Rental product profile | Rental only |
 | `operator/components/*` | Operator product profile | Operator only |

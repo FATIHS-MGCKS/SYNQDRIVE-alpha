@@ -11,7 +11,7 @@
 
 Independently governed UI/UX contracts, navigation, shell/layout rules, product-specific patterns, evidence, and change lifecycle for **Master Admin UI/UX**.
 
-## Does not own
+## Explicit non-scope
 
 - Shared design tokens/primitives (→ Shared UI Design Foundation)
 - i18n runtime/catalogs (→ Internationalization)

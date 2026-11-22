@@ -1,5 +1,40 @@
 # Agent Contract — Operator UI/UX
 
-Read [CROSS_PRODUCT_CHANGE_POLICY.md](../../governance/CROSS_PRODUCT_CHANGE_POLICY.md). Product-local changes follow **PRODUCT_LOCAL_CHANGE**. Update shared foundation when changing tokens/shared primitives.
+## Mandatory read-first
 
-`bash architecture/frontend-ui-ux/products/operator/scripts/validate-graph.sh`
+1. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
+2. `CURRENT_STATE.md`, `inventories/OPERATOR_SCREEN_MATRIX.md`
+
+## Substantive change definition
+
+Bottom nav, mobile shell, sheet flows, touch/safe-area contracts, operator-local components.
+
+## Same-PR duties
+
+Update this authority; foundation if shared UI touched; `validate-graph.sh` + `validate-module-registry.sh`.
+
+## Registry review
+
+Mandatory: report `REGISTRY_REVIEWED: UPDATED|UNCHANGED` for **Operator UI/UX**.
+
+## Ownership
+
+| Owns | Does not own |
+|------|----------------|
+| Operator shell, tabs, handover/damage UX | Rental desktop fleet UI |
+| Mobile responsive rules | Master hubs |
+
+## Prohibited
+
+Treating Operator as miniature Rental; undocumented global token changes.
+
+## Production mutation prohibition
+
+No Production writes without separate owner authorization.
+
+## Validation
+
+```bash
+bash architecture/frontend-ui-ux/products/operator/scripts/validate-graph.sh
+bash architecture/scripts/validate-module-registry.sh
+```

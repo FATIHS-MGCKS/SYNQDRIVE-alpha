@@ -1,3 +1,68 @@
 # Current State — Operator UI/UX
 
-See [PRODUCT_PROFILE.md](./PRODUCT_PROFILE.md). Shared coupling: [../../design-system/SHARED_DESIGN_SYSTEM.md](../../design-system/SHARED_DESIGN_SYSTEM.md).
+**Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** UNKNOWN  
+**Scope:** mobile-first field operator at `/operator/*`.
+
+## Executive summary
+
+Operator is a **compact mobile shell** for day-of operations: bottom navigation, sheet-based flows (handover, damage, booking), and deep links into vehicles/bookings. It reuses Rental **data context** (`RentalProvider`, `FleetProvider`) but **not** Rental sidebar chrome — distinct UX authority (OPUX-DEC-MOBILE-SHELL-001).
+
+## Routing and shell
+
+`OperatorApp.tsx` mounts nested routes into one `OperatorShell`. Desktop users see `OperatorDesktopOnlyNotice` unless device heuristic passes (`useIsOperatorDevice`) — CONFIRMED.
+
+Layout stack:
+
+```
+OperatorShellProvider → Handover/Damage providers → FleetProvider → OperatorDataProvider
+  → Header + main (tab content) + OperatorBottomNav + ActionSheets
+```
+
+## Navigation
+
+Five bottom tabs (`today`, `scan`, `vehicles`, `tasks`, `more`) — see [`inventories/OPERATOR_SCREEN_MATRIX.md`](./inventories/OPERATOR_SCREEN_MATRIX.md).
+
+## Touch and motion
+
+Safe-area aware padding; glass cards (`OperatorGlassCard`); sheets for destructive/confirm actions. **UNKNOWN:** haptic feedback, offline queues.
+
+## Flows (CONFIRMED file-backed)
+
+- Multi-step **handover** (`OperatorHandoverFlow` steps: vehicle, condition, damages, documents, signatures, review).  
+- **Damage capture** photo pipeline.  
+- **Tire measure** grid.  
+- **AI upload** review flow.  
+- Booking cancel/no-show sheets.
+
+## Shared dependencies
+
+| Dependency | Coupling |
+|------------|----------|
+| `theme.css` | Global colors/spacing |
+| `components/ui` | Buttons, sheets, inputs |
+| `sonner` | Toasts top-center |
+| Rental contexts | Org/fleet data — **not** Rental layout |
+
+## Guards
+
+`OperatorAccessGuard` wraps routes; dedicated loading/denied screens.
+
+## Tests
+
+`OperatorTaskCard.test.tsx`, `OperatorConnectivityBanner.test.tsx`, `OperatorTodayTaskFeed.test.tsx` — **CONFIRMED** unit-level; not full visual regression.
+
+## Responsive contract
+
+Main column `max-w-lg` mobile, `md:max-w-none` — intentional phone-first; not equivalent to Rental desktop fleet density.
+
+## Gaps
+
+OPUX-GAP-PROD-001 Production UI; OPUX-GAP-TOUCH-001 formal touch audit UNKNOWN.
+
+## Non-claims
+
+Operator is **not** a shrunken Rental SPA; field workflows are purpose-built. No Figma linkage.
+
+## Deep link and refresh bridges
+
+`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize URL params with shell state after external navigation (CONFIRMED imports in `OperatorShell.tsx`). Exact query contract **PARTIAL** (INFERRED until dedicated URL audit) — requires dedicated evidence pass before AUTHORITY_ACTIVE.

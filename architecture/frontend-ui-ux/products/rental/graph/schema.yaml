@@ -27,6 +27,7 @@ decision_status_permitted_types:
   - decision
 
 invariant_kinds:
+  - CONFIRMED_INVARIANT
   - CONDITIONAL_INVARIANT
 
 evidence_source_types:

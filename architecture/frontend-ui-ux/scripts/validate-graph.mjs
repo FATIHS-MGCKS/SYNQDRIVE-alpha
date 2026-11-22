@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Validate Tankstellenerkennung knowledge graph YAML — docs only.
- * Usage: node architecture/frontend-ui-ux/scripts/validate-graph.mjs
+ * Validate Shared UI Design Foundation knowledge graph + artifact completeness.
+ * Usage: bash architecture/frontend-ui-ux/scripts/validate-graph.sh
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+import { validateAuthorityCompleteness } from './validate-authority-completeness.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '../../..');
@@ -525,6 +526,9 @@ console.log(
   'decisions checked,',
   evidenceCardinalityPass ? 'PASS' : 'FAIL',
 );
+
+console.log('==> Authority artifact completeness');
+validateAuthorityCompleteness(authorityDir, fail, { moduleLabel: 'FEUX' });
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

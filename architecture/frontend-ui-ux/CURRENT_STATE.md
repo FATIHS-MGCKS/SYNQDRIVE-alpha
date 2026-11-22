@@ -1,92 +1,59 @@
-# Current State — Frontend UI/UX & Design System
+# Current State — Shared UI Design Foundation
 
-**As-of:** `2026-11-22` · Repository `origin/main` @ `413175e8ca72355764a3d47936ad7eff78d415aa`
+**SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production UI:** UNKNOWN (foundation still affects deployed bundle).
 
 ## Executive summary
 
-SynqDrive Alpha ships **one frontend bundle** with three authenticated surfaces. **Visual SSOT** is `frontend/src/styles/theme.css` plus documented contracts (`LIQUID_GLASS_SYSTEM.md`, `THEME_COLOR_CONTRACT.md`). **Behavioral composition SSOT** for reusable UI is `frontend/src/components/{ui,patterns,shell,surface}`.
+One Vite SPA serves three product trees (`/master`, `/rental`, `/operator/*`). Visual foundation is **centralized** in `frontend/src/styles/theme.css` and style contracts (`LIQUID_GLASS_SYSTEM.md`, surface docs) plus shared React primitives (`components/ui`, `components/patterns`, `components/shell`).
 
-Master Admin is a **hub-style control plane** (`frontend/src/master/`) with shared patterns but **product-owned** chrome (`Sidebar`, `TopBar`) and query-parameter routing (`?view=`). Rental is the **largest consumer** of shared patterns and the **reference** for operational density. Operator is a **mobile-first** shell with bottom navigation and selective token/pattern use.
+**Governance** is now **four registry modules** (INFERRED consumer counts beyond spot checks) (this foundation + three product UI/UX authorities). **Technical coupling remains:** a token edit can change all products until scoped overrides exist — documented under `governance/CROSS_PRODUCT_CHANGE_POLICY.md`.
 
-## Repository baseline
+## Token and surface layer (CONFIRMED)
 
-| Artifact | Path | Status |
-|----------|------|--------|
-| Router | `frontend/src/App.tsx` | CONFIRMED |
-| Theme | `frontend/src/styles/theme.css` | CONFIRMED |
-| Master app | `frontend/src/master/App.tsx` | CONFIRMED |
-| Rental app | `frontend/src/rental/App.tsx` | PARTIAL (deep inventory open) |
-| Operator app | `frontend/src/operator/OperatorApp.tsx`, `OperatorShell.tsx` | CONFIRMED |
-| Master TSX count | 207 files under `frontend/src/master/` | CONFIRMED (inventory list in authority) |
+- Brand `#4F86E8`, Manrope/Geist Mono, L0–L4 surfaces, motion easing variables.  
+- Legacy `.sq-*` aliases coexist with `.surface-*` (migration state, not second framework).
 
-## Production baseline
+## Shared component consumers
 
-**UNKNOWN** for rendered UI. See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md). Registry status **must remain** `AUDIT_IN_PROGRESS` until read-only Production UI attestation.
+Authoritative inventory: [`inventories/SHARED_COMPONENTS.md`](./inventories/SHARED_COMPONENTS.md).
 
-## Shared design system (confirmed)
+| Consumer | Intensity |
+|----------|-----------|
+| Master | Heavy ui + patterns in hubs |
+| Rental | Heaviest pattern/KPI usage |
+| Operator | Selective ui + glass surfaces |
 
-| Layer | Canonical | Notes |
-|-------|-----------|-------|
-| Entry | `styles/index.css` → fonts, tailwind, theme | CONFIRMED |
-| Brand | `--brand: #4F86E8` | CONTRADICTS some historical changelog blues |
-| Typography | Manrope UI; Geist Mono data | CONFIRMED |
-| Theme modes | `AppThemeContext`: light/dark/system | CONFIRMED |
-| Surfaces | L0–L4 per `LIQUID_GLASS_SYSTEM.md` | CONFIRMED |
-| Buttons | shadcn `Button` → `.sq-3d-btn--*` | CONFIRMED |
-| Motion | `--dur-*`, `--ease-*`; `prefers-reduced-motion` block | CONFIRMED |
-| Patterns | `PageHeader`, `DataCard`, `StatusChip`, `AppDialog`, `DataTable`, … | CONFIRMED |
-| Liquid glass lens | Opt-in `VITE_ENABLE_LIQUID_GLASS_LENS` | CONFIRMED |
+## Cross-product rules (VALIDATED)
 
-**No separate CSS authority** — this module documents and governs references only.
+| Rule | Meaning |
+|------|---------|
+| PRODUCT_LOCAL_CHANGE | Product doc/UX work stays in product authority unless shared contracts shift |
+| SHARED_FOUNDATION_CHANGE | Token/primitive edits require impact analysis |
+| NO_SILENT_PROPAGATION | Master-only visual intent must not rely on unscoped globals |
+| PRODUCT_SPECIFIC_EVOLUTION | Visual divergence allowed per product authority |
 
-## Master Admin (confirmed highlights)
+## i18n boundary (CONFIRMED)
 
-- **Shell:** `MasterAdminShell` → `AppShell variant="master"`; skip link; single main scroll (`#master-main`).
-- **Navigation:** `master-nav.config.ts` (24 items, 8 groups); URL sync via `master-nav-url.ts`; legacy redirects (`users` → `security-access`, etc.).
-- **Page framework:** `PageContainer` variants `standard|wide|full`; `MasterPageHeader` + hub section tabs on major hubs.
-- **Gaps:** `ProductManagementView` without `PageContainer`; orphan `RightSidebar.tsx`; Master chrome i18n via `tMasterNav` (DE-only); mixed legacy `sq-tab-bar` in older views (`ChangesView`, `ArchitekturView`, …).
+Copy/locale owned by `architecture/internationalization/`. Master chrome debt tracked in MAUX authority.
 
-Detail: [`products/master-admin/PRODUCT_PROFILE.md`](./products/master-admin/PRODUCT_PROFILE.md).
+## Production vs repository
 
-## Rental (partial depth)
+Production not read. **UNKNOWN** deployed SHA and runtime feature flags affecting liquid glass.
 
-- **Shell:** `rental/components/Sidebar` + `TopBar` + shared `AppShell` (`max-w-[1440px]`, wider horizontal gutter than Master).
-- **Views:** large in-memory view union in `rental/App.tsx` (dashboard, fleet, vehicle detail, bookings, finance, settings, communication-center, …).
-- **Patterns:** heavy `components/patterns` adoption; domain-specific presentation in `rental/lib/*-presentation.ts`.
-- **Reference role:** KPI tiles, fleet/vehicle cards, tab bars using `chrome-tab-bar` utilities — documented as **ADAPT** candidates for Master, not copy targets.
+## Explicit non-claims
 
-Detail: [`products/rental/PRODUCT_PROFILE.md`](./products/rental/PRODUCT_PROFILE.md).
+- No second CSS framework.  
+- No complete technical isolation.  
+- Validator PASS ≠ full UX audit.
 
-## Operator (confirmed highlights)
+## Product authorities (pointers)
 
-- **Shell:** full viewport column; `OperatorHeader` + `OperatorBottomNav` (5 tabs); safe-area padding.
-- **Surfaces:** `OperatorGlassCard` uses `surface-frosted` | `surface-premium` + `sq-press`.
-- **Access:** desktop shows `OperatorDesktopOnlyNotice`; uses `FleetProvider` from Rental contexts.
-- **Shared deps:** selective `components/ui` + patterns; no Master page framework.
+| Product | Path |
+|---------|------|
+| Master | `products/master-admin/CURRENT_STATE.md` |
+| Rental | `products/rental/CURRENT_STATE.md` |
+| Operator | `products/operator/CURRENT_STATE.md` |
 
-Detail: [`products/operator/PRODUCT_PROFILE.md`](./products/operator/PRODUCT_PROFILE.md).
+## Validation and promotion
 
-## Cross-product dependencies
-
-| Change in | Affects |
-|-----------|---------|
-| `theme.css` | All products |
-| `components/ui/*` | Master + Rental + Operator (selective) |
-| `master/shell/*` | Master only |
-| `rental/components/Sidebar.tsx` | Rental only |
-
-Matrix: [`inventories/SHARED_COMPONENTS.md`](./inventories/SHARED_COMPONENTS.md).
-
-## Invariants (current)
-
-See `graph/invariants.yaml` — especially **no parallel design system** and **i18n authority boundary**.
-
-## Non-claims
-
-- No claim of visual redesign completion
-- No claim of Production UI parity at `413175e8c`
-- No claim that `docs/ui` certifications remain valid
-
-## Related evidence
-
-Prior read-only audit @ `01bd08a4` reconciled to current main for UI paths (delta: unrelated backend org work on main).
+All four modules remain `AUDIT_IN_PROGRESS`. Gate A requires Production read-only UI per product plus reconciliation with this foundation. Graph validators enforce artifact completeness gates; they do **not** certify exhaustive component-level audits.

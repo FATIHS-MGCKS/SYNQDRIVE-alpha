@@ -1,4 +1,4 @@
-# Frontend UI/UX — Invariants (bootstrap)
+# Shared UI Design Foundation — invariants
 
 invariants:
   - id: FEUX-INV-SHARED-TOKEN-001
@@ -8,6 +8,10 @@ invariants:
       Master, Rental, and Operator unless explicitly scoped by product-specific CSS.
     scope: cross-product
     epistemic_status: CONFIRMED
+    owning_authority: Shared UI Design Foundation
+    risk_if_violated: Unintended cross-product visual drift; requires SHARED_FOUNDATION_CHANGE review
+    evidence:
+      - FEUX-EVID-CODE-THEME-001
   - id: FEUX-INV-NO-PARALLEL-DS-001
     kind: CONFIRMED_INVARIANT
     statement: >
@@ -15,6 +19,10 @@ invariants:
       theme.css contracts without a documented decision and registry update.
     scope: repository
     epistemic_status: CONFIRMED
+    owning_authority: Shared UI Design Foundation
+    risk_if_violated: Forked tokens and ungoverned consumer impact
+    evidence:
+      - FEUX-EVID-CODE-THEME-001
   - id: FEUX-INV-I18N-OWNER-001
     kind: CONFIRMED_INVARIANT
     statement: >
@@ -22,6 +30,10 @@ invariants:
       FEUX records UI copy gaps but does not fork i18n architecture.
     scope: cross-authority
     epistemic_status: CONFIRMED
+    owning_authority: Shared UI Design Foundation
+    risk_if_violated: Duplicate locale contract and CI drift
+    evidence:
+      - FEUX-EVID-CROSS-I18N-001
   - id: FEUX-INV-CHANGE-ISOLATION-001
     kind: CONFIRMED_INVARIANT
     statement: >
@@ -29,3 +41,7 @@ invariants:
       govern documentation and review obligations; they do not imply full runtime CSS isolation.
     scope: cross-product
     epistemic_status: CONFIRMED
+    owning_authority: Shared UI Design Foundation
+    risk_if_violated: Silent cross-product doc/code coupling
+    evidence:
+      - FEUX-EVID-AUDIT-BOOTSTRAP-001

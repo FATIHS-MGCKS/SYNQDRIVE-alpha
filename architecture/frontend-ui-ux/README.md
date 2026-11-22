@@ -18,7 +18,7 @@ Canonical architectural memory for **shared visual foundation only**:
 - Cross-product change policy ([`governance/CROSS_PRODUCT_CHANGE_POLICY.md`](./governance/CROSS_PRODUCT_CHANGE_POLICY.md))
 - Rental↔Master comparison matrix **PROPOSED** ([`governance/RENTAL_MASTER_COMPARISON.md`](./governance/RENTAL_MASTER_COMPARISON.md))
 
-## What this module does **not** own (independent product authorities)
+## Explicit non-scope
 
 | Product | Authority path |
 |---------|----------------|
@@ -27,6 +27,10 @@ Canonical architectural memory for **shared visual foundation only**:
 | Operator UI/UX | [`products/operator/`](./products/operator/) |
 
 Product-specific navigation, shells, screen inventories, findings, and change ledgers live in **those** authorities — not here.
+
+## Mandatory entry documents
+
+See registry detailed section: README, AUDIT_MANIFEST, CURRENT_STATE, AGENT_CONTRACT, KNOWLEDGE_GRAPH, decisions, evidence, graph, contradictions, research, validators.
 
 ## Critical boundaries
 
