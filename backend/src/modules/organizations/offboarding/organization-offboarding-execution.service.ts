@@ -25,6 +25,7 @@ import type { OrganizationOffboardExecuteRequest } from './organization-offboard
 import {
   assertOrganizationOffboardingExecutionAdmitted,
   ORGANIZATION_OFFBOARDING_EXECUTION_CONFLICT_CODE,
+  ORGANIZATION_OFFBOARDING_EXECUTION_IN_PROGRESS_CODE,
   ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
   ORGANIZATION_OFFBOARDING_EXECUTION_REVALIDATE_BLOCKED_CODE,
   ORGANIZATION_OFFBOARDING_NO_PREPARED_JOB_CODE,
@@ -32,10 +33,16 @@ import {
   ORGANIZATION_OFFBOARDING_VEHICLE_BATCH_BLOCKED_CODE,
 } from './organization-offboarding-execution.policy';
 import {
+  executionLeaseTtlMs,
   isExecutionLeaseActive,
   mintExecutionLease,
-  releaseExecutionLease,
 } from './organization-offboarding-execution.lease';
+import {
+  persistJobUnderActiveLease,
+  releaseJobLeaseUnderActiveToken,
+  requireActiveLeaseToken,
+  type OffboardingJobLeaseRow,
+} from './organization-offboarding-execution.lease-persist';
 import {
   ORGANIZATION_OFFBOARDING_EXECUTION_PHASES,
   isPhaseComplete,
@@ -55,20 +62,7 @@ export type OrganizationOffboardingExecutionResult = OrganizationOffboardingJobV
   executionProgress: OrganizationOffboardingExecutionProgress;
 };
 
-type JobRow = {
-  id: string;
-  organizationId: string;
-  idempotencyKey: string;
-  status: OrganizationOffboardingJobStatus;
-  phase: string;
-  correlationId: string;
-  requestedByUserId: string | null;
-  requestedAt: Date;
-  completedAt: Date | null;
-  lastErrorCode: string | null;
-  preflightSnapshot: unknown;
-  progressJson: unknown;
-};
+type JobRow = OffboardingJobLeaseRow;
 
 function jobToView(row: JobRow, executionReplay: boolean): OrganizationOffboardingExecutionResult {
   const executionProgress = parseExecutionProgress(row.progressJson);
@@ -134,20 +128,22 @@ export class OrganizationOffboardingExecutionService {
       });
     }
 
+    const preparedRow = await this.findActivePreparedJob(organizationId);
+    if (preparedRow) {
+      const preparedProgress = parseExecutionProgress(preparedRow.progressJson);
+      if (
+        preparedProgress.execution?.idempotencyKey === request.idempotencyKey &&
+        preparedRow.phase === 'READY_FOR_ARCHIVE' &&
+        isPhaseComplete(preparedProgress, 'READY_FOR_ARCHIVE')
+      ) {
+        return jobToView(preparedRow, true);
+      }
+    }
+
     const claim = await this.acquireExecutionLease(organizationId, request, actorUserId);
     let progress = claim.progress;
     let row = claim.job;
     const leaseToken = claim.leaseToken;
-
-    const executionReplay =
-      progress.execution?.idempotencyKey === request.idempotencyKey &&
-      row.phase === 'READY_FOR_ARCHIVE' &&
-      isPhaseComplete(progress, 'READY_FOR_ARCHIVE');
-
-    if (executionReplay) {
-      await this.releaseLease(row.id, progress);
-      return jobToView(row, true);
-    }
 
     try {
       for (const phase of ORGANIZATION_OFFBOARDING_EXECUTION_PHASES) {
@@ -157,22 +153,35 @@ export class OrganizationOffboardingExecutionService {
         if (phase === 'READY_FOR_ARCHIVE' && !providerAllowsArchiveAdmission(progress)) {
           break;
         }
-        await this.assertHoldsLease(row.id, leaseToken);
-        const outcome = await this.runPhase({
+        let outcome = await this.runPhase({
           phase,
           job: row,
           progress,
           organizationId,
           actorUserId,
         });
+        if (phase === 'REVOKE_ORG_SESSIONS' && !outcome.halt && !outcome.progress.sessions?.completedAt) {
+          const sessionsProgress = await this.completeSessionsUnderActiveLease(
+            organizationId,
+            row.id,
+            leaseToken,
+            outcome.progress,
+          );
+          outcome = {
+            ...outcome,
+            progress: withPhaseCompleted(sessionsProgress, phase),
+            phaseSuccess: true,
+          };
+        }
+        row = await persistJobUnderActiveLease(this.prisma, {
+          jobId: row.id,
+          leaseToken,
+          progress: outcome.progress,
+          phase: outcome.phase,
+          status: outcome.status,
+          lastErrorCode: outcome.lastErrorCode,
+        });
         progress = outcome.progress;
-        row = await this.persistJob(
-          row.id,
-          progress,
-          outcome.phase,
-          outcome.status,
-          outcome.lastErrorCode,
-        );
         await this.recordPhaseAudit({
           actorUserId,
           organizationId,
@@ -187,7 +196,11 @@ export class OrganizationOffboardingExecutionService {
         }
       }
     } finally {
-      progress = await this.releaseLease(row.id, progress);
+      try {
+        await releaseJobLeaseUnderActiveToken(this.prisma, row.id, leaseToken);
+      } catch {
+        // Stale executor — successor may already own the lease.
+      }
       row = await this.prisma.organizationOffboardingJob.findUniqueOrThrow({
         where: { id: row.id },
       });
@@ -205,6 +218,16 @@ export class OrganizationOffboardingExecutionService {
     });
 
     return jobToView(row, false);
+  }
+
+  private async findActivePreparedJob(organizationId: string): Promise<JobRow | null> {
+    return this.prisma.organizationOffboardingJob.findFirst({
+      where: {
+        organizationId,
+        status: { in: [...ORGANIZATION_OFFBOARDING_ACTIVE_JOB_STATUSES] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   private async acquireExecutionLease(
@@ -241,34 +264,33 @@ export class OrganizationOffboardingExecutionService {
       }
 
       const leaseActive = isExecutionLeaseActive(progress);
-      if (
-        leaseActive &&
-        progress.executionLease?.executionIdempotencyKey !== request.idempotencyKey
-      ) {
+      if (leaseActive) {
+        if (progress.executionLease?.executionIdempotencyKey !== request.idempotencyKey) {
+          throw new ConflictException({
+            code: ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
+            message: 'An execution lease is already held for this organization',
+            expiresAt: progress.executionLease?.expiresAt,
+          });
+        }
         throw new ConflictException({
-          code: ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
-          message: 'An execution lease is already held for this organization',
+          code: ORGANIZATION_OFFBOARDING_EXECUTION_IN_PROGRESS_CODE,
+          message: 'Execution is already in progress for this idempotency key',
           expiresAt: progress.executionLease?.expiresAt,
         });
       }
 
-      if (
-        !leaseActive ||
-        progress.executionLease?.executionIdempotencyKey === request.idempotencyKey
-      ) {
-        progress = mintExecutionLease(
-          {
-            ...progress,
-            execution: {
-              idempotencyKey: request.idempotencyKey,
-              claimedAt: progress.execution?.claimedAt ?? new Date().toISOString(),
-              actorUserId,
-              lastRunAt: new Date().toISOString(),
-            },
+      progress = mintExecutionLease(
+        {
+          ...progress,
+          execution: {
+            idempotencyKey: request.idempotencyKey,
+            claimedAt: progress.execution?.claimedAt ?? new Date().toISOString(),
+            actorUserId,
+            lastRunAt: new Date().toISOString(),
           },
-          request.idempotencyKey,
-        );
-      }
+        },
+        request.idempotencyKey,
+      );
 
       return tx.organizationOffboardingJob.update({
         where: { id: row.id },
@@ -287,50 +309,71 @@ export class OrganizationOffboardingExecutionService {
     return { job, progress, leaseToken };
   }
 
-  private async assertHoldsLease(jobId: string, leaseToken: string): Promise<void> {
-    const row = await this.prisma.organizationOffboardingJob.findUnique({
-      where: { id: jobId },
-      select: { progressJson: true },
-    });
-    if (!row) {
-      throw new NotFoundException('Offboarding job not found');
-    }
-    const progress = parseExecutionProgress(row.progressJson);
-    if (progress.executionLease?.token !== leaseToken) {
-      throw new ConflictException({
-        code: ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
-        message: 'Execution lease lost — stale executor fenced out',
-      });
-    }
-  }
-
-  private async releaseLease(
+  private async completeSessionsUnderActiveLease(
+    organizationId: string,
     jobId: string,
-    progress: OrganizationOffboardingExecutionProgress,
+    leaseToken: string,
+    workingProgress: OrganizationOffboardingExecutionProgress,
   ): Promise<OrganizationOffboardingExecutionProgress> {
-    const cleared = releaseExecutionLease(progress);
-    await this.prisma.organizationOffboardingJob.update({
-      where: { id: jobId },
-      data: { progressJson: toProgressJson(cleared) },
-    });
-    return cleared;
-  }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM organization_offboarding_jobs WHERE id = ${jobId} FOR UPDATE`;
+      const row = await tx.organizationOffboardingJob.findUniqueOrThrow({ where: { id: jobId } });
+      const stored = parseExecutionProgress(row.progressJson);
+      requireActiveLeaseToken(stored, leaseToken);
 
-  private async persistJob(
-    jobId: string,
-    progress: OrganizationOffboardingExecutionProgress,
-    phase: string,
-    status: OrganizationOffboardingJobStatus,
-    lastErrorCode: string | null,
-  ): Promise<JobRow> {
-    return this.prisma.organizationOffboardingJob.update({
-      where: { id: jobId },
-      data: {
-        progressJson: toProgressJson(progress),
-        phase,
-        status,
-        lastErrorCode,
-      },
+      if (stored.sessions?.completedAt) {
+        return { ...workingProgress, sessions: stored.sessions };
+      }
+
+      const revokedRefreshTokenCount = await tx.refreshToken
+        .updateMany({
+          where: {
+            organizationId,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          data: {
+            revokedAt: new Date(),
+            revocationReason: 'ORG_OFFBOARDING_SESSIONS_REVOKED',
+          },
+        })
+        .then((r) => r.count);
+
+      const memberships = await tx.organizationMembership.findMany({
+        where: { organizationId },
+        select: { id: true },
+      });
+      if (memberships.length > 0) {
+        await tx.organizationMembership.updateMany({
+          where: { organizationId, id: { in: memberships.map((m) => m.id) } },
+          data: { membershipVersion: { increment: 1 } },
+        });
+      }
+
+      const sessions = {
+        completedAt: new Date().toISOString(),
+        revokedRefreshTokenCount,
+        membershipVersionsBumped: memberships.length,
+      };
+
+      const merged: OrganizationOffboardingExecutionProgress = {
+        ...stored,
+        ...workingProgress,
+        sessions,
+        executionLease: stored.executionLease,
+      };
+      if (stored.executionLease) {
+        merged.executionLease = {
+          ...stored.executionLease,
+          expiresAt: new Date(Date.now() + executionLeaseTtlMs()).toISOString(),
+        };
+      }
+
+      await tx.organizationOffboardingJob.update({
+        where: { id: jobId },
+        data: { progressJson: toProgressJson(merged) },
+      });
+      return merged;
     });
   }
 
@@ -455,27 +498,9 @@ export class OrganizationOffboardingExecutionService {
         break;
       }
       case 'REVOKE_ORG_SESSIONS': {
-        if (!progress.sessions?.completedAt) {
-          const revokedRefreshTokenCount =
-            await this.refreshTokens.revokeAllActiveForOrganization(organizationId);
-          const memberships = await this.prisma.organizationMembership.findMany({
-            where: { organizationId },
-            select: { id: true },
-          });
-          await this.prisma.organizationMembership.updateMany({
-            where: { organizationId, id: { in: memberships.map((m) => m.id) } },
-            data: { membershipVersion: { increment: 1 } },
-          });
-          progress = {
-            ...progress,
-            sessions: {
-              completedAt: new Date().toISOString(),
-              revokedRefreshTokenCount,
-              membershipVersionsBumped: memberships.length,
-            },
-          };
+        if (progress.sessions?.completedAt) {
+          progress = withPhaseCompleted(progress, phase);
         }
-        progress = withPhaseCompleted(progress, phase);
         phaseSuccess = true;
         break;
       }
@@ -534,16 +559,28 @@ export class OrganizationOffboardingExecutionService {
         const activeProviderConsentCount = await this.prisma.vehicleProviderConsent.count({
           where: { organizationId, status: VehicleProviderConsentStatus.ACTIVE },
         });
+        const historicalProviderConsentCount = await this.prisma.vehicleProviderConsent.count({
+          where: {
+            organizationId,
+            provider: { in: ['DIMO', 'HIGH_MOBILITY'] },
+          },
+        });
         const connectedDimoVehicleCount = await this.prisma.vehicle.count({
           where: {
             organizationId,
             dimoVehicle: { connectionStatus: 'CONNECTED' },
           },
         });
-        const hasExternalDependency =
+        const everHadDimoVehicleLink =
+          (await this.prisma.vehicle.count({
+            where: { organizationId, dimoVehicleId: { not: null } },
+          })) > 0;
+        const hasActiveExternal =
           activeProviderConsentCount > 0 || connectedDimoVehicleCount > 0;
+        const everHadExternalDependency =
+          historicalProviderConsentCount > 0 || everHadDimoVehicleLink;
         let finalizationState: ProviderFinalizationState;
-        if (!hasExternalDependency) {
+        if (!everHadExternalDependency && !hasActiveExternal) {
           finalizationState = 'NO_EXTERNAL_PROVIDER_DEPENDENCY';
         } else {
           finalizationState = 'EXTERNAL_DISCONNECT_PENDING';
@@ -553,6 +590,8 @@ export class OrganizationOffboardingExecutionService {
           providerQuiesce: {
             activeProviderConsentCount,
             connectedDimoVehicleCount,
+            historicalProviderConsentCount,
+            everHadDimoVehicleLink,
             finalizationState,
           },
         };

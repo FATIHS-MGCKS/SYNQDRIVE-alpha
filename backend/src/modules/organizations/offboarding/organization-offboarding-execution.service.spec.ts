@@ -34,6 +34,7 @@ describe('OrganizationOffboardingExecutionService', () => {
     },
     vehicle: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     vehicleProviderConsent: { count: jest.fn().mockResolvedValue(0) },
+    refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) },
     organizationOffboardingJob: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -44,6 +45,7 @@ describe('OrganizationOffboardingExecutionService', () => {
 
   let heldLeaseToken = 'lease-1';
   let latestJobRow = { ...jobRow };
+  let txRefreshTokenUpdateMany: jest.Mock;
 
   const service = new OrganizationOffboardingExecutionService(
     prisma as never,
@@ -65,11 +67,34 @@ describe('OrganizationOffboardingExecutionService', () => {
       warnings: [],
       signals: {},
     });
+    prisma.organizationOffboardingJob.findFirst.mockResolvedValue({ ...jobRow, progressJson: {} });
+    txRefreshTokenUpdateMany = jest.fn().mockResolvedValue({ count: 2 });
     prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       const tx = {
         $executeRaw: jest.fn().mockResolvedValue(1),
+        refreshToken: {
+          updateMany: txRefreshTokenUpdateMany,
+        },
+        organizationMembership: {
+          findMany: jest.fn().mockResolvedValue([{ id: 'm1' }]),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
         organizationOffboardingJob: {
           findFirst: jest.fn().mockResolvedValue({ ...jobRow, progressJson: {} }),
+          findUniqueOrThrow: jest.fn().mockImplementation(async () => ({
+            ...latestJobRow,
+            progressJson: {
+              ...(typeof latestJobRow.progressJson === 'object' && latestJobRow.progressJson
+                ? (latestJobRow.progressJson as object)
+                : {}),
+              executionLease: {
+                token: heldLeaseToken,
+                fence: 1,
+                expiresAt: new Date(Date.now() + 60000).toISOString(),
+                executionIdempotencyKey: 'exec-1',
+              },
+            },
+          })),
           update: jest.fn().mockImplementation(async ({ data }) => {
             const progress = data.progressJson as {
               executionLease?: { token?: string };
@@ -125,7 +150,7 @@ describe('OrganizationOffboardingExecutionService', () => {
       where: { id: 'org-1' },
       data: { status: OrganizationStatus.SUSPENDED },
     });
-    expect(refreshTokens.revokeAllActiveForOrganization).toHaveBeenCalledWith('org-1');
+    expect(txRefreshTokenUpdateMany).toHaveBeenCalled();
     expect(result.phase).toBe('READY_FOR_ARCHIVE');
     expect(result.executionProgress.phasesCompleted).toContain('SUSPEND');
   });

@@ -32,8 +32,14 @@ import { OrganizationOffboardingService } from './organization-offboarding.servi
 import {
   OFFBOARDING_EXECUTION_CONFIRM_VALUE,
   ORGANIZATION_OFFBOARDING_EXECUTION_CONFLICT_CODE,
+  ORGANIZATION_OFFBOARDING_EXECUTION_IN_PROGRESS_CODE,
   ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
 } from './organization-offboarding-execution.policy';
+import {
+  persistJobUnderActiveLease,
+  releaseJobLeaseUnderActiveToken,
+} from './organization-offboarding-execution.lease-persist';
+import { parseExecutionProgress, toProgressJson } from './organization-offboarding-execution.progress';
 
 const LIVE = process.env.ORGANIZATION_OFFBOARDING_EXECUTION_POSTGRES === '1';
 const DB_TOKEN = 'synqdrive_org_offboarding_p6d2';
@@ -59,6 +65,7 @@ function execReq(idempotencyKey: string) {
   const prisma = new PrismaClient();
   let prepare: OrganizationOffboardingService;
   let execution: OrganizationOffboardingExecutionService;
+  let vehicleOffboard: VehicleOnboardingOffboardService;
   const orgIds: string[] = [];
   const userIds: string[] = [];
 
@@ -90,7 +97,7 @@ function execReq(idempotencyKey: string) {
         }).then((r) => r.count),
     } as unknown as RefreshTokenService;
     const vehicleOffboarding = createVehicleOffboardingServiceForTests(prisma);
-    const vehicleOffboard = new VehicleOnboardingOffboardService(vehiclePreflight, vehicleOffboarding);
+    vehicleOffboard = new VehicleOnboardingOffboardService(vehiclePreflight, vehicleOffboarding);
     prepare = new OrganizationOffboardingService(prismaService, preflight, masterAudit);
     execution = new OrganizationOffboardingExecutionService(
       prismaService,
@@ -108,6 +115,9 @@ function execReq(idempotencyKey: string) {
     }
     if (orgIds.length) {
       await prisma.vehicleProviderConsent.deleteMany({ where: { organizationId: { in: orgIds } } });
+      await prisma.vehicleRegistryLifecycleOutbox.deleteMany({
+        where: { vehicle: { organizationId: { in: orgIds } } },
+      });
       await prisma.vehicle.deleteMany({ where: { organizationId: { in: orgIds } } });
       await prisma.organizationOffboardingJob.deleteMany({ where: { organizationId: { in: orgIds } } });
       await prisma.organizationMembership.deleteMany({ where: { organizationId: { in: orgIds } } });
@@ -153,6 +163,43 @@ function execReq(idempotencyKey: string) {
     return id;
   }
 
+  async function holdActiveLease(orgId: string, idempotencyKey: string, token: string) {
+    const job = await prisma.organizationOffboardingJob.findFirstOrThrow({ where: { organizationId: orgId } });
+    const prior = parseExecutionProgress(job.progressJson);
+    await prisma.organizationOffboardingJob.update({
+      where: { id: job.id },
+      data: {
+        progressJson: toProgressJson({
+          ...prior,
+          execution: {
+            idempotencyKey,
+            claimedAt: new Date().toISOString(),
+            actorUserId: 'ma-1',
+          },
+          executionLease: {
+            token,
+            fence: 9,
+            expiresAt: new Date(Date.now() + 120_000).toISOString(),
+            executionIdempotencyKey: idempotencyKey,
+          },
+        }),
+      },
+    });
+    return job.id;
+  }
+
+  it('A — active lease same idempotency key is not replaced (in progress)', async () => {
+    const orgId = await seedOrg();
+    await seedPreparedJob(orgId);
+    const token = `held-${randomUUID()}`;
+    await holdActiveLease(orgId, 'exec-held', token);
+    await expect(execution.execute(orgId, execReq('exec-held'), 'ma-1')).rejects.toMatchObject({
+      response: { code: ORGANIZATION_OFFBOARDING_EXECUTION_IN_PROGRESS_CODE },
+    });
+    const after = await prisma.organizationOffboardingJob.findFirstOrThrow({ where: { organizationId: orgId } });
+    expect(parseExecutionProgress(after.progressJson).executionLease?.token).toBe(token);
+  });
+
   it('concurrent execute with different idempotency keys — one lease winner', async () => {
     const orgId = await seedOrg();
     await seedPreparedJob(orgId);
@@ -170,6 +217,49 @@ function execReq(idempotencyKey: string) {
     expect([ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE, ORGANIZATION_OFFBOARDING_EXECUTION_CONFLICT_CODE]).toContain(
       code.code,
     );
+  });
+
+  it('C — stale executor cannot persist progress or release lease', async () => {
+    const orgId = await seedOrg();
+    await seedPreparedJob(orgId);
+    const job = await prisma.organizationOffboardingJob.findFirstOrThrow({ where: { organizationId: orgId } });
+    const ownerToken = `owner-${randomUUID()}`;
+    const staleToken = `stale-${randomUUID()}`;
+    const progress = parseExecutionProgress(job.progressJson);
+    const ownerProgress = {
+      ...progress,
+      execution: {
+        idempotencyKey: 'fence-test',
+        claimedAt: new Date().toISOString(),
+        actorUserId: 'ma-1',
+      },
+      executionLease: {
+        token: ownerToken,
+        fence: 2,
+        expiresAt: new Date(Date.now() + 120_000).toISOString(),
+        executionIdempotencyKey: 'fence-test',
+      },
+    };
+    await prisma.organizationOffboardingJob.update({
+      where: { id: job.id },
+      data: { progressJson: toProgressJson(ownerProgress) },
+    });
+    const prismaService = prisma as unknown as PrismaService;
+    await expect(
+      persistJobUnderActiveLease(prismaService, {
+        jobId: job.id,
+        leaseToken: staleToken,
+        progress: { ...ownerProgress, phasesCompleted: ['SUSPEND'] },
+        phase: 'SUSPEND',
+        status: OrganizationOffboardingJobStatus.RETRYABLE,
+        lastErrorCode: null,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(releaseJobLeaseUnderActiveToken(prismaService, job.id, staleToken)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    const after = await prisma.organizationOffboardingJob.findFirstOrThrow({ where: { id: job.id } });
+    expect(parseExecutionProgress(after.progressJson).executionLease?.token).toBe(ownerToken);
   });
 
   it('provider dependency blocks READY_FOR_ARCHIVE', async () => {
@@ -254,6 +344,109 @@ function execReq(idempotencyKey: string) {
     });
     expect(job.status).not.toBe(OrganizationOffboardingJobStatus.COMPLETED);
     expect(job.completedAt).toBeNull();
+  });
+
+  it('G — historical DIMO consent (revoked) still blocks READY_FOR_ARCHIVE', async () => {
+    const orgId = await seedOrg();
+    await seedPreparedJob(orgId);
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `PG-HIST-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+    await prisma.vehicleProviderConsent.create({
+      data: {
+        organizationId: orgId,
+        vehicleId: vehicle.id,
+        provider: 'DIMO',
+        grantType: VehicleProviderConsentGrantType.DIMO_OAUTH,
+        status: 'REVOKED',
+        scopes: [],
+        revokedAt: new Date(),
+      },
+    });
+    const result = await execution.execute(orgId, execReq('exec-hist-provider'), 'ma-1');
+    expect(result.executionProgress.providerQuiesce?.finalizationState).toBe('EXTERNAL_DISCONNECT_PENDING');
+    expect(result.phase).not.toBe('READY_FOR_ARCHIVE');
+  });
+
+  it('F — failed revalidate retries without skipping to READY', async () => {
+    const orgId = await seedOrg();
+    await seedPreparedJob(orgId);
+    await prisma.organization.update({ where: { id: orgId }, data: { status: OrganizationStatus.PENDING } });
+    const blocked = await execution.execute(orgId, execReq('exec-reval'), 'ma-1');
+    expect(blocked.executionProgress.phasesCompleted).not.toContain('REVALIDATE');
+    expect(blocked.phase).not.toBe('READY_FOR_ARCHIVE');
+    await prisma.organization.update({ where: { id: orgId }, data: { status: OrganizationStatus.ACTIVE } });
+    const recovered = await execution.execute(orgId, execReq('exec-reval'), 'ma-1');
+    expect(recovered.executionProgress.phasesCompleted).toContain('REVALIDATE');
+    expect(recovered.executionProgress.phasesCompleted).toContain('SUSPEND');
+  });
+
+  it('E — partial vehicle batch resumes without re-offboarding first vehicle', async () => {
+    const orgId = await seedOrg();
+    await seedPreparedJob(orgId);
+    const v1 = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `V1-${Date.now()}`,
+        make: 'Test',
+        model: 'A',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+    const v2 = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `V2-${Date.now()}`,
+        make: 'Test',
+        model: 'B',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+      },
+    });
+    const job = await prisma.organizationOffboardingJob.findFirstOrThrow({ where: { organizationId: orgId } });
+    await prisma.organizationOffboardingJob.update({
+      where: { id: job.id },
+      data: {
+        phase: 'VEHICLE_OFFBOARD_BATCH',
+        progressJson: toProgressJson({
+          phasesCompleted: ['REVALIDATE', 'SUSPEND', 'REVOKE_ORG_SESSIONS'],
+          vehicleBatch: {
+            processedVehicleIds: [v1.id],
+            blockedVehicleId: v2.id,
+            blockedReasonCode: 'VEHICLE_OFFBOARD_FAILED',
+          },
+          execution: {
+            idempotencyKey: 'exec-veh',
+            claimedAt: new Date().toISOString(),
+            actorUserId: 'ma-1',
+          },
+        }),
+      },
+    });
+    const offboardCallsBefore = jest.spyOn(vehicleOffboard, 'offboardVehicle');
+    const firstRun = await execution.execute(orgId, execReq('exec-veh'), 'ma-1');
+    expect(firstRun.executionProgress.vehicleBatch?.processedVehicleIds).toContain(v1.id);
+    const offboardTargetsAfterFirst = offboardCallsBefore.mock.calls.map((c) => c[0].vehicleId);
+    expect(offboardTargetsAfterFirst).not.toContain(v1.id);
+    const secondRun = await execution.execute(orgId, execReq('exec-veh'), 'ma-1');
+    expect(secondRun.executionProgress.vehicleBatch?.processedVehicleIds).toEqual(
+      expect.arrayContaining([v1.id, v2.id]),
+    );
+    offboardCallsBefore.mockRestore();
   });
 
   it('execution retry does not re-bump membership versions when sessions phase complete', async () => {

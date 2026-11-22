@@ -38,3 +38,18 @@
 
 - `organization-offboarding-execution.phase-retry.spec.ts`
 - `organization-offboarding-execution.postgres.integration.spec.ts` (opt-in `ORGANIZATION_OFFBOARDING_EXECUTION_POSTGRES=1`)
+
+## P6D3 EXECUTION CORRECTNESS CLOSEOUT (append)
+
+**Prior head:** `795dfb44caa967a7fc0d246ca31674b821ea50e5`
+
+### FIXES
+
+1. **Active lease ownership** — active lease + same execution idempotency key → `ORGANIZATION_OFFBOARDING_EXECUTION_IN_PROGRESS` (no lease replacement).
+2. **Atomic fencing** — `persistJobUnderActiveLease` / `releaseJobLeaseUnderActiveToken` with `FOR UPDATE` + token CAS.
+3. **Session crash idempotency** — revoke + membership bump + `sessions.completedAt` in one transaction.
+4. **Provider provenance** — historical DIMO/HM consent + `dimoVehicleId` evidence; revoked-only local state stays `EXTERNAL_DISCONNECT_PENDING`.
+
+### PG scenarios A–G
+
+Opt-in suite extended (10 cases) on `synqdrive_org_offboarding_p6d2`.

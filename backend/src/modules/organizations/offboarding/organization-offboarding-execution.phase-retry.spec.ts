@@ -30,6 +30,7 @@ describe('OrganizationOffboardingExecutionService — failed phase retry', () =>
       $transaction: jest.fn(),
       organization: { findUnique: jest.fn(), update: jest.fn() },
       organizationMembership: { findMany: jest.fn().mockResolvedValue([]), update: jest.fn() },
+      refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
       vehicle: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
       vehicleProviderConsent: { count: jest.fn().mockResolvedValue(0) },
       organizationOffboardingJob: {
@@ -51,29 +52,9 @@ describe('OrganizationOffboardingExecutionService — failed phase retry', () =>
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED = '1';
     process.env.NODE_ENV = 'test';
 
-    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const tx = {
-        $executeRaw: jest.fn().mockResolvedValue(1),
-        organizationOffboardingJob: {
-          findFirst: jest.fn().mockResolvedValue(jobRow),
-          update: jest.fn().mockResolvedValue({
-            ...jobRow,
-            progressJson: {
-              executionLease: {
-                token: 'tok',
-                fence: 1,
-                expiresAt: new Date(Date.now() + 60_000).toISOString(),
-                executionIdempotencyKey: 'exec-x',
-              },
-            },
-          }),
-        },
-      };
-      return fn(tx);
-    });
-
     const leaseProgress = {
       phasesCompleted: [] as string[],
+      execution: { idempotencyKey: 'exec-x', claimedAt: new Date().toISOString(), actorUserId: 'ma-1' },
       executionLease: {
         token: 'tok',
         fence: 1,
@@ -81,22 +62,45 @@ describe('OrganizationOffboardingExecutionService — failed phase retry', () =>
         executionIdempotencyKey: 'exec-x',
       },
     };
-    prisma.organizationOffboardingJob.update.mockResolvedValue({
-      ...jobRow,
-      phase: 'REVALIDATE',
-      lastErrorCode: 'ORGANIZATION_OFFBOARDING_EXECUTION_REVALIDATE_BLOCKED',
-      progressJson: leaseProgress,
+
+    let latestProgress: typeof leaseProgress = leaseProgress;
+    let latestRow = { ...jobRow };
+
+    prisma.organization.findUnique.mockResolvedValue({ status: 'ACTIVE' });
+    prisma.organizationOffboardingJob.findFirst.mockResolvedValue(jobRow);
+    const jobUpdateFromData = async (data: Record<string, unknown>) => {
+      if (data.progressJson) {
+        latestProgress = data.progressJson as typeof leaseProgress;
+      }
+      latestRow = { ...latestRow, ...data };
+      return { ...latestRow };
+    };
+    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        organizationMembership: {
+          findMany: jest.fn().mockResolvedValue([]),
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        },
+        organizationOffboardingJob: {
+          findFirst: jest.fn().mockResolvedValue(jobRow),
+          findUniqueOrThrow: jest.fn().mockImplementation(async () => ({ ...latestRow, progressJson: latestProgress })),
+          update: jest.fn().mockImplementation(async ({ data }) => jobUpdateFromData(data)),
+        },
+      };
+      return fn(tx);
     });
-    prisma.organizationOffboardingJob.findUnique.mockResolvedValue({
-      ...jobRow,
-      phase: 'REVALIDATE',
-      progressJson: leaseProgress,
-    });
-    prisma.organizationOffboardingJob.findUniqueOrThrow.mockResolvedValue({
-      ...jobRow,
-      phase: 'REVALIDATE',
-      progressJson: leaseProgress,
-    });
+
+    prisma.organizationOffboardingJob.update.mockImplementation(async ({ data }) => jobUpdateFromData(data));
+    prisma.organizationOffboardingJob.findUnique.mockImplementation(async () => ({
+      ...latestRow,
+      progressJson: latestProgress,
+    }));
+    prisma.organizationOffboardingJob.findUniqueOrThrow.mockImplementation(async () => ({
+      ...latestRow,
+      progressJson: latestProgress,
+    }));
 
     const result = await service.execute(
       'org-1',

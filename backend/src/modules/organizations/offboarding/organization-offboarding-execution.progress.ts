@@ -35,6 +35,8 @@ export type OrganizationOffboardingExecutionProgress = {
   providerQuiesce?: {
     activeProviderConsentCount: number;
     connectedDimoVehicleCount: number;
+    historicalProviderConsentCount: number;
+    everHadDimoVehicleLink: boolean;
     finalizationState: ProviderFinalizationState;
   };
   readyForArchive?: { markedAt: string };
