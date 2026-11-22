@@ -18,9 +18,10 @@
 | FEUX-EVID-PROD-HTTP-2026-11-22 | PRODUCTION_READ_ONLY | `1e6a267c` | Unauthenticated HTTP routes + headers | CONFIRMED | 200 shell ≠ authenticated UI |
 | FEUX-EVID-PROD-BUNDLE-2026-11-22 | PRODUCTION_OBSERVATION | `1e6a267c` | SPA asset IDs, hashes, route strings in JS | CONFIRMED (artifacts only) | Frontend **source** commit INFERRED |
 | FEUX-EVID-PROD-DRIFT-2026-11-22 | AUDIT_DOCUMENT | `1e6a267c`→`413175e8c` | Full-tree frontend drift (91 paths) | CONFIRMED | git diff local |
-| FEUX-EVID-GAP-PROD-UI-001 | DOMAIN_REASONING | `1e6a267c` / P7–P8 | Authenticated functional product UI | **BLOCKED** (P8) | No approved session |
+| FEUX-EVID-GAP-PROD-UI-001 | DOMAIN_REASONING | `1e6a267c` / P7–P9 | Authenticated functional product UI | **BLOCKED** (P8) | P9B foundation; **P9C** provision + session |
 | FEUX-EVID-P8-AUTH-GATE-001 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Access gate — no approved session | CONFIRMED | By design |
 | FEUX-EVID-P8-HTTP-001 | PRODUCTION_OBSERVATION | `2026-11-22T18:50:34Z` / prod `1e6a267c` | Unauthenticated origin HTTP 200 sample | CONFIRMED | curl CLI |
 | FEUX-EVID-P8-RUNTIME-2026-11-22 | AUDIT_DOCUMENT | `cac006567` / prod `1e6a267c` | P8 drift recheck +108 paths | CONFIRMED | git diff local |
 | FEUX-EVID-P8-MATRIX-2026-11-22 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Authenticated UI evidence matrix | CONFIRMED | Functional rows BLOCKED |
 | FEUX-EVID-P8-ACCESS-RECHECK-001 | AUDIT_DOCUMENT | `2026-11-22T18:59:55Z` / prod `1e6a267c` | SSH PASS; app session not provisioned | CONFIRMED | No credentials extracted |
+| FEUX-EVID-P9-AUDIT-FOUNDATION-001 | AUDIT_DOCUMENT | `cac006567` / P9B | Secure audit permission foundation | CONFIRMED | No prod provision |

@@ -86,3 +86,29 @@ export function hasMasterBillingAccess(): boolean {
   if (user.platformRole === 'MASTER_ADMIN') return true;
   return (user.platformPermissions ?? []).includes(MASTER_BILLING_PLATFORM_PERMISSION);
 }
+
+const UI_AUDIT_MASTER_PERMISSION = 'ui-audit-master';
+const UI_AUDIT_RENTAL_PERMISSION = 'ui-audit-rental';
+const UI_AUDIT_OPERATOR_PERMISSION = 'ui-audit-operator';
+
+export function hasUiAuditMasterShellAccess(): boolean {
+  const user = getStoredUser();
+  if (!user) return false;
+  if (user.platformRole === 'MASTER_ADMIN') return true;
+  return (user.platformPermissions ?? []).includes(UI_AUDIT_MASTER_PERMISSION);
+}
+
+export function resolveUiAuditProductLandingPath(): '/master' | '/operator' | '/rental' {
+  const user = getStoredUser();
+  if (!user) return '/rental';
+  if (user.platformRole === 'MASTER_ADMIN' || (user.platformPermissions ?? []).includes(UI_AUDIT_MASTER_PERMISSION)) {
+    return '/master';
+  }
+  if ((user.platformPermissions ?? []).includes(UI_AUDIT_OPERATOR_PERMISSION)) {
+    return '/operator';
+  }
+  if ((user.platformPermissions ?? []).includes(UI_AUDIT_RENTAL_PERMISSION)) {
+    return '/rental';
+  }
+  return '/rental';
+}
