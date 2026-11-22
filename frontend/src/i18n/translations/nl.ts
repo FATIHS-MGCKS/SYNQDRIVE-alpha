@@ -15,6 +15,7 @@ import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterOneAutoNl } from './master.oneAuto.nl';
 import { masterOrganizationsNl } from './master.organizations.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
+import { masterCvDimoPrivilegeNl } from './master.cv.dimoPrivilege.nl';
 import { masterCvOemSpecsNl } from './master.cv.oemSpecs.nl';
 import { rentalMisuseStressStressGateNl } from './rental.misuseStress.stressGate.i18n';
 
@@ -215,6 +216,7 @@ export const nl = {
   ...masterOneAutoNl,
   ...masterOrganizationsNl,
   ...masterCvTechnicalSpecsNl,
+  ...masterCvDimoPrivilegeNl,
   ...masterCvOemSpecsNl,
   ...batteryV2HvInspectionNL,
   ...tireWearV3Nl,

@@ -4349,6 +4349,26 @@ export const api = {
       patch<any>(`/admin/organizations/${id}/payments-enabled`, { enabled }),
     stats: (id: string) => get<any>(`/admin/organizations/${id}/stats`),
 
+    offboarding: {
+      getDimoPrivilegeStatus: (organizationId: string) =>
+        get<import('../master/connected-vehicles/dimo-privilege.types').OrganizationDimoPrivilegeStatusDto>(
+          `/admin/organizations/${encodeURIComponent(organizationId)}/offboarding/dimo-privilege-status`,
+        ),
+      recheckDimoPrivilege: (organizationId: string) =>
+        post<import('../master/connected-vehicles/dimo-privilege.types').OrganizationDimoPrivilegeRecheckResult>(
+          `/admin/organizations/${encodeURIComponent(organizationId)}/offboarding/dimo-privilege-recheck`,
+          {},
+        ),
+      recordDimoOwnerHandoff: (
+        organizationId: string,
+        body: import('../master/connected-vehicles/dimo-privilege.types').OrganizationDimoOwnerHandoffRequest,
+      ) =>
+        post<import('../master/connected-vehicles/dimo-privilege.types').OrganizationDimoOwnerHandoffResult>(
+          `/admin/organizations/${encodeURIComponent(organizationId)}/offboarding/dimo-owner-handoff`,
+          body,
+        ),
+    },
+
     // ─── Tenant-scoped own-organization profile (Settings → Company Profile) ───
     // Distinct from the MASTER_ADMIN routes above: these are guarded by
     // OrgScopingGuard and only allow editing the caller's own org.

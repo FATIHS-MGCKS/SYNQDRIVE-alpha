@@ -15,6 +15,7 @@ import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
 import { masterOneAutoEs } from './master.oneAuto.es';
 import { masterOrganizationsEs } from './master.organizations.es';
 import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
+import { masterCvDimoPrivilegeEs } from './master.cv.dimoPrivilege.es';
 import { masterCvOemSpecsEs } from './master.cv.oemSpecs.es';
 import { rentalMisuseStressStressGateEs } from './rental.misuseStress.stressGate.i18n';
 
@@ -214,6 +215,7 @@ export const es = {
   ...masterOneAutoEs,
   ...masterOrganizationsEs,
   ...masterCvTechnicalSpecsEs,
+  ...masterCvDimoPrivilegeEs,
   ...masterCvOemSpecsEs,
   ...batteryV2HvInspectionES,
   ...tireWearV3Es,
