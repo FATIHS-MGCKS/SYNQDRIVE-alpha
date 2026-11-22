@@ -6,7 +6,9 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
+import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
 import { parseOrganizationOffboardingPrepareBody } from './organization-offboarding-prepare.validation';
+import { parseOrganizationOffboardingExecuteBody } from './organization-offboarding-execute.validation';
 
 type AuthedRequest = Request & { user?: { id?: string; sub?: string } };
 
@@ -15,7 +17,10 @@ type AuthedRequest = Request & { user?: { id?: string; sub?: string } };
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
 @Roles('MASTER_ADMIN')
 export class OrganizationOffboardingController {
-  constructor(private readonly offboarding: OrganizationOffboardingService) {}
+  constructor(
+    private readonly offboarding: OrganizationOffboardingService,
+    private readonly execution: OrganizationOffboardingExecutionService,
+  ) {}
 
   private actorId(req: AuthedRequest): string | null {
     return req.user?.id ?? req.user?.sub ?? null;
@@ -35,6 +40,17 @@ export class OrganizationOffboardingController {
   ) {
     const parsed = parseOrganizationOffboardingPrepareBody(body);
     return this.offboarding.prepare(organizationId, parsed, this.actorId(req));
+  }
+
+  @Post('execute')
+  @HttpCode(200)
+  execute(
+    @Param('organizationId') organizationId: string,
+    @Body() body: unknown,
+    @Req() req: AuthedRequest,
+  ) {
+    const parsed = parseOrganizationOffboardingExecuteBody(body);
+    return this.execution.execute(organizationId, parsed, this.actorId(req));
   }
 
   @Get()

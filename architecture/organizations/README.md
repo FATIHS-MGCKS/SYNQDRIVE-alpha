@@ -13,7 +13,8 @@ Recorded in [`CHANGE_RECORD_P6D2_2026-11-22.md`](CHANGE_RECORD_P6D2_2026-11-22.m
 
 - Contract + read-only org preflight + persistent **PREPARE** job only
 - Master Admin HTTP: preflight / prepare / get job
-- **Deferred:** execute, ARCHIVED enforcement on PATCH, DIMO scheduler filter, Stripe, session revoke, vehicle batch offboard
+- **P6D3 (this branch):** controlled execution API + phased job progress (no ARCHIVED)
+- **Deferred (P6D4):** external provider disconnect, ARCHIVED enforcement on PATCH, DIMO scheduler filter
 
 ## Validation
 

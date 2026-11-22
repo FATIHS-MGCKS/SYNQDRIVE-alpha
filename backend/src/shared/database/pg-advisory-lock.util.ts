@@ -41,6 +41,10 @@ export function organizationOffboardingPrepareLockKey(organizationId: string): s
   return `organization-offboarding-prepare:${organizationId}`;
 }
 
+export function organizationOffboardingExecuteLockKey(organizationId: string): string {
+  return `organization-offboarding-execute:${organizationId}`;
+}
+
 export function userEmailRegistrationLockKey(email: string): string {
   return `user-email-registration:${email.trim().toLowerCase()}`;
 }

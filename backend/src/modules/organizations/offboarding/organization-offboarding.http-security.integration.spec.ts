@@ -13,6 +13,7 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrganizationOffboardingController } from './organization-offboarding.controller';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
+import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
 
 @Injectable()
 class TestAuthGuard implements CanActivate {
@@ -38,13 +39,17 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
     getLatestJob: jest.fn(),
     prepare: jest.fn(),
   };
+  const execution = { execute: jest.fn() };
 
   let mfaEnforced = false;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [OrganizationOffboardingController],
-      providers: [{ provide: OrganizationOffboardingService, useValue: offboarding }],
+      providers: [
+        { provide: OrganizationOffboardingService, useValue: offboarding },
+        { provide: OrganizationOffboardingExecutionService, useValue: execution },
+      ],
     })
       .overrideGuard(RolesGuard)
       .useValue({
@@ -141,6 +146,15 @@ describe('Organization offboarding — HTTP security (P6D2)', () => {
       .send({ idempotencyKey: 'k', organizationId: 'evil' });
     expect(res.status).toBe(400);
     expect(offboarding.prepare).not.toHaveBeenCalled();
+  });
+
+  it('E2 — execute requires MASTER_ADMIN', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/admin/organizations/${orgId}/offboarding/execute`)
+      .set(...auth(tenant))
+      .send({ idempotencyKey: 'exec-1', confirmExecution: 'CONFIRM_ORGANIZATION_OFFBOARDING_EXECUTION' });
+    expect(res.status).toBe(403);
+    expect(execution.execute).not.toHaveBeenCalled();
   });
 
   it('E — prepare delegates to service', async () => {

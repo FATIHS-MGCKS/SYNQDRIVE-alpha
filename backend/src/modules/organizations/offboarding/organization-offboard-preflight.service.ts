@@ -19,6 +19,16 @@ import {
 
 const COMMITTED_BOOKING_STATUSES = ['PENDING', 'CONFIRMED'] as const;
 
+export type OrganizationOffboardPreflightOptions = {
+  /** Exclude this job from CONFLICTING_ACTIVE_OFFBOARDING_JOB (executing job must not block itself). */
+  excludeOffboardingJobId?: string;
+  /**
+   * Suspend admission: omit org-level trip/booking/vehicle aggregate hard blockers
+   * (policy — SUSPEND independent of ongoing trips).
+   */
+  suspendAdmissionOnly?: boolean;
+};
+
 @Injectable()
 export class OrganizationOffboardPreflightService {
   constructor(
@@ -27,7 +37,10 @@ export class OrganizationOffboardPreflightService {
     private readonly vehicleOffboardPreflight: VehicleOffboardPreflightService,
   ) {}
 
-  async assess(organizationId: string): Promise<OrganizationOffboardPreflightSnapshot> {
+  async assess(
+    organizationId: string,
+    options?: OrganizationOffboardPreflightOptions,
+  ): Promise<OrganizationOffboardPreflightSnapshot> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { id: true, status: true },
@@ -69,17 +82,11 @@ export class OrganizationOffboardPreflightService {
           },
         })
       : 0;
-    if (ongoingTripCount > 0) {
-      hardBlockers.push('ONGOING_TRIP');
-    }
+    const suspendAdmissionOnly = options?.suspendAdmissionOnly === true;
 
     const activeBookingCount = await this.prisma.booking.count({
       where: { organizationId, status: 'ACTIVE' },
     });
-    if (activeBookingCount > 0) {
-      hardBlockers.push('ACTIVE_RENTAL_BOOKING');
-    }
-
     const futureCommittedBookingCount = await this.prisma.booking.count({
       where: {
         organizationId,
@@ -87,9 +94,6 @@ export class OrganizationOffboardPreflightService {
         endDate: { gte: now },
       },
     });
-    if (futureCommittedBookingCount > 0) {
-      hardBlockers.push('RELEVANT_COMMITTED_BOOKING');
-    }
 
     let vehiclesWithVehiclePreflightBlockCount = 0;
     for (const vehicleId of activeVehicleIds) {
@@ -104,8 +108,20 @@ export class OrganizationOffboardPreflightService {
         warnings.push('OPEN_VEHICLE_OPERATIONAL_WARNING');
       }
     }
-    if (vehiclesWithVehiclePreflightBlockCount > 0) {
-      hardBlockers.push('VEHICLE_OFFBOARD_BLOCKED');
+
+    if (!suspendAdmissionOnly) {
+      if (ongoingTripCount > 0) {
+        hardBlockers.push('ONGOING_TRIP');
+      }
+      if (activeBookingCount > 0) {
+        hardBlockers.push('ACTIVE_RENTAL_BOOKING');
+      }
+      if (futureCommittedBookingCount > 0) {
+        hardBlockers.push('RELEVANT_COMMITTED_BOOKING');
+      }
+      if (vehiclesWithVehiclePreflightBlockCount > 0) {
+        hardBlockers.push('VEHICLE_OFFBOARD_BLOCKED');
+      }
     }
 
     const activeJob = await this.prisma.organizationOffboardingJob.findFirst({
@@ -116,7 +132,7 @@ export class OrganizationOffboardPreflightService {
       select: { id: true },
       orderBy: { createdAt: 'desc' },
     });
-    if (activeJob) {
+    if (activeJob && activeJob.id !== options?.excludeOffboardingJobId) {
       hardBlockers.push('CONFLICTING_ACTIVE_OFFBOARDING_JOB');
     }
 
