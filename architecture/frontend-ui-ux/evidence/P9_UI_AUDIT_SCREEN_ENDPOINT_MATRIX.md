@@ -6,8 +6,8 @@ Statuses: `SUPPORTED_READ_ONLY` | `REQUIRES_NEW_READ_CAPABILITY` | `BLOCKED_SENS
 
 | Screen | Status | Notes |
 |--------|--------|-------|
-| Dashboard | REQUIRES_NEW_READ_CAPABILITY | `@Roles MASTER_ADMIN` on admin APIs; SPA gate |
-| Organizations | REQUIRES_NEW_READ_CAPABILITY | Same |
+| Dashboard | SUPPORTED_READ_ONLY | Allowlisted `GET /api/v1/admin/dashboard/operational` + `RolesGuard` audit path; SPA `ui-audit-master` |
+| Organizations | SUPPORTED_READ_ONLY | Allowlisted `GET /api/v1/admin/organizations` |
 | Security & Access | BLOCKED_SENSITIVE | User/role surfaces — partial read via admin security GETs only with MASTER path |
 | Product Management | REQUIRES_NEW_READ_CAPABILITY | |
 | Platform Operations | REQUIRES_NEW_READ_CAPABILITY | |

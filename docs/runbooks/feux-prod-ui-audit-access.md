@@ -25,12 +25,19 @@
 ## Browser harness
 
 ```bash
-# Local / CI only — skipped unless explicitly armed
+# Harness unit tests (no Production session) — CI-safe
+npx playwright test -c e2e/feux-prod-audit-playwright.config.ts feux-prod-audit-readonly.harness.spec.ts
+
+# Authenticated Production UI audit — skipped unless explicitly armed; no local webServer
 FEUX_PROD_UI_AUDIT_AUTHORIZED=1 \
 FEUX_PROD_AUDIT_BASE_URL=https://app.synqdrive.eu \
 FEUX_PROD_AUDIT_STORAGE_STATE_PATH=/path/outside/repo/.storageState.json \
-npm run test:e2e -- feux-prod-audit-readonly.spec.ts
+npx playwright test -c e2e/feux-prod-audit-playwright.config.ts feux-prod-audit-readonly.spec.ts
 ```
+
+**Origin policy:** `FEUX_PROD_AUDIT_APPROVED_ORIGINS` (comma-separated) defaults to `https://app.synqdrive.eu`. Armed prod audit mode **rejects** `localhost` / `127.0.0.1`.
+
+**Server read policy:** `backend/src/modules/ui-audit/ui-audit-read-allowlist.ts` — explicit GET/HEAD allowlist with product scopes (`ui-audit-master` | `ui-audit-rental` | `ui-audit-operator`); unlisted reads fail closed.
 
 ## Offboarding
 

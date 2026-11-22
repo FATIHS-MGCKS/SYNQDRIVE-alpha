@@ -6,6 +6,7 @@ import { PLATFORM_PERMISSION_JWT_VALUES } from './platform-permission.constants'
 describe('PlatformPermissionService', () => {
   const prisma = {
     user: { findUnique: jest.fn() },
+    organizationMembership: { findFirst: jest.fn().mockResolvedValue(null) },
     userPlatformPermissionGrant: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -97,5 +98,28 @@ describe('PlatformPermissionService', () => {
     });
     await expect(service.hasActiveMasterBillingGrant('inactive-user')).resolves.toBe(false);
     expect(prisma.userPlatformPermissionGrant.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('rejects UI audit grant for MASTER_ADMIN', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'target',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    await expect(
+      service.grantUiAuditPermission('target', 'admin-1', PlatformPermissionKey.UI_AUDIT_RENTAL),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects UI audit grant when user has active ORG_ADMIN membership', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'target',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
+    (prisma.organizationMembership.findFirst as jest.Mock).mockResolvedValue({ id: 'mem-1' });
+    await expect(
+      service.grantUiAuditPermission('target', 'admin-1', PlatformPermissionKey.UI_AUDIT_OPERATOR),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

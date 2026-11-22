@@ -53,6 +53,60 @@ describe('UiAuditWriteDenyGuard', () => {
     ).toThrow(ForbiddenException);
   });
 
+  it('allows allowlisted rental GET', () => {
+    expect(
+      guard.canActivate(
+        mockContext(
+          'GET',
+          '/api/v1/organizations/org-1/vehicles',
+          auditUser,
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('denies master GET without master grant', () => {
+    expect(() =>
+      guard.canActivate(
+        mockContext(
+          'GET',
+          '/api/v1/admin/dashboard/operational',
+          auditUser,
+        ),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('allows master GET with master grant', () => {
+    expect(
+      guard.canActivate(
+        mockContext('GET', '/api/v1/admin/dashboard/operational', {
+          ...auditUser,
+          platformPermissions: ['ui-audit-master'],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('denies rental dashboard GET for operator-only grant', () => {
+    expect(() =>
+      guard.canActivate(
+        mockContext('GET', '/api/v1/organizations/org-1/dashboard', {
+          ...auditUser,
+          platformPermissions: ['ui-audit-operator'],
+        }),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('denies MFA enrollment POST paths', () => {
+    expect(() =>
+      guard.canActivate(
+        mockContext('POST', '/api/v1/auth/mfa/totp/enroll', auditUser),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
   it('never treats MASTER_ADMIN as audit-bound even with jwt grant strings', () => {
     expect(
       guard.canActivate(

@@ -13,13 +13,15 @@ export const UI_AUDIT_JWT_VALUES: readonly string[] = Object.values(UI_AUDIT_JWT
  * Auth/session maintenance paths allowed for audit-bound identities (not business mutations).
  * Prefix match on pathname (no query).
  */
+/**
+ * Session maintenance only — no MFA enrollment, password change, or permission mutations.
+ */
 export const UI_AUDIT_AUTH_SESSION_WRITE_ALLOWLIST: readonly string[] = [
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
   '/api/v1/auth/login',
   '/api/v1/auth/mfa/challenge',
   '/api/v1/auth/mfa/verify',
-  '/api/v1/auth/mfa/totp',
 ];
 
 /** GET paths that must never be served to audit-bound identities (exports, secrets, grants). */

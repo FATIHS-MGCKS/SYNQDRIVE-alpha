@@ -9,7 +9,11 @@ import {
   UI_AUDIT_AUTH_SESSION_WRITE_ALLOWLIST,
   UI_AUDIT_SENSITIVE_GET_DENYLIST,
 } from './ui-audit.constants';
-import { isUiAuditBoundUser } from './ui-audit.context';
+import { isUiAuditBoundUser, userHasJwtGrant } from './ui-audit.context';
+import {
+  matchUiAuditReadRule,
+  requiredJwtGrantForScope,
+} from './ui-audit-read-allowlist';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -31,9 +35,24 @@ function isSensitiveGetDenied(path: string, method: string): boolean {
   return UI_AUDIT_SENSITIVE_GET_DENYLIST.some((re) => re.test(path));
 }
 
+function assertReadAllowlistProductScope(
+  user: { platformPermissions?: string[] },
+  method: string,
+  path: string,
+): void {
+  const rule = matchUiAuditReadRule(method, path);
+  if (!rule) {
+    throw new ForbiddenException('UI audit scope: read not allowlisted');
+  }
+  const requiredGrant = requiredJwtGrantForScope(rule.scope);
+  if (requiredGrant && !userHasJwtGrant(user, requiredGrant)) {
+    throw new ForbiddenException('UI audit scope: product grant required');
+  }
+}
+
 /**
  * Global enforcement for least-privilege UI audit identities.
- * Defense-in-depth: does not replace module permission checks or MFA.
+ * Default deny on reads outside explicit allowlist; default deny on writes outside auth maintenance.
  */
 @Injectable()
 export class UiAuditWriteDenyGuard implements CanActivate {
@@ -52,11 +71,19 @@ export class UiAuditWriteDenyGuard implements CanActivate {
       throw new ForbiddenException('UI audit scope: sensitive read denied');
     }
 
-    if (MUTATING_METHODS.has(method) && !isAuthSessionWriteAllowed(path, method)) {
-      this.logger.warn(`UiAuditWriteDenyGuard: mutation denied user=${user.id} ${method} ${path}`);
-      throw new ForbiddenException('UI audit scope: write operations denied');
+    if (MUTATING_METHODS.has(method)) {
+      if (!isAuthSessionWriteAllowed(path, method)) {
+        this.logger.warn(`UiAuditWriteDenyGuard: mutation denied user=${user.id} ${method} ${path}`);
+        throw new ForbiddenException('UI audit scope: write operations denied');
+      }
+      return true;
     }
 
-    return true;
+    if (method === 'GET' || method === 'HEAD') {
+      assertReadAllowlistProductScope(user, method, path);
+      return true;
+    }
+
+    throw new ForbiddenException('UI audit scope: method denied');
   }
 }

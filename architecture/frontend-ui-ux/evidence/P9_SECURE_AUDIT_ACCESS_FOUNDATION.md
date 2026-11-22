@@ -25,8 +25,10 @@
 |-----------|------|
 | `PlatformPermissionKey` | `ui-audit-master` · `ui-audit-rental` · `ui-audit-operator` |
 | JWT `platformPermissions` | Issued only from DB grants (existing resolver) |
-| `UiAuditWriteDenyGuard` | Global deny mutations + sensitive GET paths for audit-bound `USER` |
+| `UiAuditWriteDenyGuard` | Global deny mutations; **fail-closed GET allowlist** via `ui-audit-read-allowlist.ts` + product JWT grant |
+| `RolesGuard` | Narrow Master read: `ui-audit-master` + allowlisted GET/HEAD on admin routes (no `MASTER_ADMIN` role) |
 | `PermissionsGuard` | No `ORG_ADMIN`/`MASTER_ADMIN` bypass when audit-bound; write/manage levels denied |
+| Master SPA | `allowUiAuditMasterShell` on `/master` when JWT includes `ui-audit-master` |
 | Eligibility | Grants refused for `MASTER_ADMIN` or active `ORG_ADMIN` membership |
 
 `FEUX_PROD_UI_AUDIT_AUTHORIZED` is an **ops marker only** — not authorization.
@@ -35,7 +37,7 @@
 
 | Product | Verdict class | Notes |
 |---------|---------------|-------|
-| **Master** | **REQUIRES_NEW_READ_CAPABILITY** | Server grants exist; SPA still requires `MASTER_ADMIN` — P9C needs frontend contract (`ui-audit-master` + read-only nav) or API-only smoke runner |
+| **Master** | **SUPPORTED_READ_ONLY** (server + SPA shell) | Allowlisted admin GETs + `RolesGuard` audit path; **no** blanket `/admin` bypass |
 | **Rental** | **SUPPORTED_READ_ONLY** (target) | Module `read` flags + `ui-audit-rental` grant + guard stack |
 | **Operator** | **SUPPORTED_READ_ONLY** (target) | WORKER + read modules + `ui-audit-operator` grant |
 | **Not deployed UI** | **NOT_DEPLOYED** | Repository features ahead of prod bundle |
@@ -45,7 +47,7 @@ Detail matrix: [`P9_UI_AUDIT_SCREEN_ENDPOINT_MATRIX.md`](./P9_UI_AUDIT_SCREEN_EN
 ## Session / MFA
 
 - Normal Clerk login + MFA — **no bypass**
-- Refresh/logout allowlisted in `UiAuditWriteDenyGuard`
+- Auth session maintenance only: refresh, logout, login, mfa challenge/verify (no MFA enroll / totp setup)
 - Revocation: revoke grants + `sessionVersion` + user disable (P9C runbook)
 
 ## Implementation status
