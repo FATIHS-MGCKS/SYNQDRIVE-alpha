@@ -117,7 +117,7 @@ describe('connected vehicles offboard (VO5C-P2A)', () => {
       'master.cv.dimoPrivilege.',
       'master.cv.oemSpecs.',
     ] as const;
-  const isModularMasterCvKey = (k: string) =>
+    const isModularMasterCvKey = (k: string) =>
       modularMasterCvPrefixes.some((prefix) => k.startsWith(prefix));
     const required = Object.keys(en).filter(
       (k) => k.startsWith('master.cv.') && !isModularMasterCvKey(k),
