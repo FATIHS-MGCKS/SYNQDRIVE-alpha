@@ -229,6 +229,38 @@ describe('OrganizationOffboardingHmLiveDisconnectAdapter', () => {
     expect(result.detailCode).toBe('HM_HISTORICAL_INACTIVE_DEPENDENCY');
   });
 
+  it('REVIEW_REQUIRED when direct, indirect, and historical HM evidence coexist', async () => {
+    stubHmPrisma(prisma, {
+      orgId: 'org-mixed',
+      orgVehicleIds: ['veh-1'],
+      directActive: [{ id: 'hm-direct', vin: 'VIN-D', clearanceStatus: 'APPROVED', organizationId: 'org-mixed' }],
+      indirectActive: [
+        {
+          id: 'hm-indirect',
+          vin: 'VIN-I',
+          clearanceStatus: 'APPROVED',
+          organizationId: null,
+          synqdriveVehicleId: 'veh-1',
+        },
+      ],
+      historicalLinks: 2,
+    });
+    let linkCountCalls = 0;
+    prisma.vehicleDataSourceLink.count.mockImplementation(async () => {
+      linkCountCalls += 1;
+      if (linkCountCalls === 1) return 2;
+      if (linkCountCalls === 2) return 0;
+      return 1;
+    });
+    prisma.vehicle.findUnique.mockResolvedValue({ organizationId: 'org-mixed' });
+
+    const adapter = new OrganizationOffboardingHmLiveDisconnectAdapter(prisma as never, auth as never, hmConfig as never);
+    const result = await adapter.disconnectOrganization('org-mixed');
+    expect(result.outcome).toBe('REVIEW_REQUIRED');
+    expect(result.detailCode).toBe('HM_MIXED_DIRECT_AND_INDIRECT_DEPENDENCY');
+    expect(mockedAxios.delete).not.toHaveBeenCalled();
+  });
+
   it('REVIEW_REQUIRED for indirect vehicle binding without direct org HM row', async () => {
     stubHmPrisma(prisma, {
       orgId: 'org-ind',

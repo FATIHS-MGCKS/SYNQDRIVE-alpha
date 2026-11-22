@@ -306,11 +306,39 @@ export class OrganizationOffboardingHmLiveDisconnectAdapter {
       return { revokableRows: [], summary };
     }
 
-    if (inactiveNonTerminal.length > 0) {
+    const directIds = directActive.map((r) => r.id);
+    const unmappedActiveLinks =
+      historicalLinks > 0
+        ? await this.prisma.vehicleDataSourceLink.count({
+            where: {
+              sourceType: 'HIGH_MOBILITY',
+              vehicle: { organizationId },
+              isActive: true,
+              OR: [{ sourceReferenceId: null }, { sourceReferenceId: { notIn: directIds } }],
+            },
+          })
+        : 0;
+
+    summary.unmappedActiveHistoricalLinks = unmappedActiveLinks;
+
+    const evidenceIncomplete =
+      indirectActive.length > 0 ||
+      inactiveNonTerminal.length > 0 ||
+      inactiveHistoricalLinks > 0 ||
+      unmappedActiveLinks > 0 ||
+      historicalLinks > directActive.length;
+
+    if (evidenceIncomplete) {
+      let detailCode = 'HM_HISTORICAL_COVERAGE_INCOMPLETE';
+      if (indirectActive.length > 0) {
+        detailCode = 'HM_MIXED_DIRECT_AND_INDIRECT_DEPENDENCY';
+      } else if (inactiveNonTerminal.length > 0) {
+        detailCode = 'HM_HISTORICAL_INACTIVE_DEPENDENCY';
+      }
       return {
         revokableRows: directActive,
         summary,
-        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode: 'HM_HISTORICAL_INACTIVE_DEPENDENCY' },
+        blockOutcome: { outcome: 'REVIEW_REQUIRED', detailCode },
       };
     }
 

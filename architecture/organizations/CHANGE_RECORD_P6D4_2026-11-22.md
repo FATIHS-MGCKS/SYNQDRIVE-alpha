@@ -66,3 +66,8 @@ Not certified from mocked provider tests. Separate owner approval required for `
 
 - DIMO Identity pages require `nodes[]` + `pageInfo.hasNextPage` boolean; broken `dimoVehicle` relation fails-closed.
 - HM: `HM_COVERAGE_ASSESSMENT` reconciles active/inactive rows, indirect `synqdriveVehicleId` bindings, and cross-org data-source links; unknown VIN ownership blocks DELETE.
+
+## P6D4 PROVIDER MERGE GATE (append)
+
+- HM mixed direct + indirect + historical coverage → `REVIEW_REQUIRED` (`HM_MIXED_DIRECT_AND_INDIRECT_DEPENDENCY`) before any DELETE.
+- Disposable PG evidence: P6D4 finalization 15/15 on `synqdrive_org_offboarding_p6d4`; P6D3 execution 10/10 on `synqdrive_org_offboarding_p6d2`.
