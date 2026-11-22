@@ -23,3 +23,4 @@
 | FEUX-EVID-P8-HTTP-001 | PRODUCTION_OBSERVATION | `2026-11-22T18:50:34Z` / prod `1e6a267c` | Unauthenticated origin HTTP 200 sample | CONFIRMED | curl CLI |
 | FEUX-EVID-P8-RUNTIME-2026-11-22 | AUDIT_DOCUMENT | `cac006567` / prod `1e6a267c` | P8 drift recheck +108 paths | CONFIRMED | git diff local |
 | FEUX-EVID-P8-MATRIX-2026-11-22 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Authenticated UI evidence matrix | CONFIRMED | Functional rows BLOCKED |
+| FEUX-EVID-P8-ACCESS-RECHECK-001 | AUDIT_DOCUMENT | `2026-11-22T18:59:55Z` / prod `1e6a267c` | SSH PASS; app session not provisioned | CONFIRMED | No credentials extracted |

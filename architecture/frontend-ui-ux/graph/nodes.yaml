@@ -339,3 +339,12 @@ nodes:
     epistemic_status: CONFIRMED
     source_paths:
       - architecture/frontend-ui-ux/evidence/AUTHENTICATED_UI_EVIDENCE_MATRIX_2026-11-22.md
+
+  - id: FEUX-EVID-P8-ACCESS-RECHECK-001
+    type: evidence
+    title: P8 SSH vs browser session recheck
+    summary: VPS SSH confirmed; no provisioned Clerk/browser session for FEUX.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/P8_ACCESS_AND_SESSION_RECHECK_2026-11-22.md

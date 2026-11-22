@@ -13,7 +13,7 @@
 | Field | Value |
 |-------|-------|
 | `AUTHENTICATED_ACCESS` | **BLOCKED_NO_APPROVED_SESSION** |
-| **Reason** | No owner-authorized, pre-existing authenticated test session was available in the run environment; creating sessions, using credentials, or bypassing MFA is forbidden. |
+| **Reason** | No owner-authorized, pre-existing **application browser session** (Clerk/JWT) was available in the agent runtime. **SSH/VPS read-only access is separately CONFIRMED** — see [`P8_ACCESS_AND_SESSION_RECHECK_2026-11-22.md`](./P8_ACCESS_AND_SESSION_RECHECK_2026-11-22.md). |
 | **Permitted work** | Repository reconciliation, read-only VPS SHA/asset check, unauthenticated HTTP probes, authority documentation. |
 
 ## Runtime reconciliation
