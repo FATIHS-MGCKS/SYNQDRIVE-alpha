@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import highMobilityConfig from '@config/high-mobility.config';
 import { VehicleProviderConsentService } from '@modules/vehicles/vehicle-provider-consent.service';
@@ -42,10 +42,10 @@ import { HighMobilityDiagnosticsController } from './high-mobility-diagnostics.c
 // ── Compatibility intelligence (V4.6.77) ───────────────────────────────────
 import { HighMobilityCompatibilityController } from './compatibility/hm-compatibility.controller';
 import { HighMobilityCompatibilityService } from './compatibility/hm-compatibility.service';
-import { VehicleOnboardingModule } from '@modules/vehicle-onboarding/vehicle-onboarding.module';
+import { VehicleRegistrationConvergenceModule } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.module';
 
 @Module({
-  imports: [ConfigModule.forFeature(highMobilityConfig), forwardRef(() => VehicleOnboardingModule)],
+  imports: [ConfigModule.forFeature(highMobilityConfig), VehicleRegistrationConvergenceModule],
   controllers: [
     HighMobilityAdminController,
     HighMobilityWebhookController,

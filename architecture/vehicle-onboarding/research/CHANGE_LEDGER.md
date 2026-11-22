@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-11-22 | **V2B-PR1 convergence module split** — `VehicleRegistrationConvergenceModule` wired from HM without importing full `VehicleOnboardingModule` (Nest boot-cycle fix) | same evidence doc |
 | 2026-11-22 | **V2B-PR1 billing fail-closed hardening** — `BILLING_SINGLE_RAIL` NOT_ARMABLE at startup in PR1; removed premature `VehiclesService.create` hook suppression | same evidence doc |
 | 2026-11-22 | **V2B-PR1 convergence foundation** — default-OFF flags, convergence port stub, HM routing + billing hook gates (inactive @ default); fail-closed env validation | `V2B_PR1_CONVERGENCE_FOUNDATION_2026-11-22.md`; no cutover |
 | 2026-11-22 | **V2A registration & billing safety foundation** — Characterization spec `v2a-registration-billing-safety.characterization.spec.ts`; evidence `V2A_REGISTRATION_BILLING_SAFETY_2026-11-22.md`; frontend offboard i18n test fix for modular `master.cv.*` shards; **no** registration/billing business-logic cutover | Documents VEH-001/002 safety contracts; module remains `AUDIT_IN_PROGRESS` |
