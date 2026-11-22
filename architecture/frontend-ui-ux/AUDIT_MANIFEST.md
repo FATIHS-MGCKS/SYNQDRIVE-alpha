@@ -12,8 +12,8 @@
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `cac0065679cffedbeab41c7a758534d140db5f80` (#2492 merged) |
 | **REPO_AUDIT_BASELINE_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` (UI code contracts in inventories) |
-| **AUDIT_BRANCH_SHA** | `4b0aba4d208f9b630b51d1ebbc92a8fd366983b7` (P7 documentation PR) |
-| **VALIDATION_RUN_SHA** | `4b0aba4d208f9b630b51d1ebbc92a8fd366983b7` |
+| **AUDIT_BRANCH_SHA** | `e5ed0971977592af39f8b1145f2595f373feeee0` (P8 documentation PR) |
+| **VALIDATION_RUN_SHA** | `89b1af2b6e82a404fa00cbe04d8bcb97ab2101e2` |
 | **PRIOR_READ_ONLY_AUDIT_SHA** | `01bd08a4cca0a846441f5a96d12d93fca9ba1fb8` (Cloud Agent UI/UX audit — reconciled where code unchanged) |
 | **PRODUCTION_AUDITED_AT** | `2026-11-22T18:06:23Z` (P7) · P8 functional `2026-11-22T18:50:34Z` |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
