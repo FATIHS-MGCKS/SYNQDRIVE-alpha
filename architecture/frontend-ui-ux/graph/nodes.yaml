@@ -303,3 +303,12 @@ nodes:
     epistemic_status: CONFIRMED
     source_paths:
       - architecture/frontend-ui-ux/evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md
+
+  - id: FEUX-EVID-PROD-DRIFT-2026-11-22
+    type: evidence
+    title: Production frontend git drift reconciliation
+    summary: 91 frontend paths NOT_DEPLOYED between prod SHA and UI audit SHA.
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/evidence/PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md

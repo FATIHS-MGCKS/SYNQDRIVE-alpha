@@ -7,6 +7,6 @@
 | FEUX-CON-003 | CONTRADICTED | `docs/ui` page framework DE keys vs `master-nav-i18n.ts` | Framework cites i18n keys; Master chrome uses hardcoded DE map | Violates platform i18n contract (owned by i18n authority) |
 | FEUX-CON-004 | CONTRADICTED | Changes changelog brand `#2563EB` vs `theme.css` `--brand: #4F86E8` | Historical changelog vs current token | Designers may use wrong brand |
 | FEUX-CON-005 | PARTIALLY_VERIFIED | Page framework «all views in PageContainer» vs `master/App.tsx` | `ProductManagementView` rendered without `PageContainer` | Layout inconsistency |
-| FEUX-CON-006 | CONTRADICTED | Ideal static asset 404 vs production Nest SPA fallback | `GET /assets/index-NONEXIST.js` returns `200` + `index.html` | CDN/cache debugging risk; clients may mis-detect asset failure |
+| FEUX-CON-006 | CONTRADICTED | Ideal static asset 404 vs production Nest SPA fallback | `GET /assets/index-NONEXIST.js` returns `200` + `index.html` | See `FEUX-FIND-SPA-ASSET-200-001` in `research/FINDING_SPA_ASSET_FALLBACK_200.md` |
 
 **Resolution status:** Recorded only — no runtime changes in P7 audit.

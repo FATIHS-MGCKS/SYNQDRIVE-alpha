@@ -16,5 +16,6 @@
 | FEUX-EVID-GAP-BROWSER-001 | DOMAIN_REASONING | N/A | Live render, responsive, contrast not measured | UNKNOWN | Explicitly out of scope |
 | FEUX-EVID-PROD-INFRA-2026-11-22 | PRODUCTION_READ_ONLY | `1e6a267c` | VPS release symlink, git SHA, pm2, nginx | CONFIRMED | No auth session |
 | FEUX-EVID-PROD-HTTP-2026-11-22 | PRODUCTION_READ_ONLY | `1e6a267c` | Unauthenticated HTTP routes + headers | CONFIRMED | 200 shell ≠ authenticated UI |
-| FEUX-EVID-PROD-BUNDLE-2026-11-22 | PRODUCTION_READ_ONLY | `1e6a267c` | SPA asset IDs, hashes, route strings in JS | CONFIRMED | Monolith bundle; no separate FE SHA |
+| FEUX-EVID-PROD-BUNDLE-2026-11-22 | PRODUCTION_OBSERVATION | `1e6a267c` | SPA asset IDs, hashes, route strings in JS | CONFIRMED (artifacts only) | Frontend **source** commit INFERRED |
+| FEUX-EVID-PROD-DRIFT-2026-11-22 | AUDIT_DOCUMENT | `1e6a267c`→`413175e8c` | Full-tree frontend drift (91 paths) | CONFIRMED | git diff local |
 | FEUX-EVID-GAP-PROD-UI-001 | DOMAIN_REASONING | `1e6a267c` / P7 audit | Authenticated functional product UI | UNKNOWN | Infra superseded; session UI still open |

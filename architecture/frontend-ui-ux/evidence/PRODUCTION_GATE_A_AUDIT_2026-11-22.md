@@ -17,10 +17,14 @@
 | `AUTHORITY_MERGE_SHA` | `874f69e61bbed8465c5e94cd88d91408ee281acc` | CONFIRMED |
 | `REPOSITORY_AUDITED_UI_SHA` (inventories / code contracts) | `413175e8ca72355764a3d47936ad7eff78d415aa` | CONFIRMED (unchanged screen matrices; production bundle older) |
 | `PRODUCTION_BACKEND_SHA` | `1e6a267c8c7951e2a11633e89ab96714844ea846` | CONFIRMED (`git -C /opt/synqdrive/current`) |
-| `PRODUCTION_FRONTEND_SOURCE_SHA` | `1e6a267c8c7951e2a11633e89ab96714844ea846` | INFERRED — **monolith release**: SPA artifacts co-deployed with backend in same release directory; no independent frontend git pointer observed |
-| `PRODUCTION_FRONTEND_ARTIFACT_ID` | `index-Cn8n4pFR.js` (sha256 `21e7538e…`), `index-DmctIvoe.css` (sha256 `f7cf69a8…`) | CONFIRMED (on-disk + live HTTP) |
+| `PRODUCTION_FRONTEND_SOURCE_SHA` | `1e6a267c8c7951e2a11633e89ab96714844ea846` | **INFERRED** — co-located monolith; **not** CONFIRMED without build-to-commit attestation |
+| `PRODUCTION_FRONTEND_ARTIFACT_ID` | `index-Cn8n4pFR.js` (sha256 `21e7538e…`), `index-DmctIvoe.css` (sha256 `f7cf69a8…`) | **CONFIRMED** (on-disk + live HTTP) |
 
-**Drift:** Production release `2026-11-11` is **behind** repository `main` (`874f69e6`). Architecture-only commits on `main` (FEUX authorities) are **not** deployed. UI/runtime behavior on Production aligns with `1e6a267c`, not with post-#2490 doc-only commits.
+**Drift (full tree):** see [`PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md`](./PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md).
+
+- Production → UI audit: **91** `frontend/` paths changed → **NOT_DEPLOYED** on Production.
+- UI audit → `main` merge: **0** `frontend/` paths → documentation-only gap does not require deploy for Gate A SHA parity.
+- Authenticated UI at `413175e8c` or `874f69e6`: **not** claimed on Production.
 
 ## Release topology (CONFIRMED)
 
@@ -49,7 +53,7 @@
 | `/operator` | 200 | text/html | SPA shell |
 | `/operator/vehicles/<uuid>` | 200 | text/html | Deep-link path returns shell (client routing) |
 | `/assets/index-Cn8n4pFR.js` | 200 | application/javascript | ~18.5 MB |
-| `/assets/index-NONEXIST.js` | 200 | text/html | **CONTRADICTED** vs strict static 404 — backend SPA fallback serves `index.html` for unknown asset paths |
+| `/assets/index-NONEXIST.js` | 200 | text/html | Actionable finding `FEUX-FIND-SPA-ASSET-200-001` — see [`../research/FINDING_SPA_ASSET_FALLBACK_200.md`](../research/FINDING_SPA_ASSET_FALLBACK_200.md) |
 
 Security headers (sample): `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: no-referrer`. `Cache-Control: public, max-age=0` on HTML.
 
@@ -60,8 +64,10 @@ Security headers (sample): `Strict-Transport-Security`, `Content-Security-Policy
 | # | Question | FEUX | MAUX | RENTUX | OPUX |
 |---|----------|------|------|--------|------|
 | 1 | Repo implementation exists? | CONFIRMED | CONFIRMED | CONFIRMED | CONFIRMED |
-| 2 | Deployed source proven? | CONFIRMED @ `1e6a267c` | same bundle | same bundle | same bundle |
-| 3 | Served asset provenance? | CONFIRMED hashes | same | same | same |
+| 2 | Deployed **backend** release SHA | CONFIRMED `1e6a267c` | same | same | same |
+| 2b | Deployed **frontend source** commit | **INFERRED** `1e6a267c` (monolith) | same | same | same |
+| 3 | Served **artifact** identity (hashes) | CONFIRMED | same | same | same |
+| 3b | Repository UI @ `413175e8c` on Production | **NOT_DEPLOYED** (91 paths) | NOT_DEPLOYED | NOT_DEPLOYED | NOT_DEPLOYED |
 | 4 | Route reachable (HTTP)? | CONFIRMED | `/master` 200 shell | `/rental` 200 shell | `/operator*` 200 shell |
 | 5 | Authenticated functional UI? | **UNKNOWN** | **UNKNOWN** | **UNKNOWN** | **UNKNOWN** |
 | 6 | Shared dependency in prod? | CONFIRMED single bundle | CONFIRMED | CONFIRMED | CONFIRMED |

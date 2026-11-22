@@ -32,7 +32,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 
 ## Repo vs Production
 
-**CONFIRMED drift:** `main` (`874f69e6`) ahead of production (`1e6a267c`).
+**Drift:** Production backend **CONFIRMED** @ `1e6a267c`; repository Master UI changes since then **NOT_DEPLOYED** (see `PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md`). Frontend **source** on Production **INFERRED** @ `1e6a267c`, not CONFIRMED without build attestation.
 
 ## End-to-end UI flow
 

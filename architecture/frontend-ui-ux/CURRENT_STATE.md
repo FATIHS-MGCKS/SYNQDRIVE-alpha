@@ -7,7 +7,7 @@
 | Field | Value |
 |-------|-------|
 | Production release SHA | `1e6a267c8c7951e2a11633e89ab96714844ea846` (`2026-11-11`) |
-| Drift | **Production behind `main`** — doc-only FEUX merge not deployed |
+| Drift | **91** frontend paths `NOT_DEPLOYED` (`1e6a267c`→`413175e8c`); docs-only `main` delta needs **no** deploy for parity |
 | Served bundle | Single SPA: `index-Cn8n4pFR.js` + `index-DmctIvoe.css` |
 | Shared coupling at runtime | **CONFIRMED** — one bundle serves Master, Rental, Operator |
 | Authenticated UI | **UNKNOWN** |

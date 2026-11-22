@@ -8,7 +8,7 @@
 | **Deployed release SHA** | `1e6a267c8c7951e2a11633e89ab96714844ea846` |
 | **Release directory** | `/opt/synqdrive/releases/20261111223933_v4994` (via `current` symlink) |
 | **Repository `main` at audit** | `874f69e61bbed8465c5e94cd88d91408ee281acc` |
-| **REPO_PRODUCTION_DRIFT** | **Production behind `main`** — FEUX authority merge (#2490) not deployed; UI runtime ≈ `1e6a267c` |
+| **REPO_PRODUCTION_DRIFT** | **91** `frontend/` paths changed `1e6a267c`→`413175e8c` (**NOT_DEPLOYED**); `413175e8c`→`874f69e6` **0** frontend files (docs only) |
 | **SPA entry** | `backend/public/index.html` → `/assets/index-Cn8n4pFR.js`, `/assets/index-DmctIvoe.css` |
 | **Topology** | nginx TLS → upstream `3001`/`3002` → Nest serves API + static SPA (CONFIRMED) |
 | **PM2** | `synqdrive`, `synqdrive-b` online (CONFIRMED, names only) |
