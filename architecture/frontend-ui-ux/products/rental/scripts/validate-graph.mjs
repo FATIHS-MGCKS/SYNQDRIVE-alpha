@@ -7,7 +7,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import { validateAuthorityCompleteness } from '../../../scripts/validate-authority-completeness.mjs';
+import {
+  validateAuthorityCompleteness,
+  validateEvidenceIndex,
+  validateScreenMatrixSourcePaths,
+} from '../../../scripts/validate-authority-completeness.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '../../../../../');
@@ -528,7 +532,18 @@ console.log(
 );
 
 console.log('==> Authority artifact completeness');
-validateAuthorityCompleteness(authorityDir, fail, { moduleLabel: 'RENTUX' });
+validateAuthorityCompleteness(authorityDir, fail, {
+  moduleLabel: 'RENTUX',
+  decisionIdPrefix: 'RENTUX-DEC-',
+});
+validateEvidenceIndex(authorityDir, fail, { moduleLabel: 'RENTUX', evidPrefix: 'RENTUX-EVID-' });
+validateScreenMatrixSourcePaths(
+  repo,
+  'architecture/frontend-ui-ux/products/rental/inventories/RENTAL_SCREEN_MATRIX.md',
+  'rental',
+  fail,
+  'RENTUX',
+);
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

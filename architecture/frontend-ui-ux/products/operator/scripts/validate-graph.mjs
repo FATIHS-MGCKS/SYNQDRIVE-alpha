@@ -7,7 +7,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import { validateAuthorityCompleteness } from '../../../scripts/validate-authority-completeness.mjs';
+import {
+  validateAuthorityCompleteness,
+  validateEvidenceIndex,
+  validateScreenMatrixSourcePaths,
+} from '../../../scripts/validate-authority-completeness.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '../../../../../');
@@ -528,7 +532,18 @@ console.log(
 );
 
 console.log('==> Authority artifact completeness');
-validateAuthorityCompleteness(authorityDir, fail, { moduleLabel: 'OPUX' });
+validateAuthorityCompleteness(authorityDir, fail, {
+  moduleLabel: 'OPUX',
+  decisionIdPrefix: 'OPUX-DEC-',
+});
+validateEvidenceIndex(authorityDir, fail, { moduleLabel: 'OPUX', evidPrefix: 'OPUX-EVID-' });
+validateScreenMatrixSourcePaths(
+  repo,
+  'architecture/frontend-ui-ux/products/operator/inventories/OPERATOR_SCREEN_MATRIX.md',
+  'operator',
+  fail,
+  'OPUX',
+);
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

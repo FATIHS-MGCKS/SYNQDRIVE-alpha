@@ -29,4 +29,5 @@
 | architektur | `ArchitekturView` | standard | `archCategory` | |
 | changes | `ChangesView` | standard | | large internal changelog UI |
 
-**Source:** `frontend/src/master/App.tsx`, `master/navigation/master-nav.config.ts`.
+**Source:** `frontend/src/master/App.tsx`, `master/navigation/master-nav.config.ts`.  
+**Hub subnav detail:** [`MASTER_HUB_SUBNAV.md`](MASTER_HUB_SUBNAV.md).

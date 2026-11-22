@@ -7,7 +7,10 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
-import { validateAuthorityCompleteness } from './validate-authority-completeness.mjs';
+import {
+  validateAuthorityCompleteness,
+  validateEvidenceIndex,
+} from './validate-authority-completeness.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '../../..');
@@ -528,7 +531,11 @@ console.log(
 );
 
 console.log('==> Authority artifact completeness');
-validateAuthorityCompleteness(authorityDir, fail, { moduleLabel: 'FEUX' });
+validateAuthorityCompleteness(authorityDir, fail, {
+  moduleLabel: 'FEUX',
+  decisionIdPrefix: 'FEUX-DEC-',
+});
+validateEvidenceIndex(authorityDir, fail, { moduleLabel: 'FEUX', evidPrefix: 'FEUX-EVID-' });
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

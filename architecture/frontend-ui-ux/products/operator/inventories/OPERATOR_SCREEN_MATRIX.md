@@ -1,60 +1,71 @@
 # Operator — Screen Matrix (mobile field UI)
 
-**Audited SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
-**Route base:** `/operator/*` → `OperatorApp.tsx` → `OperatorShell`  
-**Device gate:** `useIsOperatorDevice()` — desktop shows `OperatorDesktopOnlyNotice` (CONFIRMED).
+**Audited code SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
+**Router:** `frontend/src/operator/OperatorApp.tsx` (`/operator`, `/operator/vehicles/:vehicleId`, `/operator/bookings/:bookingId`)  
+**Shell:** `frontend/src/operator/OperatorShell.tsx`  
+**Device gate:** `frontend/src/operator/hooks/useIsOperatorDevice.ts` → `OperatorDesktopOnlyNotice` (`operator/components/OperatorDesktopOnlyNotice.tsx`)
 
 ## Primary tabs (bottom nav)
 
-| Tab id | View component | Purpose | Epistemic | Source |
-|--------|----------------|---------|-----------|--------|
-| today | `OperatorTodayView` | day plan / feed | CONFIRMED | `OperatorShell.tsx` |
-| scan | `OperatorScanView` | QR/barcode entry | CONFIRMED | |
-| vehicles | `OperatorVehiclesView` | fleet quick access | CONFIRMED | |
-| tasks | `OperatorTasksView` | work orders | CONFIRMED | |
-| more | `OperatorMoreView` | secondary links | CONFIRMED | |
+| Tab id | View | Source path |
+|--------|------|-------------|
+| today | `OperatorTodayView` | `operator/views/OperatorTodayView.tsx` |
+| scan | `OperatorScanView` | `operator/views/OperatorScanView.tsx` |
+| vehicles | `OperatorVehiclesView` | `operator/views/OperatorVehiclesView.tsx` |
+| tasks | `OperatorTasksView` | `operator/views/OperatorTasksView.tsx` |
+| more | `OperatorMoreView` | `operator/views/OperatorMoreView.tsx` |
 
-Context: `OperatorShellContext` holds `activeTab`; `OperatorBottomNav` switches tabs.
+**Tab chrome:** `operator/components/OperatorBottomNav.tsx`  
+**State:** `operator/context/OperatorShellContext.tsx`
 
-## Deep links (CONFIRMED)
+## Deep links & query contract (CONFIRMED)
 
-| Path | Behavior |
-|------|----------|
-| `/operator` | shell default tab |
-| `/operator/vehicles/:vehicleId` | `OperatorDeepLinkBridge` resolves vehicle context |
-| `/operator/bookings/:bookingId` | booking handover sheets |
-| `*` | redirect `/operator` |
+| Entry | Resolution | Source |
+|-------|------------|--------|
+| `/operator` | default tab in shell | `OperatorApp.tsx` index route |
+| `/operator/vehicles/:vehicleId` | `resolveOperatorDeepLink` → `type: vehicle` → activates `scan` tab + vehicle id | `operator/lib/operatorRoutes.ts`, `operator/components/OperatorDeepLinkBridge.tsx` |
+| `/operator/bookings/:bookingId` | booking focus on `scan` tab | same |
+| `?q=` on `/operator` | scan query | `operator/lib/operatorRoutes.ts` |
+| `?tab=` | one of `today` \| `scan` \| `vehicles` \| `tasks` \| `more` | `operator/lib/operatorRoutes.ts` |
+| `pathname.endsWith('/scan')` | forces scan tab | `operator/lib/operatorRoutes.ts` |
+| unknown path | redirect `/operator` | `OperatorApp.tsx` |
 
-## Overlay / sheet flows (CONFIRMED file inventory)
+**Builders:** `buildOperatorVehicleUrl`, `buildOperatorBookingUrl`, `buildOperatorScanQueryUrl` in `operator/lib/operatorRoutes.ts`
 
-| Flow | Entry | Shared deps |
-|------|-------|-------------|
-| Handover | `OperatorHandoverFlow` + steps | Rental `FleetProvider`, patterns |
-| Damage capture | `OperatorDamageCaptureFlow` | camera/photo steps |
-| Booking sheets | `OperatorBooking*Sheet` | `sonner` toasts |
-| AI upload | `OperatorAiUploadFlow` | shared ingestion pattern |
-| Tire measure | `OperatorTireMeasureFlow` | field grid UI |
+## Overlay / sheet flows
 
-## Guards and access
+| Flow | Source |
+|------|--------|
+| Handover | `operator/handover/OperatorHandoverFlow.tsx` |
+| Damage capture | `operator/damages/OperatorDamageCaptureFlow.tsx` |
+| Booking sheets | `operator/components/OperatorBookingDetailSheet.tsx`, `operator/bookings/OperatorBookingFormSheet.tsx` |
+| AI upload | `operator/ai-upload/OperatorAiUploadFlow.tsx` |
+| Tire measure | `operator/tire-measure/OperatorTireMeasureFlow.tsx` |
 
-- `OperatorAccessGuard` + loading/denied screens (`OperatorAccessLoadingScreen`, `OperatorAccessDeniedScreen`).  
-- Consumes **RentalProvider** for org context (CONFIRMED coupling to Rental domain context, not Rental chrome).
+## Guards & context
 
-## Touch / responsive (CONFIRMED)
+| Piece | Source |
+|-------|--------|
+| Access guard | `operator/components/OperatorAccessGuard.tsx` |
+| Loading / denied | `operator/components/OperatorAccessLoadingScreen.tsx`, `operator/components/OperatorAccessDeniedScreen.tsx` |
+| Rental org context | `rental/RentalContext.tsx` via `OperatorApp.tsx` |
 
-- `min-h-[100dvh]`, safe-area padding on main + bottom nav (`env(safe-area-inset-bottom)`).  
-- `max-w-lg` column on mobile; widens at `md`.  
-- `OperatorGlassCard` surface — shared token + local styling.  
-- **UNKNOWN:** touch target mm audit, offline mode.
+## Mobile layout (CONFIRMED from shell grep)
 
-## States
+- `min-h-[100dvh]`, safe-area `env(safe-area-inset-bottom)` on main + bottom nav
+- `max-w-lg` mobile column; widens at `md`
+- `OperatorGlassCard` — `operator/components/OperatorGlassCard.tsx`
 
-Connectivity banner (`OperatorConnectivityBanner`); task cards with tests (`OperatorTaskCard.test.tsx`) — test evidence **CONFIRMED** for card, not full E2E UI.
+## States & tests
 
-## Shared vs Operator-local
+- Connectivity: `operator/components/OperatorConnectivityBanner.tsx`
+- Task card unit test: `operator/tasks/OperatorTaskCard.test.tsx` (**CONFIRMED** test file exists)
 
-| Shared | Operator-local |
-|--------|----------------|
-| `components/ui/*`, some patterns | `operator/components/*`, handover/damage flows |
-| `theme.css` | Bottom nav layout |
-| Rental context providers | Shell header |
+## Epistemic summary
+
+| Area | Status |
+|------|--------|
+| Routing + deep links | CONFIRMED (source read) |
+| Handover E2E UI | UNKNOWN (no browser run) |
+| Touch target mm audit | UNKNOWN |
+| Offline mode | UNKNOWN |

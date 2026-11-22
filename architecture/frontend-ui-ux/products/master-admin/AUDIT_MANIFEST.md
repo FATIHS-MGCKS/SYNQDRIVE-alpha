@@ -11,7 +11,9 @@
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
-| **AUDIT_BRANCH_SHA** | _(see PR #2490 HEAD)_ |
+| **REPO_AUDIT_BASELINE_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
+| **AUDIT_BRANCH_SHA** | `0fca3b56332566ec96c726ffab4ca13e4b339f59` |
+| **VALIDATION_RUN_SHA** | `0fca3b56332566ec96c726ffab4ca13e4b339f59` |
 | **PRODUCTION_AUDITED_AT** | `N/A` |
 | **PRODUCTION_ACCESS** | `PRODUCTION_ACCESS_UNAVAILABLE` |
 | **PRODUCTION_RELEASE_SHA** | `UNKNOWN` |
@@ -19,15 +21,14 @@
 | **REPO_PRODUCTION_DRIFT** | `UNKNOWN` |
 | **RUNTIME_FOOTPRINT** | Frontend SPA `/master` |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **VALIDATION_STATUS** | graph + registry validators (completeness gate) |
-| **REMAINING_LIMITATIONS** | No live browser; hub sub-tabs partially sampled; Figma UNKNOWN |
+| **VALIDATION_STATUS** | `products/master-admin/scripts/validate-graph.sh` + registry |
+| **REMAINING_LIMITATIONS** | No live browser; `cvSection` / HM tabs **PARTIAL**; Figma **UNKNOWN** |
 
 ## Audit coverage matrix
 
 | Surface | Repository | Production | Evidence | Result | Limitation |
 |---------|------------|------------|----------|--------|------------|
-| 24 nav views | `master-nav.config.ts`, `App.tsx` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Sub-tabs PARTIAL |
+| 24 nav views | `master-nav.config.ts`, `App.tsx` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Sub-tabs sampled |
+| Hub subnav | `MASTER_HUB_SUBNAV.md` + hub utils | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Connected vehicles **PARTIAL** |
 | URL contract | `master-nav-url.ts` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Tests sampled |
-| Shell | `MasterAdminShell` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | — |
-| i18n chrome | `master-nav-i18n.ts` | Not verified | cross i18n | CONFIRMED debt | — |
-| Page framework | hub headers/sections | Not verified | INFERRED | PARTIAL | — |
+| product-management shell | `App.tsx` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED GAP | No `PageContainer` |

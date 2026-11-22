@@ -4,19 +4,31 @@
 |-------|-------|
 | **MODULE** | Operator UI/UX |
 | **MODULE_SLUG** | `frontend-ui-ux/products/operator` |
-| **ORIGIN_MAIN_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
-| **PRODUCTION_RELEASE_SHA** | `UNKNOWN` |
-| **AUDIT_BRANCH_SHA** | PR #2490 HEAD |
-| **PRODUCTION_ACCESS** | `PRODUCTION_ACCESS_UNAVAILABLE` |
+| **AUDIT_STARTED_AT** | `2026-11-22T15:00:00Z` |
+| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` |
+| **REGISTRY_STATUS_AT_START** | absent |
 | **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
+| **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
+| **REPO_BASE_BRANCH** | `main` |
+| **ORIGIN_MAIN_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
+| **REPO_AUDIT_BASELINE_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
+| **AUDIT_BRANCH_SHA** | `0fca3b56332566ec96c726ffab4ca13e4b339f59` |
+| **VALIDATION_RUN_SHA** | `0fca3b56332566ec96c726ffab4ca13e4b339f59` |
+| **PRODUCTION_ACCESS** | `PRODUCTION_ACCESS_UNAVAILABLE` |
+| **PRODUCTION_RELEASE_SHA** | `UNKNOWN` |
+| **PRODUCTION_RELEASE_PATH** | `UNKNOWN` |
+| **REPO_PRODUCTION_DRIFT** | `UNKNOWN` |
+| **RUNTIME_FOOTPRINT** | Frontend `/operator/*` |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **REMAINING_LIMITATIONS** | Touch audit UNKNOWN |
+| **VALIDATION_STATUS** | `products/operator/scripts/validate-graph.sh` + registry |
+| **REMAINING_LIMITATIONS** | Touch audit **UNKNOWN**; E2E handover **UNKNOWN** |
 
 ## Audit coverage matrix
 
 | Surface | Repository | Production | Evidence | Result |
 |---------|------------|------------|----------|--------|
-| Shell + tabs | `OperatorShell.tsx` | Not verified | OPUX-EVID-CODE-001 | CONFIRMED |
+| Shell + tabs | `OperatorShell.tsx`, `operator/views/*` | Not verified | OPUX-EVID-CODE-001 | CONFIRMED |
 | Routes | `OperatorApp.tsx` | Not verified | OPUX-EVID-CODE-001 | CONFIRMED |
-| Handover/damage flows | `operator/handover/*`, `damages/*` | Not verified | OPUX-EVID-CODE-001 | CONFIRMED file inventory |
-| Unit tests | `OperatorTaskCard.test.tsx` etc. | N/A | INFERRED | PARTIAL |
+| Deep links | `operatorRoutes.ts`, `OperatorDeepLinkBridge.tsx` | Not verified | OPUX-EVID-CODE-001 | CONFIRMED |
+| Handover/damage | `operator/handover/*`, `operator/damage/*` | Not verified | OPUX-EVID-CODE-001 | CONFIRMED inventory |
+| Unit tests | `OperatorTaskCard.test.tsx` | N/A | OPUX-EVID-CODE-001 | PARTIAL |

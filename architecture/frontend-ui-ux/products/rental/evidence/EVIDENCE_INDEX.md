@@ -1,6 +1,6 @@
 # Evidence Index — Rental UI/UX
 
-| ID | Type | Epistemic |
-|----|------|-----------|
-| RENTUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | CONFIRMED |
-| RENTUX-EVID-CODE-001 | CURRENT_CODE | CONFIRMED |
+| Evidence ID | Type | SHA / window | Claim supported | Epistemic | Limitations |
+|-------------|------|--------------|-----------------|-----------|-------------|
+| RENTUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | `413175e8c` | RENTUX screen + fleet hub closeout | CONFIRMED | Docs-only |
+| RENTUX-EVID-CODE-001 | CODE | `413175e8c` | App.tsx view union + fleet types | CONFIRMED | No browser |

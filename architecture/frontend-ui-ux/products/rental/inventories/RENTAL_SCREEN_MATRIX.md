@@ -1,62 +1,72 @@
 # Rental — Screen / View Matrix
 
-**Audited SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
-**State mechanism:** in-memory `currentView` + URL sync helpers in `frontend/src/rental/App.tsx` (not React Router per view).  
-**Shell:** Rental `AppShell` + `Sidebar.tsx` (`frontend/src/rental/components/Sidebar.tsx`).
+**Audited code SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
+**State mechanism:** in-memory `currentView` + URL sync in `frontend/src/rental/App.tsx`  
+**Shell:** `frontend/src/rental/components/Sidebar.tsx` + `components/TopBar.tsx` (layout via `App.tsx`)
 
-| View id | Primary component | Nav (sidebar) | Vehicle context | Epistemic | Source |
-|---------|-------------------|---------------|-----------------|-----------|--------|
-| dashboard | `DashboardView` | top-level | fleet | CONFIRMED | `rental/App.tsx` |
-| bookings | `BookingsView` | top-level | — | CONFIRMED | |
-| new-booking | `NewBookingView` | entry action | — | CONFIRMED | |
-| customers | `CustomersView` | top-level | — | CONFIRMED | |
-| customer-detail | `CustomerDetailView` | drilldown | — | CONFIRMED | |
-| stations | `StationsView` | top-level | flag-gated | CONFIRMED | Stations V2 flags |
-| station-detail | `StationDetailView` | drilldown | — | CONFIRMED | |
-| tasks | `TasksView` | top-level | — | CONFIRMED | |
-| communication-center | `CommunicationCenterView` | top-level | perm-gated | CONFIRMED | |
-| financial-insights | `EvaluationsPage` | finance section | — | CONFIRMED | |
-| invoices | `FinanceView` tab | finance | — | CONFIRMED | |
-| price-tariffs | `FinanceView` tab | finance | — | CONFIRMED | |
-| customer-payments | `FinanceView` tab | finance | perm-gated | CONFIRMED | |
-| fines | `FinesView` | finance (via view) | — | CONFIRMED | |
-| workflow-automation | `WorkflowAutomationView` | automation | perm-gated | CONFIRMED | |
-| insurances | `InsurancesView` | integrations | — | CONFIRMED | |
-| parts-accessories | `PartsAccessoriesView` | integrations | — | CONFIRMED | |
-| settings | `SettingsView` | administration | multi-tab | CONFIRMED | account/company/users/… |
-| support | `SupportView` | utility | — | CONFIRMED | |
-| help-center | `HelpCenterView` | utility | — | CONFIRMED | |
-| data-analyse | `DataAnalyseView` | utility | perm-gated | CONFIRMED | |
-| document-upload | `DocumentUploadView` | utility / shortcuts | — | CONFIRMED | |
-| ai-assistant | `AIAssistantView` | utility | — | CONFIRMED | |
-| fleet | `FleetHubView` | fleet shortcut | tabs inside | CONFIRMED | |
-| vendor-detail | `VendorDetailView` | fleet drilldown | — | CONFIRMED | |
-| overview | `VehicleOverviewTab` | vehicle chrome | required | CONFIRMED | `VehicleDetailTabPanel` |
-| trips | `TripsView` | vehicle tab | required | CONFIRMED | |
-| health-errors | `HealthErrorsView` | vehicle tab | required | CONFIRMED | |
-| damages | `DamagesView` | vehicle tab | required | CONFIRMED | |
-| documents | `DocumentsView` | vehicle tab | required | CONFIRMED | |
-| vehicle-bookings | `VehicleBookingsView` | vehicle tab | required | CONFIRMED | |
-| vehicle-tasks | `VehicleTasksView` | vehicle tab | required | CONFIRMED | |
-| vehicle-requirements | `VehicleRequirementsTab` | vehicle tab | required | CONFIRMED | |
-| connectivity | `VehicleConnectivityTab` | vehicle tab | required | CONFIRMED | |
-| whatsapp-business | (legacy URL resolve) | INFERRED | — | INFERRED | URL migration helpers |
-| ai-voice-assistant | sub-route of communication | INFERRED | — | INFERRED | |
+| View id | Primary component | Epistemic | Source path (`frontend/src/rental/...`) |
+|---------|-------------------|-----------|----------------------------------------|
+| dashboard | `DashboardView` | CONFIRMED | `components/DashboardView.tsx` |
+| bookings | `BookingsView` | CONFIRMED | `components/BookingsView.tsx` |
+| new-booking | `NewBookingView` | CONFIRMED | `components/NewBookingView.tsx` |
+| customers | `CustomersView` | CONFIRMED | `components/CustomersView.tsx` |
+| customer-detail | `CustomerDetailView` | CONFIRMED | `components/CustomerDetailView.tsx` |
+| stations | `StationsView` | CONFIRMED | `components/stations/StationsView.tsx` |
+| station-detail | `StationDetailView` | CONFIRMED | `components/stations/StationDetailView.tsx` |
+| tasks | `TasksView` | CONFIRMED | `components/TasksView.tsx` |
+| communication-center | `CommunicationCenterView` | CONFIRMED | `components/communication-center/CommunicationCenterView.tsx` |
+| financial-insights | `EvaluationsPage` | CONFIRMED | `components/evaluations/EvaluationsPage.tsx` |
+| invoices / price-tariffs / customer-payments | `FinanceView` tabs | CONFIRMED | `components/FinanceView.tsx` + `components/finance-navigation.ts` |
+| fines | `FinesView` | CONFIRMED | `components/FinesView.tsx` |
+| workflow-automation | `WorkflowAutomationView` | CONFIRMED | `components/WorkflowAutomationView.tsx` |
+| insurances | `InsurancesView` | CONFIRMED | `components/InsurancesView.tsx` |
+| parts-accessories | `PartsAccessoriesView` | CONFIRMED | `components/PartsAccessoriesView.tsx` |
+| settings | `SettingsView` | CONFIRMED | `components/SettingsView.tsx` |
+| support | `SupportView` | CONFIRMED | `components/SupportView.tsx` |
+| help-center | `HelpCenterView` | CONFIRMED | `components/HelpCenterView.tsx` |
+| data-analyse | `DataAnalyseView` | CONFIRMED | `components/DataAnalyseView.tsx` |
+| document-upload | `DocumentUploadView` | CONFIRMED | `components/DocumentUploadView.tsx` |
+| ai-assistant | `AIAssistantView` | CONFIRMED | `components/AIAssistantView.tsx` |
+| fleet | `FleetHubView` | CONFIRMED | `components/FleetHubView.tsx` |
+| vendor-detail | `VendorDetailView` | CONFIRMED | `components/VendorDetailView.tsx` |
+| overview | vehicle tab | CONFIRMED | `components/vehicle-detail/VehicleOverviewTab.tsx` |
+| trips | `TripsView` | CONFIRMED | `components/TripsView.tsx` |
+| health-errors | `HealthErrorsView` | CONFIRMED | `components/HealthErrorsView.tsx` |
+| damages | `DamagesView` | CONFIRMED | `components/DamagesView.tsx` |
+| documents | `DocumentsView` | CONFIRMED | `components/DocumentsView.tsx` |
+| vehicle-bookings | `VehicleBookingsView` | CONFIRMED | `components/VehicleBookingsView.tsx` |
+| vehicle-tasks | `VehicleTasksView` | CONFIRMED | `components/VehicleTasksView.tsx` |
+| vehicle-requirements | tab | CONFIRMED | `components/vehicle-detail/VehicleRequirementsTab.tsx` |
+| connectivity | tab | CONFIRMED | `components/vehicle-detail/VehicleConnectivityTab.tsx` |
+| whatsapp-business | settings / communication | INFERRED | `components/whatsapp/WhatsAppBusinessSettings.tsx` (**PARTIAL** — full view union not re-parsed) |
+| ai-voice-assistant | communication route | INFERRED | `components/communication-center/legacy-communication-navigation.ts` (**PARTIAL**) |
 
-## Fleet hub interior (CONFIRMED partial)
+## Fleet hub — top tabs (CONFIRMED)
 
-`FleetHubView` orchestrates tabs (`FleetTab`: status, condition-service, …) and health-service sub-nav — see `fleet-health-service.types.ts`. Full tab matrix **INFERRED** without opening entire file.
+From `components/fleet-health-service/fleet-health-service.types.ts` and `components/FleetHubView.tsx`:
 
-## Settings tabs (CONFIRMED)
+| Tab id | Primary surface | Source |
+|--------|-----------------|--------|
+| status | `FleetView` | `components/FleetView.tsx` |
+| condition-service | `FleetHealthServiceView` | `components/fleet-health-service/FleetHealthServiceView.tsx` |
+| connectivity | `FleetConnectivityTab` | `components/fleet-connectivity/FleetConnectivityTab.tsx` |
 
-`settingsTypes.ts` drives account, company, users, data-authorization, email-versand, rental-rules, billing (permission gated).
+Legacy `health` / `service` → `normalizeFleetTab()`.
 
-## Responsive rules (CONFIRMED from Sidebar)
+## Fleet hub — inner nav under condition-service (CONFIRMED)
 
-- Mobile drawer `< lg`; collapse at `lg+`.  
-- `nav-primitives` + `components/shell` shared classes.  
-- **UNKNOWN:** full breakpoint matrix per view.
+`FleetHealthServiceTab`: `overview` \| `vehicles` \| `work` \| `history`  
+Work sections: `tasks` \| `service-cases` \| `schedule` \| `vendors`  
+Types: `components/fleet-health-service/fleet-health-service.types.ts`
+
+## Settings interior (CONFIRMED)
+
+`components/settings/settingsTypes.ts`
+
+## Responsive (CONFIRMED)
+
+`components/Sidebar.tsx` — drawer `< lg`.
 
 ## Loading / empty / error
 
-Pattern library usage heavy (`EmptyState`, `ErrorState`, skeletons) — CONFIRMED on stations flag-disabled path and dashboard imports; per-view coverage **PARTIAL**.
+**PARTIAL** — not enumerated per view.

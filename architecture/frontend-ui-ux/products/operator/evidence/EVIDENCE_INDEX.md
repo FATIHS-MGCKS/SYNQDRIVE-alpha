@@ -1,6 +1,6 @@
 # Evidence Index — Operator UI/UX
 
-| ID | Type | Epistemic |
-|----|------|-----------|
-| OPUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | CONFIRMED |
-| OPUX-EVID-CODE-001 | CURRENT_CODE | CONFIRMED |
+| Evidence ID | Type | SHA / window | Claim supported | Epistemic | Limitations |
+|-------------|------|--------------|-----------------|-----------|-------------|
+| OPUX-EVID-AUDIT-001 | AUDIT_DOCUMENT | `413175e8c` | OPUX matrix + deep link closeout | CONFIRMED | Docs-only |
+| OPUX-EVID-CODE-001 | CODE | `413175e8c` | OperatorApp routes + operatorRoutes | CONFIRMED | No device test |
