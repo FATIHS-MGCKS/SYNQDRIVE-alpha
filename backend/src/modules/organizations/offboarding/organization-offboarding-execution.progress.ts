@@ -63,6 +63,7 @@ export type OrganizationOffboardingExecutionProgress = {
   archived?: {
     organizationStatus: string;
     archivedAt: string;
+    auditActivityLogId?: string;
   };
 };
 

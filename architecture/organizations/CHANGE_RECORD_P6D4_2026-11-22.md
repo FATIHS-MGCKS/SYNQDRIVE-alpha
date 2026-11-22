@@ -31,3 +31,10 @@ Not certified from mocked provider tests. Separate owner approval required for `
 - DimoVehicle disconnect org-exclusive (no cross-tenant connection mutation)
 - Finalize lease/fencing + crash recovery via expired lease release; final commit revalidation
 - PG scenarios A–H on disposable DB (`synqdrive_org_offboarding_p6d2` / `p6d4`)
+
+## P6D4 FINAL COMMIT INTEGRITY CLOSEOUT (append)
+
+- **Org-wide trip safety:** `organizationWideOngoingTrips` preflight option; finalize assess counts ONGOING trips on all org vehicles (incl. OFFBOARDED); execution SUSPEND keeps `suspendAdmissionOnly`.
+- **Final commit atomicity:** `assertArchivalCommitHardBlockers` inside archival transaction (advisory lock + row lock); no out-of-tx preflight snapshot at commit.
+- **Durable audit:** `ActivityLog` row created in same transaction as ARCHIVED/COMPLETED; `archived.auditActivityLogId` on job progress; post-commit `MasterAdminAuditService.record` best-effort only.
+- **PG Integrity A–D** appended to `organization-offboarding-finalization.postgres.integration.spec.ts` (12/12 incl. legacy A–H).

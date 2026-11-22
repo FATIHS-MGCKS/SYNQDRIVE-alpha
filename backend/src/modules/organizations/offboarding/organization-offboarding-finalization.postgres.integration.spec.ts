@@ -6,6 +6,7 @@ import {
   FuelType,
   OrganizationOffboardingJobStatus,
   OrganizationStatus,
+  TripStatus,
   VehicleRegistryLifecycle,
   VehicleStatus,
 } from '@prisma/client';
@@ -26,6 +27,7 @@ import { OrganizationOffboardingService } from './organization-offboarding.servi
 import { OFFBOARDING_EXECUTION_CONFIRM_VALUE } from './organization-offboarding-execution.policy';
 import {
   OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
+  ORGANIZATION_OFFBOARDING_FINALIZE_BLOCKED_CODE,
   ORGANIZATION_OFFBOARDING_FINALIZE_CONFLICT_CODE,
   ORGANIZATION_OFFBOARDING_FINALIZE_MOCK_INADMISSIBLE_CODE,
 } from './organization-offboarding-finalization.policy';
@@ -67,8 +69,24 @@ function finReq(jobId: string, key: string) {
   let providerDisconnect: OrganizationOffboardingProviderDisconnectService;
   const orgIds: string[] = [];
 
-  beforeAll(() => {
+  const masterActorId = 'ma-1';
+
+  beforeAll(async () => {
     assertDisposableUrl();
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, platform_role, status, created_at, updated_at, security_version, session_version)
+      VALUES (
+        ${masterActorId},
+        ${'p6d4-master-admin@test.local'},
+        ${'MASTER_ADMIN'}::"UserPlatformRole",
+        ${'ACTIVE'}::"UserStatus",
+        NOW(),
+        NOW(),
+        0,
+        0
+      )
+      ON CONFLICT (id) DO NOTHING
+    `;
     process.env.NODE_ENV = 'test';
     process.env.ORGANIZATION_OFFBOARDING_PROVIDER_MOCK_ALLOWED = '1';
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED = '1';
@@ -121,7 +139,7 @@ function finReq(jobId: string, key: string) {
       });
       await prisma.vehicle.deleteMany({ where: { organizationId: orgId } });
       await prisma.organizationOffboardingJob.deleteMany({ where: { organizationId: orgId } });
-      await prisma.organization.deleteMany({ where: { id: orgId } });
+      // Archival finalize writes append-only ActivityLog rows; org DELETE would cascade SET NULL on logs (blocked).
     }
     await prisma.$disconnect();
   });
@@ -389,5 +407,106 @@ function finReq(jobId: string, key: string) {
     expect(result.executionProgress.providerQuiesce?.finalizationState).toBe('EXTERNAL_DISCONNECT_PENDING');
     process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'CONFIRMED';
     process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL = 'CONFIRMED';
+  });
+
+  it('Integrity A — ONGOING trip on OFFBOARDED vehicle blocks finalize', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-int-a-${orgId}`);
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `TRIP-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+    await prisma.vehicleTrip.create({
+      data: {
+        vehicleId: vehicle.id,
+        tripStatus: TripStatus.ONGOING,
+        startTime: new Date(),
+      },
+    });
+    try {
+      await finalization.finalize(orgId, finReq(job.id, `fin-int-a-${orgId}`), 'ma-1');
+      throw new Error('expected finalize to be blocked');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: ORGANIZATION_OFFBOARDING_FINALIZE_BLOCKED_CODE,
+        hardBlockers: ['ONGOING_TRIP'],
+      });
+    }
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id: orgId } })).status).toBe(
+      OrganizationStatus.SUSPENDED,
+    );
+  });
+
+  it('Integrity B — booking introduced after READY cannot bypass commit guard', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-int-b-${orgId}`);
+    const customer = await seedCustomer(orgId);
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `LATE-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+    await prisma.booking.create({
+      data: {
+        organizationId: orgId,
+        customerId: customer.id,
+        vehicleId: vehicle.id,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 86_400_000),
+        status: 'PENDING',
+      },
+    });
+    try {
+      await finalization.finalize(orgId, finReq(job.id, `fin-int-b-${orgId}`), 'ma-1');
+      throw new Error('expected finalize to be blocked');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        code: ORGANIZATION_OFFBOARDING_FINALIZE_BLOCKED_CODE,
+        hardBlockers: expect.arrayContaining(['RELEVANT_COMMITTED_BOOKING']),
+      });
+    }
+  });
+
+  it('Integrity C — concurrent finalizer remains fenced to one winner', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-int-c-${orgId}`);
+    const settled = await Promise.allSettled([
+      finalization.finalize(orgId, finReq(job.id, `fin-int-c-a-${orgId}`), 'ma-1'),
+      finalization.finalize(orgId, finReq(job.id, `fin-int-c-b-${orgId}`), 'ma-1'),
+    ]);
+    expect(settled.filter((s) => s.status === 'fulfilled').length).toBe(1);
+    expect(settled.filter((s) => s.status === 'rejected').length).toBe(1);
+  });
+
+  it('Integrity D — durable archival audit evidence on successful finalize', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-int-d-${orgId}`);
+    await finalization.finalize(orgId, finReq(job.id, `fin-int-d-${orgId}`), 'ma-1');
+    const stored = await prisma.organizationOffboardingJob.findUniqueOrThrow({ where: { id: job.id } });
+    const progress = parseExecutionProgress(stored.progressJson);
+    const auditId = progress.archived?.auditActivityLogId;
+    expect(auditId).toEqual(expect.any(String));
+    const log = await prisma.activityLog.findUniqueOrThrow({ where: { id: auditId! } });
+    expect(log.organizationId).toBe(orgId);
+    expect(log.entityId).toBe(job.id);
+    expect(JSON.stringify(log.metaJson)).toContain('ORG_OFFBOARDING_ARCHIVED');
+    expect(JSON.stringify(log.metaJson)).toContain('durableArchivalCommit');
   });
 });

@@ -5,12 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ActivityAction,
+  ActivityEntity,
   OrganizationOffboardingJobStatus,
   OrganizationStatus,
-  VehicleRegistryLifecycle,
+  type Prisma,
 } from '@prisma/client';
-import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
+import {
+  MASTER_ADMIN_AUDIT_DOMAIN,
+  MasterAdminAuditAction,
+} from '@modules/activity-log/master-admin-audit.contract';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import { buildAuditEnvelope } from '@modules/activity-log/audit-envelope.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   acquirePgAdvisoryXactLock,
@@ -48,6 +54,7 @@ import {
   requireActiveFinalizeLeaseToken,
 } from './organization-offboarding-finalization.lease-persist';
 import { isOrganizationOffboardingProviderMockAllowed } from './organization-offboarding-provider-mock.policy';
+import { assertArchivalCommitHardBlockers } from './organization-offboarding-archival-commit.guard';
 
 @Injectable()
 export class OrganizationOffboardingFinalizationService {
@@ -84,6 +91,7 @@ export class OrganizationOffboardingFinalizationService {
       const assessment = await this.providerDisconnect.assessOrganization(organizationId);
       const snapshot = await this.preflight.assess(organizationId, {
         excludeOffboardingJobId: claim.jobId,
+        organizationWideOngoingTrips: true,
       });
 
       if (snapshot.hardBlockers.length > 0) {
@@ -153,27 +161,31 @@ export class OrganizationOffboardingFinalizationService {
         jobId: claim.jobId,
         leaseToken,
         progress,
-        preflightHardBlockers: snapshot.hardBlockers,
       });
       completed = true;
 
-      await this.masterAudit.record({
-        auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
-        actorUserId,
-        targetOrganizationId: organizationId,
-        entityId: row.id,
-        correlationId: row.correlationId,
-        description: 'Organization offboarding archival finalization completed',
-        reasonCode: 'ORG_OFFBOARDING_ARCHIVED',
-        route: 'POST /admin/organizations/:organizationId/offboarding/finalize',
-        httpMethod: 'POST',
-        httpStatus: 200,
-        metadata: {
-          jobId: row.id,
-          idempotencyKey: request.idempotencyKey,
-        },
-        level: 'INFO',
-      });
+      const finalizedProgress = parseExecutionProgress(row.progressJson);
+      const durableAuditId = finalizedProgress.archived?.auditActivityLogId;
+      void this.masterAudit
+        .record({
+          auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
+          actorUserId,
+          targetOrganizationId: organizationId,
+          entityId: row.id,
+          correlationId: row.correlationId,
+          description: 'Organization offboarding archival finalization completed',
+          reasonCode: 'ORG_OFFBOARDING_ARCHIVED',
+          route: 'POST /admin/organizations/:organizationId/offboarding/finalize',
+          httpMethod: 'POST',
+          httpStatus: 200,
+          metadata: {
+            jobId: row.id,
+            idempotencyKey: request.idempotencyKey,
+            durableAuditActivityLogId: durableAuditId ?? null,
+          },
+          level: 'INFO',
+        })
+        .catch(() => undefined);
 
       return mapOffboardingJobToExecutionResult(row, true);
     } finally {
@@ -297,26 +309,7 @@ export class OrganizationOffboardingFinalizationService {
     jobId: string;
     leaseToken: string;
     progress: OrganizationOffboardingExecutionProgress;
-    preflightHardBlockers: string[];
   }) {
-    if (input.preflightHardBlockers.length > 0) {
-      throw new ConflictException({
-        code: ORGANIZATION_OFFBOARDING_FINALIZE_BLOCKED_CODE,
-        message: 'Preflight hard blockers present at archival commit',
-      });
-    }
-
-    const freshSnapshot = await this.preflight.assess(input.organizationId, {
-      excludeOffboardingJobId: input.jobId,
-    });
-    if (freshSnapshot.hardBlockers.length > 0) {
-      throw new ConflictException({
-        code: ORGANIZATION_OFFBOARDING_FINALIZE_BLOCKED_CODE,
-        message: 'Final commit preflight blocked archival',
-        hardBlockers: freshSnapshot.hardBlockers,
-      });
-    }
-
     return this.prisma.$transaction(async (tx) => {
       await acquirePgAdvisoryXactLock(tx, organizationOffboardingFinalizeLockKey(input.organizationId));
       await tx.$executeRaw`SELECT id FROM organization_offboarding_jobs WHERE id = ${input.jobId} FOR UPDATE`;
@@ -354,18 +347,7 @@ export class OrganizationOffboardingFinalizationService {
         });
       }
 
-      const activeRegistryVehicles = await tx.vehicle.count({
-        where: {
-          organizationId: input.organizationId,
-          registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-        },
-      });
-      if (activeRegistryVehicles > 0) {
-        throw new ConflictException({
-          code: ORGANIZATION_OFFBOARDING_FINALIZE_BLOCKED_CODE,
-          message: 'Active registry vehicles remain at archival commit',
-        });
-      }
+      await assertArchivalCommitHardBlockers(tx, input.organizationId);
 
       const mergedProgress: OrganizationOffboardingExecutionProgress = {
         ...stored,
@@ -381,6 +363,14 @@ export class OrganizationOffboardingFinalizationService {
       }
 
       const closedAt = new Date();
+      const auditActivityLogId = await this.persistDurableArchivalAuditInTransaction(tx, {
+        organizationId: input.organizationId,
+        actorUserId: input.actorUserId,
+        jobId: input.jobId,
+        correlationId: latest.correlationId,
+        idempotencyKey: input.request.idempotencyKey,
+      });
+
       const finalizedProgress = releaseFinalizeLease({
         ...mergedProgress,
         finalize: {
@@ -393,6 +383,7 @@ export class OrganizationOffboardingFinalizationService {
         archived: {
           organizationStatus: OrganizationStatus.ARCHIVED,
           archivedAt: closedAt.toISOString(),
+          auditActivityLogId,
         },
       });
 
@@ -412,6 +403,54 @@ export class OrganizationOffboardingFinalizationService {
         },
       });
     });
+  }
+
+  private async persistDurableArchivalAuditInTransaction(
+    tx: Prisma.TransactionClient,
+    params: {
+      organizationId: string;
+      actorUserId: string;
+      jobId: string;
+      correlationId: string;
+      idempotencyKey: string;
+    },
+  ): Promise<string> {
+    const actorRow = await tx.user.findUnique({
+      where: { id: params.actorUserId },
+      select: { id: true },
+    });
+
+    const log = await tx.activityLog.create({
+      data: {
+        organizationId: params.organizationId,
+        userId: actorRow?.id ?? null,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.ADMIN_OPERATION,
+        entityId: params.jobId,
+        description: 'Organization offboarding archival finalization completed',
+        route: 'POST /admin/organizations/:organizationId/offboarding/finalize',
+        level: 'INFO',
+        metaJson: buildAuditEnvelope({
+          auditDomain: MASTER_ADMIN_AUDIT_DOMAIN,
+          auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
+          actorUserId: params.actorUserId,
+          targetOrganizationId: params.organizationId,
+          targetEntityType: 'ADMIN_OPERATION',
+          targetEntityId: params.jobId,
+          correlationId: params.correlationId,
+          requestId: params.correlationId,
+          metadata: {
+            reasonCode: 'ORG_OFFBOARDING_ARCHIVED',
+            httpMethod: 'POST',
+            httpStatus: 200,
+            jobId: params.jobId,
+            idempotencyKey: params.idempotencyKey,
+            durableArchivalCommit: true,
+          },
+        }) as Prisma.InputJsonValue,
+      },
+    });
+    return log.id;
   }
 
   private async tryIdempotentReplay(
