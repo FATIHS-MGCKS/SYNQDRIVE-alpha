@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-11-19 (Core platform module ownership descriptions — registry coverage statuses unchanged)
+**Last updated:** 2026-11-22 (Billing SaaS bootstrap — `AUDIT_IN_PROGRESS`)
 
 ---
 
@@ -42,7 +42,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Auth API | Tenant authentication API surface including token refresh and auth endpoints backing Clerk integration. | `NOT_STARTED` | N/A — inventory only | — |
 | Automatic Trip Enrichment (ATE) | Orchestrates post-finalize trip behavior enrichment, hardware routing, and reconciliation-driven enrichment chains. | `AUTHORITY_ACTIVE` | `CANONICAL` (per [GRAPH.yaml](knowledge-graphs/automatic-trip-enrichment/GRAPH.yaml)) | [`architecture/knowledge-graphs/automatic-trip-enrichment/`](knowledge-graphs/automatic-trip-enrichment/) |
 | Battery V2 | Documents Battery V2 health model, signal authority, lifecycle, execution, persistence, and consumer contracts. | `AUTHORITY_ACTIVE` | Phase 4 resolution planning · gaps remain open | [`architecture/battery-v2/`](battery-v2/) |
-| Billing (SynqDrive SaaS) | Tenant subscription billing, Stripe SaaS catalog, usage metering, and master billing reconciliation. | `NOT_STARTED` | N/A — inventory only | — |
+| Billing (SynqDrive SaaS) | Tenant subscription billing, Stripe SaaS catalog, usage metering, and master billing reconciliation. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · P6C2 evidence seal 2026-11-22 · Production **NOT_STARTED** | [`architecture/billing-saas/`](billing-saas/) |
 | Bookings | Rental booking lifecycle from wizard through handover, eligibility gates, pickup gate, and payment coupling. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · P6-PR4 authority reconstruction 2026-11-19 | [`architecture/bookings/`](bookings/) |
 | Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · DS4 migration consumer (PR-8) · Production audit not started | [`architecture/brakes-health/`](brakes-health/) |
 | Business Audit | Durable business-event audit outbox with scheduled processing for operational audit records. | `NOT_STARTED` | N/A — inventory only | — |

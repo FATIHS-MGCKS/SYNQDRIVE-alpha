@@ -50,6 +50,8 @@ See `CHANGE_RECORD_P3_PR1_2026-11-17.md`.
 
 ## Entitlement policy (P2-PR5)
 
+P6C commercial vs runtime record: [`../platform-reorientation/evidence/P6C_PRODUCT_ENTITLEMENT_COMMERCIAL_POLICY_RECORD_2026-11-22.md`](../platform-reorientation/evidence/P6C_PRODUCT_ENTITLEMENT_COMMERCIAL_POLICY_RECORD_2026-11-22.md)
+
 Canonical status capabilities: `backend/src/modules/products/entitlements/entitlements-policy.ts`
 
 - **Operational / route guards:** `ORGANIZATION_PRODUCT_OPERATIONAL_ENTITLEMENT_STATUSES` (ACTIVE only)
