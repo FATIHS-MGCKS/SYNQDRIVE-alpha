@@ -38,8 +38,33 @@ export type OrganizationOffboardingExecutionProgress = {
     historicalProviderConsentCount: number;
     everHadDimoVehicleLink: boolean;
     finalizationState: ProviderFinalizationState;
+    providerEvidence?: {
+      dimo: unknown;
+      hm: unknown;
+      assessedAt: string;
+    };
   };
   readyForArchive?: { markedAt: string };
+  finalize?: {
+    idempotencyKey: string;
+    claimedAt: string;
+    actorUserId: string | null;
+    inProgress?: boolean;
+    completedAt?: string;
+    lastErrorCode?: string;
+    lastBlockedDetail?: string;
+  };
+  finalizeLease?: {
+    token: string;
+    fence: number;
+    expiresAt: string;
+    finalizeIdempotencyKey: string;
+  };
+  archived?: {
+    organizationStatus: string;
+    archivedAt: string;
+    auditActivityLogId?: string;
+  };
 };
 
 export function parseExecutionProgress(raw: unknown): OrganizationOffboardingExecutionProgress {
@@ -75,6 +100,18 @@ export function parseExecutionProgress(raw: unknown): OrganizationOffboardingExe
       : {}),
     ...(record.readyForArchive && typeof record.readyForArchive === 'object'
       ? { readyForArchive: record.readyForArchive as OrganizationOffboardingExecutionProgress['readyForArchive'] }
+      : {}),
+    ...(record.finalize && typeof record.finalize === 'object'
+      ? { finalize: record.finalize as OrganizationOffboardingExecutionProgress['finalize'] }
+      : {}),
+    ...(record.finalizeLease && typeof record.finalizeLease === 'object'
+      ? {
+          finalizeLease:
+            record.finalizeLease as OrganizationOffboardingExecutionProgress['finalizeLease'],
+        }
+      : {}),
+    ...(record.archived && typeof record.archived === 'object'
+      ? { archived: record.archived as OrganizationOffboardingExecutionProgress['archived'] }
       : {}),
   };
 }

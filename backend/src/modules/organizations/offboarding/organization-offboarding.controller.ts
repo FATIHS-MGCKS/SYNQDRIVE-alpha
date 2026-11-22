@@ -7,8 +7,10 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
 import { OrganizationOffboardingExecutionService } from './organization-offboarding-execution.service';
+import { OrganizationOffboardingFinalizationService } from './organization-offboarding-finalization.service';
 import { parseOrganizationOffboardingPrepareBody } from './organization-offboarding-prepare.validation';
 import { parseOrganizationOffboardingExecuteBody } from './organization-offboarding-execute.validation';
+import { parseOrganizationOffboardingFinalizeBody } from './organization-offboarding-finalize.validation';
 
 type AuthedRequest = Request & { user?: { id?: string; sub?: string } };
 
@@ -20,6 +22,7 @@ export class OrganizationOffboardingController {
   constructor(
     private readonly offboarding: OrganizationOffboardingService,
     private readonly execution: OrganizationOffboardingExecutionService,
+    private readonly finalization: OrganizationOffboardingFinalizationService,
   ) {}
 
   private actorId(req: AuthedRequest): string | null {
@@ -40,6 +43,17 @@ export class OrganizationOffboardingController {
   ) {
     const parsed = parseOrganizationOffboardingPrepareBody(body);
     return this.offboarding.prepare(organizationId, parsed, this.actorId(req));
+  }
+
+  @Post('finalize')
+  @HttpCode(200)
+  finalize(
+    @Param('organizationId') organizationId: string,
+    @Body() body: unknown,
+    @Req() req: AuthedRequest,
+  ) {
+    const parsed = parseOrganizationOffboardingFinalizeBody(body);
+    return this.finalization.finalize(organizationId, parsed, this.actorId(req));
   }
 
   @Post('execute')

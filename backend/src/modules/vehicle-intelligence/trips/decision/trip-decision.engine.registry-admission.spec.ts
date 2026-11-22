@@ -4,11 +4,15 @@ import { VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE } from '@modules/vehicles/registr
 
 describe('TripDecisionEngine registry admission', () => {
   it('rejects createTrip when vehicle registry is OFFBOARDED', async () => {
-    const prisma = {
+    const tx = {
       vehicle: {
-        findUnique: jest.fn().mockResolvedValue({ registryLifecycle: 'OFFBOARDED' }),
+        findUnique: jest.fn().mockResolvedValue({ registryLifecycle: 'OFFBOARDED', organizationId: 'org-1' }),
       },
       vehicleTrip: { create: jest.fn() },
+      $executeRaw: jest.fn(),
+    };
+    const prisma = {
+      $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
     };
     const engine = new TripDecisionEngine(prisma as any);
     try {
@@ -24,13 +28,13 @@ describe('TripDecisionEngine registry admission', () => {
         code: VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
       });
     }
-    expect(prisma.vehicleTrip.create).not.toHaveBeenCalled();
+    expect(tx.vehicleTrip.create).not.toHaveBeenCalled();
   });
 
   it('allows createTrip when vehicle registry is ACTIVE', async () => {
-    const prisma = {
+    const tx = {
       vehicle: {
-        findUnique: jest.fn().mockResolvedValue({ registryLifecycle: 'ACTIVE' }),
+        findUnique: jest.fn().mockResolvedValue({ registryLifecycle: 'ACTIVE', organizationId: 'org-1' }),
       },
       vehicleTrip: {
         create: jest.fn().mockResolvedValue({
@@ -41,6 +45,11 @@ describe('TripDecisionEngine registry admission', () => {
           tripSource: 'V2_LIVE',
         }),
       },
+      $executeRaw: jest.fn(),
+      organization: { findUnique: jest.fn().mockResolvedValue({ status: 'ACTIVE' }) },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)),
     };
     const engine = new TripDecisionEngine(prisma as any);
     await engine.createTrip({
@@ -48,6 +57,6 @@ describe('TripDecisionEngine registry admission', () => {
       organizationId: 'org-1',
       startTime: new Date(),
     });
-    expect(prisma.vehicleTrip.create).toHaveBeenCalled();
+    expect(tx.vehicleTrip.create).toHaveBeenCalled();
   });
 });

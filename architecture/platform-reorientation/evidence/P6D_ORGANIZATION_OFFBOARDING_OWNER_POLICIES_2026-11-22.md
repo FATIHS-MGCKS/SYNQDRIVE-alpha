@@ -9,3 +9,14 @@
 4. Offboarding **finalization** blocked by org-wide ongoing trips / relevant bookings; **suspend** remains independent.
 5. Provider revocation failures block **ARCHIVED**; org stays **SUSPENDED**; retryable + auditable (execution P6D3+).
 6. Legal holds block **destructive** ops; non-destructive archival classification via preflight **REVIEW_REQUIRED**; hard delete stays 409; no `OrganizationStatus.OFFBOARDED`.
+
+## P6D4 implementation compliance matrix (repository evidence — not production certification)
+
+| Policy | P6D4 repository evidence | Production armed |
+|--------|--------------------------|------------------|
+| 1 SUSPENDED polling | `organization-routine-polling.policy` + DIMO/DTC/HM worker hooks | N/A (runtime) |
+| 2 ARCHIVED path only | PATCH guard + `POST …/finalize` | `ORGANIZATION_OFFBOARDING_FINALIZATION_ENABLED=1` required in prod |
+| 3 No Stripe auto-cancel | No billing mutation in finalize path | unchanged |
+| 4 Trips/bookings block finalize | Finalize preflight (full, not suspend-only) | unchanged |
+| 5 Provider external evidence | Mock/env disconnect service; local ≠ external | `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE` not default |
+| 6 Retention / hard delete 409 | No destructive deletes in P6D4 | unchanged |

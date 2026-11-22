@@ -41,12 +41,24 @@ describe('OrganizationOffboardingExecutionService — failed phase retry', () =>
       },
     };
 
+    const providerDisconnect = {
+      assessOrganization: jest.fn().mockResolvedValue({
+        finalizationState: 'NO_EXTERNAL_PROVIDER_DEPENDENCY',
+        activeProviderConsentCount: 0,
+        connectedDimoVehicleCount: 0,
+        historicalProviderConsentCount: 0,
+        everHadDimoVehicleLink: false,
+        dimo: { hadDependency: false, externalOutcome: 'NO_DEPENDENCY' },
+        hm: { hadDependency: false, externalOutcome: 'NO_DEPENDENCY' },
+      }),
+    };
     const service = new OrganizationOffboardingExecutionService(
       prisma as never,
       { assess: preflightAssess } as never,
       { revokeAllActiveForOrganization: jest.fn() } as never,
       { offboardVehicle: jest.fn() } as never,
       masterAudit as never,
+      providerDisconnect as never,
     );
 
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED = '1';

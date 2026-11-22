@@ -27,6 +27,10 @@ export type OrganizationOffboardPreflightOptions = {
    * (policy — SUSPEND independent of ongoing trips).
    */
   suspendAdmissionOnly?: boolean;
+  /**
+   * Archival/finalization: ONGOING trips across all org vehicles (incl. OFFBOARDED registry).
+   */
+  organizationWideOngoingTrips?: boolean;
 };
 
 @Injectable()
@@ -74,15 +78,24 @@ export class OrganizationOffboardPreflightService {
     });
     const activeVehicleIds = activeVehicles.map((v) => v.id);
 
-    const ongoingTripCount = activeVehicleIds.length
+    const suspendAdmissionOnly = options?.suspendAdmissionOnly === true;
+    const organizationWideOngoingTrips = options?.organizationWideOngoingTrips === true;
+
+    const ongoingTripCount = organizationWideOngoingTrips
       ? await this.prisma.vehicleTrip.count({
           where: {
-            vehicleId: { in: activeVehicleIds },
+            vehicle: { organizationId },
             tripStatus: TripStatus.ONGOING,
           },
         })
-      : 0;
-    const suspendAdmissionOnly = options?.suspendAdmissionOnly === true;
+      : activeVehicleIds.length
+        ? await this.prisma.vehicleTrip.count({
+            where: {
+              vehicleId: { in: activeVehicleIds },
+              tripStatus: TripStatus.ONGOING,
+            },
+          })
+        : 0;
 
     const activeBookingCount = await this.prisma.booking.count({
       where: { organizationId, status: 'ACTIVE' },

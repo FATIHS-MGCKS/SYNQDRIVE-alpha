@@ -39,6 +39,7 @@ import {
   normalizeWebsite,
 } from './utils/tenant-profile-normalizer.util';
 import { assertOrganizationHardDeleteAllowed } from './organization-delete-safety.policy';
+import { assertAdminOrganizationStatusMutationAllowed } from './policies/organization-admin-status-mutation.policy';
 import type { AdminCreateOrganizationDto } from './dto/admin-create-organization.dto';
 import type { AdminUpdateOrganizationDto } from './dto/admin-update-organization.dto';
 import {
@@ -436,6 +437,16 @@ export class OrganizationsService {
     const data = mapAdminUpdateToPrisma(dto);
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No updatable fields provided');
+    }
+    if (dto.status !== undefined) {
+      const current = await this.prisma.organization.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!current) {
+        throw new NotFoundException('Organization not found');
+      }
+      assertAdminOrganizationStatusMutationAllowed(current.status, dto.status);
     }
     return this.prisma.organization.update({ where: { id }, data });
   }

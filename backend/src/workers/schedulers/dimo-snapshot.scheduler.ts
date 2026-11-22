@@ -3,7 +3,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Interval } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
-import { VehicleStatus } from '@prisma/client';
+import { OrganizationStatus, VehicleStatus } from '@prisma/client';
+import { IN_FLIGHT_TRIP_DETECTION_STATES } from '@modules/organizations/policies/organization-routine-polling.policy';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -168,6 +169,13 @@ export class DimoSnapshotScheduler {
           connectionStatus: 'CONNECTED',
           tokenId: { not: null },
         },
+        OR: [
+          { organization: { status: OrganizationStatus.ACTIVE } },
+          {
+            organization: { status: OrganizationStatus.SUSPENDED },
+            tripDetectionState: { state: { in: IN_FLIGHT_TRIP_DETECTION_STATES } },
+          },
+        ],
       },
       include: {
         dimoVehicle: true,
