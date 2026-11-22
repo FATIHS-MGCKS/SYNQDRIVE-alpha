@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-11-22 (Billing SaaS bootstrap — `AUDIT_IN_PROGRESS`)
+**Last updated:** 2026-11-22 (Organizations offboarding P6D2/P6D3 + Billing SaaS P6C2 — `AUDIT_IN_PROGRESS`)
 
 ---
 
@@ -73,7 +73,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Invoices | **Rental:** booking invoices, invoice documents, payment-check tasks, rental AR flows (`backend/src/modules/invoices`). **Core:** future platform subscription billing — not claimed as separate implemented service. Owner split 2026-11-20 — [`evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md`](platform-reorientation/evidence/POST_P6_PR9_DOMAIN_OWNERSHIP_FINALIZATION_2026-11-20.md). | `NOT_STARTED` | N/A — inventory only | — |
 | Notifications | Multi-channel notification evaluation, preferences, delivery outbox, and in-app notification consumption. | `NOT_STARTED` | N/A — inventory only | — |
 | One Auto Provider (Master VIN Lookup) | Master Admin-only paid One Auto provider integration: catalog, quote/confirm/execute jobs, async 202 + full-data callback completion, OEM VIN-lookup suggestions. | `NOT_STARTED` | N/A — inventory only | — |
-| Organizations & Tenancy | Multi-tenant organization profiles, operational settings, and tenant-scoped configuration. | `NOT_STARTED` | N/A — inventory only | — |
+| Organizations & Tenancy | Multi-tenant organization profiles, operational settings, and tenant-scoped configuration. | `AUDIT_IN_PROGRESS` | P6D2 offboarding prepare foundation 2026-11-22 · Production **NOT_STARTED** | [`architecture/organizations/`](organizations/) |
 | Outbound Email | Resend-based outbound email for org, platform, and booking-document delivery. | `NOT_STARTED` | N/A — inventory only | — |
 | Parts & Accessories | Parts procurement integrations including Alzura and eBay marketplace adapters. | `NOT_STARTED` | N/A — inventory only | — |
 | Payments (Rental Collections) | Stripe Connect payment collection for booking and organization payment requests. | `NOT_STARTED` | N/A — inventory only | — |

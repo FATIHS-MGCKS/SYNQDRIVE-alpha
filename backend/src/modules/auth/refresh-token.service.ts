@@ -295,6 +295,28 @@ export class RefreshTokenService {
     return result.count;
   }
 
+  /**
+   * Revoke every active refresh token bound to an organization (P6D3 offboarding).
+   * Other-org tokens for the same user remain valid.
+   */
+  async revokeAllActiveForOrganization(organizationId: string): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        organizationId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'ORG_OFFBOARDING_SESSIONS_REVOKED',
+      },
+    });
+    if (result.count > 0) {
+      this.iamMetrics?.recordSessionRevoked('membership');
+    }
+    return result.count;
+  }
+
   async revokeForOrganizationMembership(
     userId: string,
     organizationId: string,
