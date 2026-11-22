@@ -23,3 +23,11 @@
 ## PRODUCTION ACTIVATION
 
 Not certified from mocked provider tests. Separate owner approval required for `ORGANIZATION_OFFBOARDING_FINALIZATION_ENABLED` and live `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE`.
+
+## P6D4 FINALIZATION SAFETY CLOSEOUT (append)
+
+- Provider mocks gated: `NODE_ENV=test` or `ORGANIZATION_OFFBOARDING_PROVIDER_MOCK_ALLOWED=1` only; production ignores `ORGANIZATION_OFFBOARDING_MOCK_*`
+- HM dependency: historical `VehicleDataSourceLink` + `HighMobilityVehicle` rows
+- DimoVehicle disconnect org-exclusive (no cross-tenant connection mutation)
+- Finalize lease/fencing + crash recovery via expired lease release; final commit revalidation
+- PG scenarios A–H on disposable DB (`synqdrive_org_offboarding_p6d2` / `p6d4`)

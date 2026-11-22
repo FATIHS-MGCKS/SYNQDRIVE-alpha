@@ -1,20 +1,13 @@
 /**
  * Organization offboarding finalization (P6D4) — disposable PostgreSQL evidence.
- *
- * ORGANIZATION_OFFBOARDING_FINALIZATION_POSTGRES=1 \
- * ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED=1 \
- * ORGANIZATION_OFFBOARDING_FINALIZATION_ENABLED=1 \
- * ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL=CONFIRMED \
- * ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL=CONFIRMED \
- * DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/synqdrive_org_offboarding_p6d4 \
- * npm test -- --runInBand organization-offboarding-finalization.postgres
  */
 import { ConflictException } from '@nestjs/common';
 import {
+  FuelType,
   OrganizationOffboardingJobStatus,
   OrganizationStatus,
-  UserPlatformRole,
-  UserStatus,
+  VehicleRegistryLifecycle,
+  VehicleStatus,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
@@ -31,19 +24,39 @@ import { OrganizationOffboardingFinalizationService } from './organization-offbo
 import { OrganizationOffboardingProviderDisconnectService } from './organization-offboarding-provider-disconnect.service';
 import { OrganizationOffboardingService } from './organization-offboarding.service';
 import { OFFBOARDING_EXECUTION_CONFIRM_VALUE } from './organization-offboarding-execution.policy';
-import { OFFBOARDING_FINALIZATION_CONFIRM_VALUE } from './organization-offboarding-finalization.policy';
+import {
+  OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
+  ORGANIZATION_OFFBOARDING_FINALIZE_CONFLICT_CODE,
+  ORGANIZATION_OFFBOARDING_FINALIZE_MOCK_INADMISSIBLE_CODE,
+} from './organization-offboarding-finalization.policy';
+import { parseExecutionProgress, toProgressJson } from './organization-offboarding-execution.progress';
 
 const LIVE = process.env.ORGANIZATION_OFFBOARDING_FINALIZATION_POSTGRES === '1';
-const DB_TOKEN = 'synqdrive_org_offboarding_p6d4';
+const ALLOWED_DB_TOKENS = ['synqdrive_org_offboarding_p6d4', 'synqdrive_org_offboarding_p6d2'];
 
 function assertDisposableUrl(): void {
   const url = process.env.DATABASE_URL ?? '';
-  if (!url.includes(DB_TOKEN)) {
-    throw new Error(`DATABASE_URL must include ${DB_TOKEN}`);
+  if (!ALLOWED_DB_TOKENS.some((token) => url.includes(token))) {
+    throw new Error(`DATABASE_URL must include ${ALLOWED_DB_TOKENS.join(' or ')}`);
   }
   if (/production|staging|app\.synqdrive|srv1374778|hstgr\.cloud/i.test(url)) {
     throw new Error('Forbidden database target');
   }
+}
+
+function execReq(key: string) {
+  return {
+    idempotencyKey: key,
+    confirmExecution: OFFBOARDING_EXECUTION_CONFIRM_VALUE as typeof OFFBOARDING_EXECUTION_CONFIRM_VALUE,
+  };
+}
+
+function finReq(jobId: string, key: string) {
+  return {
+    jobId,
+    idempotencyKey: key,
+    confirmFinalization: OFFBOARDING_FINALIZATION_CONFIRM_VALUE as typeof OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
+  };
 }
 
 (LIVE ? describe : describe.skip)('Organization offboarding finalization (postgres P6D4)', () => {
@@ -51,14 +64,18 @@ function assertDisposableUrl(): void {
   let prepare: OrganizationOffboardingService;
   let execution: OrganizationOffboardingExecutionService;
   let finalization: OrganizationOffboardingFinalizationService;
+  let providerDisconnect: OrganizationOffboardingProviderDisconnectService;
   const orgIds: string[] = [];
 
   beforeAll(() => {
     assertDisposableUrl();
+    process.env.NODE_ENV = 'test';
+    process.env.ORGANIZATION_OFFBOARDING_PROVIDER_MOCK_ALLOWED = '1';
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED = '1';
     process.env.ORGANIZATION_OFFBOARDING_FINALIZATION_ENABLED = '1';
     process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL = 'CONFIRMED';
     process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'CONFIRMED';
+    process.env.ORGANIZATION_OFFBOARDING_FINALIZE_LEASE_MS = '30000';
 
     const prismaService = prisma as unknown as PrismaService;
     const legalHold = { isBlocked: jest.fn().mockResolvedValue(false) } as unknown as IamLegalHoldService;
@@ -74,7 +91,7 @@ function assertDisposableUrl(): void {
     } as unknown as RefreshTokenService;
     const vehicleOffboarding = createVehicleOffboardingServiceForTests(prisma);
     const vehicleOffboard = new VehicleOnboardingOffboardService(vehiclePreflight, vehicleOffboarding);
-    const providerDisconnect = new OrganizationOffboardingProviderDisconnectService(prismaService);
+    providerDisconnect = new OrganizationOffboardingProviderDisconnectService(prismaService);
 
     prepare = new OrganizationOffboardingService(prismaService, preflight, masterAudit);
     execution = new OrganizationOffboardingExecutionService(
@@ -94,9 +111,17 @@ function assertDisposableUrl(): void {
   });
 
   afterAll(async () => {
-    if (orgIds.length) {
-      await prisma.organizationOffboardingJob.deleteMany({ where: { organizationId: { in: orgIds } } });
-      await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
+    for (const orgId of orgIds) {
+      await prisma.booking.deleteMany({ where: { organizationId: orgId } });
+      await prisma.vehicleTrip.deleteMany({ where: { vehicle: { organizationId: orgId } } });
+      await prisma.vehicleDataSourceLink.deleteMany({ where: { vehicle: { organizationId: orgId } } });
+      await prisma.vehicleProviderConsent.deleteMany({ where: { organizationId: orgId } });
+      await prisma.vehicleRegistryLifecycleOutbox.deleteMany({
+        where: { vehicle: { organizationId: orgId } },
+      });
+      await prisma.vehicle.deleteMany({ where: { organizationId: orgId } });
+      await prisma.organizationOffboardingJob.deleteMany({ where: { organizationId: orgId } });
+      await prisma.organization.deleteMany({ where: { id: orgId } });
     }
     await prisma.$disconnect();
   });
@@ -108,6 +133,7 @@ function assertDisposableUrl(): void {
         id,
         companyName: `P6D4 Org ${id.slice(0, 8)}`,
         shortCode: `p6d4${id.slice(0, 4)}`,
+        businessType: 'RENTAL',
         status: OrganizationStatus.ACTIVE,
         email: `${id}@example.test`,
       },
@@ -116,76 +142,252 @@ function assertDisposableUrl(): void {
     return id;
   }
 
-  it('finalize is idempotent and sets ARCHIVED + COMPLETED', async () => {
-    const orgId = await seedOrg();
-    await prepare.prepare(orgId, { idempotencyKey: `prep-${orgId}` }, 'ma-1');
-    const executed = await execution.execute(
-      orgId,
-      {
-        idempotencyKey: `exec-${orgId}`,
-        confirmExecution: OFFBOARDING_EXECUTION_CONFIRM_VALUE,
+  async function seedCustomer(orgId: string) {
+    return prisma.customer.create({
+      data: {
+        organizationId: orgId,
+        firstName: 'Test',
+        lastName: 'Customer',
+        email: `cust-${Date.now()}@example.test`,
       },
-      'ma-1',
-    );
-    expect(executed.phase).toBe('READY_FOR_ARCHIVE');
-
-    const job = await prisma.organizationOffboardingJob.findFirstOrThrow({
-      where: { organizationId: orgId },
     });
+  }
 
-    const finalized = await finalization.finalize(
-      orgId,
-      {
-        jobId: job.id,
-        idempotencyKey: `fin-${orgId}`,
-        confirmFinalization: OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
+  async function seedInactiveHmLink(orgId: string, vehicleId: string) {
+    const hmId = randomUUID();
+    await prisma.highMobilityVehicle.create({
+      data: {
+        id: hmId,
+        organizationId: orgId,
+        synqdriveVehicleId: vehicleId,
+        vin: `HM${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+        brand: 'BMW',
+        packageType: 'HEALTH',
+        sourceMode: 'HM_ONLY',
+        clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
-      'ma-1',
-    );
-    expect(finalized.status).toBe(OrganizationOffboardingJobStatus.COMPLETED);
+    });
+    await prisma.vehicleDataSourceLink.create({
+      data: {
+        vehicleId,
+        provider: 'HIGH_MOBILITY',
+        sourceType: 'HIGH_MOBILITY',
+        sourceSubtype: 'HM_HEALTH',
+        sourceReferenceId: hmId,
+        isActive: false,
+        deactivatedAt: new Date(),
+      },
+    });
+  }
+
+  async function runToReady(orgId: string, execKey: string) {
+    await prepare.prepare(orgId, { idempotencyKey: `prep-${execKey}` }, 'ma-1');
+    const executed = await execution.execute(orgId, execReq(execKey), 'ma-1');
+    expect(executed.phase).toBe('READY_FOR_ARCHIVE');
+    return prisma.organizationOffboardingJob.findFirstOrThrow({ where: { organizationId: orgId } });
+  }
+
+  it('A — finalize success and idempotent retry', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-a-${orgId}`);
+    await finalization.finalize(orgId, finReq(job.id, `fin-a-${orgId}`), 'ma-1');
     const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
     expect(org.status).toBe(OrganizationStatus.ARCHIVED);
-
-    const replay = await finalization.finalize(
-      orgId,
-      {
-        jobId: job.id,
-        idempotencyKey: `fin-${orgId}`,
-        confirmFinalization: OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
-      },
-      'ma-1',
-    );
+    const replay = await finalization.finalize(orgId, finReq(job.id, `fin-a-${orgId}`), 'ma-1');
     expect(replay.executionIdempotentReplay).toBe(true);
   });
 
-  it('HM mock FAILED blocks finalization', async () => {
-    process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'FAILED';
+  it('B — HM dependency + provider failure at finalize keeps SUSPENDED', async () => {
     const orgId = await seedOrg();
-    await prepare.prepare(orgId, { idempotencyKey: `prep-hm-${orgId}` }, 'ma-1');
-    await execution.execute(
-      orgId,
-      {
-        idempotencyKey: `exec-hm-${orgId}`,
-        confirmExecution: OFFBOARDING_EXECUTION_CONFIRM_VALUE,
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `HM-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
       },
-      'ma-1',
-    );
-    const job = await prisma.organizationOffboardingJob.findFirstOrThrow({
-      where: { organizationId: orgId },
     });
+    await seedInactiveHmLink(orgId, vehicle.id);
+    process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'CONFIRMED';
+    const job = await runToReady(orgId, `exec-hm-${orgId}`);
+    process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'FAILED';
     await expect(
-      finalization.finalize(
-        orgId,
-        {
-          jobId: job.id,
-          idempotencyKey: `fin-hm-${orgId}`,
-          confirmFinalization: OFFBOARDING_FINALIZATION_CONFIRM_VALUE,
-        },
-        'ma-1',
-      ),
+      finalization.finalize(orgId, finReq(job.id, `fin-hm-${orgId}`), 'ma-1'),
     ).rejects.toBeInstanceOf(ConflictException);
     const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
     expect(org.status).toBe(OrganizationStatus.SUSPENDED);
     process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'CONFIRMED';
+  });
+
+  it('C — mock DIMO cannot confirm archival when NODE_ENV=production', async () => {
+    const orgId = await seedOrg();
+    const dimoId = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO dimo_vehicles (id, external_id, connection_status, created_at, updated_at)
+      VALUES (${dimoId}, ${`ext-${dimoId.slice(0, 8)}`}, 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
+    `;
+    await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `PROD-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+        dimoVehicleId: dimoId,
+      },
+    });
+    const job = await runToReady(orgId, `exec-prod-${orgId}`);
+    const prevNode = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL = 'CONFIRMED';
+    try {
+      await expect(
+        finalization.finalize(orgId, finReq(job.id, `fin-prod-${orgId}`), 'ma-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+    } finally {
+      process.env.NODE_ENV = prevNode;
+      process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL = 'CONFIRMED';
+    }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
+    expect(org.status).toBe(OrganizationStatus.SUSPENDED);
+  });
+
+  it('D — parallel finalize single winner', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-par-${orgId}`);
+    const settled = await Promise.allSettled([
+      finalization.finalize(orgId, finReq(job.id, `fin-par-a-${orgId}`), 'ma-1'),
+      finalization.finalize(orgId, finReq(job.id, `fin-par-b-${orgId}`), 'ma-1'),
+    ]);
+    const ok = settled.filter((s) => s.status === 'fulfilled');
+    const bad = settled.filter((s) => s.status === 'rejected');
+    expect(ok.length).toBe(1);
+    expect(bad.length).toBe(1);
+    const code = (bad[0] as PromiseRejectedResult).reason as ConflictException;
+    expect(code.getResponse()).toMatchObject({
+      code: expect.stringMatching(
+        `${ORGANIZATION_OFFBOARDING_FINALIZE_CONFLICT_CODE}|ORGANIZATION_OFFBOARDING_FINALIZE_LEASE_CONFLICT`,
+      ),
+    });
+  });
+
+  it('E — expired finalize lease allows retry', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-crash-${orgId}`);
+    const prior = parseExecutionProgress(job.progressJson);
+    await prisma.organizationOffboardingJob.update({
+      where: { id: job.id },
+      data: {
+        progressJson: toProgressJson({
+          ...prior,
+          finalize: {
+            idempotencyKey: `fin-crash-${orgId}`,
+            claimedAt: new Date().toISOString(),
+            actorUserId: 'ma-1',
+            inProgress: true,
+          },
+          finalizeLease: {
+            token: 'stale-token',
+            fence: 1,
+            expiresAt: new Date(Date.now() - 60_000).toISOString(),
+            finalizeIdempotencyKey: `fin-crash-${orgId}`,
+          },
+        }),
+      },
+    });
+    const result = await finalization.finalize(orgId, finReq(job.id, `fin-crash-${orgId}`), 'ma-1');
+    expect(result.status).toBe(OrganizationOffboardingJobStatus.COMPLETED);
+  });
+
+  it('F — active booking blocks finalization', async () => {
+    const orgId = await seedOrg();
+    const job = await runToReady(orgId, `exec-book-${orgId}`);
+    const customer = await seedCustomer(orgId);
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `BK-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+    await prisma.booking.create({
+      data: {
+        organizationId: orgId,
+        customerId: customer.id,
+        vehicleId: vehicle.id,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 86_400_000),
+        status: 'ACTIVE',
+      },
+    });
+    await expect(
+      finalization.finalize(orgId, finReq(job.id, `fin-book-${orgId}`), 'ma-1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id: orgId } })).status).toBe(
+      OrganizationStatus.SUSPENDED,
+    );
+  });
+
+  it('G — sole-tenant dimo local quiesce may disconnect DimoVehicle', async () => {
+    const orgId = await seedOrg();
+    const dimoId = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO dimo_vehicles (id, external_id, connection_status, created_at, updated_at)
+      VALUES (${dimoId}, ${`ext-${dimoId.slice(0, 8)}`}, 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
+    `;
+    await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `SOLO-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+        dimoVehicleId: dimoId,
+      },
+    });
+    await providerDisconnect.assessOrganization(orgId);
+    const dimo = await prisma.dimoVehicle.findUniqueOrThrow({ where: { id: dimoId } });
+    expect(dimo.connectionStatus).toBe('DISCONNECTED');
+  });
+
+  it('H — historical HM data source link blocks READY without mocks', async () => {
+    const orgId = await seedOrg();
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        organizationId: orgId,
+        licensePlate: `HIST-${Date.now()}`,
+        make: 'Test',
+        model: 'Car',
+        year: 2024,
+        fuelType: FuelType.GASOLINE,
+        status: VehicleStatus.AVAILABLE,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
+    });
+    await seedInactiveHmLink(orgId, vehicle.id);
+    delete process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL;
+    delete process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL;
+    await prepare.prepare(orgId, { idempotencyKey: `prep-h-${orgId}` }, 'ma-1');
+    const result = await execution.execute(orgId, execReq(`exec-h-${orgId}`), 'ma-1');
+    expect(result.phase).not.toBe('READY_FOR_ARCHIVE');
+    expect(result.executionProgress.providerQuiesce?.finalizationState).toBe('EXTERNAL_DISCONNECT_PENDING');
+    process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL = 'CONFIRMED';
+    process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL = 'CONFIRMED';
   });
 });

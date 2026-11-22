@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { VehicleProviderConsentStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { ProviderFinalizationState } from './organization-offboarding-execution.progress';
+import { readProviderMockOutcome } from './organization-offboarding-provider-mock.policy';
 
 export type ProviderExternalOutcome =
   | 'CONFIRMED'
@@ -9,11 +10,14 @@ export type ProviderExternalOutcome =
   | 'FAILED'
   | 'NO_DEPENDENCY';
 
+export type ProviderDisconnectEvidenceSource = 'MOCK' | 'LIVE' | 'NONE';
+
 export type ProviderDisconnectChannelResult = {
   provider: 'DIMO' | 'HIGH_MOBILITY';
   hadDependency: boolean;
   localRevoked: boolean;
   externalOutcome: ProviderExternalOutcome;
+  evidenceSource: ProviderDisconnectEvidenceSource;
   detailCode: string | null;
 };
 
@@ -26,24 +30,6 @@ export type OrganizationProviderDisconnectAssessment = {
   historicalProviderConsentCount: number;
   everHadDimoVehicleLink: boolean;
 };
-
-function readMockOutcome(provider: 'DIMO' | 'HIGH_MOBILITY'): ProviderExternalOutcome | null {
-  const key =
-    provider === 'DIMO'
-      ? process.env.ORGANIZATION_OFFBOARDING_MOCK_DIMO_EXTERNAL
-      : process.env.ORGANIZATION_OFFBOARDING_MOCK_HM_EXTERNAL;
-  if (!key) return null;
-  const normalized = key.trim().toUpperCase();
-  if (
-    normalized === 'CONFIRMED' ||
-    normalized === 'NOT_AVAILABLE' ||
-    normalized === 'FAILED' ||
-    normalized === 'NO_DEPENDENCY'
-  ) {
-    return normalized;
-  }
-  return null;
-}
 
 function isLiveExternalDisconnectEnabled(): boolean {
   return process.env.ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE === '1';
@@ -85,11 +71,45 @@ export class OrganizationOffboardingProviderDisconnectService {
       where: { organizationId, provider: 'HIGH_MOBILITY' },
     });
 
+    const historicalHmDataSourceLinkCount = await this.prisma.vehicleDataSourceLink.count({
+      where: {
+        sourceType: 'HIGH_MOBILITY',
+        vehicle: { organizationId },
+      },
+    });
+    const orgVehicleIds = await this.prisma.vehicle.findMany({
+      where: { organizationId },
+      select: { id: true },
+    });
+    const historicalHmVehicleBindingCount = await this.prisma.highMobilityVehicle.count({
+      where: {
+        OR: [
+          { organizationId },
+          ...(orgVehicleIds.length > 0
+            ? [{ synqdriveVehicleId: { in: orgVehicleIds.map((v) => v.id) } }]
+            : []),
+        ],
+      },
+    });
+
     const dimoHad =
       historicalDimoConsentCount > 0 || everHadDimoVehicleLink || connectedDimoVehicleCount > 0;
-    const hmHad = historicalHmConsentCount > 0;
+    const hmHad =
+      historicalHmConsentCount > 0 ||
+      historicalHmDataSourceLinkCount > 0 ||
+      historicalHmVehicleBindingCount > 0;
 
     const localRevoked = await this.performLocalQuiesce(organizationId);
+
+    const postActiveProviderConsentCount = await this.prisma.vehicleProviderConsent.count({
+      where: { organizationId, status: VehicleProviderConsentStatus.ACTIVE },
+    });
+    const postConnectedDimoVehicleCount = await this.prisma.vehicle.count({
+      where: {
+        organizationId,
+        dimoVehicle: { connectionStatus: 'CONNECTED' },
+      },
+    });
 
     const dimo = await this.resolveChannel('DIMO', dimoHad, localRevoked.dimo);
     const hm = await this.resolveChannel('HIGH_MOBILITY', hmHad, localRevoked.hm);
@@ -99,16 +119,16 @@ export class OrganizationOffboardingProviderDisconnectService {
       hm,
       dimoHad,
       hmHad,
-      activeProviderConsentCount,
-      connectedDimoVehicleCount,
+      activeProviderConsentCount: postActiveProviderConsentCount,
+      connectedDimoVehicleCount: postConnectedDimoVehicleCount,
     });
 
     return {
       dimo,
       hm,
       finalizationState,
-      activeProviderConsentCount,
-      connectedDimoVehicleCount,
+      activeProviderConsentCount: postActiveProviderConsentCount,
+      connectedDimoVehicleCount: postConnectedDimoVehicleCount,
       historicalProviderConsentCount,
       everHadDimoVehicleLink,
     };
@@ -138,14 +158,32 @@ export class OrganizationOffboardingProviderDisconnectService {
         revokedAt: now,
       },
     });
-    await this.prisma.dimoVehicle.updateMany({
-      where: {
-        registeredVehicles: { some: { organizationId } },
-        connectionStatus: 'CONNECTED',
-      },
-      data: { connectionStatus: 'DISCONNECTED' },
-    });
+    await this.disconnectDimoVehiclesOrgExclusive(organizationId);
     return { dimo: dimoUpdate.count > 0, hm: hmUpdate.count > 0 };
+  }
+
+  /** Never mutate shared DimoVehicle connection when another tenant still references it. */
+  private async disconnectDimoVehiclesOrgExclusive(organizationId: string): Promise<void> {
+    const orgVehicles = await this.prisma.vehicle.findMany({
+      where: { organizationId, dimoVehicleId: { not: null } },
+      select: { dimoVehicleId: true },
+    });
+    const dimoIds = [...new Set(orgVehicles.map((v) => v.dimoVehicleId).filter((id): id is string => Boolean(id)))];
+    for (const dimoVehicleId of dimoIds) {
+      const foreignRefCount = await this.prisma.vehicle.count({
+        where: {
+          dimoVehicleId,
+          organizationId: { not: organizationId },
+        },
+      });
+      if (foreignRefCount > 0) {
+        continue;
+      }
+      await this.prisma.dimoVehicle.updateMany({
+        where: { id: dimoVehicleId, connectionStatus: 'CONNECTED' },
+        data: { connectionStatus: 'DISCONNECTED' },
+      });
+    }
   }
 
   private async resolveChannel(
@@ -159,17 +197,19 @@ export class OrganizationOffboardingProviderDisconnectService {
         hadDependency: false,
         localRevoked: false,
         externalOutcome: 'NO_DEPENDENCY',
+        evidenceSource: 'NONE',
         detailCode: null,
       };
     }
 
-    const mock = readMockOutcome(provider);
+    const mock = readProviderMockOutcome(provider);
     if (mock) {
       return {
         provider,
         hadDependency: true,
         localRevoked,
         externalOutcome: mock === 'NO_DEPENDENCY' ? 'CONFIRMED' : mock,
+        evidenceSource: 'MOCK',
         detailCode: mock === 'FAILED' ? `${provider}_EXTERNAL_REVOKE_FAILED` : null,
       };
     }
@@ -180,6 +220,7 @@ export class OrganizationOffboardingProviderDisconnectService {
         hadDependency: true,
         localRevoked,
         externalOutcome: 'NOT_AVAILABLE',
+        evidenceSource: 'NONE',
         detailCode: `${provider}_EXTERNAL_REVOKE_NOT_AVAILABLE`,
       };
     }
@@ -189,6 +230,7 @@ export class OrganizationOffboardingProviderDisconnectService {
       hadDependency: true,
       localRevoked,
       externalOutcome: 'NOT_AVAILABLE',
+      evidenceSource: 'LIVE',
       detailCode: `${provider}_EXTERNAL_REVOKE_LIVE_PATH_NOT_IMPLEMENTED`,
     };
   }

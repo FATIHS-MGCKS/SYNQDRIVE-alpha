@@ -54,6 +54,12 @@ export type OrganizationOffboardingExecutionProgress = {
     lastErrorCode?: string;
     lastBlockedDetail?: string;
   };
+  finalizeLease?: {
+    token: string;
+    fence: number;
+    expiresAt: string;
+    finalizeIdempotencyKey: string;
+  };
   archived?: {
     organizationStatus: string;
     archivedAt: string;
@@ -96,6 +102,12 @@ export function parseExecutionProgress(raw: unknown): OrganizationOffboardingExe
       : {}),
     ...(record.finalize && typeof record.finalize === 'object'
       ? { finalize: record.finalize as OrganizationOffboardingExecutionProgress['finalize'] }
+      : {}),
+    ...(record.finalizeLease && typeof record.finalizeLease === 'object'
+      ? {
+          finalizeLease:
+            record.finalizeLease as OrganizationOffboardingExecutionProgress['finalizeLease'],
+        }
       : {}),
     ...(record.archived && typeof record.archived === 'object'
       ? { archived: record.archived as OrganizationOffboardingExecutionProgress['archived'] }
