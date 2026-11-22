@@ -37,6 +37,10 @@ export function subscriptionDraftLockKey(organizationId: string): string {
   return `subscription-draft:${organizationId}`;
 }
 
+export function organizationOffboardingPrepareLockKey(organizationId: string): string {
+  return `organization-offboarding-prepare:${organizationId}`;
+}
+
 export function userEmailRegistrationLockKey(email: string): string {
   return `user-email-registration:${email.trim().toLowerCase()}`;
 }

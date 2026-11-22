@@ -24,6 +24,15 @@ enum OrganizationStatus {
   ARCHIVED
 }
 
+/// Durable organization offboarding prepare job (P6D2 foundation — execution deferred to P6D3+).
+enum OrganizationOffboardingJobStatus {
+  PREPARED
+  BLOCKED
+  FAILED
+  RETRYABLE
+  COMPLETED
+}
+
 enum BusinessType {
   RENTAL
   FLEET
@@ -1888,9 +1897,34 @@ model Organization {
   communicationMessageContents                              CommunicationMessageContent[]
   communicationReplyCommands                                CommunicationReplyCommand[]
   communicationAttachments                                  CommunicationAttachment[]
+  offboardingJobs                                           OrganizationOffboardingJob[]
 
   @@index([status])
   @@map("organizations")
+}
+
+model OrganizationOffboardingJob {
+  id                String                           @id @default(uuid())
+  organizationId    String                           @map("organization_id")
+  idempotencyKey    String                           @map("idempotency_key")
+  requestFingerprint String                          @map("request_fingerprint")
+  status            OrganizationOffboardingJobStatus @default(PREPARED)
+  phase             String                           @default("PREPARE")
+  progressJson      Json?                            @map("progress_json")
+  preflightSnapshot Json?                            @map("preflight_snapshot")
+  lastErrorCode     String?                          @map("last_error_code")
+  correlationId     String                           @map("correlation_id")
+  requestedByUserId String?                          @map("requested_by_user_id")
+  requestedAt       DateTime                         @default(now()) @map("requested_at")
+  completedAt       DateTime?                        @map("completed_at")
+  createdAt         DateTime                         @default(now()) @map("created_at")
+  updatedAt         DateTime                         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, idempotencyKey], map: "organization_offboarding_jobs_org_idempotency_key")
+  @@index([organizationId, status], map: "organization_offboarding_jobs_org_status_idx")
+  @@map("organization_offboarding_jobs")
 }
 
 /// SynqDrive Evaluations tenant-safe analytics foundation (E2).

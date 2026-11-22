@@ -79,6 +79,7 @@ import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd
     VehicleOnboardingReadinessService,
     VehicleOnboardingCaptureService,
     VehicleOffboardingService,
+    VehicleOffboardPreflightService,
     DimoSourceLinkAuditedDeactivationService,
     DimoSourceLinkOperatorAuthorizationService,
     VehicleOnboardingOffboardService,
