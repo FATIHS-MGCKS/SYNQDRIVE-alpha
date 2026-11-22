@@ -7,15 +7,15 @@
 
 | Capability | Evidence | Adapter behavior |
 |------------|----------|------------------|
-| Revoke clearance | `DELETE /v1/fleets/vehicles/{vin}` documented in `high-mobility-fleet.service.ts` | Org-scoped `high_mobility_vehicles` rows only; 409 idempotent; 5xx retry (max 3) |
-| Status lookup | `GET /v1/fleets/vehicles/{vin}` (existing fleet service) | Post-revoke DB clearance status update |
+| Revoke clearance | `DELETE /v1/fleets/vehicles/{vin}` documented in `high-mobility-fleet.service.ts` | Org-scoped rows; cross-tenant VIN gate; 5xx retry (max 3) |
+| Status lookup | `GET /v1/fleets/vehicles/{vin}` (existing fleet service) | Required to confirm terminal state; 409 not blindly CONFIRMED |
 | Credentials | `HighMobilityHealthAppAuthService.isConfigured()` | Fail-closed `HM_EXTERNAL_REVOKE_CREDENTIALS_MISSING` |
 
 ## DIMO
 
 | Capability | Evidence | Adapter behavior |
 |------------|----------|------------------|
-| Privilege status read | Identity GraphQL `vehicles(filterBy: { privileged: clientId })` — `dimo-api-sync.service.ts` | Compare org `dimoVehicle.tokenId` set vs privileged cohort |
+| Privilege status read | Identity GraphQL `vehicles(filterBy: { privileged: clientId })` — paginated `pageInfo`/`endCursor` | Full traversal required; missing `tokenId` / cursor gaps fail-closed |
 | Programmatic owner privilege revoke | **Not wired** in repository; owner action required per R9 audit docs | `DIMO_PRIVILEGE_STILL_ACTIVE` when token still privileged |
 | Local quiesce | Consent `REVOKED` + exclusive `DimoVehicle.connectionStatus` | Confirmation requires not privileged + no CONNECTED org links |
 

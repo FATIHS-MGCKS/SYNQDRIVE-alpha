@@ -6,12 +6,17 @@ import { readProviderMockOutcome } from './organization-offboarding-provider-moc
 import { OrganizationOffboardingDimoLiveDisconnectAdapter } from './organization-offboarding-dimo-live-disconnect.adapter';
 import { OrganizationOffboardingHmLiveDisconnectAdapter } from './organization-offboarding-hm-live-disconnect.adapter';
 import type { OrganizationProviderLiveEvidence } from './organization-offboarding-provider-live.types';
+import {
+  blocksExternalDisconnectConfirmation,
+  mapLiveAdapterOutcomeForHistoricalDependency,
+} from './organization-offboarding-provider-live.outcome';
 
 export type ProviderExternalOutcome =
   | 'CONFIRMED'
   | 'NOT_AVAILABLE'
   | 'FAILED'
-  | 'NO_DEPENDENCY';
+  | 'NO_DEPENDENCY'
+  | 'REVIEW_REQUIRED';
 
 export type ProviderDisconnectEvidenceSource = 'MOCK' | 'LIVE' | 'NONE';
 
@@ -259,10 +264,7 @@ export class OrganizationOffboardingProviderDisconnectService {
         };
       }
       const live = await this.hmLive.disconnectOrganization(organizationId);
-      const externalOutcome =
-        live.outcome === 'NO_DEPENDENCY' && hadDependency
-          ? 'CONFIRMED'
-          : live.outcome;
+      const externalOutcome = mapLiveAdapterOutcomeForHistoricalDependency(live.outcome, hadDependency);
       return {
         ...base,
         externalOutcome,
@@ -279,8 +281,7 @@ export class OrganizationOffboardingProviderDisconnectService {
       };
     }
     const live = await this.dimoLive.verifyOrganizationDisconnect(organizationId);
-    const externalOutcome =
-      live.outcome === 'NO_DEPENDENCY' && hadDependency ? 'CONFIRMED' : live.outcome;
+    const externalOutcome = mapLiveAdapterOutcomeForHistoricalDependency(live.outcome, hadDependency);
     return {
       ...base,
       externalOutcome,
@@ -309,9 +310,7 @@ export class OrganizationOffboardingProviderDisconnectService {
       return 'EXTERNAL_DISCONNECT_CONFIRMED';
     }
 
-    const anyFailed = channels.some(
-      (c) => c.externalOutcome === 'FAILED' || c.externalOutcome === 'NOT_AVAILABLE',
-    );
+    const anyFailed = channels.some((c) => blocksExternalDisconnectConfirmation(c.externalOutcome));
     if (anyFailed) {
       return 'EXTERNAL_DISCONNECT_PENDING';
     }

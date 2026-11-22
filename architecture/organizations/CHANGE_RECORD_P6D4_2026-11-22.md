@@ -55,3 +55,9 @@ Not certified from mocked provider tests. Separate owner approval required for `
 - **DIMO live:** `OrganizationOffboardingDimoLiveDisconnectAdapter` — Identity privileged read + org token compare; **no** fabricated revoke API; `DIMO_PRIVILEGE_STILL_ACTIVE` when developer privilege remains.
 - **Disconnect service:** live path when `ORGANIZATION_OFFBOARDING_PROVIDER_DISCONNECT_LIVE=1`; mocks unchanged in test.
 - **Evidence:** `architecture/organizations/evidence/P6D4_PROVIDER_LIVE_DISCONNECT_CAPABILITY_2026-11-22.md`.
+
+## P6D4 LIVE PROVIDER SAFETY CLOSEOUT (append)
+
+- DIMO privileged Identity read: full `pageInfo`/`endCursor` pagination; missing `tokenId` / incomplete pages fail-closed; historical-only dependency → `REVIEW_REQUIRED`.
+- HM: 409 semantics split (already revoked vs transition conflict); GET confirms terminal `revoked`/`canceled`; cross-tenant VIN gate before DELETE.
+- Disconnect service: removed `NO_DEPENDENCY` → `CONFIRMED` upgrade for historical `hadDependency`; `REVIEW_REQUIRED` blocks finalization.
