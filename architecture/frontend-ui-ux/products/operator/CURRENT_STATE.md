@@ -1,6 +1,6 @@
 # Current State — Operator UI/UX
 
-**Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** UNKNOWN  
+**Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** infra VERIFIED @ `1e6a267c`; auth UI UNKNOWN  
 **Scope:** mobile-first field operator at `/operator/*`.
 
 ## Executive summary

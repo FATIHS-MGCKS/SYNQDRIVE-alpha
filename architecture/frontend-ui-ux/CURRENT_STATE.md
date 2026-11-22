@@ -1,6 +1,18 @@
 # Current State — Shared UI Design Foundation
 
-**SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production UI:** UNKNOWN (foundation still affects deployed bundle).
+**Repository UI SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` (screen contracts) · **Repository `main`:** `874f69e61bbed8465c5e94cd88d91408ee281acc` (#2490 merged).
+
+## Production (P7 read-only, CONFIRMED infra)
+
+| Field | Value |
+|-------|-------|
+| Production release SHA | `1e6a267c8c7951e2a11633e89ab96714844ea846` (`2026-11-11`) |
+| Drift | **91** frontend paths `NOT_DEPLOYED` (`1e6a267c`→`413175e8c`); docs-only `main` delta needs **no** deploy for parity |
+| Served bundle | Single SPA: `index-Cn8n4pFR.js` + `index-DmctIvoe.css` |
+| Shared coupling at runtime | **CONFIRMED** — one bundle serves Master, Rental, Operator |
+| Authenticated UI | **UNKNOWN** |
+
+Detail: [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md), [`evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md`](./evidence/PRODUCTION_GATE_A_AUDIT_2026-11-22.md).
 
 ## Executive summary
 

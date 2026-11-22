@@ -1,7 +1,7 @@
 # Current State — Master Admin UI/UX
 
 **Last verified (repository):** 2026-11-22 (Europe/Berlin) · **SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
-**Production UI:** UNKNOWN — `PRODUCTION_ACCESS_UNAVAILABLE`  
+**Production (P7):** infra **VERIFIED_READ_ONLY** @ `1e6a267c`; **authenticated UI UNKNOWN**  
 **Epistemic legend:** CONFIRMED = inspected source; INFERRED = structural conclusion; HISTORICAL = prior docs; UNKNOWN = not verified live.
 
 ## Executive summary
@@ -22,11 +22,17 @@ Runtime **couples** to shared foundation: `theme.css`, `components/ui`, `compone
 
 ## Production baseline
 
-Not audited. No claim of deployed UI parity.
+| Item | Epistemic |
+|------|-----------|
+| `GET /master` → 200 SPA shell | CONFIRMED (2026-11-22 UTC) |
+| `master-nav` in deployed bundle | CONFIRMED |
+| Authenticated hub rendering | UNKNOWN |
+
+See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 
 ## Repo vs Production
 
-UNKNOWN.
+**Drift:** Production backend **CONFIRMED** @ `1e6a267c`; repository Master UI changes since then **NOT_DEPLOYED** (see `PRODUCTION_FRONTEND_DRIFT_RECONCILIATION.md`). Frontend **source** on Production **INFERRED** @ `1e6a267c`, not CONFIRMED without build attestation.
 
 ## End-to-end UI flow
 
