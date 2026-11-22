@@ -22,3 +22,19 @@
 - External provider disconnect confirmation
 - DIMO/HM polling cohort for SUSPENDED orgs
 - ARCHIVED transition and PATCH bypass closure
+
+## P6D3 EXECUTION SAFETY HARDENING (append)
+
+**Prior head:** `e1fe63f24b71b58c09f6b724323049a86589605d`
+
+### FIXES
+
+1. **Failed phases** — `phasesCompleted` only on verified postconditions; failures stay `RETRYABLE` with structured `lastErrorCode`; vehicle batch preserves `processedVehicleIds` and resumes at blocker.
+2. **Concurrency** — durable `executionLease` (token, fence, TTL) in `progressJson`; short transactional lease acquire; `assertHoldsLease` fences stale writers; no long transactions across vehicle/provider work. **No schema migration.**
+3. **Audit** — phase/summary audit via `await masterAudit.record` (actor + `correlationId` preserved).
+4. **Provider readiness** — `ProviderFinalizationState` gate; `READY_FOR_ARCHIVE` only when `NO_EXTERNAL_PROVIDER_DEPENDENCY` / confirmed local-external states; `EXTERNAL_DISCONNECT_PENDING` blocks completion.
+
+### EVIDENCE
+
+- `organization-offboarding-execution.phase-retry.spec.ts`
+- `organization-offboarding-execution.postgres.integration.spec.ts` (opt-in `ORGANIZATION_OFFBOARDING_EXECUTION_POSTGRES=1`)

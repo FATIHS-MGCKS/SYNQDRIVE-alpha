@@ -25,11 +25,17 @@ import type { OrganizationOffboardExecuteRequest } from './organization-offboard
 import {
   assertOrganizationOffboardingExecutionAdmitted,
   ORGANIZATION_OFFBOARDING_EXECUTION_CONFLICT_CODE,
+  ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
   ORGANIZATION_OFFBOARDING_EXECUTION_REVALIDATE_BLOCKED_CODE,
   ORGANIZATION_OFFBOARDING_NO_PREPARED_JOB_CODE,
   ORGANIZATION_OFFBOARDING_PROVIDER_QUIESCE_INCOMPLETE_CODE,
   ORGANIZATION_OFFBOARDING_VEHICLE_BATCH_BLOCKED_CODE,
 } from './organization-offboarding-execution.policy';
+import {
+  isExecutionLeaseActive,
+  mintExecutionLease,
+  releaseExecutionLease,
+} from './organization-offboarding-execution.lease';
 import {
   ORGANIZATION_OFFBOARDING_EXECUTION_PHASES,
   isPhaseComplete,
@@ -39,6 +45,7 @@ import {
   parseExecutionProgress,
   toProgressJson,
   type OrganizationOffboardingExecutionProgress,
+  type ProviderFinalizationState,
 } from './organization-offboarding-execution.progress';
 import type { OrganizationOffboardingJobView } from './organization-offboarding.types';
 import { ORGANIZATION_OFFBOARDING_ACTIVE_JOB_STATUSES } from './organization-offboard-preflight.reason-codes';
@@ -83,6 +90,27 @@ function jobToView(row: JobRow, executionReplay: boolean): OrganizationOffboardi
   };
 }
 
+function withPhaseCompleted(
+  progress: OrganizationOffboardingExecutionProgress,
+  phase: OrganizationOffboardingExecutionPhase,
+): OrganizationOffboardingExecutionProgress {
+  return {
+    ...progress,
+    phasesCompleted: [...new Set([...progress.phasesCompleted, phase])],
+  };
+}
+
+function providerAllowsArchiveAdmission(
+  progress: OrganizationOffboardingExecutionProgress,
+): boolean {
+  const state = progress.providerQuiesce?.finalizationState;
+  return (
+    state === 'NO_EXTERNAL_PROVIDER_DEPENDENCY' ||
+    state === 'LOCAL_QUIESCE_CONFIRMED' ||
+    state === 'EXTERNAL_DISCONNECT_CONFIRMED'
+  );
+}
+
 @Injectable()
 export class OrganizationOffboardingExecutionService {
   constructor(
@@ -106,87 +134,102 @@ export class OrganizationOffboardingExecutionService {
       });
     }
 
-    const job = await this.claimJob(organizationId, request, actorUserId);
-    let progress = parseExecutionProgress(job.progressJson);
+    const claim = await this.acquireExecutionLease(organizationId, request, actorUserId);
+    let progress = claim.progress;
+    let row = claim.job;
+    const leaseToken = claim.leaseToken;
 
     const executionReplay =
       progress.execution?.idempotencyKey === request.idempotencyKey &&
-      job.phase === 'READY_FOR_ARCHIVE' &&
+      row.phase === 'READY_FOR_ARCHIVE' &&
       isPhaseComplete(progress, 'READY_FOR_ARCHIVE');
 
     if (executionReplay) {
-      return jobToView(job, true);
+      await this.releaseLease(row.id, progress);
+      return jobToView(row, true);
     }
 
-    let row = job;
-    for (const phase of ORGANIZATION_OFFBOARDING_EXECUTION_PHASES) {
-      if (isPhaseComplete(progress, phase)) {
-        continue;
+    try {
+      for (const phase of ORGANIZATION_OFFBOARDING_EXECUTION_PHASES) {
+        if (isPhaseComplete(progress, phase)) {
+          continue;
+        }
+        if (phase === 'READY_FOR_ARCHIVE' && !providerAllowsArchiveAdmission(progress)) {
+          break;
+        }
+        await this.assertHoldsLease(row.id, leaseToken);
+        const outcome = await this.runPhase({
+          phase,
+          job: row,
+          progress,
+          organizationId,
+          actorUserId,
+        });
+        progress = outcome.progress;
+        row = await this.persistJob(
+          row.id,
+          progress,
+          outcome.phase,
+          outcome.status,
+          outcome.lastErrorCode,
+        );
+        await this.recordPhaseAudit({
+          actorUserId,
+          organizationId,
+          job: row,
+          phase: outcome.phase,
+          success: outcome.phaseSuccess,
+          reasonCode: outcome.lastErrorCode,
+          leaseFence: progress.executionLease?.fence,
+        });
+        if (outcome.halt) {
+          break;
+        }
       }
-      const outcome = await this.runPhase({
-        phase,
-        job: row,
-        progress,
-        organizationId,
-        actorUserId,
+    } finally {
+      progress = await this.releaseLease(row.id, progress);
+      row = await this.prisma.organizationOffboardingJob.findUniqueOrThrow({
+        where: { id: row.id },
       });
-      progress = outcome.progress;
-      row = await this.persistJob(
-        row.id,
-        progress,
-        outcome.phase,
-        outcome.status,
-        outcome.lastErrorCode,
-      );
-      if (outcome.halt) {
-        break;
-      }
     }
 
-    void this.masterAudit.record({
-      auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
+    await this.recordPhaseAudit({
       actorUserId,
-      targetOrganizationId: organizationId,
-      entityId: row.id,
-      correlationId: row.correlationId,
-      description: 'Organization offboarding execution run',
-      reasonCode: 'ORG_OFFBOARDING_EXECUTION',
-      route: 'POST /admin/organizations/:organizationId/offboarding/execute',
-      httpMethod: 'POST',
-      httpStatus: 200,
-      metadata: {
-        phase: row.phase,
-        status: row.status,
-        phasesCompletedCount: progress.phasesCompleted.length,
-      },
-      level: row.status === OrganizationOffboardingJobStatus.RETRYABLE ? 'WARN' : 'INFO',
+      organizationId,
+      job: row,
+      phase: row.phase,
+      success: row.phase === 'READY_FOR_ARCHIVE',
+      reasonCode: row.lastErrorCode,
+      leaseFence: parseExecutionProgress(row.progressJson).executionLease?.fence,
+      summary: true,
     });
 
     return jobToView(row, false);
   }
 
-  private async claimJob(
+  private async acquireExecutionLease(
     organizationId: string,
     request: OrganizationOffboardExecuteRequest,
     actorUserId: string,
-  ): Promise<JobRow> {
-    return this.prisma.$transaction(async (tx) => {
+  ): Promise<{ job: JobRow; progress: OrganizationOffboardingExecutionProgress; leaseToken: string }> {
+    const job = await this.prisma.$transaction(async (tx) => {
       await acquirePgAdvisoryXactLock(tx, organizationOffboardingExecuteLockKey(organizationId));
-      const job = await tx.organizationOffboardingJob.findFirst({
+      const row = await tx.organizationOffboardingJob.findFirst({
         where: {
           organizationId,
           status: { in: [...ORGANIZATION_OFFBOARDING_ACTIVE_JOB_STATUSES] },
         },
         orderBy: { createdAt: 'desc' },
       });
-      if (!job) {
+      if (!row) {
         throw new NotFoundException({
           code: ORGANIZATION_OFFBOARDING_NO_PREPARED_JOB_CODE,
           message: 'No prepared offboarding job exists for this organization',
         });
       }
 
-      const progress = parseExecutionProgress(job.progressJson);
+      let progress = parseExecutionProgress(row.progressJson);
+
       if (
         progress.execution?.idempotencyKey &&
         progress.execution.idempotencyKey !== request.idempotencyKey
@@ -197,21 +240,80 @@ export class OrganizationOffboardingExecutionService {
         });
       }
 
-      const nextProgress: OrganizationOffboardingExecutionProgress = {
-        ...progress,
-        execution: {
-          idempotencyKey: request.idempotencyKey,
-          claimedAt: progress.execution?.claimedAt ?? new Date().toISOString(),
-          actorUserId,
-          lastRunAt: new Date().toISOString(),
-        },
-      };
+      const leaseActive = isExecutionLeaseActive(progress);
+      if (
+        leaseActive &&
+        progress.executionLease?.executionIdempotencyKey !== request.idempotencyKey
+      ) {
+        throw new ConflictException({
+          code: ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
+          message: 'An execution lease is already held for this organization',
+          expiresAt: progress.executionLease?.expiresAt,
+        });
+      }
+
+      if (
+        !leaseActive ||
+        progress.executionLease?.executionIdempotencyKey === request.idempotencyKey
+      ) {
+        progress = mintExecutionLease(
+          {
+            ...progress,
+            execution: {
+              idempotencyKey: request.idempotencyKey,
+              claimedAt: progress.execution?.claimedAt ?? new Date().toISOString(),
+              actorUserId,
+              lastRunAt: new Date().toISOString(),
+            },
+          },
+          request.idempotencyKey,
+        );
+      }
 
       return tx.organizationOffboardingJob.update({
-        where: { id: job.id },
-        data: { progressJson: toProgressJson(nextProgress) },
+        where: { id: row.id },
+        data: { progressJson: toProgressJson(progress) },
       });
     });
+
+    const progress = parseExecutionProgress(job.progressJson);
+    const leaseToken = progress.executionLease?.token;
+    if (!leaseToken) {
+      throw new ConflictException({
+        code: ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
+        message: 'Failed to acquire execution lease',
+      });
+    }
+    return { job, progress, leaseToken };
+  }
+
+  private async assertHoldsLease(jobId: string, leaseToken: string): Promise<void> {
+    const row = await this.prisma.organizationOffboardingJob.findUnique({
+      where: { id: jobId },
+      select: { progressJson: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Offboarding job not found');
+    }
+    const progress = parseExecutionProgress(row.progressJson);
+    if (progress.executionLease?.token !== leaseToken) {
+      throw new ConflictException({
+        code: ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_CONFLICT_CODE,
+        message: 'Execution lease lost — stale executor fenced out',
+      });
+    }
+  }
+
+  private async releaseLease(
+    jobId: string,
+    progress: OrganizationOffboardingExecutionProgress,
+  ): Promise<OrganizationOffboardingExecutionProgress> {
+    const cleared = releaseExecutionLease(progress);
+    await this.prisma.organizationOffboardingJob.update({
+      where: { id: jobId },
+      data: { progressJson: toProgressJson(cleared) },
+    });
+    return cleared;
   }
 
   private async persistJob(
@@ -232,6 +334,41 @@ export class OrganizationOffboardingExecutionService {
     });
   }
 
+  private async recordPhaseAudit(input: {
+    actorUserId: string;
+    organizationId: string;
+    job: JobRow;
+    phase: string;
+    success: boolean;
+    reasonCode: string | null;
+    leaseFence?: number;
+    summary?: boolean;
+  }): Promise<void> {
+    await this.masterAudit.record({
+      auditAction: input.success
+        ? MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION
+        : MasterAdminAuditAction.PRIVILEGED_MUTATION_DENIED,
+      actorUserId: input.actorUserId,
+      targetOrganizationId: input.organizationId,
+      entityId: input.job.id,
+      correlationId: input.job.correlationId,
+      description: input.summary
+        ? 'Organization offboarding execution run finished'
+        : `Organization offboarding execution phase ${input.phase}`,
+      reasonCode: input.reasonCode ?? (input.success ? 'ORG_OFFBOARDING_EXECUTION_PHASE_OK' : null),
+      route: 'POST /admin/organizations/:organizationId/offboarding/execute',
+      httpMethod: 'POST',
+      httpStatus: input.success ? 200 : 409,
+      metadata: {
+        phase: input.phase,
+        jobStatus: input.job.status,
+        leaseFence: input.leaseFence ?? null,
+        summary: input.summary ?? false,
+      },
+      level: input.success ? 'INFO' : 'WARN',
+    });
+  }
+
   private async runPhase(ctx: {
     phase: OrganizationOffboardingExecutionPhase;
     job: JobRow;
@@ -244,12 +381,14 @@ export class OrganizationOffboardingExecutionService {
     status: OrganizationOffboardingJobStatus;
     lastErrorCode: string | null;
     halt: boolean;
+    phaseSuccess: boolean;
   }> {
     const { phase, job, organizationId, actorUserId } = ctx;
     let progress = ctx.progress;
     let status: OrganizationOffboardingJobStatus = ctx.job.status;
     let lastErrorCode: string | null = null;
     let halt = false;
+    let phaseSuccess = false;
 
     switch (phase) {
       case 'REVALIDATE': {
@@ -266,16 +405,16 @@ export class OrganizationOffboardingExecutionService {
         );
         if (blocking.length > 0) {
           return {
-            progress: {
-              ...progress,
-              phasesCompleted: [...new Set([...progress.phasesCompleted, phase])],
-            },
+            progress,
             phase,
             status: OrganizationOffboardingJobStatus.RETRYABLE,
             lastErrorCode: ORGANIZATION_OFFBOARDING_EXECUTION_REVALIDATE_BLOCKED_CODE,
             halt: true,
+            phaseSuccess: false,
           };
         }
+        progress = withPhaseCompleted(progress, phase);
+        phaseSuccess = true;
         break;
       }
       case 'SUSPEND': {
@@ -293,6 +432,7 @@ export class OrganizationOffboardingExecutionService {
             status: OrganizationOffboardingJobStatus.RETRYABLE,
             lastErrorCode: 'INVALID_ORGANIZATION_STATUS',
             halt: true,
+            phaseSuccess: false,
           };
         }
         if (org.status === OrganizationStatus.ACTIVE) {
@@ -310,28 +450,33 @@ export class OrganizationOffboardingExecutionService {
             suspend: { completedAt: new Date().toISOString(), priorStatus: 'SUSPENDED' },
           };
         }
+        progress = withPhaseCompleted(progress, phase);
+        phaseSuccess = true;
         break;
       }
       case 'REVOKE_ORG_SESSIONS': {
-        const revokedRefreshTokenCount =
-          await this.refreshTokens.revokeAllActiveForOrganization(organizationId);
-        const memberships = await this.prisma.organizationMembership.findMany({
-          where: { organizationId },
-          select: { id: true },
-        });
-        for (const membership of memberships) {
-          await this.prisma.organizationMembership.update({
-            where: { id: membership.id },
+        if (!progress.sessions?.completedAt) {
+          const revokedRefreshTokenCount =
+            await this.refreshTokens.revokeAllActiveForOrganization(organizationId);
+          const memberships = await this.prisma.organizationMembership.findMany({
+            where: { organizationId },
+            select: { id: true },
+          });
+          await this.prisma.organizationMembership.updateMany({
+            where: { organizationId, id: { in: memberships.map((m) => m.id) } },
             data: { membershipVersion: { increment: 1 } },
           });
+          progress = {
+            ...progress,
+            sessions: {
+              completedAt: new Date().toISOString(),
+              revokedRefreshTokenCount,
+              membershipVersionsBumped: memberships.length,
+            },
+          };
         }
-        progress = {
-          ...progress,
-          sessions: {
-            revokedRefreshTokenCount,
-            membershipVersionsBumped: memberships.length,
-          },
-        };
+        progress = withPhaseCompleted(progress, phase);
+        phaseSuccess = true;
         break;
       }
       case 'VEHICLE_OFFBOARD_BATCH': {
@@ -352,6 +497,14 @@ export class OrganizationOffboardingExecutionService {
               idempotencyKey: `org-offboard-exec:${job.id}:vehicle:${vehicle.id}`,
             });
             processed.add(vehicle.id);
+            progress = {
+              ...progress,
+              vehicleBatch: {
+                processedVehicleIds: [...processed],
+                blockedVehicleId: undefined,
+                blockedReasonCode: undefined,
+              },
+            };
           } catch (error) {
             const reason =
               error instanceof VehicleOnboardingError ? error.code : 'VEHICLE_OFFBOARD_FAILED';
@@ -364,23 +517,17 @@ export class OrganizationOffboardingExecutionService {
               },
             };
             return {
-              progress: {
-                ...progress,
-                vehicleBatch: {
-                  processedVehicleIds: [...processed],
-                  blockedVehicleId: vehicle.id,
-                  blockedReasonCode: reason,
-                },
-                phasesCompleted: [...new Set([...progress.phasesCompleted, phase])],
-              },
+              progress,
               phase,
               status: OrganizationOffboardingJobStatus.RETRYABLE,
               lastErrorCode: ORGANIZATION_OFFBOARDING_VEHICLE_BATCH_BLOCKED_CODE,
               halt: true,
+              phaseSuccess: false,
             };
           }
         }
-        progress = { ...progress, vehicleBatch: { processedVehicleIds: [...processed] } };
+        progress = withPhaseCompleted(progress, phase);
+        phaseSuccess = true;
         break;
       }
       case 'PROVIDER_QUIESCE': {
@@ -393,46 +540,59 @@ export class OrganizationOffboardingExecutionService {
             dimoVehicle: { connectionStatus: 'CONNECTED' },
           },
         });
-        const localQuiesceIncomplete =
+        const hasExternalDependency =
           activeProviderConsentCount > 0 || connectedDimoVehicleCount > 0;
+        let finalizationState: ProviderFinalizationState;
+        if (!hasExternalDependency) {
+          finalizationState = 'NO_EXTERNAL_PROVIDER_DEPENDENCY';
+        } else {
+          finalizationState = 'EXTERNAL_DISCONNECT_PENDING';
+        }
         progress = {
           ...progress,
           providerQuiesce: {
             activeProviderConsentCount,
             connectedDimoVehicleCount,
-            externalProviderDisconnect: 'NOT_AVAILABLE_P6D3',
-            localQuiesceIncomplete,
+            finalizationState,
           },
         };
-        if (localQuiesceIncomplete) {
-          status = OrganizationOffboardingJobStatus.RETRYABLE;
-          lastErrorCode = ORGANIZATION_OFFBOARDING_PROVIDER_QUIESCE_INCOMPLETE_CODE;
-          halt = true;
-          progress = {
-            ...progress,
-            phasesCompleted: [...new Set([...progress.phasesCompleted, 'PROVIDER_QUIESCE' as const])],
+        if (finalizationState === 'EXTERNAL_DISCONNECT_PENDING') {
+          return {
+            progress,
+            phase,
+            status: OrganizationOffboardingJobStatus.RETRYABLE,
+            lastErrorCode: ORGANIZATION_OFFBOARDING_PROVIDER_QUIESCE_INCOMPLETE_CODE,
+            halt: true,
+            phaseSuccess: false,
           };
-          return { progress, phase: 'PROVIDER_QUIESCE', status, lastErrorCode, halt };
         }
+        progress = withPhaseCompleted(progress, phase);
+        phaseSuccess = true;
         break;
       }
       case 'READY_FOR_ARCHIVE': {
+        if (!providerAllowsArchiveAdmission(progress)) {
+          return {
+            progress,
+            phase: 'PROVIDER_QUIESCE',
+            status: OrganizationOffboardingJobStatus.RETRYABLE,
+            lastErrorCode: ORGANIZATION_OFFBOARDING_PROVIDER_QUIESCE_INCOMPLETE_CODE,
+            halt: true,
+            phaseSuccess: false,
+          };
+        }
         progress = {
-          ...progress,
+          ...withPhaseCompleted(progress, phase),
           readyForArchive: { markedAt: new Date().toISOString() },
         };
         status = OrganizationOffboardingJobStatus.RETRYABLE;
         lastErrorCode = null;
+        phaseSuccess = true;
         break;
       }
       default:
         break;
     }
-
-    progress = {
-      ...progress,
-      phasesCompleted: [...new Set([...progress.phasesCompleted, phase])],
-    };
 
     return {
       progress,
@@ -440,6 +600,7 @@ export class OrganizationOffboardingExecutionService {
       status,
       lastErrorCode,
       halt,
+      phaseSuccess,
     };
   }
 }

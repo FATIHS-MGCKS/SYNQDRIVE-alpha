@@ -30,14 +30,20 @@ describe('OrganizationOffboardingExecutionService', () => {
     organizationMembership: {
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     vehicle: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     vehicleProviderConsent: { count: jest.fn().mockResolvedValue(0) },
     organizationOffboardingJob: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
     },
   };
+
+  let heldLeaseToken = 'lease-1';
+  let latestJobRow = { ...jobRow };
 
   const service = new OrganizationOffboardingExecutionService(
     prisma as never,
@@ -49,6 +55,8 @@ describe('OrganizationOffboardingExecutionService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    heldLeaseToken = 'lease-1';
+    latestJobRow = { ...jobRow, progressJson: {} };
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED = '1';
     process.env.NODE_ENV = 'test';
     preflightAssess.mockResolvedValue({
@@ -61,17 +69,47 @@ describe('OrganizationOffboardingExecutionService', () => {
       const tx = {
         $executeRaw: jest.fn().mockResolvedValue(1),
         organizationOffboardingJob: {
-          findFirst: jest.fn().mockResolvedValue(jobRow),
-          update: jest.fn().mockImplementation(async ({ data }) => ({ ...jobRow, ...data })),
+          findFirst: jest.fn().mockResolvedValue({ ...jobRow, progressJson: {} }),
+          update: jest.fn().mockImplementation(async ({ data }) => {
+            const progress = data.progressJson as {
+              executionLease?: { token?: string };
+            };
+            if (progress?.executionLease?.token) {
+              heldLeaseToken = progress.executionLease.token;
+            }
+            latestJobRow = { ...latestJobRow, ...data };
+            return { ...latestJobRow };
+          }),
         },
       };
       return fn(tx);
     });
     prisma.organization.findUnique.mockResolvedValue({ status: OrganizationStatus.ACTIVE });
     prisma.organization.update.mockResolvedValue({ status: OrganizationStatus.SUSPENDED });
-    prisma.organizationOffboardingJob.update.mockImplementation(async ({ data }) => ({
-      ...jobRow,
-      ...data,
+    prisma.organizationOffboardingJob.update.mockImplementation(async ({ data }) => {
+      const progress = data.progressJson as { executionLease?: { token?: string } };
+      if (progress?.executionLease?.token) {
+        heldLeaseToken = progress.executionLease.token;
+      }
+      latestJobRow = { ...latestJobRow, ...data };
+      return { ...latestJobRow };
+    });
+    prisma.organizationOffboardingJob.findUnique.mockImplementation(async () => ({
+      ...latestJobRow,
+      progressJson: {
+        ...(typeof latestJobRow.progressJson === 'object' && latestJobRow.progressJson
+          ? (latestJobRow.progressJson as object)
+          : {}),
+        executionLease: {
+          token: heldLeaseToken,
+          fence: 1,
+          expiresAt: new Date(Date.now() + 60000).toISOString(),
+          executionIdempotencyKey: 'exec-1',
+        },
+      },
+    }));
+    prisma.organizationOffboardingJob.findUniqueOrThrow.mockImplementation(async () => ({
+      ...latestJobRow,
     }));
     prisma.organizationMembership.findMany.mockResolvedValue([{ id: 'm1' }]);
     prisma.organizationMembership.update.mockResolvedValue({ id: 'm1' });

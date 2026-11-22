@@ -1,6 +1,12 @@
 import type { Prisma } from '@prisma/client';
 import type { OrganizationOffboardingExecutionPhase } from './organization-offboarding-execution.phases';
 
+export type ProviderFinalizationState =
+  | 'NO_EXTERNAL_PROVIDER_DEPENDENCY'
+  | 'LOCAL_QUIESCE_CONFIRMED'
+  | 'EXTERNAL_DISCONNECT_PENDING'
+  | 'EXTERNAL_DISCONNECT_CONFIRMED';
+
 export type OrganizationOffboardingExecutionProgress = {
   phasesCompleted: OrganizationOffboardingExecutionPhase[];
   execution?: {
@@ -9,8 +15,18 @@ export type OrganizationOffboardingExecutionProgress = {
     actorUserId: string | null;
     lastRunAt?: string;
   };
+  executionLease?: {
+    token: string;
+    fence: number;
+    expiresAt: string;
+    executionIdempotencyKey: string;
+  };
   suspend?: { completedAt: string; priorStatus: string };
-  sessions?: { revokedRefreshTokenCount: number; membershipVersionsBumped: number };
+  sessions?: {
+    completedAt: string;
+    revokedRefreshTokenCount: number;
+    membershipVersionsBumped: number;
+  };
   vehicleBatch?: {
     processedVehicleIds: string[];
     blockedVehicleId?: string;
@@ -19,8 +35,7 @@ export type OrganizationOffboardingExecutionProgress = {
   providerQuiesce?: {
     activeProviderConsentCount: number;
     connectedDimoVehicleCount: number;
-    externalProviderDisconnect: 'NOT_AVAILABLE_P6D3';
-    localQuiesceIncomplete: boolean;
+    finalizationState: ProviderFinalizationState;
   };
   readyForArchive?: { markedAt: string };
 };
@@ -37,6 +52,12 @@ export function parseExecutionProgress(raw: unknown): OrganizationOffboardingExe
     phasesCompleted,
     ...(record.execution && typeof record.execution === 'object'
       ? { execution: record.execution as OrganizationOffboardingExecutionProgress['execution'] }
+      : {}),
+    ...(record.executionLease && typeof record.executionLease === 'object'
+      ? {
+          executionLease:
+            record.executionLease as OrganizationOffboardingExecutionProgress['executionLease'],
+        }
       : {}),
     ...(record.suspend && typeof record.suspend === 'object'
       ? { suspend: record.suspend as OrganizationOffboardingExecutionProgress['suspend'] }
