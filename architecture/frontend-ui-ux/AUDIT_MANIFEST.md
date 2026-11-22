@@ -10,11 +10,11 @@
 | **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` (code inspected for UI contracts) |
-| **REPO_AUDIT_BASELINE_SHA** | `413175e8ca72355764a3d47936ad7eff78d415aa` |
-| **AUDIT_BRANCH_SHA** | `0fca3b56332566ec96c726ffab4ca13e4b339f59` (PR #2490 documentation closeout commit) |
-| **VALIDATION_RUN_SHA** | `0fca3b56332566ec96c726ffab4ca13e4b339f59` (last green `validate-graph.sh` + registry on branch) |
-| **PRIOR_READ_ONLY_AUDIT_SHA** | `01bd08a4cca0a846441f5a96d12d93fca9ba1fb8` (Cloud Agent UI/UX audit — reconciled where code unchanged) |
+| **ORIGIN_MAIN_SHA** | `0d39a6bc0acb0c6fd7cfe7989337b97441c2fbd6` (code inspected for UI contracts) |
+| **REPO_AUDIT_BASELINE_SHA** | `0d39a6bc0acb0c6fd7cfe7989337b97441c2fbd6` |
+| **AUDIT_BRANCH_SHA** | `0d39a6bc0acb0c6fd7cfe7989337b97441c2fbd6` (PR #2490 documentation closeout commit) |
+| **VALIDATION_RUN_SHA** | `0d39a6bc0acb0c6fd7cfe7989337b97441c2fbd6` (last green `validate-graph.sh` + registry on branch) |
+| **PRIOR_READ_ONLY_AUDIT_SHA** | `0d39a6bc0acb0c6fd7cfe7989337b97441c2fbd6` (Cloud Agent UI/UX audit — reconciled where code unchanged) |
 | **PRODUCTION_AUDITED_AT** | `N/A` |
 | **PRODUCTION_ACCESS** | `PRODUCTION_ACCESS_UNAVAILABLE` (task forbids Production writes; no owner-authorized UI browser audit) |
 | **PRODUCTION_RELEASE_SHA** | `UNKNOWN` |
