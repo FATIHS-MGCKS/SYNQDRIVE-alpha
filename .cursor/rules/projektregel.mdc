@@ -1,12 +1,8 @@
 ---
 alwaysApply: true
----
-
----
 description: SynqDrive project-wide engineering and architecture rules
 globs:
   - "**/*"
-alwaysApply: true
 ---
 
 You are working inside the SynqDrive codebase.
@@ -181,14 +177,13 @@ When working on UI/UX/design tasks:
 
 ## 6) Frontend rules
 
-The primary frontend stack is:
-- TypeScript
-- Node.js
-- Next.js App Router
+The primary frontend stack is (see `frontend/package.json`):
 - React
+- Vite
+- TypeScript
+- Tailwind CSS
 - shadcn/ui
 - Radix UI
-- Tailwind CSS
 
 You should work at an expert level in this stack.
 
