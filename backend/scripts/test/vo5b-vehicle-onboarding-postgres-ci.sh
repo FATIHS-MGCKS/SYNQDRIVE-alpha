@@ -12,6 +12,7 @@ export VO5C_P1_OFFBOARD_PG=1
 export VO5C_P4A_OFFBOARD_HTTP_PG=1
 export VO5C_D4_D5_PG=1
 export VO49_SOURCE_ADOPTION_PG=1
+export V2B_HM_ONLY_CANONICAL_PG=1
 
 parse_database_url() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -58,3 +59,4 @@ npm run test:vehicle-onboarding:vo5c-p1:postgres
 npm run test:vehicle-onboarding:vo5c-p4a:offboard-http:postgres
 npm run test:vehicle-onboarding:vo5c-d4-d5:postgres
 npm run test:vehicle-onboarding:vo49:postgres
+npm run test:vehicle-onboarding:v2b-hm-only-pg03:postgres

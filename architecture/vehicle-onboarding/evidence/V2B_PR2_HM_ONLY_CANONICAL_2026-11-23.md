@@ -13,7 +13,7 @@
 - **Recovery hardening:** no fabricated HV battery defaults; async document substantiation for high-trust battery sources (CONFIRMED/APPLIED + HV capacity match); `serviceEventId` rejected on HM ingress; capture `updateIdentityOperatorFuelType`; JWT `actorUserId`; canonical-only idempotent replay (legacy REGISTERED blocks canonical replay).
 - **PR #2509 mismatch:** GitHub associated V2B title with Organizations P4 branch — use NEW draft PR on `cursor/vehicles-v2b-pr2-hm-only-canonical-44c2`.
 - Unit specs: orchestration, idempotent replay, readiness fail-closed, tenant/VIN guards; legacy routing specs unchanged (flag OFF).
-- PG-03: `PLACEHOLDER_NOT_E2E_VERIFIED` — real PostgreSQL E2E in V2B-PR3 only (`V2B_HM_ONLY_CANONICAL_PG=1`).
+- PG-03: superseded by V2B-PR3 — see [`V2B_PR3_PG03_HM_ONLY_CANONICAL_2026-11-23.md`](V2B_PR3_PG03_HM_ONLY_CANONICAL_2026-11-23.md).
 
 ## Explicit non-effects
 

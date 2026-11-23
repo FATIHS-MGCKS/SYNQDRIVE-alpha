@@ -198,6 +198,10 @@ export interface RegisterHmOnlyVehicleDto {
   notes?: string;
   mileageKm?: number;
   fuelType?: string;
+  /** Operator capture — required on HM_ONLY canonical onboarding (provider snapshot has no model). */
+  model?: string;
+  /** Operator capture — required on HM_ONLY canonical onboarding (provider snapshot has no year). */
+  year?: number;
   vehicleType?: string;
   /**
    * Optional HV usable capacity (kWh). Persisted only together with
