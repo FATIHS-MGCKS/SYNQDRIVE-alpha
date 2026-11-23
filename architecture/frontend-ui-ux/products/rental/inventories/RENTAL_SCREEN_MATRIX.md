@@ -39,8 +39,8 @@
 | vehicle-tasks | `VehicleTasksView` | CONFIRMED | `components/VehicleTasksView.tsx` |
 | vehicle-requirements | tab | CONFIRMED | `components/vehicle-detail/VehicleRequirementsTab.tsx` |
 | connectivity | tab | CONFIRMED | `components/vehicle-detail/VehicleConnectivityTab.tsx` |
-| whatsapp-business | settings / communication | INFERRED | `components/whatsapp/WhatsAppBusinessSettings.tsx` (**PARTIAL** — full view union not re-parsed) |
-| ai-voice-assistant | communication route | INFERRED | `components/communication-center/legacy-communication-navigation.ts` (**PARTIAL**) |
+| whatsapp-business | — (legacy URL redirect) | CONFIRMED | `components/communication-center/legacy-communication-navigation.ts` → `communication-center` (UX-007) |
+| ai-voice-assistant | — (legacy URL redirect) | CONFIRMED | same + `components/voice-assistant/voice-assistant-navigation.ts` (URL parse only) |
 
 ## Vehicle detail — nine tabs (CONFIRMED, UX-003)
 

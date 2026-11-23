@@ -93,6 +93,11 @@ import {
   redirectLegacyCommunicationRoute,
   resolveLegacyCommunicationRoute,
 } from './components/communication-center/legacy-communication-navigation';
+import {
+  type RentalCurrentView,
+  isRentalCurrentView,
+  rentalCurrentViewFromLegacyResolution,
+} from './lib/rental-current-view';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
@@ -231,11 +236,11 @@ function RentalAppContent() {
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'connectivity' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant' | 'communication-center'>(() => {
+  const [currentView, setCurrentView] = useState<RentalCurrentView>(() => {
     if (typeof window !== 'undefined') {
       const legacy = resolveLegacyCommunicationRoute(window.location.search);
       if (legacy) {
-        return legacy.view === 'workflow-automation' ? 'workflow-automation' : COMMUNICATION_CENTER_VIEW;
+        return rentalCurrentViewFromLegacyResolution(legacy);
       }
       if (parseCommunicationCenterViewFromUrl(window.location.search)) {
         return COMMUNICATION_CENTER_VIEW;
@@ -265,20 +270,22 @@ function RentalAppContent() {
     if (typeof window === 'undefined') return;
     const resolved = redirectLegacyCommunicationRoute(window.location.search, { replace: true });
     if (resolved) {
-      setCurrentView(resolved.view as typeof currentView);
+      setCurrentView(rentalCurrentViewFromLegacyResolution(resolved));
     }
   }, []);
 
   useEffect(() => {
-    if (!isLegacyCommunicationView(currentView)) return;
-    const resolved = redirectLegacyCommunicationRoute(
-      window.location.search || `?view=${currentView}`,
-      { replace: true },
-    );
-    if (resolved) {
-      setCurrentView(resolved.view as typeof currentView);
-    }
-  }, [currentView]);
+    const onPopState = () => {
+      const viewParam = new URLSearchParams(window.location.search).get('view');
+      if (!isLegacyCommunicationView(viewParam)) return;
+      const resolved = redirectLegacyCommunicationRoute(window.location.search, { replace: true });
+      if (resolved) {
+        setCurrentView(rentalCurrentViewFromLegacyResolution(resolved));
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   useEffect(() => {
     if (currentView !== 'support' || !helpCenterAttempted) return;
@@ -753,7 +760,9 @@ function RentalAppContent() {
         const match = fleetVehicles.find((vehicle) => vehicle.id === entry.returnEntityId);
         if (match) setSelectedVehicle(match);
       }
-      setCurrentView(view as typeof currentView);
+      if (isRentalCurrentView(view)) {
+        setCurrentView(view);
+      }
     },
     [fleetVehicles],
   );
@@ -762,7 +771,7 @@ function RentalAppContent() {
     if (isLegacyCommunicationView(view)) {
       const resolved = redirectLegacyCommunicationRoute(`?view=${view}`, { replace: true });
       if (resolved) {
-        setCurrentView(resolved.view as typeof currentView);
+        setCurrentView(rentalCurrentViewFromLegacyResolution(resolved));
         return;
       }
     }
@@ -793,7 +802,8 @@ function RentalAppContent() {
         { replace: true },
       );
     }
-    setCurrentView(view as typeof currentView);
+    if (!isRentalCurrentView(view)) return;
+    setCurrentView(view);
     try {
       if (view === 'settings') {
         sessionStorage.setItem(RENTAL_SETTINGS_VIEW_KEY, '1');

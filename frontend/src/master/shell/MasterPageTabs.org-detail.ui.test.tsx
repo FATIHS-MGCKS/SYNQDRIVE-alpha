@@ -3,12 +3,12 @@ import { act, createElement, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ORG_DETAIL_TABS } from '../organizations/types';
+import { ORG_DETAIL_TABS, type OrgDetailTab } from '../organizations/types';
 import { MasterPageTabs } from './MasterPageTabs';
 
 function OrgDetailTabsHarness() {
-  const [activeId, setActiveId] = useState(ORG_DETAIL_TABS[0].id);
-  return createElement(MasterPageTabs, {
+  const [activeId, setActiveId] = useState<OrgDetailTab>(ORG_DETAIL_TABS[0].id);
+  return createElement(MasterPageTabs<OrgDetailTab>, {
     tabs: ORG_DETAIL_TABS.map((t) => ({ id: t.id, label: t.label })),
     activeId,
     onChange: setActiveId,

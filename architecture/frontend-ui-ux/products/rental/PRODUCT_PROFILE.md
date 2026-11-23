@@ -28,7 +28,9 @@ Day-to-day **org operations**: fleet, bookings, customers, finance, vehicle deta
 
 ## View inventory (CONFIRMED from type union — not exhaustive sub-tabs)
 
-`overview`, `connectivity`, `trips`, `dashboard`, `bookings`, `health-errors`, `fleet`, `damages`, `documents`, `customers`, `customer-detail`, `tasks`, `vendor-detail`, `invoices`, `fines`, `price-tariffs`, `customer-payments`, `financial-insights`, `settings`, `new-booking`, `stations`, `station-detail`, `vehicle-bookings`, `vehicle-tasks`, `vehicle-requirements`, `document-upload`, `ai-assistant`, `support`, `help-center`, `data-analyse`, `workflow-automation`, `whatsapp-business`, `parts-accessories`, `insurances`, `ai-voice-assistant`, `communication-center`.
+`overview`, `connectivity`, `trips`, `dashboard`, `bookings`, `health-errors`, `fleet`, `damages`, `documents`, `customers`, `customer-detail`, `tasks`, `vendor-detail`, `invoices`, `fines`, `price-tariffs`, `customer-payments`, `financial-insights`, `settings`, `new-booking`, `stations`, `station-detail`, `vehicle-bookings`, `vehicle-tasks`, `vehicle-requirements`, `document-upload`, `ai-assistant`, `support`, `help-center`, `data-analyse`, `workflow-automation`, `parts-accessories`, `insurances`, `communication-center`.
+
+**Legacy URL-only (not active view state):** `whatsapp-business`, `ai-voice-assistant` — `legacy-communication-navigation.ts` (UX-007).
 
 ## Patterns & density (reference highlights — CONFIRMED samples)
 
