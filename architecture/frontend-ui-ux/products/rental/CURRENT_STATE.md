@@ -1,5 +1,7 @@
 # Current State — Rental UI/UX
 
+**Baseline (2026-11-23):** [`../../evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](../../evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md) (RENTUX section).
+
 **Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** infra VERIFIED @ `1e6a267c`; auth UI **BLOCKED** (P8, no approved session)  
 **Route:** `/rental` · **Epistemic:** CONFIRMED where `rental/App.tsx` + `Sidebar.tsx` inspected; PARTIAL for every nested tab.
 

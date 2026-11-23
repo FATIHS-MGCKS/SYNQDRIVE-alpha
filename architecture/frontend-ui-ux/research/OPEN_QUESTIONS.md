@@ -2,7 +2,7 @@
 
 | ID | Question | Blocks AUTHORITY_ACTIVE? |
 |----|----------|--------------------------|
-| FEUX-OQ-PROD-AUTH-001 | Owner-approved read-only authenticated UI verification on Production without ad-hoc sessions? | Yes (functional leg) — P8 **BLOCKED** without session; P9B server foundation merged; **P9C** provision + session |
+| FEUX-OQ-PROD-AUTH-001 | Owner-approved authenticated UI verification on Production? | Yes (functional leg) — P8 **BLOCKED**; P9/P9C **RETIRED_BY_OWNER_DECISION** (no audit harness) |
 
 1. Which Figma (if any) is production-aligned for Rental vs Master at redesign kickoff? (**UNKNOWN**)
 2. Should Master remain query-param SPA or adopt path-segment routes for shareable control-plane URLs? (Product decision — **not decided**)
