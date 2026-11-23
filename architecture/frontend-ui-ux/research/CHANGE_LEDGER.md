@@ -21,3 +21,4 @@
 | 2026-11-23 | MAUX-UX-005 | Organization detail responsive tabs; shared MasterPageTabs scroll visibility | MAUX-EVID-UX005-2026-11-23 |
 | 2026-11-23 | FEUX-UX-006 | Tri-product navigation/URL contract (Master query, Rental hybrid, Operator paths) | FEUX-EVID-UX006-2026-11-23 |
 | 2026-11-23 | RENTUX-UX-007 | Legacy communication view ids removed from active Rental view union | RENTUX-EVID-UX007-2026-11-23 |
+| 2026-11-23 | OPUX-UX-008 | Operator deep-link route matching + `/operator/scan` registration | OPUX-EVID-UX008-2026-11-23 |
