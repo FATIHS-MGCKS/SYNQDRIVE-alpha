@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-11-23 | **V2B-PR2 evidence contract** — async document substantiation for high-trust HV sources; reject serviceEventId on HM ingress | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md` |
 | 2026-11-23 | **V2B-PR2 final hardening** — governed HV evidence (no forged sources); capture identity fuel; actor from JWT; canonical vs legacy resume; main merge | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md` |
 | 2026-11-23 | **V2B-PR2 recovery hardening** — remove synthetic HV battery defaults; capture-only identity path; PG-03 labelled NOT_E2E; new draft PR on vehicles branch (PR #2509 identity mismatch) | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md` |
 | 2026-11-23 | **V2B-PR2 HM_ONLY canonical implementation** — `HmOnlyCanonicalRegistrationService`; convergence delegation; `VehicleOnboardingActivationRailModule` for HM→convergence wiring without full VO graph; default-OFF flag; unit tests + PG-03 placeholder (skipped) | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md`; no production cutover |

@@ -3,7 +3,7 @@ import { buildGovernedHmOnlyHvBatteryReference } from './hm-only-canonical-batte
 
 const base = { hmVehicleId: 'hm-1', organizationId: 'org-a' };
 
-describe('hm-only-canonical-battery-evidence', () => {
+describe('hm-only-canonical-battery-evidence (sync test helper)', () => {
   it('rejects forged MANUFACTURER_VERIFIED without document evidence', () => {
     expect(
       buildGovernedHmOnlyHvBatteryReference({
@@ -34,17 +34,35 @@ describe('hm-only-canonical-battery-evidence', () => {
     ).toBeUndefined();
   });
 
-  it('accepts governed reference with document evidence', () => {
+  it('rejects serviceEventId (unsupported on onboarding contract)', () => {
+    expect(
+      buildGovernedHmOnlyHvBatteryReference({
+        ...base,
+        hvBatteryUsableCapacityKwh: 64,
+        hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
+        hvBatteryReferenceServiceEventId: 'evt-1',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('sync builder never returns high-trust sources (async substantiation required)', () => {
+    expect(
+      buildGovernedHmOnlyHvBatteryReference({
+        ...base,
+        hvBatteryUsableCapacityKwh: 64,
+        hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+        hvBatteryReferenceDocumentId: 'doc-evidence-1',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('sync builder allows MANUAL_VERIFIED shape when document id present', () => {
     const ref = buildGovernedHmOnlyHvBatteryReference({
       ...base,
       hvBatteryUsableCapacityKwh: 64,
-      hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+      hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
       hvBatteryReferenceDocumentId: 'doc-evidence-1',
     });
-    expect(ref).toMatchObject({
-      capacityKwh: 64,
-      source: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
-      documentId: 'doc-evidence-1',
-    });
+    expect(ref?.source).toBe(BatteryReferenceCapacitySource.MANUAL_VERIFIED);
   });
 });

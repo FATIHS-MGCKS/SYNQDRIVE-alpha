@@ -17,6 +17,7 @@ import {
   buildHmOnlyTechnicalBaselineDraft,
   normalizeHmOnlyFuelType,
 } from './hm-only-canonical-registration.mapper';
+import { resolveHmOnlyHvBatteryReference } from './hm-only-canonical-battery-document-substantiation';
 import {
   assertHmOnlyCanonicalProviderRecord,
   buildHmOnlySuccessResult,
@@ -128,8 +129,12 @@ export class HmOnlyCanonicalRegistrationService {
       );
     }
 
-    const technicalDraft = buildHmOnlyTechnicalBaselineDraft(input.dto);
-  await this.assertHmBatteryEvidenceTenantScope(input.dto.organizationId, technicalDraft.hvBatteryReference?.documentId);
+    const hvBattery = await resolveHmOnlyHvBatteryReference(
+      this.prisma,
+      input.dto.organizationId,
+      input.dto,
+    );
+    const technicalDraft = buildHmOnlyTechnicalBaselineDraft(hvBattery);
     const technicalResult = await runVehicleOnboardingHttp(() =>
       this.capture.updateTechnicalBaseline({
         organizationId: input.dto.organizationId,
@@ -193,25 +198,5 @@ export class HmOnlyCanonicalRegistrationService {
       input.dto.hmVehicleId,
       hmRecord.vin,
     );
-  }
-
-  private async assertHmBatteryEvidenceTenantScope(
-    organizationId: string,
-    documentId: string | null | undefined,
-  ): Promise<void> {
-    if (!documentId?.trim()) {
-      return;
-    }
-    const doc = await this.prisma.vehicleDocumentExtraction.findUnique({
-      where: { id: documentId.trim() },
-      select: { organizationId: true, vehicleId: true },
-    });
-    if (!doc || doc.organizationId !== organizationId || doc.vehicleId != null) {
-      throw new VehicleOnboardingError(
-        'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH',
-        'Battery reference document is not available for this organization onboarding case',
-        { documentId },
-      );
-    }
   }
 }

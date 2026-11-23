@@ -51,7 +51,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 | Shell | `MasterAdminShell` | Master-local | CONFIRMED |
 | Layout | `AppShell` (`components/shell`) | Shared foundation | CONFIRMED |
 | Width | `PageContainer` (`standard`/`wide`/`full`) | Master-local wrapper | CONFIRMED |
-| Header pattern | `MasterPageHeader`, `MasterPageTabs`, `MasterPageSection` | Master-local | CONFIRMED |
+| Header pattern | `MasterPageHeader`, `MasterPageTabs`, `MasterPageSection` | Master-local | CONFIRMED — engineering hubs use `variant="context"` for visible descriptions (UX-010) |
 | Legacy tabs | `sq-tab-bar`, muted pills in some engineering views | Master-local debt | CONFIRMED |
 
 **Layout (UX-001 corrected):** `product-management` uses in-view `PageContainer variant="standard"` in `ProductManagementView.tsx`; `App.tsx` intentionally omits an outer wrapper to avoid double padding.

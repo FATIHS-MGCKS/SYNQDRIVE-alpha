@@ -325,6 +325,7 @@ function VsiMasterIntelligenceContent() {
   return (
     <>
       <MasterPageHeader
+        variant="context"
         title={t('master.intelligence.vsi.title' as never)}
         description={t('master.intelligence.vsi.description' as never)}
       />

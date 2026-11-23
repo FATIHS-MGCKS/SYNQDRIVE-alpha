@@ -10,7 +10,7 @@
 - `VehicleRegistrationConvergenceService.registerHmOnlyCanonical` delegates to orchestrator when flag routes to convergence port.
 - Idempotency key: `hm-only-canonical-register:v1:{organizationId}:{hmVehicleId}` with resume for REGISTERED mirror + completed case.
 - Nest wiring: `VehicleOnboardingActivationRailModule` + slim `VehicleRegistrationConvergenceModule` (HM does not import full VO graph).
-- **Recovery hardening:** no fabricated HV battery defaults; `evaluateReferenceCapacityVerify` + mandatory document/serviceEvent for HV references; capture `updateIdentityOperatorFuelType`; JWT `actorUserId`; canonical-only idempotent replay (legacy REGISTERED blocks canonical replay).
+- **Recovery hardening:** no fabricated HV battery defaults; async document substantiation for high-trust battery sources (CONFIRMED/APPLIED + HV capacity match); `serviceEventId` rejected on HM ingress; capture `updateIdentityOperatorFuelType`; JWT `actorUserId`; canonical-only idempotent replay (legacy REGISTERED blocks canonical replay).
 - **PR #2509 mismatch:** GitHub associated V2B title with Organizations P4 branch — use NEW draft PR on `cursor/vehicles-v2b-pr2-hm-only-canonical-44c2`.
 - Unit specs: orchestration, idempotent replay, readiness fail-closed, tenant/VIN guards; legacy routing specs unchanged (flag OFF).
 - PG-03: `PLACEHOLDER_NOT_E2E_VERIFIED` — real PostgreSQL E2E in V2B-PR3 only (`V2B_HM_ONLY_CANONICAL_PG=1`).

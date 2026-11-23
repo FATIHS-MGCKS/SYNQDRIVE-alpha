@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { DocumentExtractionStatus, DocumentExtractionType } from '@prisma/client';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { BatteryReferenceCapacitySource } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
 import { HmOnlyCanonicalRegistrationService } from './hm-only-canonical-registration.service';
@@ -186,12 +187,16 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     expect(technicalCall.body.hvBatteryReference).toBeUndefined();
   });
 
-  it('forwards operator-verified HV reference through technical capture when document scoped to org', async () => {
+  it('forwards substantiated MANUFACTURER_VERIFIED HV reference through capture', async () => {
     const { service, capture, prisma } = buildHarness();
     prisma.vehicleDocumentExtraction = {
       findUnique: jest.fn().mockResolvedValue({
         organizationId: 'org-a',
         vehicleId: null,
+        status: DocumentExtractionStatus.CONFIRMED,
+        effectiveDocumentType: DocumentExtractionType.REGISTRATION_CERTIFICATE,
+        confirmedData: { scope: 'hv', capacityKwh: 64 },
+        extractedData: null,
       }),
     };
     await service.register({
@@ -209,8 +214,25 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
       capacityKwh: 64,
       source: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
       documentId: 'doc-org-a',
+      serviceEventId: null,
     });
     expect(capture.updateIdentityOperatorFuelType).toHaveBeenCalled();
+  });
+
+  it('rejects hvBatteryReferenceServiceEventId on HM canonical path', async () => {
+    const { service } = buildHarness();
+    await expect(
+      service.register({
+        dto: {
+          hmVehicleId: 'hm-1',
+          organizationId: 'org-a',
+          hvBatteryUsableCapacityKwh: 64,
+          hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
+          hvBatteryReferenceServiceEventId: 'evt-1',
+        },
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_CAPTURE_PAYLOAD' });
   });
 
   it('rejects cross-tenant battery evidence references', async () => {

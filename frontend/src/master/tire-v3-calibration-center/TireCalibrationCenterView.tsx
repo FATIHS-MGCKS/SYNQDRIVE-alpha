@@ -5,7 +5,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { cn } from '../../components/ui/utils';
 import { MasterEmptyState, MasterErrorState, MasterLoadingState } from '../shell/MasterPageStates';
-import { MasterPageHeader, MasterPageSection, MasterPageTabs } from '../shell';
+import { MasterPageHeader, MasterPageSection } from '../shell';
 import { MasterTableShell } from '../shell/MasterTableShell';
 import type {
   TireCalibrationCenterTab,
@@ -196,10 +196,18 @@ export function TireCalibrationCenterView({ organizations }: Props) {
   return (
     <>
       <MasterPageHeader
+        variant="context"
         title={t('master.intelligence.tireCalibration.title' as never)}
         description={t('master.intelligence.tireCalibration.description' as never)}
         actions={
-          <Button type="button" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refresh()}
+            disabled={loading}
+            aria-label={t('master.intelligence.tireCalibration.action.refresh' as never)}
+          >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
@@ -208,14 +216,11 @@ export function TireCalibrationCenterView({ organizations }: Props) {
             <span className="ml-1.5">{t('master.intelligence.tireCalibration.action.refresh' as never)}</span>
           </Button>
         }
-      />
-
-      <MasterPageTabs
         tabs={tabs}
-        activeId={url.tab}
-        onChange={(tab) => syncUrl({ tab })}
-        ariaLabel={t('master.intelligence.tireCalibration.title' as never)}
-        testIdPrefix="tire-calibration"
+        activeTabId={url.tab}
+        onTabChange={(tab) => syncUrl({ tab })}
+        tabsAriaLabel={t('master.intelligence.tireCalibration.title' as never)}
+        tabsTestIdPrefix="tire-calibration"
       />
 
       {error ? (

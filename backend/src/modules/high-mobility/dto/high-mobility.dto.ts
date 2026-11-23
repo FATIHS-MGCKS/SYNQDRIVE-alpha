@@ -206,8 +206,12 @@ export interface RegisterHmOnlyVehicleDto {
   hvBatteryUsableCapacityKwh?: number;
   /** Allowed battery reference source when `hvBatteryUsableCapacityKwh` is set. */
   hvBatteryReferenceSource?: string;
-  /** Document evidence id (org-scoped); required for verification-gated sources on canonical path. */
+  /** Document evidence id (org-scoped onboarding upload); required with capacity on canonical path. */
   hvBatteryReferenceDocumentId?: string;
+  /**
+   * Not supported on HM_ONLY canonical onboarding (technical baseline V2 rejects serviceEventId).
+   * Request is rejected with INVALID_CAPTURE_PAYLOAD if set.
+   */
   hvBatteryReferenceServiceEventId?: string;
 }
 

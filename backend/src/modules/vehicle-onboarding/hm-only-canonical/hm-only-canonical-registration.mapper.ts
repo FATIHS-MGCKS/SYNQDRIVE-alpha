@@ -4,7 +4,7 @@ import type { HighMobilityVehicle } from '@prisma/client';
 import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-document-versions';
 import { resolveFuelTypeStrict } from '../policy/activation-field-resolution';
 import type { VehicleTechnicalBaselineDraftV2 } from '../contracts/vehicle-technical-baseline-draft.v2';
-import { buildGovernedHmOnlyHvBatteryReference } from './hm-only-canonical-battery-evidence';
+import type { VehicleOnboardingHvBatteryReferenceDraft } from '../contracts/vehicle-technical-baseline-draft.v2';
 
 function resolveVehicleType(raw: string | undefined): VehicleType {
   if (!raw?.trim()) {
@@ -46,12 +46,11 @@ export function buildHmOnlyAdminBaselineDraft(
 }
 
 export function buildHmOnlyTechnicalBaselineDraft(
-  dto: RegisterHmOnlyVehicleDto,
+  hvBattery?: VehicleOnboardingHvBatteryReferenceDraft | null,
 ): VehicleTechnicalBaselineDraftV2 {
   const draft: VehicleTechnicalBaselineDraftV2 = {
     version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
   };
-  const hvBattery = buildGovernedHmOnlyHvBatteryReference(dto);
   if (hvBattery) {
     draft.hvBatteryReference = hvBattery;
   }
