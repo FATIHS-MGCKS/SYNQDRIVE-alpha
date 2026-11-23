@@ -52,7 +52,7 @@
 | Keyboard / ARIA | `useRovingTablist` + `vehicle-detail-a11y` tab/panel IDs | CONFIRMED |
 | Panels | `VehicleDetailTabPanel` per view branch in `App.tsx` | CONFIRMED |
 | Mobile touch | `VEHICLE_DETAIL_TAB_TRIGGER_CLASS` (44px min) | CONFIRMED |
-| Active tab scroll-into-view | `vehicle-detail-tab-scroll.ts` (UX-003) | CONFIRMED |
+| Active tab scroll-into-view | `scrollActiveVehicleDetailTabIntoView` (UX-003) | CONFIRMED |
 
 Detail: [`evidence/UX003_VEHICLE_DETAIL_NAVIGATION_2026-11-23.md`](../evidence/UX003_VEHICLE_DETAIL_NAVIGATION_2026-11-23.md).
 
