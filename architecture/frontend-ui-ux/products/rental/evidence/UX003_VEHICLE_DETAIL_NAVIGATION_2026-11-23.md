@@ -1,7 +1,8 @@
 # UX-003 — Rental vehicle detail navigation
 
 **Date:** 2026-11-23  
-**Base SHA:** `b8bfd55cc91b4c42b03c7c543791510c830bdc3c` (predecessor PR #2501 not merged on branch)  
+**Merge:** [#2502](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2502) → `1362a7a7e7bb0e69d654285f1827773529733ec6`
+**Base SHA:** `b4e2761bb6c9cd5f0a6640a4ee5cd519310b72d4` (post UX-001/002 #2501)
 **Verification:** CODE + unit tests; Playwright mobile suite exists (`e2e/vehicle-detail-mobile.spec.ts`) — not re-run in agent (no local app session).
 
 ## Information architecture

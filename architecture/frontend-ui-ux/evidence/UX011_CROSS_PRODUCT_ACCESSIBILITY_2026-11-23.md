@@ -1,6 +1,7 @@
 # UX-011 — Cross-product accessibility audit closeout
 
 **Date:** 2026-11-23  
+**Merge:** [#2512](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2512) → `698db6c0b1d4cfef4c8ea42febe0cfdcd4ee7f85`
 **Base SHA:** `6394587609e761e6774256d5b888c53bb7bcc4ce` (post UX-010 #2511)  
 **Scope:** Bounded risk-based audit — dialogs/sheets + shared tables (MAUX, RENTUX, OPUX, FEUX)  
 **WCAG target:** 2.2 AA where applicable (automated + keyboard subset)  
