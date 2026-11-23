@@ -25,6 +25,8 @@ OperatorShellProvider → Handover/Damage providers → FleetProvider → Operat
 
 Five bottom tabs (`today`, `scan`, `vehicles`, `tasks`, `more`) — see [`inventories/OPERATOR_SCREEN_MATRIX.md`](./inventories/OPERATOR_SCREEN_MATRIX.md).
 
+Deep links and `/operator/scan` route: **CONFIRMED** (code + unit tests, UX-008). Production authenticated refresh on device: **INFERRED** (P8 session blocked).
+
 ## Touch and motion
 
 Safe-area aware padding; glass cards (`OperatorGlassCard`); sheets for destructive/confirm actions. **UNKNOWN:** haptic feedback, offline queues.
@@ -76,4 +78,4 @@ Operator is **not** a shrunken Rental SPA; field workflows are purpose-built. No
 
 ## Deep link and refresh bridges
 
-`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize path/query with shell state (CONFIRMED). Query/path contract documented in [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md) (UX-006).
+`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize path/query with shell state (CONFIRMED). Routes: index + `scan` + `vehicles/:vehicleId` + `bookings/:bookingId` (UX-008). Contract: [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md).

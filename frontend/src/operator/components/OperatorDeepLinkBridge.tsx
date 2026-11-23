@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useOperatorShell } from '../context/OperatorShellContext';
-import { resolveOperatorDeepLink } from '../lib/operatorRoutes';
+import { OPERATOR_BASE_PATH, resolveOperatorDeepLink } from '../lib/operatorRoutes';
 
 /** Applies `/operator` deep-link path + query params to shell state. */
 export function OperatorDeepLinkBridge() {
@@ -15,15 +15,34 @@ export function OperatorDeepLinkBridge() {
   } = useOperatorShell();
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
     const intent = resolveOperatorDeepLink(
       location.pathname,
-      new URLSearchParams(location.search),
+      searchParams,
       {
         vehicleId: params.vehicleId,
         bookingId: params.bookingId,
       },
     );
-    if (!intent) return;
+    if (!intent) {
+      const onOperatorHome =
+        location.pathname === OPERATOR_BASE_PATH ||
+        location.pathname === `${OPERATOR_BASE_PATH}/`;
+      if (onOperatorHome) {
+        const tab = searchParams.get('tab')?.trim();
+        const hasQueryIntent = Boolean(
+          searchParams.get('vehicleId')?.trim() ||
+            searchParams.get('bookingId')?.trim() ||
+            searchParams.get('q')?.trim() ||
+            (tab && ['today', 'scan', 'vehicles', 'tasks', 'more'].includes(tab)),
+        );
+        if (!hasQueryIntent) {
+          setSelectedVehicleId(null);
+          setFocusedBookingId(null);
+        }
+      }
+      return;
+    }
 
     switch (intent.type) {
       case 'vehicle':
@@ -43,6 +62,10 @@ export function OperatorDeepLinkBridge() {
         break;
       case 'tab':
         setActiveTab(intent.tab);
+        if (intent.tab !== 'scan') {
+          setSelectedVehicleId(null);
+          setFocusedBookingId(null);
+        }
         break;
       default:
         break;
