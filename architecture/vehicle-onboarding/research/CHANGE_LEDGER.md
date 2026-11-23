@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-11-22 | **V2B canonical registration convergence plan** — architecture contract, PR sequence, PG matrix, flags/rollback; **no** runtime cutover | VO-EVID-2B-001; VO-DEC-2B-001 PROPOSED; module remains `AUDIT_IN_PROGRESS` |
 | 2026-11-22 | **V2A registration & billing safety foundation** — Characterization spec `v2a-registration-billing-safety.characterization.spec.ts`; evidence `V2A_REGISTRATION_BILLING_SAFETY_2026-11-22.md`; frontend offboard i18n test fix for modular `master.cv.*` shards; **no** registration/billing business-logic cutover | Documents VEH-001/002 safety contracts; module remains `AUDIT_IN_PROGRESS` |
 | 2026-11-22 | **Master Connected Vehicles — DIMO owner handoff UI (P6D4)** — `ConnectedVehicleDetailDrawer` DIMO-Mapping subsection: org-scoped privilege status GET, MFA step-up recheck/handoff POST via `api.admin.organizations.offboarding.*`; no new routes/pages; 9-locale `master.cv.dimoPrivilege.*`; actions only when active offboarding job | Master Admin Connected Vehicles surface; consumes organizations offboarding HTTP (#2489); no provider mutations / flags unchanged |
 | 2026-11-03 | **OEM PATCH optimistic concurrency fix** — explicit `updatedAt` on conditional `updateMany` (lost-update when `@updatedAt` skipped on bulk update); dual-connection PG regression (7 tests) | Master PATCH; evidence `ONEAUTO_OEM_SPEC_PRB_MASTER_API_UI.md` |
