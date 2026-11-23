@@ -5,7 +5,8 @@ import { PLATFORM_PERMISSION_JWT_VALUES } from './platform-permission.constants'
 
 describe('PlatformPermissionService', () => {
   const prisma = {
-    user: { findUnique: jest.fn() },
+    user: { findUnique: jest.fn(), update: jest.fn().mockResolvedValue({}) },
+    organizationMembership: { findFirst: jest.fn().mockResolvedValue(null) },
     userPlatformPermissionGrant: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -98,4 +99,5 @@ describe('PlatformPermissionService', () => {
     await expect(service.hasActiveMasterBillingGrant('inactive-user')).resolves.toBe(false);
     expect(prisma.userPlatformPermissionGrant.findFirst).not.toHaveBeenCalled();
   });
+
 });

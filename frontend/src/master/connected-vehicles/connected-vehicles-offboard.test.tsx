@@ -112,12 +112,23 @@ describe('connected vehicles offboard (VO5C-P2A)', () => {
 
   it('R — native locales define master.cv offboard keys (tr uses en fallback per registry)', () => {
     const locales = ['de', 'en', 'pl', 'fr', 'cs', 'nl', 'es', 'it'];
+    const modularMasterCvPrefixes = [
+      'master.cv.technicalSpecs.',
+      'master.cv.dimoPrivilege.',
+      'master.cv.oemSpecs.',
+    ] as const;
+    const isModularMasterCvKey = (k: string) =>
+      modularMasterCvPrefixes.some((prefix) => k.startsWith(prefix));
     const required = Object.keys(en).filter(
-      (k) => k.startsWith('master.cv.') && !k.startsWith('master.cv.technicalSpecs.'),
+      (k) => k.startsWith('master.cv.') && !isModularMasterCvKey(k),
     );
     const technicalRequired = Object.keys(en).filter((k) =>
       k.startsWith('master.cv.technicalSpecs.'),
     );
+    const dimoPrivilegeRequired = Object.keys(en).filter((k) =>
+      k.startsWith('master.cv.dimoPrivilege.'),
+    );
+    const oemSpecsRequired = Object.keys(en).filter((k) => k.startsWith('master.cv.oemSpecs.'));
     for (const locale of locales) {
       const file = path.join(frontendRoot, `src/i18n/translations/${locale}.ts`);
       const src = readFileSync(file, 'utf8');
@@ -132,6 +143,22 @@ describe('connected vehicles offboard (VO5C-P2A)', () => {
       const specsSrc = readFileSync(specsFile, 'utf8');
       for (const key of technicalRequired) {
         expect(specsSrc).toContain(`'${key}'`);
+      }
+      const dimoFile = path.join(
+        frontendRoot,
+        `src/i18n/translations/master.cv.dimoPrivilege.${locale}.ts`,
+      );
+      const dimoSrc = readFileSync(dimoFile, 'utf8');
+      for (const key of dimoPrivilegeRequired) {
+        expect(dimoSrc).toContain(`'${key}'`);
+      }
+      const oemFile = path.join(
+        frontendRoot,
+        `src/i18n/translations/master.cv.oemSpecs.${locale}.ts`,
+      );
+      const oemSrc = readFileSync(oemFile, 'utf8');
+      for (const key of oemSpecsRequired) {
+        expect(oemSrc).toContain(`'${key}'`);
       }
     }
     const trSrc = readFileSync(path.join(frontendRoot, 'src/i18n/translations/tr.ts'), 'utf8');
