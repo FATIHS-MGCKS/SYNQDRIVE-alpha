@@ -3,6 +3,7 @@
  * Gate: `V2B_HM_ONLY_CANONICAL_PG=1` (disposable CI DB only).
  */
 import {
+  BillingQuantityEventType,
   BusinessType,
   DocumentExtractionStatus,
   DocumentExtractionType,
@@ -80,8 +81,8 @@ async function createApprovedHmMirror(
   return { hmId, vin };
 }
 
-function tenantAccess(orgId: string, actorUserId: string | null = `actor-${orgId.slice(0, 8)}`) {
-  return { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId };
+function tenantAccess(orgId: string) {
+  return { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null };
 }
 
 function iceHmDto(
@@ -223,7 +224,8 @@ function registryBillingProcessor(prisma: PrismaClient) {
     });
     const ci = readConnectionIdentityFromLinkMetadata(hmLink.metadata);
     expect(ci?.verifiedModality).toBeTruthy();
-    expect(ci?.providerSourceLinkId).toBe(sourceRef.id);
+    expect(ci?.providerSourceLinkId).toBe(hmLink.id);
+    expect(ci?.preActivationProviderSourceRefId).toBe(sourceRef.id);
 
     const outbox = await prisma.vehicleRegistryLifecycleOutbox.findMany({
       where: { organizationId: orgId, idempotencyKey: activationOutboxIdempotencyKey(caseRow.id) },
@@ -286,12 +288,16 @@ function registryBillingProcessor(prisma: PrismaClient) {
     const processor = registryBillingProcessor(prisma);
     await processor.processRow(outbox.id);
     await processor.processRow(outbox.id);
-    const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.id);
-    expect(
-      await prisma.billingQuantityEvent.count({
-        where: { organizationId: orgId, idempotencyKey: billingKey },
-      }),
-    ).toBe(1);
+    const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.eventId);
+    const events = await prisma.billingQuantityEvent.findMany({
+      where: {
+        organizationId: orgId,
+        vehicleId: result.synqdriveVehicleId,
+        eventType: BillingQuantityEventType.VEHICLE_CONNECTED,
+      },
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]?.idempotencyKey).toBe(billingKey);
   });
 
   it('PG-03-D2 non-billable org (no base plan): zero quantity events after outbox processing', async () => {
@@ -309,7 +315,7 @@ function registryBillingProcessor(prisma: PrismaClient) {
     });
     const processor = registryBillingProcessor(prisma);
     await processor.processRow(outbox.id);
-    const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.id);
+    const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.eventId);
     expect(
       await prisma.billingQuantityEvent.count({
         where: { organizationId: orgId, idempotencyKey: billingKey },
@@ -485,6 +491,49 @@ function registryBillingProcessor(prisma: PrismaClient) {
     });
     expect(outboxAfter).toBe(outboxBefore);
     expect(outboxAfter).toBe(1);
+  });
+
+  it('PG-03-P blocks legacy REGISTERED HM with linked vehicle and no completed canonical case', async () => {
+    const orgId = await createOrg(prisma);
+    const legacyVehicleId = randomUUID();
+    const vin = `WBA${randomUUID().replace(/-/g, '').slice(0, 14)}`;
+    await prisma.vehicle.create({
+      data: {
+        id: legacyVehicleId,
+        organizationId: orgId,
+        vin,
+        make: 'BMW',
+        model: 'Legacy',
+        year: 2019,
+        fuelType: FuelType.GASOLINE,
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+      },
+    });
+    const { hmId } = await createApprovedHmMirror(prisma, orgId, {
+      vin,
+      registrationState: 'REGISTERED',
+      synqdriveVehicleId: legacyVehicleId,
+    });
+    const vehiclesBefore = await prisma.vehicle.count({ where: { organizationId: orgId } });
+    const outboxBefore = await prisma.vehicleRegistryLifecycleOutbox.count({ where: { organizationId: orgId } });
+  await expect(
+      harness.hmOnlyCanonical.register({
+        dto: iceHmDto(hmId, orgId),
+        access: tenantAccess(orgId),
+      }),
+    ).rejects.toMatchObject({ code: 'HM_LEGACY_REGISTRATION_BLOCKING_CANONICAL' });
+    expect(await prisma.vehicle.count({ where: { organizationId: orgId } })).toBe(vehiclesBefore);
+    const legacyUnchanged = await prisma.vehicle.findUniqueOrThrow({ where: { id: legacyVehicleId } });
+    expect(legacyUnchanged.model).toBe('Legacy');
+    expect(
+      await prisma.vehicleDataSourceLink.count({ where: { vehicleId: legacyVehicleId, isActive: true } }),
+    ).toBe(0);
+    expect(await prisma.vehicleRegistryLifecycleOutbox.count({ where: { organizationId: orgId } })).toBe(outboxBefore);
+    expect(
+      await prisma.vehicleOnboardingCase.count({
+        where: { organizationId: orgId, status: 'COMPLETED', vehicleId: legacyVehicleId },
+      }),
+    ).toBe(0);
   });
 
   it('PG-03-N activation fault AFTER_MIRROR_UPDATE rolls back then canonical retry succeeds', async () => {

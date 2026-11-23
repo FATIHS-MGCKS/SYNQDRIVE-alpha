@@ -22,14 +22,14 @@ export function parseHmOnlyOperatorIdentityCapture(
     throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'model exceeds maximum length');
   }
   const yearRaw = dto.year;
-  if (yearRaw == null || !Number.isFinite(yearRaw)) {
+  if (yearRaw == null || !Number.isFinite(yearRaw) || !Number.isInteger(yearRaw)) {
     throw new VehicleOnboardingError(
       'INVALID_CAPTURE_PAYLOAD',
-      'HM_ONLY canonical registration requires operator-provided model year',
+      'HM_ONLY canonical registration requires an integer operator model year',
     );
   }
   try {
-    return { model, year: validateActivationYear(Math.trunc(yearRaw)) };
+    return { model, year: validateActivationYear(yearRaw) };
   } catch (err) {
     if (err instanceof VehicleOnboardingError) throw err;
     throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'model year is not valid for activation', {

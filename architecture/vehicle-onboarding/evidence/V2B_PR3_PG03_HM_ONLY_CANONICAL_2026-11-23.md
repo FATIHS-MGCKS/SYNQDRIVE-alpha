@@ -18,6 +18,21 @@
 - **Secondary:** HM provider identity supplies make only; canonical path lacked governed operator **model/year** capture → readiness/activation could not complete on real PG.
 - **Fixture:** PG-03-H duplicate VIN used two HM mirrors with same `(vin, package_type, source_mode)` → Prisma unique violation (fixture defect).
 
+## Run 45264247811 @ `94b074c45` (post-repair)
+
+- **14 / 17 PASS**, **3 FAIL** (real test assertions/fixtures, not infra):
+  - **A:** wrong assertion — `providerSourceLinkId` is `VehicleDataSourceLink.id`, not case source ref id
+  - **D1:** billing idempotency key used `outbox.id` instead of `outbox.eventId`
+  - **J2:** fake `actorUserId` FK violation on battery reference audit rows
+
+## Closeout @ next HEAD
+
+- Integer-only year validation (no `Math.trunc`)
+- **PG-03-P** legacy `HM_LEGACY_REGISTRATION_BLOCKING_CANONICAL` on PostgreSQL
+- Connection identity assertions aligned to contract
+- `actorUserId: null` in PG tenant access (matches VO postgres harness)
+- D1 uses `eventId` + `VEHICLE_CONNECTED` count
+
 ## Repair (same PR #2515)
 
 - Admin baseline draft now includes `VEHICLE_ADMIN_BASELINE_DRAFT_VERSION`.

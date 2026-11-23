@@ -28,4 +28,19 @@ describe('parseHmOnlyOperatorIdentityCapture', () => {
       VehicleOnboardingError,
     );
   });
+
+  it('rejects fractional year without normalization', () => {
+    expect(() => parseHmOnlyOperatorIdentityCapture({ ...base, year: 2022.7 })).toThrow(
+      VehicleOnboardingError,
+    );
+  });
+
+  it('rejects NaN and non-finite year', () => {
+    expect(() => parseHmOnlyOperatorIdentityCapture({ ...base, year: Number.NaN })).toThrow(
+      VehicleOnboardingError,
+    );
+    expect(() => parseHmOnlyOperatorIdentityCapture({ ...base, year: Number.POSITIVE_INFINITY })).toThrow(
+      VehicleOnboardingError,
+    );
+  });
 });
