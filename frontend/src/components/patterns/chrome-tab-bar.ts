@@ -53,3 +53,23 @@ export function chromeSectionNavItemClass(active: boolean, className?: string): 
     className,
   );
 }
+
+/** Keep a horizontal chrome tab trigger visible inside its scroll rail (narrow viewports). */
+export function scrollChromeTabControlIntoView(node: HTMLElement | null | undefined): void {
+  if (!node || typeof node.scrollIntoView !== 'function') return;
+
+  const reduceMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  try {
+    node.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    });
+  } catch {
+    node.scrollIntoView();
+  }
+}

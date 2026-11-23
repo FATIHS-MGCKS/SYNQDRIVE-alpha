@@ -1,9 +1,10 @@
 import type { KeyboardEvent, ReactNode } from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   CHROME_TAB_BAR_SCROLL_CLASS,
   chromeTabBarClass,
   chromeTabTriggerClass,
+  scrollChromeTabControlIntoView,
 } from '../../components/patterns/chrome-tab-bar';
 import { cn } from '../../components/ui/utils';
 
@@ -84,6 +85,10 @@ export function MasterPageTabs<T extends string>({
     },
     [activeId, focusTab, onChange, tabs],
   );
+
+  useEffect(() => {
+    scrollChromeTabControlIntoView(tabButtonRefs.current[activeId] ?? null);
+  }, [activeId]);
 
   return (
     <div

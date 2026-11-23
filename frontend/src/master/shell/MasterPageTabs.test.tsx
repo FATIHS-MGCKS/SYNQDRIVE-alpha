@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, createElement, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MasterPageTabs } from './MasterPageTabs';
 
 const TABS = [
@@ -68,5 +68,22 @@ describe('MasterPageTabs keyboard', () => {
       tablist.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
     });
     expect(document.activeElement).toBe(tabA);
+  });
+
+  it('scrolls active tab into view when selection changes', () => {
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+
+    const { container, root } = renderHarness();
+    const tabB = container.querySelector('[data-testid="demo-tab-b"]') as HTMLButtonElement;
+
+    act(() => {
+      tabB.click();
+    });
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    scrollIntoView.mockRestore();
+    act(() => {
+      root.unmount();
+    });
   });
 });

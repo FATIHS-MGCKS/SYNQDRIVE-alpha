@@ -1,11 +1,11 @@
 # Master Admin — Screen / Hub Matrix
 
-**SHA:** `413175e8c` · **Epistemic:** CONFIRMED (routing); PARTIAL (all sub-tabs)
+**SHA:** UX-005 closeout · **Epistemic:** CONFIRMED (routing); CONFIRMED (organization detail tabs)
 
 | `?view=` | Root component | PageContainer | URL helpers | Notes |
 |----------|----------------|---------------|-------------|-------|
 | dashboard | `MasterDashboardView` | wide | `view` | |
-| organizations | `OrganizationsView` / `OrganizationDetailView` | standard | `orgId`, `orgTab` | 8 detail tabs |
+| organizations | `OrganizationsView` / `OrganizationDetailView` | standard | `orgId`, `orgTab` | 8 detail tabs; scrollable `MasterPageTabs` + active-tab scroll-into-view (UX-005) |
 | prospects | `ProspectsView` | standard | | |
 | security-access | `SecurityAccessHub` | wide | `security-access-url` | 7 sections |
 | vehicles | `ConnectedVehiclesHub` | wide | `cvSection`, vehicle ids | |
