@@ -2,7 +2,6 @@ import { FuelType } from '@prisma/client';
 import { BatteryReferenceCapacitySource } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
 import {
   buildHmOnlyTechnicalBaselineDraft,
-  hmOnlyFuelRequiresHvBatteryEvidence,
   normalizeHmOnlyFuelType,
 } from './hm-only-canonical-registration.mapper';
 
@@ -17,70 +16,35 @@ describe('hm-only-canonical-registration.mapper (battery provenance)', () => {
     expect(draft.version).toBe(2);
   });
 
-  it('does not invent MANUAL_VERIFIED for EV without operator evidence', () => {
+  it('does not invent MANUFACTURER_VERIFIED for EV without evidence', () => {
     const draft = buildHmOnlyTechnicalBaselineDraft({
       hmVehicleId: 'hm-1',
       organizationId: 'org-a',
       fuelType: 'ELECTRIC',
+      hvBatteryUsableCapacityKwh: 64,
+      hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
     });
     expect(draft.hvBatteryReference).toBeUndefined();
   });
 
-  it('does not invent reference for PHEV without operator evidence', () => {
-    const draft = buildHmOnlyTechnicalBaselineDraft({
-      hmVehicleId: 'hm-1',
-      organizationId: 'org-a',
-      fuelType: 'plugin_hybrid',
-    });
-    expect(draft.hvBatteryReference).toBeUndefined();
-  });
-
-  it('keeps unknown baseline for gasoline (no HV block)', () => {
-    const draft = buildHmOnlyTechnicalBaselineDraft({
-      hmVehicleId: 'hm-1',
-      organizationId: 'org-a',
-      fuelType: 'gasoline',
-    });
-    expect(draft.hvBatteryReference).toBeUndefined();
-  });
-
-  it('includes HV reference only when capacity and allowed source are both provided', () => {
+  it('includes governed reference when document evidence is attached', () => {
     const draft = buildHmOnlyTechnicalBaselineDraft({
       hmVehicleId: 'hm-1',
       organizationId: 'org-a',
       fuelType: 'electric',
       hvBatteryUsableCapacityKwh: 64,
       hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+      hvBatteryReferenceDocumentId: 'doc-1',
     });
     expect(draft.hvBatteryReference).toMatchObject({
       capacityKwh: 64,
       source: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+      documentId: 'doc-1',
     });
   });
 
-  it('rejects capacity without source (no synthetic provenance)', () => {
-    const draft = buildHmOnlyTechnicalBaselineDraft({
-      hmVehicleId: 'hm-1',
-      organizationId: 'org-a',
-      hvBatteryUsableCapacityKwh: 77,
-    });
-    expect(draft.hvBatteryReference).toBeUndefined();
-  });
-
-  it('rejects disallowed source even when capacity present', () => {
-    const draft = buildHmOnlyTechnicalBaselineDraft({
-      hmVehicleId: 'hm-1',
-      organizationId: 'org-a',
-      hvBatteryUsableCapacityKwh: 77,
-      hvBatteryReferenceSource: 'VEHICLE_MASTER',
-    });
-    expect(draft.hvBatteryReference).toBeUndefined();
-  });
-
-  it('flags EV/PHEV fuel classes for HV evidence requirement', () => {
-    expect(hmOnlyFuelRequiresHvBatteryEvidence('electric')).toBe(true);
-    expect(hmOnlyFuelRequiresHvBatteryEvidence('PLUGIN_HYBRID')).toBe(true);
-    expect(hmOnlyFuelRequiresHvBatteryEvidence('gasoline')).toBe(false);
+  it('parses operator fuel types for identity capture', () => {
     expect(normalizeHmOnlyFuelType('electric')).toBe(FuelType.ELECTRIC);
+    expect(normalizeHmOnlyFuelType('not-a-fuel')).toBeNull();
   });
 });

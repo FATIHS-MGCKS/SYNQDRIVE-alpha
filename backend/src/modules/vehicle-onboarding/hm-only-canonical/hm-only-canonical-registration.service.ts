@@ -15,6 +15,7 @@ import {
 import {
   buildHmOnlyAdminBaselineDraft,
   buildHmOnlyTechnicalBaselineDraft,
+  normalizeHmOnlyFuelType,
 } from './hm-only-canonical-registration.mapper';
 import {
   assertHmOnlyCanonicalProviderRecord,
@@ -50,7 +51,7 @@ export class HmOnlyCanonicalRegistrationService {
     const adopted = await runVehicleOnboardingHttp(() =>
       this.sourceAdoption.adoptProviderSource({
         organizationId: input.dto.organizationId,
-        actorUserId: input.actorUserId,
+        actorUserId: input.access.actorUserId,
         provider: 'HIGH_MOBILITY',
         sourceMirrorId: input.dto.hmVehicleId,
         idempotencyKey,
@@ -93,24 +94,47 @@ export class HmOnlyCanonicalRegistrationService {
 
     let token: string | null = concurrencyToken || null;
 
+    const actorUserId = input.access.actorUserId;
+
     const adminBody = buildHmOnlyAdminBaselineDraft(input.dto, hmRecord);
     const adminResult = await runVehicleOnboardingHttp(() =>
       this.capture.updateAdminBaseline({
         organizationId: input.dto.organizationId,
         caseId,
-        actorUserId: input.actorUserId,
+        actorUserId,
         body: adminBody,
         expectedConcurrencyToken: token,
       }),
     );
     token = adminResult.case.concurrencyToken;
 
+    const operatorFuel = normalizeHmOnlyFuelType(input.dto.fuelType);
+    if (operatorFuel) {
+      const fuelResult = await runVehicleOnboardingHttp(() =>
+        this.capture.updateIdentityOperatorFuelType({
+          organizationId: input.dto.organizationId,
+          caseId,
+          actorUserId,
+          fuelType: operatorFuel,
+          expectedConcurrencyToken: token,
+        }),
+      );
+      token = fuelResult.case.concurrencyToken;
+    } else if (input.dto.fuelType?.trim()) {
+      throw new VehicleOnboardingError(
+        'INVALID_CAPTURE_PAYLOAD',
+        'fuelType is not a supported vehicle fuel type',
+        { fuelType: input.dto.fuelType },
+      );
+    }
+
     const technicalDraft = buildHmOnlyTechnicalBaselineDraft(input.dto);
+  await this.assertHmBatteryEvidenceTenantScope(input.dto.organizationId, technicalDraft.hvBatteryReference?.documentId);
     const technicalResult = await runVehicleOnboardingHttp(() =>
       this.capture.updateTechnicalBaseline({
         organizationId: input.dto.organizationId,
         caseId,
-        actorUserId: input.actorUserId,
+        actorUserId,
         body: technicalDraft,
         expectedConcurrencyToken: token,
       }),
@@ -131,7 +155,7 @@ export class HmOnlyCanonicalRegistrationService {
         organizationId: input.dto.organizationId,
         onboardingCaseId: caseId,
         selectedProduct,
-        actorUserId: input.actorUserId,
+        actorUserId,
       }),
     );
 
@@ -160,7 +184,7 @@ export class HmOnlyCanonicalRegistrationService {
       this.activation.activateVehicle({
         organizationId: input.dto.organizationId,
         onboardingCaseId: caseId,
-        actorUserId: input.actorUserId,
+        actorUserId,
       }),
     );
 
@@ -169,5 +193,25 @@ export class HmOnlyCanonicalRegistrationService {
       input.dto.hmVehicleId,
       hmRecord.vin,
     );
+  }
+
+  private async assertHmBatteryEvidenceTenantScope(
+    organizationId: string,
+    documentId: string | null | undefined,
+  ): Promise<void> {
+    if (!documentId?.trim()) {
+      return;
+    }
+    const doc = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: documentId.trim() },
+      select: { organizationId: true, vehicleId: true },
+    });
+    if (!doc || doc.organizationId !== organizationId || doc.vehicleId != null) {
+      throw new VehicleOnboardingError(
+        'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH',
+        'Battery reference document is not available for this organization onboarding case',
+        { documentId },
+      );
+    }
   }
 }

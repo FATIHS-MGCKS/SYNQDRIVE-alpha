@@ -116,7 +116,11 @@ export class HighMobilityVehicleRegisterController {
     await assertHighMobilityTenantOperationalOrganization(this.prisma, orgId, isMa);
     return this.registrationService.registerHmOnlyVehicle(
       { ...body, organizationId: orgId },
-      { tenantOrganizationId: orgId, isMasterAdmin: isMa },
+      {
+        tenantOrganizationId: orgId,
+        isMasterAdmin: isMa,
+        actorUserId: req.user?.id ?? null,
+      },
     );
   }
 

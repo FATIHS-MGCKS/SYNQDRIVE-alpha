@@ -106,7 +106,7 @@ describe('V2A registration & billing safety characterization', () => {
           organizationId: 'org-hm',
           vehicleName: 'HM Test',
         },
-        { tenantOrganizationId: 'org-hm', isMasterAdmin: false },
+        { tenantOrganizationId: 'org-hm', isMasterAdmin: false, actorUserId: null },
       );
 
       expect(result.synqdriveVehicleId).toBe('veh-hm');
@@ -134,7 +134,7 @@ describe('V2A registration & billing safety characterization', () => {
       await expect(
         service.registerHmOnlyVehicle(
           { hmVehicleId: 'hm-1', organizationId: 'org-hm' },
-          { tenantOrganizationId: 'org-hm', isMasterAdmin: false },
+          { tenantOrganizationId: 'org-hm', isMasterAdmin: false, actorUserId: null },
         ),
       ).rejects.toBeInstanceOf(ConflictException);
     });
@@ -147,7 +147,7 @@ describe('V2A registration & billing safety characterization', () => {
       await expect(
         service.registerHmOnlyVehicle(
           { hmVehicleId: 'hm-1', organizationId: 'org-other' },
-          { tenantOrganizationId: 'org-hm', isMasterAdmin: false },
+          { tenantOrganizationId: 'org-hm', isMasterAdmin: false, actorUserId: null },
         ),
       ).rejects.toThrow(/organizationId does not match/);
     });

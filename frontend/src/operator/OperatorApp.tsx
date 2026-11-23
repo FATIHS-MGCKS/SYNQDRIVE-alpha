@@ -26,6 +26,8 @@ export default function OperatorApp() {
 
           <Route path="bookings/:bookingId" element={<OperatorShell />} />
 
+          <Route path="scan" element={<OperatorShell />} />
+
           <Route path="*" element={<Navigate to="/operator" replace />} />
 
         </Routes>

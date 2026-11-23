@@ -1,0 +1,43 @@
+export const operatorTodayIt = {
+  'operator.today.stale.offlineTitle': 'Offline — dati in cache',
+  'operator.today.stale.staleTitle': 'I dati potrebbero essere obsoleti',
+  'operator.today.stale.offlineBody':
+    "La vista si basa sull'ultimo recupero riuscito. Le azioni si sincronizzeranno quando sarai di nuovo online.",
+  'operator.today.stale.staleBody':
+    "L'ultimo recupero non è riuscito. Vengono mostrate le attività caricate più di recente.",
+  'operator.today.stale.refresh': 'Aggiorna',
+  'operator.today.noOrg.title': 'Nessuna organizzazione',
+  'operator.today.noOrg.description': 'Accedi con un account organizzazione noleggio.',
+  'operator.today.createBooking': 'Crea prenotazione',
+  'operator.today.error.fatalTitle': 'Dati di oggi non disponibili',
+  'operator.today.error.bookingsTitle': 'Prenotazioni non disponibili',
+  'operator.today.empty.title': 'Oggi è tutto tranquillo',
+  'operator.today.empty.description':
+    'Nessuna attività urgente, consegna o blocco per oggi.',
+  'operator.today.empty.allOpenTasks': 'Tutte le attività aperte ({count})',
+  'operator.today.header.title': 'Panoramica operativa del giorno',
+  'operator.today.header.subtitle': 'Priorità per urgenza — critico e scaduto per primo.',
+  'operator.today.nav.allOpenWithCount': 'Tutte aperte ({count})',
+  'operator.today.nav.allTasks': 'Tutte le attività',
+  'operator.today.alerts.sectionTitle': 'Avvisi operativi',
+  'operator.today.alert.severity.critical': 'Critico',
+  'operator.today.alert.severity.warning': 'Avviso',
+  'operator.today.blocked.sectionTitle': 'Veicoli bloccati',
+  'operator.today.blocked.badge': 'Bloccato',
+  'operator.today.handover.now': 'Consegne ora',
+  'operator.today.handover.today': 'Consegne oggi',
+  'operator.today.tablet.placeholder':
+    'Attività e prenotazioni si aprono a schermo intero su questo dispositivo.',
+  'operator.today.bucket.now.title': 'Richiesto ora',
+  'operator.today.bucket.now.subtitle':
+    'Attività scadute, critiche e bloccanti immediate',
+  'operator.today.bucket.today.title': 'Oggi',
+  'operator.today.bucket.today.subtitle': 'Attività in scadenza e attivate oggi',
+  'operator.today.bucket.upcoming.title': 'In arrivo',
+  'operator.today.bucket.upcoming.subtitle': 'Si attiva nella finestra imminente definita',
+  'operator.today.bucket.planned.title': 'Pianificato',
+  'operator.today.bucket.planned.subtitle': 'Promemoria e attività future',
+  'operator.today.bucket.unassigned.title': 'Non assegnato',
+  'operator.today.bucket.unassigned.subtitle': 'Coda del team — attività senza assegnatario',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} non disponibile',
+} as const;

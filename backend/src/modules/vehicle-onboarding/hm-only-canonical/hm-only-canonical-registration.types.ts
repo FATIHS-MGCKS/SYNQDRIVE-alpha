@@ -7,7 +7,6 @@ import type { ConvergenceTenantAccess } from '../convergence/vehicle-registratio
 export interface HmOnlyCanonicalOrchestrationInput {
   dto: RegisterHmOnlyVehicleDto;
   access: ConvergenceTenantAccess;
-  actorUserId: string | null;
 }
 
 export type HmOnlyCanonicalOrchestrationResult = HmOnlyRegistrationResultDto;

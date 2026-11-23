@@ -180,11 +180,24 @@ export async function tryResumeHmOnlyCanonicalRegistration(
     select: { id: true },
   });
 
-  if (hm.registrationState === 'REGISTERED' || completedCase) {
+  if (completedCase) {
     return {
       kind: 'IDEMPOTENT_SUCCESS',
       result: buildHmOnlySuccessResult(vehicle.id, input.dto.hmVehicleId, vehicle.vin ?? hm.vin),
     };
+  }
+
+  if (hm.registrationState === 'REGISTERED' && hm.synqdriveVehicleId) {
+    throw new VehicleOnboardingError(
+      'HM_LEGACY_REGISTRATION_BLOCKING_CANONICAL',
+      'HM vehicle was registered outside canonical onboarding; explicit reconciliation required before canonical replay',
+      {
+        vehicleId: vehicle.id,
+        hmVehicleId: input.dto.hmVehicleId,
+        organizationId: input.dto.organizationId,
+        legacyInlineRegistration: true,
+      },
+    );
   }
 
   return { kind: 'NOT_RESUMABLE' };

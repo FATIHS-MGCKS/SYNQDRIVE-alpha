@@ -3,7 +3,8 @@
 **Baseline (2026-11-23):** [`../../evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](../../evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md) (OPUX section).
 
 **Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** infra VERIFIED @ `1e6a267c`; auth UI **BLOCKED** (P8, no approved session)  
-**Scope:** mobile-first field operator at `/operator/*`.
+**Scope:** mobile-first field operator at `/operator/*`.  
+**Epistemic:** CONFIRMED where `OperatorApp.tsx` / `OperatorTodayView.tsx` inspected; INFERRED for production visual parity.
 
 ## Executive summary
 
@@ -23,6 +24,8 @@ OperatorShellProvider → Handover/Damage providers → FleetProvider → Operat
 ## Navigation
 
 Five bottom tabs (`today`, `scan`, `vehicles`, `tasks`, `more`) — see [`inventories/OPERATOR_SCREEN_MATRIX.md`](./inventories/OPERATOR_SCREEN_MATRIX.md).
+
+Deep links and `/operator/scan` route: **CONFIRMED** (code + unit tests, UX-008). Production authenticated refresh on device: **INFERRED** (P8 session blocked).
 
 ## Touch and motion
 
@@ -57,6 +60,10 @@ Safe-area aware padding; glass cards (`OperatorGlassCard`); sheets for destructi
 
 `OperatorTodayView` — **verified compliant** with shared `EmptyState` / `ErrorState` / `SkeletonRows` and stale/offline banner; no code change in UX-004 PR. See [`../../evidence/UX004_BOOKINGS_OPERATOR_STATE_2026-11-23.md`](../../evidence/UX004_BOOKINGS_OPERATOR_STATE_2026-11-23.md).
 
+## UX-009 (2026-11-23)
+
+`OperatorTodayView` / `OperatorTodayTaskFeed` — high-traffic chrome localized via canonical `useLanguage()` and `operator.today.*` catalogs (9 locales). Snapshot date/time formatting uses `formattingLocale` from `LanguageContext` (CONFIRMED). See [`../../evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md`](../../evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md).
+
 ## Responsive contract
 
 Main column `max-w-lg` mobile, `md:max-w-none` — intentional phone-first; not equivalent to Rental desktop fleet density.
@@ -71,4 +78,4 @@ Operator is **not** a shrunken Rental SPA; field workflows are purpose-built. No
 
 ## Deep link and refresh bridges
 
-`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize path/query with shell state (CONFIRMED). Query/path contract documented in [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md) (UX-006).
+`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize path/query with shell state (CONFIRMED). Routes: index + `scan` + `vehicles/:vehicleId` + `bookings/:bookingId` (UX-008). Contract: [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md).

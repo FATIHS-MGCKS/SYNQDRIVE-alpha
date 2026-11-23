@@ -31,6 +31,7 @@ export const operatorTodayDe = {
   'operator.today.bucket.now.title': 'Jetzt erforderlich',
   'operator.today.bucket.now.subtitle':
     'Überfällige, kritische und unmittelbar blockierende Aufgaben',
+  'operator.today.bucket.today.title': 'Heute',
   'operator.today.bucket.today.subtitle': 'Heute fällige und aktivierte Aufgaben',
   'operator.today.bucket.upcoming.title': 'Demnächst',
   'operator.today.bucket.upcoming.subtitle': 'Aktiviert sich im definierten kommenden Zeitfenster',

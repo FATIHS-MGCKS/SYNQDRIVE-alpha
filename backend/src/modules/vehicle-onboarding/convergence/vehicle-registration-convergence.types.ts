@@ -6,12 +6,12 @@ import type {
 export interface ConvergenceTenantAccess {
   tenantOrganizationId: string;
   isMasterAdmin: boolean;
+  actorUserId: string | null;
 }
 
 export interface HmOnlyCanonicalRegistrationInput {
   dto: RegisterHmOnlyVehicleDto;
   access: ConvergenceTenantAccess;
-  actorUserId?: string | null;
 }
 
 export type HmOnlyCanonicalRegistrationResult = HmOnlyRegistrationResultDto;

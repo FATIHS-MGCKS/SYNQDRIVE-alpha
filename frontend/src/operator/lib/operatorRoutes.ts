@@ -21,6 +21,11 @@ export function buildOperatorScanQueryUrl(query: string): string {
   return `${buildOperatorEntryUrl()}?tab=scan&q=${q}`;
 }
 
+/** Path-based scan tab entry (documented deep link; matches registered route). */
+export function buildOperatorScanPathUrl(): string {
+  return `${buildOperatorEntryUrl()}/scan`;
+}
+
 export type OperatorDeepLinkIntent =
   | { type: 'vehicle'; vehicleId: string }
   | { type: 'booking'; bookingId: string }

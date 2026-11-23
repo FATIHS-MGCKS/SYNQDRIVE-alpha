@@ -31,6 +31,7 @@ export const operatorTodayEn = {
   'operator.today.bucket.now.title': 'Required now',
   'operator.today.bucket.now.subtitle':
     'Overdue, critical, and immediately blocking tasks',
+  'operator.today.bucket.today.title': 'Today',
   'operator.today.bucket.today.subtitle': 'Tasks due and activated today',
   'operator.today.bucket.upcoming.title': 'Coming up',
   'operator.today.bucket.upcoming.subtitle': 'Activates within the defined upcoming window',

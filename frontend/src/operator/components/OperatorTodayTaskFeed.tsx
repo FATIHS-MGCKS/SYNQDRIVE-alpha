@@ -1,5 +1,6 @@
 import { useCallback, type ReactNode } from 'react';
 import { ErrorState, SkeletonRows } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { ApiTask } from '../../lib/api';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import type { OperatorTodayFeedBucket, OperatorTodayBucketSlice } from '../hooks/operatorTodayFeed.utils';
@@ -36,6 +37,9 @@ export function OperatorTodayTaskFeed({
   sectionExtras,
   renderEntry,
 }: OperatorTodayTaskFeedProps) {
+  const { t } = useLanguage();
+  const bucketSections = getOperatorTodayBucketSections(canViewUnassigned, t);
+
   const defaultRenderEntry = useCallback(
     (entry: OperatorTodayTaskEntry) => (
       <OperatorTaskCardConnected
@@ -79,9 +83,9 @@ export function OperatorTodayTaskFeed({
           slice.error ? (
             <ErrorState
               compact
-              title={`${meta.title} nicht verfügbar`}
+              title={t('operator.today.feed.bucketUnavailable', { bucketTitle: meta.title })}
               error={slice.error}
-              retryLabel="Erneut laden"
+              retryLabel={t('common.retry')}
               onRetry={onReload}
             />
           ) : undefined
@@ -100,7 +104,7 @@ export function OperatorTodayTaskFeed({
 
   return (
     <div className="space-y-5">
-      {getOperatorTodayBucketSections(canViewUnassigned).map((meta) => renderBucket(meta))}
+      {bucketSections.map((meta) => renderBucket(meta))}
     </div>
   );
 }

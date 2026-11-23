@@ -1,0 +1,43 @@
+export const operatorTodayFr = {
+  'operator.today.stale.offlineTitle': 'Hors ligne — données en cache',
+  'operator.today.stale.staleTitle': 'Les données peuvent être obsolètes',
+  'operator.today.stale.offlineBody':
+    "L'affichage repose sur la dernière récupération réussie. Les actions se synchroniseront une fois en ligne.",
+  'operator.today.stale.staleBody':
+    'La dernière récupération a échoué. Affichage des dernières tâches chargées.',
+  'operator.today.stale.refresh': 'Actualiser',
+  'operator.today.noOrg.title': 'Aucune organisation',
+  'operator.today.noOrg.description': 'Connectez-vous avec un compte organisation location.',
+  'operator.today.createBooking': 'Créer une réservation',
+  'operator.today.error.fatalTitle': 'Données du jour indisponibles',
+  'operator.today.error.bookingsTitle': 'Réservations indisponibles',
+  'operator.today.empty.title': 'Tout est calme aujourd’hui',
+  'operator.today.empty.description':
+    'Aucune tâche urgente, remise ou blocage pour aujourd’hui.',
+  'operator.today.empty.allOpenTasks': 'Toutes les tâches ouvertes ({count})',
+  'operator.today.header.title': 'Vue opérationnelle du jour',
+  'operator.today.header.subtitle': 'Priorisé par urgence — critique et en retard en premier.',
+  'operator.today.nav.allOpenWithCount': 'Toutes ouvertes ({count})',
+  'operator.today.nav.allTasks': 'Toutes les tâches',
+  'operator.today.alerts.sectionTitle': 'Avis opérationnels',
+  'operator.today.alert.severity.critical': 'Critique',
+  'operator.today.alert.severity.warning': 'Avertissement',
+  'operator.today.blocked.sectionTitle': 'Véhicules bloqués',
+  'operator.today.blocked.badge': 'Bloqué',
+  'operator.today.handover.now': 'Remises maintenant',
+  'operator.today.handover.today': 'Remises aujourd’hui',
+  'operator.today.tablet.placeholder':
+    'Les tâches et réservations s’ouvrent en plein écran sur cet appareil.',
+  'operator.today.bucket.now.title': 'Requis maintenant',
+  'operator.today.bucket.now.subtitle':
+    'Tâches en retard, critiques et bloquantes immédiates',
+  'operator.today.bucket.today.title': 'Aujourd’hui',
+  'operator.today.bucket.today.subtitle': 'Tâches dues et activées aujourd’hui',
+  'operator.today.bucket.upcoming.title': 'À venir',
+  'operator.today.bucket.upcoming.subtitle': 'S’active dans la fenêtre à venir définie',
+  'operator.today.bucket.planned.title': 'Planifié',
+  'operator.today.bucket.planned.subtitle': 'Rappels et tâches futures',
+  'operator.today.bucket.unassigned.title': 'Non assigné',
+  'operator.today.bucket.unassigned.subtitle': 'File d’équipe — tâches sans responsable',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} indisponible',
+} as const;

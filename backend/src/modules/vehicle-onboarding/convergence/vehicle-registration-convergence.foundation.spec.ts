@@ -30,6 +30,7 @@ describe('VehicleRegistrationConvergence foundation (V2B-PR1)', () => {
       assertConvergenceOrganizationAuthorized('org-b', {
         tenantOrganizationId: 'org-a',
         isMasterAdmin: false,
+        actorUserId: null,
       }),
     ).toThrow(BadRequestException);
   });
@@ -48,7 +49,7 @@ describe('VehicleRegistrationConvergence foundation (V2B-PR1)', () => {
     const service = new VehicleRegistrationConvergenceService(hmOnlyCanonical as never);
     const result = await service.registerHmOnlyCanonical({
       dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'u1' },
     });
     expect(result.synqdriveVehicleId).toBe('veh-1');
     expect(hmOnlyCanonical.register).toHaveBeenCalledTimes(1);

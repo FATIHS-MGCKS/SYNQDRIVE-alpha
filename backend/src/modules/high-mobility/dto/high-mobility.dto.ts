@@ -206,6 +206,9 @@ export interface RegisterHmOnlyVehicleDto {
   hvBatteryUsableCapacityKwh?: number;
   /** Allowed battery reference source when `hvBatteryUsableCapacityKwh` is set. */
   hvBatteryReferenceSource?: string;
+  /** Document evidence id (org-scoped); required for verification-gated sources on canonical path. */
+  hvBatteryReferenceDocumentId?: string;
+  hvBatteryReferenceServiceEventId?: string;
 }
 
 export interface HmOnlyRegistrationResultDto {

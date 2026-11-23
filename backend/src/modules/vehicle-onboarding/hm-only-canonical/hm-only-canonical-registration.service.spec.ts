@@ -38,6 +38,9 @@ function buildHarness(overrides?: {
         { product: { slug: 'RENTAL' }, status: 'ACTIVE' },
       ]),
     },
+    vehicleDocumentExtraction: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const sourceAdoption = {
@@ -47,6 +50,7 @@ function buildHarness(overrides?: {
   };
   const capture = {
     updateAdminBaseline: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-2' } }),
+    updateIdentityOperatorFuelType: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-2b' } }),
     updateTechnicalBaseline: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-3' } }),
   };
   const readiness = {
@@ -76,8 +80,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     const { service, sourceAdoption, capture, readiness, activation } = buildHarness();
     const result = await service.register({
       dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-      actorUserId: null,
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     expect(result.synqdriveVehicleId).toBe('veh-canonical');
     expect(sourceAdoption.adoptProviderSource).toHaveBeenCalledWith(
@@ -112,8 +115,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
 
     const result = await service.register({
       dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-      actorUserId: null,
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
 
     expect(result.synqdriveVehicleId).toBe('veh-existing');
@@ -128,8 +130,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     await expect(
       service.register({
         dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-        actorUserId: null,
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toMatchObject({ code: 'READINESS_NOT_SEALED' });
   });
@@ -140,8 +141,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     await expect(
       service.register({
         dto: { hmVehicleId: 'hm-missing', organizationId: 'org-a' },
-        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-        actorUserId: null,
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -157,24 +157,22 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     await expect(
       service.register({
         dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-        actorUserId: null,
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('passes capture concurrency tokens through admin and technical mutations', async () => {
-    const { service, capture } = buildHarness();
+    const { service, capture, sourceAdoption } = buildHarness();
     await service.register({
       dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-      actorUserId: null,
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     expect(capture.updateAdminBaseline).toHaveBeenCalledWith(
       expect.objectContaining({ expectedConcurrencyToken: 'tok-1' }),
     );
-    expect(capture.updateTechnicalBaseline).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedConcurrencyToken: 'tok-2' }),
+    expect(sourceAdoption.adoptProviderSource).toHaveBeenCalledWith(
+      expect.objectContaining({ actorUserId: 'user-actor' }),
     );
   });
 
@@ -182,15 +180,20 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     const { service, capture } = buildHarness();
     await service.register({
       dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', fuelType: 'electric' },
-      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-      actorUserId: null,
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     const technicalCall = capture.updateTechnicalBaseline.mock.calls[0][0];
     expect(technicalCall.body.hvBatteryReference).toBeUndefined();
   });
 
-  it('forwards operator-verified HV reference through technical capture', async () => {
-    const { service, capture } = buildHarness();
+  it('forwards operator-verified HV reference through technical capture when document scoped to org', async () => {
+    const { service, capture, prisma } = buildHarness();
+    prisma.vehicleDocumentExtraction = {
+      findUnique: jest.fn().mockResolvedValue({
+        organizationId: 'org-a',
+        vehicleId: null,
+      }),
+    };
     await service.register({
       dto: {
         hmVehicleId: 'hm-1',
@@ -198,14 +201,38 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
         fuelType: 'electric',
         hvBatteryUsableCapacityKwh: 64,
         hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+        hvBatteryReferenceDocumentId: 'doc-org-a',
       },
-      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-      actorUserId: null,
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     expect(capture.updateTechnicalBaseline.mock.calls[0][0].body.hvBatteryReference).toMatchObject({
       capacityKwh: 64,
       source: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+      documentId: 'doc-org-a',
     });
+    expect(capture.updateIdentityOperatorFuelType).toHaveBeenCalled();
+  });
+
+  it('rejects cross-tenant battery evidence references', async () => {
+    const { service, prisma } = buildHarness();
+    prisma.vehicleDocumentExtraction = {
+      findUnique: jest.fn().mockResolvedValue({
+        organizationId: 'org-other',
+        vehicleId: null,
+      }),
+    };
+    await expect(
+      service.register({
+        dto: {
+          hmVehicleId: 'hm-1',
+          organizationId: 'org-a',
+          hvBatteryUsableCapacityKwh: 64,
+          hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+          hvBatteryReferenceDocumentId: 'doc-other-org',
+        },
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
+      }),
+    ).rejects.toMatchObject({ code: 'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH' });
   });
 
   it('surfaces capture concurrency conflicts without bypassing capture APIs', async () => {
@@ -216,8 +243,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     await expect(
       service.register({
         dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-        actorUserId: null,
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
@@ -233,8 +259,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     await expect(
       service.register({
         dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
-        actorUserId: null,
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(VehicleOnboardingError);
   });

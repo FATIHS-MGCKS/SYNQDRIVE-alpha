@@ -2,7 +2,7 @@
 
 **Audited code SHA:** UX-006 closeout  
 **Contract:** [`NAVIGATION_URL_CONTRACT.md`](../../../governance/NAVIGATION_URL_CONTRACT.md) (OPERATOR_NAVIGATION_CONTRACT)  
-**Router:** `frontend/src/operator/OperatorApp.tsx` (`/operator`, `/operator/vehicles/:vehicleId`, `/operator/bookings/:bookingId`)  
+**Router:** `frontend/src/operator/OperatorApp.tsx` (`/operator`, `/operator/scan`, `/operator/vehicles/:vehicleId`, `/operator/bookings/:bookingId`)  
 **Shell:** `frontend/src/operator/OperatorShell.tsx`  
 **Device gate:** `frontend/src/operator/hooks/useIsOperatorDevice.ts` → `OperatorDesktopOnlyNotice` (`operator/components/OperatorDesktopOnlyNotice.tsx`)
 
@@ -28,10 +28,10 @@
 | `/operator/bookings/:bookingId` | booking focus on `scan` tab | same |
 | `?q=` on `/operator` | scan query | `operator/lib/operatorRoutes.ts` |
 | `?tab=` | one of `today` \| `scan` \| `vehicles` \| `tasks` \| `more` | `operator/lib/operatorRoutes.ts` |
-| `pathname.endsWith('/scan')` | forces scan tab | `operator/lib/operatorRoutes.ts` |
+| `/operator/scan` | scan tab (registered route — UX-008) | `OperatorApp.tsx` + `lib/operatorRoutes.ts` |
 | unknown path | redirect `/operator` | `OperatorApp.tsx` |
 
-**Builders:** `buildOperatorVehicleUrl`, `buildOperatorBookingUrl`, `buildOperatorScanQueryUrl` in `operator/lib/operatorRoutes.ts`
+**Builders:** `buildOperatorVehicleUrl`, `buildOperatorBookingUrl`, `buildOperatorScanQueryUrl`, `buildOperatorScanPathUrl` in `operator/lib/operatorRoutes.ts`
 
 ## Overlay / sheet flows
 

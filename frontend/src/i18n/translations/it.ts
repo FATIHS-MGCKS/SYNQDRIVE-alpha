@@ -18,6 +18,7 @@ import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
 import { masterCvDimoPrivilegeIt } from './master.cv.dimoPrivilege.it';
 import { masterCvOemSpecsIt } from './master.cv.oemSpecs.it';
 import { rentalMisuseStressStressGateIt } from './rental.misuseStress.stressGate.i18n';
+import { operatorTodayIt } from './operator.today.it';
 
 export const it = {
   'dashboard.welcomeBack': 'Bentornato, {name}',
@@ -223,4 +224,6 @@ export const it = {
   ...tireWearV3It,
   ...serviceIntelligenceIt,
   ...rentalMisuseStressStressGateIt,
+  'bookings.planner.loadError': 'Impossibile caricare le prenotazioni.',
+  ...operatorTodayIt,
 } satisfies PartialTranslationDictionary;

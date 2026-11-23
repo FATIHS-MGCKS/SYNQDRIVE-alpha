@@ -18,7 +18,6 @@ export class VehicleRegistrationConvergenceService implements VehicleRegistratio
     return this.hmOnlyCanonical.register({
       dto: input.dto,
       access: input.access,
-      actorUserId: input.actorUserId ?? null,
     });
   }
 }

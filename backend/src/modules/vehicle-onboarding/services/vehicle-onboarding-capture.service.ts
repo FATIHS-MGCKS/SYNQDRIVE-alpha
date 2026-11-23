@@ -10,8 +10,12 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
-import { VEHICLE_ADMIN_BASELINE_DRAFT_VERSION } from '../contracts/vo-document-versions';
-import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-document-versions';
+import { FuelType } from '@prisma/client';
+import {
+  VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
+  VEHICLE_IDENTITY_DRAFT_VERSION,
+  VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
+} from '../contracts/vo-document-versions';
 import type { VehicleOnboardingReadinessSnapshotV2 } from '../contracts/readiness-snapshot.v2';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import {
@@ -27,7 +31,7 @@ import {
   assertExpectedConcurrencyToken,
   assertCaseMutable,
 } from '../policy/onboarding-concurrency.util';
-import { parseValidatedAdminDraft } from '../policy/persisted-contract.validation';
+import { parseValidatedAdminDraft, parseValidatedIdentityDraft } from '../policy/persisted-contract.validation';
 import { parseTechnicalBaselineDraft } from '../policy/technical-baseline-draft.validation';
 import {
   assertTechnicalBaselineCaptureValidForCase,
@@ -48,7 +52,11 @@ type PendingCaptureAudit = {
   actorUserId: string | null;
   organizationId: string;
   caseId: string;
-  mutationType: 'ADMIN_BASELINE_UPDATED' | 'TECHNICAL_BASELINE_UPDATED' | 'READINESS_SEALED';
+  mutationType:
+    | 'ADMIN_BASELINE_UPDATED'
+    | 'TECHNICAL_BASELINE_UPDATED'
+    | 'IDENTITY_FUEL_UPDATED'
+    | 'READINESS_SEALED';
 };
 
 @Injectable()
@@ -166,6 +174,52 @@ export class VehicleOnboardingCaptureService {
             organizationId: input.organizationId,
             caseId: caseRow.id,
             mutationType: 'ADMIN_BASELINE_UPDATED',
+          },
+        };
+      },
+    );
+    this.recordPendingAudit(pendingAudit);
+    const caseProjection = await this.getCase(input.organizationId, input.caseId);
+    return { case: caseProjection, semanticNoop: result.semanticNoop };
+  }
+
+  async updateIdentityOperatorFuelType(input: {
+    organizationId: string;
+    caseId: string;
+    actorUserId: string | null;
+    fuelType: FuelType;
+    expectedConcurrencyToken: string | null;
+  }): Promise<CaptureMutationResult> {
+    const { result, pendingAudit } = await this.mutateDraft(
+      input.organizationId,
+      input.caseId,
+      input.expectedConcurrencyToken,
+      async (tx, caseRow) => {
+        const identity = parseValidatedIdentityDraft(caseRow);
+        if (identity.fuelType === input.fuelType) {
+          return { semanticNoop: true, pendingAudit: null };
+        }
+        await invalidateReadinessSealIfReady(tx, caseRow);
+        await tx.vehicleOnboardingCase.update({
+          where: { id: caseRow.id },
+          data: {
+            draftIdentityJson: {
+              ...identity,
+              version: VEHICLE_IDENTITY_DRAFT_VERSION,
+              fuelType: input.fuelType,
+            } as unknown as Prisma.InputJsonValue,
+            lastActorUserId: input.actorUserId,
+            concurrencyToken: randomUUID(),
+            ...(caseRow.status === 'OPEN' ? { status: 'IN_PROGRESS' } : {}),
+          },
+        });
+        return {
+          semanticNoop: false,
+          pendingAudit: {
+            actorUserId: input.actorUserId,
+            organizationId: input.organizationId,
+            caseId: caseRow.id,
+            mutationType: 'IDENTITY_FUEL_UPDATED',
           },
         };
       },
@@ -296,6 +350,7 @@ export class VehicleOnboardingCaptureService {
     const descriptions: Record<PendingCaptureAudit['mutationType'], string> = {
       ADMIN_BASELINE_UPDATED: 'Vehicle onboarding admin baseline updated',
       TECHNICAL_BASELINE_UPDATED: 'Vehicle onboarding technical baseline updated',
+      IDENTITY_FUEL_UPDATED: 'Vehicle onboarding identity fuel updated from operator registration',
       READINESS_SEALED: 'Vehicle onboarding readiness sealed',
     };
     void this.audit.record({

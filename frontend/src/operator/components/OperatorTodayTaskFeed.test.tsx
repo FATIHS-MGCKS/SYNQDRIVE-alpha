@@ -1,6 +1,28 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { getLocaleMetadata } from '../../i18n/locales';
 import type { ApiTask } from '../../lib/api';
+
+vi.mock('../../i18n/LanguageContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../i18n/LanguageContext')>();
+  const t = (key: TranslationKey, vars?: Record<string, string | number>) =>
+    actual.translateKey('de', key, vars).text;
+  return {
+    ...actual,
+    useLanguage: () => ({
+      locale: 'de' as const,
+      setLocale: vi.fn(),
+      localeMetadata: getLocaleMetadata('de'),
+      formattingLocale: 'de-DE',
+      t,
+      translate: (key: TranslationKey, vars?: Record<string, string | number>) =>
+        actual.translateKey('de', key, vars),
+      usesDictionaryFallback: false,
+    }),
+  };
+});
 import { buildBucketSlice } from '../hooks/operatorTodayFeed.utils';
 import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
 import { OperatorTodayTaskFeed } from '../components/OperatorTodayTaskFeed';
@@ -45,9 +67,13 @@ function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title'>): ApiTas
 
 const noop = vi.fn();
 
+function renderFeed(ui: ReactElement) {
+  return renderToStaticMarkup(ui);
+}
+
 describe('OperatorTodayTaskFeed', () => {
   it('renders actionable buckets and hides empty sections', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <OperatorTodayTaskFeed
         buckets={{
           NOW: buildBucketSlice({
@@ -115,7 +141,7 @@ describe('OperatorTodayTaskFeed', () => {
   });
 
   it('renders only planned bucket when other buckets are empty', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <div className="dark">
         <OperatorTodayTaskFeed
           buckets={{
@@ -149,7 +175,7 @@ describe('OperatorTodayTaskFeed', () => {
   });
 
   it('renders team queue section for authorized users', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <OperatorTodayTaskFeed
         buckets={{
           UNASSIGNED: buildBucketSlice({
@@ -179,7 +205,7 @@ describe('OperatorTodayTaskFeed', () => {
   });
 
   it('renders bucket error with retry in light markup', () => {
-    const html = renderToStaticMarkup(
+    const html = renderFeed(
       <OperatorTodayTaskFeed
         buckets={{
           NOW: buildBucketSlice({
@@ -209,6 +235,6 @@ describe('OperatorTodayTaskFeed', () => {
 
     expect(html).toContain('Jetzt erforderlich nicht verfügbar');
     expect(html).toContain('Netzwerkfehler');
-    expect(html).toContain('Erneut laden');
+    expect(html).toContain('Erneut versuchen');
   });
 });
