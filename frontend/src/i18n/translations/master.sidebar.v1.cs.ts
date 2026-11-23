@@ -16,4 +16,8 @@ export const masterSidebarV1Cs = {
   'master.nav.batteryV2ShadowInspection': 'Battery shadow',
   'master.nav.tireV3CalibrationCenter': 'Kalibrace pneumatik',
   'master.nav.account': 'Můj účet',
+  'master.nav.expandSidebar': 'Rozbalit postranní panel',
+  'master.nav.collapseSidebar': 'Sbalit postranní panel',
+  'master.nav.mobileMenu': 'Otevřít navigaci',
+  'master.nav.mobileMenuClose': 'Zavřít navigaci',
 } as const;

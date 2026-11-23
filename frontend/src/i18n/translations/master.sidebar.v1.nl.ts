@@ -16,4 +16,8 @@ export const masterSidebarV1Nl = {
   'master.nav.batteryV2ShadowInspection': 'Battery shadow',
   'master.nav.tireV3CalibrationCenter': 'Bandenkalibratie',
   'master.nav.account': 'Mijn account',
+  'master.nav.expandSidebar': 'Zijbalk uitklappen',
+  'master.nav.collapseSidebar': 'Zijbalk inklappen',
+  'master.nav.mobileMenu': 'Navigatie openen',
+  'master.nav.mobileMenuClose': 'Navigatie sluiten',
 } as const;

@@ -16,4 +16,8 @@ export const masterSidebarV1Tr = {
   'master.nav.batteryV2ShadowInspection': 'Battery shadow',
   'master.nav.tireV3CalibrationCenter': 'Lastik kalibrasyonu',
   'master.nav.account': 'Hesabım',
+  'master.nav.expandSidebar': 'Kenar çubuğunu genişlet',
+  'master.nav.collapseSidebar': 'Kenar çubuğunu daralt',
+  'master.nav.mobileMenu': 'Gezinmeyi aç',
+  'master.nav.mobileMenuClose': 'Gezinmeyi kapat',
 } as const;

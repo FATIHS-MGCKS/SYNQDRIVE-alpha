@@ -16,4 +16,8 @@ export const masterSidebarV1It = {
   'master.nav.batteryV2ShadowInspection': 'Battery shadow',
   'master.nav.tireV3CalibrationCenter': 'Calibrazione pneumatici',
   'master.nav.account': 'Il mio account',
+  'master.nav.expandSidebar': 'Espandi barra laterale',
+  'master.nav.collapseSidebar': 'Comprimi barra laterale',
+  'master.nav.mobileMenu': 'Apri navigazione',
+  'master.nav.mobileMenuClose': 'Chiudi navigazione',
 } as const;

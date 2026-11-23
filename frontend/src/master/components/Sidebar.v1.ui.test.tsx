@@ -2,7 +2,8 @@
 import { act, createElement, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider, translateKey } from '../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY, type SupportedLocale } from '../../i18n/locales';
 import { AppThemeProvider } from '../../context/AppThemeContext';
 import { Sidebar } from './Sidebar';
 import type { MasterView } from '../navigation/master-nav.types';
@@ -31,9 +32,14 @@ vi.mock('../navigation/useMasterNavBadges', () => ({
 function renderSidebar(opts?: {
   currentView?: MasterView;
   isCollapsed?: boolean;
+  locale?: SupportedLocale;
   onNavigate?: (view: MasterView) => void;
 }) {
+  if (opts?.locale) {
+    localStorage.setItem(LOCALE_STORAGE_KEY, opts.locale);
+  }
   const container = document.createElement('div');
+  container.className = 'sidebar-test-root';
   document.body.appendChild(container);
   const root: Root = createRoot(container);
 
@@ -88,7 +94,41 @@ describe('Master Sidebar V1 UI', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
+    localStorage.removeItem(LOCALE_STORAGE_KEY);
     vi.clearAllMocks();
+  });
+
+  describe.each(['de', 'en'] as const)('accessible chrome labels (%s)', (locale) => {
+    it('uses localized desktop collapse toggle aria-label and updates on collapse', () => {
+      const { container } = renderSidebar({ locale, isCollapsed: false });
+      const desktop = container.querySelector('.hidden.lg\\:flex') as HTMLElement;
+      const collapseBtn = desktop?.querySelector('.sq-sidebar-footer__toggle') as HTMLButtonElement;
+      const collapseLabel = translateKey(locale, 'master.nav.collapseSidebar').text;
+      const expandLabel = translateKey(locale, 'master.nav.expandSidebar').text;
+
+      expect(collapseBtn?.getAttribute('aria-label')).toBe(collapseLabel);
+      expect(collapseBtn?.getAttribute('aria-label')).not.toBe('master.nav.collapseSidebar');
+
+      act(() => {
+        collapseBtn?.click();
+      });
+      expect(collapseBtn?.getAttribute('aria-label')).toBe(expandLabel);
+    });
+
+    it('uses localized mobile menu toggle aria-label and updates on open', () => {
+      const { container } = renderSidebar({ locale });
+      const mobileToggle = container.querySelector('.lg\\:hidden button[aria-controls]') as HTMLButtonElement;
+      const openLabel = translateKey(locale, 'master.nav.mobileMenu').text;
+      const closeLabel = translateKey(locale, 'master.nav.mobileMenuClose').text;
+
+      expect(mobileToggle.getAttribute('aria-label')).toBe(openLabel);
+      expect(mobileToggle.getAttribute('aria-label')).not.toBe('master.nav.mobileMenu');
+
+      act(() => {
+        mobileToggle.click();
+      });
+      expect(mobileToggle.getAttribute('aria-label')).toBe(closeLabel);
+    });
   });
 
   it('renders dashboard for billing-only users (visibility SSOT)', async () => {

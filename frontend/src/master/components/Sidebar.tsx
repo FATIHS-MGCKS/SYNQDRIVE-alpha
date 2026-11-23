@@ -449,10 +449,6 @@ export function Sidebar({
     const showCollapse = mode === 'expanded' || mode === 'collapsed';
     const canSupport = supportItem && isMasterNavItemVisible('support');
     const supportBadge = supportItem?.badge ? badges[supportItem.badge] : undefined;
-    const collapseToggleAriaLabel = t(
-      (collapsed ? 'master.nav.expandSidebar' : 'master.nav.collapseSidebar') as Parameters<typeof t>[0],
-    );
-
     return (
       <div className="sq-sidebar-footer shrink-0 px-3 py-3 space-y-1 border-t border-sidebar-border">
         {!billingOnly && (
@@ -578,13 +574,15 @@ export function Sidebar({
     );
   };
 
-  const mobileMenuToggleAriaLabel = useMemo(
-    () =>
-      t(
-        (mobileOpen ? 'master.nav.mobileMenuClose' : 'master.nav.mobileMenu') as Parameters<typeof t>[0],
-      ),
-    [mobileOpen, t],
-  );
+  const collapseToggleAriaLabel = useMemo(() => {
+    const key = isCollapsed ? 'master.nav.expandSidebar' : 'master.nav.collapseSidebar';
+    return navLabel(key);
+  }, [isCollapsed, navLabel]);
+
+  const mobileMenuToggleAriaLabel = useMemo(() => {
+    const key = mobileOpen ? 'master.nav.mobileMenuClose' : 'master.nav.mobileMenu';
+    return navLabel(key);
+  }, [mobileOpen, navLabel]);
 
   const brandChip = (
     <span className="sq-chip sq-chip-neutral !text-[10px] !font-bold uppercase tracking-[0.16em]">
