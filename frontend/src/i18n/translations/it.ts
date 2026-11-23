@@ -225,5 +225,6 @@ export const it = {
   ...serviceIntelligenceIt,
   ...rentalMisuseStressStressGateIt,
   'bookings.planner.loadError': 'Impossibile caricare le prenotazioni.',
+  'bookings.planner.openBookingAria': 'Apri prenotazione {{ref}}',
   ...operatorTodayIt,
 } satisfies PartialTranslationDictionary;

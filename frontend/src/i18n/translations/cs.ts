@@ -225,5 +225,6 @@ export const cs = {
   ...serviceIntelligenceCs,
   ...rentalMisuseStressStressGateCs,
   'bookings.planner.loadError': 'Rezervace se nepodařilo načíst.',
+  'bookings.planner.openBookingAria': 'Otevřít rezervaci {{ref}}',
   ...operatorTodayCs,
 } satisfies PartialTranslationDictionary;

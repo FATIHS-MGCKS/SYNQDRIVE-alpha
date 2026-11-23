@@ -76,4 +76,6 @@ export const masterOrganizationsPl = {
     'Przywrócono członkostwo w organizacji; zawieszenie konta platformy nadal blokuje logowanie.',
   'master.organizations.iam.roleAssignSuccess': 'Przypisano rolę organizacji.',
   'master.organizations.iam.mutationFailed': 'Akcja nie powiodła się: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Poprzednia strona',
+  'master.organizations.list.pagination.nextPage': 'Następna strona',
 };

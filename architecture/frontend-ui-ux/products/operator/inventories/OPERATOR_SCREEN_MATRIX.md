@@ -39,7 +39,7 @@
 |------|--------|
 | Handover | `operator/handover/OperatorHandoverFlow.tsx` |
 | Damage capture | `operator/damages/OperatorDamageCaptureFlow.tsx` |
-| Booking sheets | `operator/components/OperatorBookingDetailSheet.tsx`, `operator/bookings/OperatorBookingFormSheet.tsx` |
+| Booking sheets | `operator/components/OperatorBookingDetailSheet.tsx` (UX-011: labelled dialog + focus trap), `operator/bookings/OperatorBookingFormSheet.tsx` |
 | AI upload | `operator/ai-upload/OperatorAiUploadFlow.tsx` |
 | Tire measure | `operator/tire-measure/OperatorTireMeasureFlow.tsx` |
 

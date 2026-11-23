@@ -6,7 +6,7 @@
 | `?view=` | Root component | PageContainer | URL helpers | Notes |
 |----------|----------------|---------------|-------------|-------|
 | dashboard | `MasterDashboardView` | wide | `view` | |
-| organizations | `OrganizationsView` / `OrganizationDetailView` | standard | `orgId`, `orgTab` | 8 detail tabs; scrollable `MasterPageTabs` + active-tab scroll-into-view (UX-005) |
+| organizations | `OrganizationsView` / `OrganizationDetailView` | standard | `orgId`, `orgTab` | UX-011: org table pagination ARIA + create wizard `Dialog.Title`; 8 detail tabs (UX-005) |
 | prospects | `ProspectsView` | standard | | |
 | security-access | `SecurityAccessHub` | wide | `security-access-url` | 7 sections |
 | vehicles | `ConnectedVehiclesHub` | wide | `cvSection`, vehicle ids | |

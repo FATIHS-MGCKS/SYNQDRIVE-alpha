@@ -976,5 +976,6 @@ export const fr = {
   ...serviceIntelligenceFr,
   ...rentalMisuseStressStressGateFr,
   'bookings.planner.loadError': 'Impossible de charger les réservations.',
+  'bookings.planner.openBookingAria': 'Ouvrir la réservation {{ref}}',
   ...operatorTodayFr,
 } satisfies PartialTranslationDictionary;

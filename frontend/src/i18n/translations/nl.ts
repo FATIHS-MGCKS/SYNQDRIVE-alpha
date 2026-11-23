@@ -226,5 +226,6 @@ export const nl = {
   ...serviceIntelligenceNl,
   ...rentalMisuseStressStressGateNl,
   'bookings.planner.loadError': 'Boekingen konden niet worden geladen.',
+  'bookings.planner.openBookingAria': 'Boeking {{ref}} openen',
   ...operatorTodayNl,
 } satisfies PartialTranslationDictionary;

@@ -76,4 +76,6 @@ export const masterOrganizationsFr = {
     'Adhésion réactivée, mais la suspension du compte plateforme bloque encore la connexion.',
   'master.organizations.iam.roleAssignSuccess': 'Rôle organisation attribué.',
   'master.organizations.iam.mutationFailed': 'Échec de l’action : {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Page précédente',
+  'master.organizations.list.pagination.nextPage': 'Page suivante',
 };

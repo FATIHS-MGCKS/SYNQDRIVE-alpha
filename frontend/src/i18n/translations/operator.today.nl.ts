@@ -40,4 +40,5 @@ export const operatorTodayNl = {
   'operator.today.bucket.unassigned.title': 'Niet toegewezen',
   'operator.today.bucket.unassigned.subtitle': 'Teamwachtrij — taken zonder toegewezen persoon',
   'operator.today.feed.bucketUnavailable': '{bucketTitle} niet beschikbaar',
+  'operator.bookings.detail.loadingAnnouncement': 'Details worden geladen',
 } as const;

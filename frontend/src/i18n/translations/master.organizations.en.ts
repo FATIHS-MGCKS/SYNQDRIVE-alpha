@@ -76,4 +76,6 @@ export const masterOrganizationsEn = {
     'Organization membership reactivated, but platform account suspension still blocks sign-in.',
   'master.organizations.iam.roleAssignSuccess': 'Organization role assigned.',
   'master.organizations.iam.mutationFailed': 'Action failed: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Previous page',
+  'master.organizations.list.pagination.nextPage': 'Next page',
 };
