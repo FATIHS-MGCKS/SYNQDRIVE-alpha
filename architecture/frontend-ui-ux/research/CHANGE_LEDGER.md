@@ -15,3 +15,4 @@
 | 2026-11-22 | FEUX-P9B-REAL-ENDPOINT-001 | Response-level master endpoint blocking; connectivity-only allow; overlap grant OR; PlatformAdminController audit HTTP tests | FEUX-EVID-P9B-REAL-ENDPOINT-001 |
 | 2026-11-23 | FEUX-P9-RETIRE-001 | Owner decision: remove P9 runtime; retain migration + evidence; restore standard auth routing | FEUX-EVID-P9-RETIRED-2026-11-23 |
 | 2026-11-23 | FEUX-BASELINE-FINAL-001 | Consolidated code-verified UI/UX baseline + prioritized improvement backlog (MAUX/RENTUX/OPUX/FEUX) | FEUX-EVID-BASELINE-FINAL-2026-11-23 |
+| 2026-11-23 | RENTUX-UX-003 | Vehicle detail tab count 9; active-tab scroll visibility fix | RENTUX-EVID-UX003-2026-11-23 |

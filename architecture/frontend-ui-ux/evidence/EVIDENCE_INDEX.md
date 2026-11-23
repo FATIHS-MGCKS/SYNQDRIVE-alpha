@@ -20,6 +20,7 @@
 | FEUX-EVID-PROD-DRIFT-2026-11-22 | AUDIT_DOCUMENT | `1e6a267c`→`413175e8c` | Full-tree frontend drift (91 paths) | CONFIRMED | git diff local |
 | FEUX-EVID-GAP-PROD-UI-001 | DOMAIN_REASONING | `1e6a267c` / P7–P8 | Authenticated functional product UI | **BLOCKED** (P8) | P9 **RETIRED**; no audit provision path |
 | FEUX-EVID-BASELINE-FINAL-2026-11-23 | AUDIT_DOCUMENT | `ff8871c6d` | Consolidated code-verified UI/UX baseline + backlog | CONFIRMED | PRODUCTION_NOT_VERIFIED for visual |
+| RENTUX-EVID-UX003-2026-11-23 | AUDIT_DOCUMENT | `b8bfd55c` | UX-003 vehicle detail nine-tab nav + scroll fix | CONFIRMED | Playwright mobile not re-run in agent |
 | FEUX-EVID-P9-RETIRED-2026-11-23 | AUDIT_DOCUMENT | `2026-11-23` | P9 runtime retired; migration retained | CONFIRMED | Owner revoke grants if any remain |
 | FEUX-EVID-P8-AUTH-GATE-001 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Access gate — no approved session | CONFIRMED | By design |
 | FEUX-EVID-P8-HTTP-001 | PRODUCTION_OBSERVATION | `2026-11-22T18:50:34Z` / prod `1e6a267c` | Unauthenticated origin HTTP 200 sample | CONFIRMED | curl CLI |

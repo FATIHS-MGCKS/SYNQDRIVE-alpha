@@ -41,6 +41,21 @@
 | whatsapp-business | settings / communication | INFERRED | `components/whatsapp/WhatsAppBusinessSettings.tsx` (**PARTIAL** — full view union not re-parsed) |
 | ai-voice-assistant | communication route | INFERRED | `components/communication-center/legacy-communication-navigation.ts` (**PARTIAL**) |
 
+## Vehicle detail — nine tabs (CONFIRMED, UX-003)
+
+**Tab keys (9):** `overview`, `connectivity`, `trips`, `health-errors`, `damages`, `documents`, `vehicle-bookings`, `vehicle-tasks`, `vehicle-requirements` — see `VEHICLE_DETAIL_VIEWS` / `VEHICLE_DETAIL_TAB_KEYS` in `rental/App.tsx` and `rental/lib/vehicle-overview-navigation.ts`.
+
+| Concern | Implementation | Epistemic |
+|---------|----------------|-----------|
+| Tab bar | `VehicleDetailTabBar` | CONFIRMED |
+| Horizontal scroll | `CHROME_TAB_BAR_SCROLL_CLASS` (shared FEUX pattern) | CONFIRMED |
+| Keyboard / ARIA | `useRovingTablist` + `vehicle-detail-a11y` tab/panel IDs | CONFIRMED |
+| Panels | `VehicleDetailTabPanel` per view branch in `App.tsx` | CONFIRMED |
+| Mobile touch | `VEHICLE_DETAIL_TAB_TRIGGER_CLASS` (44px min) | CONFIRMED |
+| Active tab scroll-into-view | `vehicle-detail-tab-scroll.ts` (UX-003) | CONFIRMED |
+
+Detail: [`evidence/UX003_VEHICLE_DETAIL_NAVIGATION_2026-11-23.md`](../evidence/UX003_VEHICLE_DETAIL_NAVIGATION_2026-11-23.md).
+
 ## Fleet hub — top tabs (CONFIRMED)
 
 From `components/fleet-health-service/fleet-health-service.types.ts` and `components/FleetHubView.tsx`:

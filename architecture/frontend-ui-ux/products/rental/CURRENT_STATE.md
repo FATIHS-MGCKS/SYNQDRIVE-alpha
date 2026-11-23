@@ -12,7 +12,7 @@ Rental is the primary **fleet operations** SPA: org-scoped sidebar navigation, i
 ## Shell and navigation
 
 - **Sidebar** (`rental/components/Sidebar.tsx`): grouped sections (operations, finance, automation, integrations, administration) with permission gates (`useRentalOrg`, communication permissions).  
-- **Top chrome:** vehicle detail tabs when `VEHICLE_DETAIL_VIEWS` active; fleet hub has internal tab strip.  
+- **Top chrome:** vehicle detail **nine** tabs when `VEHICLE_DETAIL_VIEWS` active (`VehicleDetailTabBar`); fleet hub has internal tab strip. UX-003: horizontal scroll + active-tab scroll-into-view.  
 - **MainNavTabs retired** (comment V4.6.94 in App.tsx) — sidebar is canonical primary nav (CONFIRMED).
 
 ## View catalog
