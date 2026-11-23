@@ -75,7 +75,7 @@ export function DataTable<T>({
 
   const body = (
     <div className="w-full overflow-x-auto">
-      <table className="w-full border-collapse text-[13px]">
+      <table className="w-full border-collapse text-[13px]" aria-busy={loading || undefined}>
         <thead className={cn('sq-table-head', stickyHeader && 'sticky top-0 z-10')}>
           <tr>
             {columns.map((col) => (

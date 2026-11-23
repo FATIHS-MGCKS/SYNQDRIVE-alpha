@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { usePortalModalA11y } from '../../rental/lib/use-portal-modal-a11y';
 import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { api, type BookingDetailDto } from '../../lib/api';
@@ -29,6 +30,8 @@ export function OperatorBookingDetailSheet({
 }: OperatorBookingDetailSheetProps) {
   const { orgId } = useRentalOrg();
   const { openSheet, triggerRefresh } = useOperatorShell();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,15 @@ export function OperatorBookingDetailSheet({
     };
   }, [item, orgId]);
 
+  const titleId = 'operator-booking-detail-title';
+
+  usePortalModalA11y({
+    active: Boolean(item),
+    containerRef: dialogRef,
+    initialFocusRef: closeButtonRef,
+    onRequestClose: onClose,
+  });
+
   if (!item) return null;
 
   const matrix = detail ? getBookingActionMatrix(detail) : null;
@@ -80,25 +92,28 @@ export function OperatorBookingDetailSheet({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex flex-col bg-background"
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       role="dialog"
-      aria-modal
+      aria-modal="true"
+      aria-labelledby={titleId}
     >
       <header className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Buchung</p>
-          <h2 className="truncate text-base font-bold text-foreground">
+          <h2 id={titleId} className="truncate text-base font-bold text-foreground">
             {item.vehicleName} · {item.plate}
           </h2>
         </div>
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
           aria-label="Schließen"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
         </button>
       </header>
 
@@ -134,11 +149,20 @@ export function OperatorBookingDetailSheet({
         </OperatorGlassCard>
 
         {loading && (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+          <div
+            className="flex items-center justify-center py-8 text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            <span className="sr-only">Details werden geladen</span>
           </div>
         )}
-        {error && <p className="text-sm text-[color:var(--status-critical)]">{error}</p>}
+        {error && (
+          <p className="text-sm text-[color:var(--status-critical)]" role="alert">
+            {error}
+          </p>
+        )}
 
         {detail && detail.health.rentalBlocked && (
           <OperatorGlassCard className="border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">

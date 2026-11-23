@@ -300,8 +300,9 @@ export function OrganizationsView({ onSelectOrg, onAddOrg }: OrganizationsViewPr
           size="sm"
           disabled={page <= 1}
           onClick={() => updateFilter({ page: page - 1 })}
+          aria-label="Vorherige Seite"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4" aria-hidden />
         </Button>
         <Button
           type="button"
@@ -309,8 +310,9 @@ export function OrganizationsView({ onSelectOrg, onAddOrg }: OrganizationsViewPr
           size="sm"
           disabled={page >= totalPages}
           onClick={() => updateFilter({ page: page + 1 })}
+          aria-label="Nächste Seite"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4" aria-hidden />
         </Button>
       </div>
     </div>
@@ -319,6 +321,7 @@ export function OrganizationsView({ onSelectOrg, onAddOrg }: OrganizationsViewPr
   return (
     <>
       <MasterPageHeader
+        variant="context"
         title="Organisationen"
         description="Mandanten-Index — Status, Abrechnung und Handlungsbedarf"
         actions={(

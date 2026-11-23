@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { ArrowLeft, ChevronRight, UserPlus, X } from 'lucide-react';
 import { AppDialog } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
@@ -97,13 +98,18 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             {step === 2 && (
-              <button type="button" onClick={() => setStep(1)} className="p-2 rounded-lg hover:bg-muted">
-                <ArrowLeft className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="p-2 rounded-lg hover:bg-muted"
+                aria-label="Zurück"
+              >
+                <ArrowLeft className="w-4 h-4" aria-hidden />
               </button>
             )}
-            <h2 className="text-base font-semibold">
+            <DialogPrimitive.Title className="text-base font-semibold">
               {step === 1 ? 'Organisation anlegen' : 'Admin-Account'}
-            </h2>
+            </DialogPrimitive.Title>
           </div>
           <button type="button" onClick={close} className="p-2 rounded-lg hover:bg-muted" aria-label="Schließen">
             <X className="w-5 h-5" />
