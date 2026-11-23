@@ -2062,6 +2062,7 @@ export const de: Record<TranslationKey, string> = {
   'bookings.planner.showTerminal': 'Storniert / No-Show',
   'bookings.planner.truncated': 'Es gibt mehr Buchungen als geladen werden konnten. Filter einschraenken oder Fahrzeugansicht nutzen.',
   'bookings.planner.retry': 'Erneut laden',
+  'bookings.planner.loadError': 'Buchungen konnten nicht geladen werden.',
   'bookings.planner.loading': 'Buchungen werden geladen…',
   'bookings.planner.emptyTitle': 'Keine Buchungen fuer die aktuellen Filter',
   'bookings.planner.emptyDescription': 'Passen Sie Filter an oder legen Sie eine neue Buchung an.',

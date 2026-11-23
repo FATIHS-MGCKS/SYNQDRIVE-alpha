@@ -1,0 +1,43 @@
+export const operatorTodayTr = {
+  'operator.today.stale.offlineTitle': 'Çevrimdışı — önbellek verileri',
+  'operator.today.stale.staleTitle': 'Veriler güncel olmayabilir',
+  'operator.today.stale.offlineBody':
+    'Görünüm son başarılı getirmeye dayanır. Çevrimiçi olunca işlemler senkronize edilir.',
+  'operator.today.stale.staleBody':
+    'Son getirme başarısız oldu. En son yüklenen görevler gösteriliyor.',
+  'operator.today.stale.refresh': 'Yenile',
+  'operator.today.noOrg.title': 'Kuruluş yok',
+  'operator.today.noOrg.description': 'Kiralama kuruluşu hesabıyla oturum açın.',
+  'operator.today.createBooking': 'Rezervasyon oluştur',
+  'operator.today.error.fatalTitle': 'Bugünün verileri kullanılamıyor',
+  'operator.today.error.bookingsTitle': 'Rezervasyonlar kullanılamıyor',
+  'operator.today.empty.title': 'Bugün sakin',
+  'operator.today.empty.description':
+    'Bugün için acil görev, devir veya engel yok.',
+  'operator.today.empty.allOpenTasks': 'Tüm açık görevler ({count})',
+  'operator.today.header.title': 'Operasyonel gün özeti',
+  'operator.today.header.subtitle': 'Aciliyete göre öncelik — kritik ve gecikmiş önce.',
+  'operator.today.nav.allOpenWithCount': 'Tüm açıklar ({count})',
+  'operator.today.nav.allTasks': 'Tüm görevler',
+  'operator.today.alerts.sectionTitle': 'Operasyonel bildirimler',
+  'operator.today.alert.severity.critical': 'Kritik',
+  'operator.today.alert.severity.warning': 'Uyarı',
+  'operator.today.blocked.sectionTitle': 'Engelli araçlar',
+  'operator.today.blocked.badge': 'Engelli',
+  'operator.today.handover.now': 'Devirler şimdi',
+  'operator.today.handover.today': 'Devirler bugün',
+  'operator.today.tablet.placeholder':
+    'Görevler ve rezervasyonlar bu cihazda tam ekran sayfalar olarak açılır.',
+  'operator.today.bucket.now.title': 'Şimdi gerekli',
+  'operator.today.bucket.now.subtitle':
+    'Gecikmiş, kritik ve anında engelleyen görevler',
+  'operator.today.bucket.today.title': 'Bugün',
+  'operator.today.bucket.today.subtitle': 'Bugün vadesi gelen ve etkinleştirilen görevler',
+  'operator.today.bucket.upcoming.title': 'Yakında',
+  'operator.today.bucket.upcoming.subtitle': 'Tanımlı yaklaşan pencerede etkinleşir',
+  'operator.today.bucket.planned.title': 'Planlı',
+  'operator.today.bucket.planned.subtitle': 'Gelecek hatırlatmalar ve görevler',
+  'operator.today.bucket.unassigned.title': 'Atanmamış',
+  'operator.today.bucket.unassigned.subtitle': 'Ekip kuyruğu — atananı olmayan görevler',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} kullanılamıyor',
+} as const;

@@ -1,0 +1,43 @@
+export const operatorTodayEs = {
+  'operator.today.stale.offlineTitle': 'Sin conexión — datos en caché',
+  'operator.today.stale.staleTitle': 'Los datos pueden estar desactualizados',
+  'operator.today.stale.offlineBody':
+    'La vista se basa en la última carga correcta. Las acciones se sincronizarán al volver en línea.',
+  'operator.today.stale.staleBody':
+    'La última carga falló. Se muestran las tareas cargadas más recientemente.',
+  'operator.today.stale.refresh': 'Actualizar',
+  'operator.today.noOrg.title': 'Sin organización',
+  'operator.today.noOrg.description': 'Inicie sesión con una cuenta de organización de alquiler.',
+  'operator.today.createBooking': 'Crear reserva',
+  'operator.today.error.fatalTitle': 'Datos de hoy no disponibles',
+  'operator.today.error.bookingsTitle': 'Reservas no disponibles',
+  'operator.today.empty.title': 'Hoy está tranquilo',
+  'operator.today.empty.description':
+    'Sin tareas urgentes, entregas ni bloqueos para hoy.',
+  'operator.today.empty.allOpenTasks': 'Todas las tareas abiertas ({count})',
+  'operator.today.header.title': 'Resumen operativo del día',
+  'operator.today.header.subtitle': 'Priorizado por urgencia — crítico y vencido primero.',
+  'operator.today.nav.allOpenWithCount': 'Todas abiertas ({count})',
+  'operator.today.nav.allTasks': 'Todas las tareas',
+  'operator.today.alerts.sectionTitle': 'Avisos operativos',
+  'operator.today.alert.severity.critical': 'Crítico',
+  'operator.today.alert.severity.warning': 'Advertencia',
+  'operator.today.blocked.sectionTitle': 'Vehículos bloqueados',
+  'operator.today.blocked.badge': 'Bloqueado',
+  'operator.today.handover.now': 'Entregas ahora',
+  'operator.today.handover.today': 'Entregas hoy',
+  'operator.today.tablet.placeholder':
+    'Las tareas y reservas se abren a pantalla completa en este dispositivo.',
+  'operator.today.bucket.now.title': 'Requerido ahora',
+  'operator.today.bucket.now.subtitle':
+    'Tareas vencidas, críticas y que bloquean de inmediato',
+  'operator.today.bucket.today.title': 'Hoy',
+  'operator.today.bucket.today.subtitle': 'Tareas con vencimiento y activadas hoy',
+  'operator.today.bucket.upcoming.title': 'Próximamente',
+  'operator.today.bucket.upcoming.subtitle': 'Se activa en la ventana próxima definida',
+  'operator.today.bucket.planned.title': 'Planificado',
+  'operator.today.bucket.planned.subtitle': 'Recordatorios y tareas futuras',
+  'operator.today.bucket.unassigned.title': 'Sin asignar',
+  'operator.today.bucket.unassigned.subtitle': 'Cola del equipo — tareas sin responsable',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} no disponible',
+} as const;

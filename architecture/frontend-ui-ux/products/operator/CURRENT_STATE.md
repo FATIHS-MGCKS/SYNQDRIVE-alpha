@@ -3,7 +3,8 @@
 **Baseline (2026-11-23):** [`../../evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](../../evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md) (OPUX section).
 
 **Repository SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` · **Production:** infra VERIFIED @ `1e6a267c`; auth UI **BLOCKED** (P8, no approved session)  
-**Scope:** mobile-first field operator at `/operator/*`.
+**Scope:** mobile-first field operator at `/operator/*`.  
+**Epistemic:** CONFIRMED where `OperatorApp.tsx` / `OperatorTodayView.tsx` inspected; INFERRED for production visual parity.
 
 ## Executive summary
 
@@ -58,6 +59,10 @@ Safe-area aware padding; glass cards (`OperatorGlassCard`); sheets for destructi
 ## UX-004 (2026-11-23)
 
 `OperatorTodayView` — **verified compliant** with shared `EmptyState` / `ErrorState` / `SkeletonRows` and stale/offline banner; no code change in UX-004 PR. See [`../../evidence/UX004_BOOKINGS_OPERATOR_STATE_2026-11-23.md`](../../evidence/UX004_BOOKINGS_OPERATOR_STATE_2026-11-23.md).
+
+## UX-009 (2026-11-23)
+
+`OperatorTodayView` / `OperatorTodayTaskFeed` — high-traffic chrome localized via canonical `useLanguage()` and `operator.today.*` catalogs (9 locales). Snapshot date/time formatting uses `formattingLocale` from `LanguageContext` (CONFIRMED). See [`../../evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md`](../../evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md).
 
 ## Responsive contract
 

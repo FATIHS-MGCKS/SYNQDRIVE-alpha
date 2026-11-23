@@ -72,6 +72,10 @@ Sidebar mobile drawer; `lg` breakpoint collapse; AI assistant full-bleed negativ
 
 Rental has broader frontend test surface than Master/Operator UI (INFERRED from `*.test.ts` near rental); not exhaustively indexed in this bootstrap.
 
+## UX-009 (2026-11-23)
+
+`BookingsView` planner list failure message uses `bookings.planner.loadError` across 9 locales; UX-004 loading/error/retry/cache behavior unchanged (CONFIRMED). See [`../../evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md`](../../evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md).
+
 ## Contradictions and gaps
 
 RENTUX-GAP-INVENTORY-001 — fleet inner tabs not fully traced. RENTUX-GAP-PROD-001 — Production UI UNKNOWN.
