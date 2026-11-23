@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { PageHeader, EmptyState } from '../../../components/patterns';
+import { PageHeader, EmptyState, ErrorState, SkeletonRows } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
@@ -10,6 +10,13 @@ import { BookingsTimelineView } from './BookingsTimelineView';
 import { BookingsTableView } from './BookingsTableView';
 import { BookingsCalendarView } from './BookingsCalendarView';
 import { filterBookings } from './bookingUtils';
+import {
+  bookingsPlannerEmptyVariant,
+  bookingsPlannerFatalError,
+  bookingsPlannerInitialLoading,
+  bookingsPlannerPartialError,
+  bookingsPlannerShowViews,
+} from './bookingsPageState.utils';
 
 interface StationOption {
   id: string;
@@ -19,6 +26,7 @@ interface StationOption {
 export interface BookingsPageProps {
   bookings: BookingUiRow[];
   loading: boolean;
+  refreshing?: boolean;
   error: string | null;
   listTruncated?: boolean;
   onRetry: () => void;
@@ -33,6 +41,7 @@ export interface BookingsPageProps {
 export function BookingsPage({
   bookings,
   loading,
+  refreshing = false,
   error,
   listTruncated = false,
   onRetry,
@@ -60,6 +69,21 @@ export function BookingsPage({
   });
 
   const filtered = useMemo(() => filterBookings(bookings, filters), [bookings, filters]);
+  const hasCachedBookings = bookings.length > 0;
+  const initialLoading = bookingsPlannerInitialLoading({ loading, hasCachedBookings });
+  const fatalError = bookingsPlannerFatalError({ error, hasCachedBookings });
+  const partialError = bookingsPlannerPartialError({ error, hasCachedBookings });
+  const emptyVariant = bookingsPlannerEmptyVariant({
+    loading: initialLoading,
+    error: fatalError ? error : null,
+    totalCount: bookings.length,
+    filteredCount: filtered.length,
+  });
+  const showViews = bookingsPlannerShowViews({
+    initialLoading,
+    fatalError,
+    filteredCount: filtered.length,
+  });
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     const now = new Date();
@@ -101,13 +125,26 @@ export function BookingsPage({
     setSelectedCalendarDay(null);
   };
 
+  const emptyTitle =
+    emptyVariant === 'dataset' ? t('bookings.noBookings') : t('bookings.planner.emptyTitle');
+  const emptyDescription =
+    emptyVariant === 'dataset'
+      ? t('bookings.planner.emptyDatasetDescription')
+      : t('bookings.planner.emptyDescription');
+
   return (
     <div className="max-w-[1800px] mx-auto space-y-4">
       <PageHeader title={t('bookings.title')} />
 
-      {listTruncated && !loading && (
+      {listTruncated && !initialLoading && (
         <p className="text-[11px] text-[color:var(--status-attention)] px-1" role="status">
           {t('bookings.planner.truncated')}
+        </p>
+      )}
+
+      {refreshing && hasCachedBookings && (
+        <p className="text-[11px] text-muted-foreground px-1" role="status" aria-live="polite">
+          {t('bookings.planner.loading')}
         </p>
       )}
 
@@ -123,41 +160,48 @@ export function BookingsPage({
         onTimelineRangeChange={setTimelineRange}
       />
 
-      {error && (
-        <div className="rounded-xl p-4 sq-tone-critical flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium flex-1">
-            <Icon name="alert-circle" className="w-5 h-5 shrink-0" />
-            {error}
-          </div>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-current"
-          >
-            {t('bookings.planner.retry')}
-          </button>
-        </div>
+      {partialError && (
+        <ErrorState
+          compact
+          surface="solid"
+          title={t('bookings.title')}
+          error={error}
+          onRetry={onRetry}
+          retryLabel={t('bookings.planner.retry')}
+        />
       )}
 
-      {loading && !error ? (
-        <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
-          <Icon name="loader-2" className="w-8 h-8 animate-spin" />
-          <p className="text-xs">{t('bookings.planner.loading')}</p>
-        </div>
-      ) : !error && filtered.length === 0 ? (
+      {fatalError && (
+        <ErrorState
+          title={t('bookings.title')}
+          error={error}
+          onRetry={onRetry}
+          retryLabel={t('bookings.planner.retry')}
+        />
+      )}
+
+      {initialLoading && <SkeletonRows rows={6} className="py-4" />}
+
+      {emptyVariant !== 'none' && (
         <EmptyState
           icon={<Icon name="calendar" className="w-6 h-6" />}
-          title={t('bookings.planner.emptyTitle')}
-          description={t('bookings.planner.emptyDescription')}
+          title={emptyTitle}
+          description={emptyDescription}
           action={
             onCreateNewBooking ? (
-              <button type="button" onClick={onCreateNewBooking} className="text-xs font-semibold sq-tone-brand px-3 py-1.5 rounded-lg">
+              <button
+                type="button"
+                onClick={onCreateNewBooking}
+                className="text-xs font-semibold sq-tone-brand px-3 py-1.5 rounded-lg"
+              >
                 {t('bookings.newBooking')}
               </button>
             ) : undefined
           }
         />
-      ) : !error ? (
+      )}
+
+      {showViews && (
         <>
           {view === 'timeline' && (
             <BookingsTimelineView
@@ -171,7 +215,7 @@ export function BookingsPage({
           {view === 'table' && (
             <BookingsTableView
               rows={filtered}
-              loading={loading}
+              loading={refreshing}
               onRowClick={onOpenDrawer}
               onEdit={onOpenDetail}
               onCancel={onCancelBooking}
@@ -190,7 +234,7 @@ export function BookingsPage({
             />
           )}
         </>
-      ) : null}
+      )}
 
       <p className="text-[10px] text-muted-foreground text-right">
         {t('bookings.planner.footer', { count: filtered.length })}

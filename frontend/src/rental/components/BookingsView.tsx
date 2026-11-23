@@ -120,10 +120,18 @@ export function BookingsView({
   const [apiUsers, setApiUsers] = useState<any[]>([]);
   const [apiStations, setApiStations] = useState<any[]>([]);
   const [listTruncated, setListTruncated] = useState(false);
+  const [listRefreshing, setListRefreshing] = useState(false);
+  const hadPlannerCacheRef = useRef(false);
+  hadPlannerCacheRef.current = apiLoaded && apiBookings.length > 0;
 
   const loadBookings = useCallback(() => {
     if (!orgId) return;
     setApiError(null);
+    if (hadPlannerCacheRef.current) {
+      setListRefreshing(true);
+    } else {
+      setApiLoaded(false);
+    }
     api.bookings
       .list(orgId, { limit: BOOKINGS_LIST_LIMIT, page: 1 })
       .then((res: any) => {
@@ -137,6 +145,9 @@ export function BookingsView({
       .catch(() => {
         setApiError('Buchungen konnten nicht geladen werden.');
         setApiLoaded(true);
+      })
+      .finally(() => {
+        setListRefreshing(false);
       });
   }, [orgId]);
 
@@ -1404,6 +1415,7 @@ export function BookingsView({
       <BookingsPage
         bookings={plannerBookings}
         loading={!apiLoaded && !apiError}
+        refreshing={listRefreshing}
         error={apiError}
         listTruncated={listTruncated}
         onRetry={loadBookings}

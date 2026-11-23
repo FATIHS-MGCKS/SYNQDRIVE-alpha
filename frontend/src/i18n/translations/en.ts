@@ -1962,6 +1962,7 @@ export const en = {
   'bookings.planner.loading': 'Loading bookings…',
   'bookings.planner.emptyTitle': 'No bookings match the current filters',
   'bookings.planner.emptyDescription': 'Adjust filters or create a new booking.',
+  'bookings.planner.emptyDatasetDescription': 'Create your first booking to populate the planner.',
   'bookings.planner.footer': '{count} booking(s) · click opens detail drawer',
   'bookings.planner.prevMonth': 'Previous month',
   'bookings.planner.nextMonth': 'Next month',

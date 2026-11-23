@@ -7,7 +7,7 @@
 | View id | Primary component | Epistemic | Source path (`frontend/src/rental/...`) |
 |---------|-------------------|-----------|----------------------------------------|
 | dashboard | `DashboardView` | CONFIRMED | `components/DashboardView.tsx` |
-| bookings | `BookingsView` | CONFIRMED | `components/BookingsView.tsx` |
+| bookings | `BookingsView` → `BookingsPage` | CONFIRMED | `components/BookingsView.tsx`; planner states: `SkeletonRows`/`ErrorState`/`EmptyState` (UX-004) |
 | new-booking | `NewBookingView` | CONFIRMED | `components/NewBookingView.tsx` |
 | customers | `CustomersView` | CONFIRMED | `components/CustomersView.tsx` |
 | customer-detail | `CustomerDetailView` | CONFIRMED | `components/CustomerDetailView.tsx` |
