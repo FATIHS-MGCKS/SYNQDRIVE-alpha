@@ -8,12 +8,9 @@ import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
 import { MasterAdminMfaGuard } from './master-admin-mfa.guard';
 import { MasterBillingDelegateMfaGuard } from './master-billing-delegate-mfa.guard';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
-import { UiAuditModule } from '@modules/ui-audit/ui-audit.module';
-import { UiAuditWriteDenyGuard } from '@modules/ui-audit/ui-audit-write-deny.guard';
-import { UiAuditSessionEnforcementGuard } from '@modules/ui-audit/ui-audit-session-enforcement.guard';
 
 @Module({
-  imports: [PrismaModule, forwardRef(() => IamMfaModule), UiAuditModule],
+  imports: [PrismaModule, forwardRef(() => IamMfaModule)],
   providers: [
     AuthGuard,
     RolesGuard,
@@ -22,8 +19,6 @@ import { UiAuditSessionEnforcementGuard } from '@modules/ui-audit/ui-audit-sessi
     MasterAdminMfaGuard,
     MasterBillingDelegateMfaGuard,
     { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: UiAuditSessionEnforcementGuard },
-    { provide: APP_GUARD, useClass: UiAuditWriteDenyGuard },
   ],
   exports: [
     AuthGuard,

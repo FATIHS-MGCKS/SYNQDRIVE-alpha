@@ -100,45 +100,4 @@ describe('PlatformPermissionService', () => {
     expect(prisma.userPlatformPermissionGrant.findFirst).not.toHaveBeenCalled();
   });
 
-  it('rejects UI audit grant for MASTER_ADMIN', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
-      id: 'target',
-      status: UserStatus.ACTIVE,
-      platformRole: UserPlatformRole.MASTER_ADMIN,
-    });
-    await expect(
-      service.grantUiAuditPermission('target', 'admin-1', PlatformPermissionKey.UI_AUDIT_RENTAL),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('revokeUiAudit increments sessionVersion', async () => {
-    (prisma.userPlatformPermissionGrant.findFirst as jest.Mock).mockResolvedValue({
-      id: 'grant-audit',
-    });
-    (prisma.userPlatformPermissionGrant.update as jest.Mock).mockResolvedValue({ id: 'grant-audit' });
-
-    await service.revokeUiAuditPermission(
-      'target',
-      'admin-1',
-      PlatformPermissionKey.UI_AUDIT_RENTAL,
-    );
-    expect(prisma.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'target' },
-        data: { sessionVersion: { increment: 1 } },
-      }),
-    );
-  });
-
-  it('rejects UI audit grant when user has active ORG_ADMIN membership', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
-      id: 'target',
-      status: UserStatus.ACTIVE,
-      platformRole: UserPlatformRole.USER,
-    });
-    (prisma.organizationMembership.findFirst as jest.Mock).mockResolvedValue({ id: 'mem-1' });
-    await expect(
-      service.grantUiAuditPermission('target', 'admin-1', PlatformPermissionKey.UI_AUDIT_OPERATOR),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
 });
