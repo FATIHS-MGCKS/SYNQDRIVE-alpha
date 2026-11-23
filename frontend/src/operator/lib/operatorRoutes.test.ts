@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildOperatorBookingUrl,
+  buildOperatorScanPathUrl,
   buildOperatorScanQueryUrl,
   buildOperatorVehicleUrl,
   isUuidLike,
@@ -74,5 +75,6 @@ describe('operator URL builders', () => {
     expect(buildOperatorBookingUrl(BOOKING_ID)).toContain(`/operator/bookings/${BOOKING_ID}`);
     expect(buildOperatorScanQueryUrl('B-XY 123')).toContain('tab=scan');
     expect(buildOperatorScanQueryUrl('B-XY 123')).toContain('q=B-XY%20123');
+    expect(buildOperatorScanPathUrl()).toMatch(/\/operator\/scan$/);
   });
 });

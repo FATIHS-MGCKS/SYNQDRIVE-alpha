@@ -165,7 +165,7 @@ Additional **search-string migrations** on boot in `master/App.tsx` (replaceStat
 ### Top-level route ownership
 
 - **Path prefix:** `/operator` (React Router in `OperatorApp.tsx`).
-- **Routes:** index, `vehicles/:vehicleId`, `bookings/:bookingId`, catch-all → `/operator`.
+- **Routes:** index, `vehicles/:vehicleId`, `bookings/:bookingId`, `scan`, catch-all → `/operator`.
 - **In-shell tabs:** `OperatorShellContext.activeTab` — not reflected in path except via deep-link bridge.
 
 ### View state representation
@@ -193,7 +193,7 @@ Builders: `operator/lib/operatorRoutes.ts`.
 
 ### Deep-link support
 
-**CONFIRMED** — bridge + tests (`operatorRoutes.test.ts`).
+**CONFIRMED** — bridge + route matching + bridge integration tests (UX-008); resolver (`operatorRoutes.test.ts`).
 
 ### Browser Back / Forward
 
