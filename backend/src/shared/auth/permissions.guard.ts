@@ -38,7 +38,6 @@ import {
   resolvePermissionOrgId,
 } from './permission.util';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
-import { isUiAuditBoundUser, resolveUiAuditJwtPermissions } from '@modules/ui-audit/ui-audit.context';
 
 /**
  * Permission-based authorization using `OrganizationMembership.permissions` JSON.
@@ -77,11 +76,7 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    if (resolveUiAuditJwtPermissions(user).length > 0 && user.platformRole === 'MASTER_ADMIN') {
-      throw new ForbiddenException('UI audit JWT incompatible with MASTER_ADMIN');
-    }
-
-    if (user.platformRole === 'MASTER_ADMIN' && !isUiAuditBoundUser(user)) return true;
+    if (user.platformRole === 'MASTER_ADMIN') return true;
 
     const orgId = resolvePermissionOrgId(request, user);
     if (!orgId) {
@@ -97,11 +92,7 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('You do not have access to this organization');
     }
 
-    if (membership.role === 'ORG_ADMIN' && !isUiAuditBoundUser(user)) return true;
-
-    if (isUiAuditBoundUser(user) && required.level !== 'read') {
-      throw new ForbiddenException('UI audit scope: write or manage permission denied');
-    }
+    if (membership.role === 'ORG_ADMIN') return true;
 
     const permissions = normalizeMembershipPermissions(membership.permissions);
     const access = computeEffectiveAccess({

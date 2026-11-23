@@ -1,14 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { hasUiAuditMasterGrant } from '@modules/ui-audit/ui-audit.context';
-import { isUiAuditMasterReadAllowed } from '@modules/ui-audit/ui-audit-read-allowlist';
-
-function normalizePath(url: string | undefined): string {
-  if (!url) return '';
-  const path = (url.split('?')[0] ?? '').replace(/\/$/, '') || '/';
-  return path;
-}
 
 /**
  * Enforces RBAC based on the access evaluation order defined in Phase 3:
@@ -45,16 +37,7 @@ export class RolesGuard implements CanActivate {
     );
 
     if (!hasRole) {
-      const path = normalizePath(request.url ?? request.path);
-      const method = String(request.method ?? 'GET').toUpperCase();
-      const masterAuditRead =
-        requiredRoles.includes('MASTER_ADMIN') &&
-        hasUiAuditMasterGrant(user) &&
-        (method === 'GET' || method === 'HEAD') &&
-        isUiAuditMasterReadAllowed(method, path);
-      if (!masterAuditRead) {
-        throw new ForbiddenException('Insufficient role permissions');
-      }
+      throw new ForbiddenException('Insufficient role permissions');
     }
 
     return true;

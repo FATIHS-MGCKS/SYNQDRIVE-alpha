@@ -184,6 +184,15 @@ nodes:
     source_paths:
       - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
 
+  - id: VO-GAP-016
+    type: gap
+    title: Motion physics reference for DI shadow (informative only)
+    epistemic_status: CONFIRMED
+    summary: Phase A shipped reference materialization; Phase B DI shadow open.
+    source_paths:
+      - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
+      - architecture/vehicle-onboarding/research/VEHICLE_PHYSICS_PHASE2_ENRICHMENT_BINDING.md
+
   - id: VO-CX-001
     type: contradiction
     title: Master UI connectivity vs canonical freshness
@@ -291,6 +300,26 @@ nodes:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
     evidence:
       - VO-EVID-1-001
+
+  - id: VO-EVID-2B-001
+    type: evidence
+    title: V2B canonical registration convergence plan
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Design contract, PR sequence, PG matrix; no runtime cutover in plan PR.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_CANONICAL_REGISTRATION_CONVERGENCE_PLAN_2026-11-22.md
+
+  - id: VO-DEC-2B-001
+    type: decision
+    title: V2B canonical registration convergence
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: HM/manual convergence via activation rail; owner-governed flags; no retroactive billing.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-001
 
   - id: VO-PERSIST-CASE-001
     type: persist

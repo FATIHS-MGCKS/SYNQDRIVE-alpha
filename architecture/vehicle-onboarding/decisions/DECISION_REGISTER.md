@@ -7,6 +7,7 @@
 | VO-DEC-1-002 | VO-1.1 architecture consistency seal | VALIDATED | VO-EVID-1-001 |
 | VO-DEC-2-001 | VO-2 persistence foundation schema | PROPOSED | VO-EVID-2-001 |
 | VO-DEC-2-002 | VO-2.1 persistence integrity and migration proof | PROPOSED | VO-EVID-2-002 |
+| VO-DEC-2B-001 | V2B canonical registration convergence (HM/manual → activation rail) | PROPOSED | VO-EVID-2B-001 |
 
 ---
 
@@ -86,3 +87,20 @@
 | **EVIDENCE** | VO-EVID-2-002 |
 | **VALIDATION** | `test:vehicle-onboarding:vo2:postgres:ci`; `prisma validate`; graph/registry validators |
 | **OPEN GAPS** | VO-3 orchestration and runtime onboarding paths unchanged |
+
+---
+
+## VO-DEC-2B-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Parallel HM_ONLY inline registration and manual `VehiclesService.create` with legacy billing hook; DIMO already on canonical activation |
+| **WHY** | V2A confirmed VEH-001/002 safety debt; need owner-governed convergence without replacing DIMO P2 |
+| **CHANGE** | Converge HM_ONLY and manual paths through `VehicleOnboardingActivationService` + durable `VEHICLE_ACTIVATED` outbox; single billing consumer; feature-flagged rollout; no retroactive billing |
+| **ALTERNATIVES REJECTED** | Outbox-only patch without activation TX (weak identity/readiness); disable manual create without owner policy; automatic legacy billing backfill |
+| **EXPECTED EFFECT** | One activation rail, exactly-once billing per new activation, preserved vehicle.id |
+| **NON-EFFECTS** | No cutover in plan PR; no flag activation; DIMO semantics unchanged |
+| **EVIDENCE** | VO-EVID-2B-001 |
+| **VALIDATION** | PG matrix PG-01…PG-10 in plan; V2A characterization prerequisite |
+| **OPEN GAPS** | Owner decisions OWN-1…6; V2B-PR2+ implementation |

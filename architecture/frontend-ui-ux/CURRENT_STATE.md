@@ -1,6 +1,8 @@
 # Current State — Shared UI Design Foundation
 
-**Repository UI SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa` (screen contracts) · **Repository `main`:** `cac0065679cffedbeab41c7a758534d140db5f80` (#2492 merged).
+**Repository `main` (post P9 merge + retirement branch):** `ff8871c6d959f521a6d3dc1775e6c2fae9af3f39`  
+**UI/UX baseline authority:** [`evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](./evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md)  
+**P9 audit access:** `RETIRED_BY_OWNER_DECISION` — runtime removed; evidence preserved.
 
 ## Production (P7 infra + P8 functional attempt)
 
