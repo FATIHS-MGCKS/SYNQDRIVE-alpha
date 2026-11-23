@@ -2,6 +2,8 @@
 
 **Status:** IMPLEMENTED (repository); CI-gated via `V2B_HM_ONLY_CANONICAL_PG=1` on disposable PostgreSQL (VO-5B workflow gate).
 
+**PR:** [#2515](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2515) (draft) @ `f5df3dd245fea7c67f6115fe88dcd2db785c4b46`
+
 **Prerequisite:** V2B-PR2 merged ([#2510](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2510) @ `4fb755fed6b664b16b85be005a98557a91a9e8f5`).
 
 ## Scope
