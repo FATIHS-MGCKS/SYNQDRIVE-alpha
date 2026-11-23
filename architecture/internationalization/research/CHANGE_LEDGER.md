@@ -100,18 +100,6 @@ Scientific history of the i18n rebuild workstream. No runtime code changes in th
 
 ---
 
-## 2026-11-23 — UX-009 targeted product copy (FEUX Integration 2 slice)
-
-| Field | Detail |
-|-------|--------|
-| **CHANGE** | `bookings.planner.loadError`; `operator.today.*` modules for 9 locales; Operator Today UI wired to `useLanguage()` |
-| **WHY** | High-traffic UX-004 screens still had hardcoded DE/EN copy |
-| **NON_EFFECTS** | No runtime provider change; no global hardcoded campaign |
-| **EVIDENCE** | `architecture/frontend-ui-ux/evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md` |
-| **STATUS** | IMPLEMENTED (repository) |
-
----
-
 ## Remaining workstreams (next implementation)
 
 See [KNOWLEDGE_GAPS.md](../contradictions/KNOWLEDGE_GAPS.md) § Remaining workstreams.
