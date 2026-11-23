@@ -35,6 +35,16 @@ nodes:
       - architecture/frontend-ui-ux/products/master-admin/decisions/DECISION_REGISTER.md
     evidence:
       - MAUX-EVID-CODE-001
+  - id: MAUX-DEC-SIDEBAR-V1-001
+    type: decision
+    title: Sidebar V1 group tree
+    summary: Owner-approved Master sidebar IA aligned to Rental visual order
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/decisions/DECISION_REGISTER.md
+    evidence:
+      - MAUX-EVID-SIDEBAR-V1-2026-11-23
   - id: MAUX-EVID-AUDIT-001
     type: evidence
     title: Bootstrap audit
@@ -51,6 +61,14 @@ nodes:
     source_type: CURRENT_CODE
     source_paths:
       - frontend/src/master/
+  - id: MAUX-EVID-SIDEBAR-V1-2026-11-23
+    type: evidence
+    title: Sidebar V1 implementation evidence
+    summary: UX-012 sidebar V1 navigation tree
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    source_paths:
+      - architecture/frontend-ui-ux/products/master-admin/evidence/UX012_MASTER_SIDEBAR_V1_2026-11-23.md
   - id: MAUX-GAP-I18N-001
     type: gap
     title: Master chrome tMasterNav DE-only

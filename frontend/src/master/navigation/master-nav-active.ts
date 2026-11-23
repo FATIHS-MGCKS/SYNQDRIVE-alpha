@@ -28,3 +28,12 @@ export function isMasterNavItemActive(itemId: MasterView, ctx: MasterNavActiveCo
 export function isMasterNavGroupActive(groupItemIds: MasterView[], ctx: MasterNavActiveContext): boolean {
   return groupItemIds.some((id) => isMasterNavItemActive(id, ctx));
 }
+
+export function isMasterNavParentEntryActive(
+  parentView: MasterView,
+  childViews: MasterView[],
+  ctx: MasterNavActiveContext,
+): boolean {
+  if (isMasterNavItemActive(parentView, ctx)) return true;
+  return childViews.some((id) => isMasterNavItemActive(id, ctx));
+}

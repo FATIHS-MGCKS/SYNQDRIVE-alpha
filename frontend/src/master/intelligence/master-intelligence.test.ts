@@ -187,14 +187,15 @@ describe('Master nav — intelligence entries', () => {
     expect(ALL_MASTER_VIEWS).toContain('apds-intelligence');
   });
 
-  it('places views under connectivity group', () => {
-    const connectivity = MASTER_NAV_GROUPS.find((g) => g.id === 'connectivity');
-    expect(connectivity?.items).toEqual([
-      'platform-integrations',
-      'vsi-intelligence',
-      'apds-intelligence',
-      'high-mobility',
-    ]);
+  it('places intelligence views under intelligence group; integrations parent under plattform', () => {
+    const intelligence = MASTER_NAV_GROUPS.find((g) => g.id === 'intelligence');
+    const intelViews = intelligence?.entries
+      .filter((e): e is { type: 'link'; view: string } => e.type === 'link')
+      .map((e) => e.view);
+    expect(intelViews).toEqual(['vsi-intelligence', 'apds-intelligence']);
+    const plattform = MASTER_NAV_GROUPS.find((g) => g.id === 'plattform');
+    const parent = plattform?.entries.find((e) => e.type === 'parent' && e.view === 'platform-integrations');
+    expect(parent?.children).toContain('high-mobility');
   });
 
   it('exposes MASTER_ADMIN-only nav items', () => {

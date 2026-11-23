@@ -10,6 +10,7 @@ import { tireWearV3Fr } from './tire.wearV3.fr';
 import { serviceIntelligenceFr } from './service-intelligence.fr';
 import { masterPhysicalDeviceInventoryFr } from './master.physicalDeviceInventory.fr';
 import { masterIntelligenceFr } from './master.intelligence.fr';
+import { masterSidebarV1Fr } from './master.sidebar.v1.fr';
 import { masterMotionPhysicsFr } from './master.motionPhysics.fr';
 import { masterVehicleIdentityFr } from './master.vehicleIdentity.fr';
 import { masterOneAutoFr } from './master.oneAuto.fr';
@@ -964,6 +965,7 @@ export const fr = {
   ...masterPlatformOpsDiS4Fr,
   ...masterPhysicalDeviceInventoryFr,
   ...masterIntelligenceFr,
+  ...masterSidebarV1Fr,
   ...masterMotionPhysicsFr,
 ...masterVehicleIdentityFr,
   ...masterOneAutoFr,

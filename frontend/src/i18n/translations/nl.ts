@@ -10,6 +10,7 @@ import { tireWearV3Nl } from './tire.wearV3.nl';
 import { serviceIntelligenceNl } from './service-intelligence.nl';
 import { masterPhysicalDeviceInventoryNl } from './master.physicalDeviceInventory.nl';
 import { masterIntelligenceNl } from './master.intelligence.nl';
+import { masterSidebarV1Nl } from './master.sidebar.v1.nl';
 import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
 import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterOneAutoNl } from './master.oneAuto.nl';
@@ -214,6 +215,7 @@ export const nl = {
   'trips.drivingImpact.quality.r1Contained': 'Voertuigbelasting tijdelijk niet beschikbaar (R1-tijdsbeperking).',
   ...masterPhysicalDeviceInventoryNl,
   ...masterIntelligenceNl,
+  ...masterSidebarV1Nl,
   ...masterMotionPhysicsNl,
 ...masterVehicleIdentityNl,
   ...masterOneAutoNl,

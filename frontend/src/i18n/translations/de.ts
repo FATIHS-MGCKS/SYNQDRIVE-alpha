@@ -65,6 +65,7 @@ import { tireWearV3De } from './tire.wearV3.de';
 import { serviceIntelligenceDe } from './service-intelligence.de';
 import { masterPhysicalDeviceInventoryDe } from './master.physicalDeviceInventory.de';
 import { masterIntelligenceDe } from './master.intelligence.de';
+import { masterSidebarV1De } from './master.sidebar.v1.de';
 import { masterMotionPhysicsDe } from './master.motionPhysics.de';
 import { masterVehicleIdentityDe } from './master.vehicleIdentity.de';
 import { masterOneAutoDe } from './master.oneAuto.de';
@@ -6033,6 +6034,7 @@ export const de: Record<TranslationKey, string> = {
   ...masterPlatformOpsDiS4De,
   ...masterPhysicalDeviceInventoryDe,
   ...masterIntelligenceDe,
+  ...masterSidebarV1De,
   ...masterMotionPhysicsDe,
 ...masterVehicleIdentityDe,
   ...masterOneAutoDe,

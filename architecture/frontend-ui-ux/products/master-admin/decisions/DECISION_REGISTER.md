@@ -4,6 +4,7 @@
 |-------------|-------|--------|----------|
 | MAUX-DEC-INDEPENDENT-001 | Independently governed Master Admin UI/UX authority | VALIDATED | MAUX-EVID-AUDIT-001 |
 | MAUX-DEC-CONTROL-PLANE-001 | Master retains independent control-plane IA | VALIDATED | MAUX-EVID-CODE-001 |
+| MAUX-DEC-SIDEBAR-V1-001 | Owner-approved Sidebar V1 group tree (Rental visual order, Master IA) | VALIDATED | MAUX-EVID-SIDEBAR-V1-2026-11-23 |
 
 ---
 
@@ -42,3 +43,22 @@
 | **TRADEOFFS** | URL-param-heavy IA vs. deep-link clarity. |
 | **REMAINING_GAPS** | Full org-detail tab audit; voice-assistant section matrix **PARTIAL**. |
 | **EVIDENCE** | MAUX-EVID-CODE-001 |
+
+---
+
+## MAUX-DEC-SIDEBAR-V1-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED (repository + unit tests) |
+| **BEFORE** | Flat multi-group sidebar with mobile primary duplicates; Support and Integrations mixed in body/footer; intelligence under connectivity group. |
+| **WHY** | Owner-approved control-plane navigation aligned to Rental visual grouping without changing hub page implementations. |
+| **Considered alternatives** | (A) Regenerate all hubs — rejected (out of scope). (B) New views for Partner group — rejected (navigation-only folder). |
+| **CHANGE** | `MASTER_NAV_GROUPS` V1 tree; nested integrations parent; footer Support badge; billing-only isolation preserved; 9-locale `master.sidebar.v1.*` keys. |
+| **EXPECTED_EFFECT** | 24 registered `?view=` routes unchanged; each reachable once via rail or footer. |
+| **VALIDATION** | `master-nav-sidebar-v1.test.ts`; vitest regressions; `npm run build`; `npm run i18n:check`. |
+| **OBSERVED_EFFECT** | **CONFIRMED** tests pass on implementation branch. Production UI **NOT_CLAIMED**. |
+| **NON_EFFECTS** | No backend/IAM/route-guard changes; no hub interior redesign. |
+| **TRADEOFFS** | `tMasterNav` DE fallback remains for keys not in platform dictionary. |
+| **REMAINING_GAPS** | Playwright visual regression for sidebar **NOT_RUN** this PR. |
+| **EVIDENCE** | MAUX-EVID-SIDEBAR-V1-2026-11-23 |

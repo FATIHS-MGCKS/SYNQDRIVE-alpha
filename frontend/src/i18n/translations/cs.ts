@@ -10,6 +10,7 @@ import { tireWearV3Cs } from './tire.wearV3.cs';
 import { serviceIntelligenceCs } from './service-intelligence.cs';
 import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 import { masterIntelligenceCs } from './master.intelligence.cs';
+import { masterSidebarV1Cs } from './master.sidebar.v1.cs';
 import { masterMotionPhysicsCs } from './master.motionPhysics.cs';
 import { masterVehicleIdentityCs } from './master.vehicleIdentity.cs';
 import { masterOneAutoCs } from './master.oneAuto.cs';
@@ -213,6 +214,7 @@ export const cs = {
   'trips.drivingImpact.quality.r1Contained': 'Zatížení vozidla dočasně nedostupné (časové omezení R1).',
   ...masterPhysicalDeviceInventoryCs,
   ...masterIntelligenceCs,
+  ...masterSidebarV1Cs,
   ...masterMotionPhysicsCs,
 ...masterVehicleIdentityCs,
   ...masterOneAutoCs,

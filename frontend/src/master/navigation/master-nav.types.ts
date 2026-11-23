@@ -53,13 +53,10 @@ export type MasterNavBadgeType =
 export type MasterNavPermission = 'MASTER_ADMIN' | 'master-billing';
 
 export type MasterNavGroupId =
-  | 'overview'
-  | 'tenants'
-  | 'fleet'
-  | 'commerce'
-  | 'connectivity'
-  | 'partners'
-  | 'operations'
+  | 'verwaltung'
+  | 'produkte-business'
+  | 'plattform'
+  | 'intelligence'
   | 'engineering';
 
 export interface MasterNavItemConfig {
@@ -68,16 +65,19 @@ export interface MasterNavItemConfig {
   icon: LucideIcon;
   permissions: MasterNavPermission[];
   badge?: MasterNavBadgeType;
-  /** Primary mobile shortcut (pinned above accordions). */
-  mobilePrimary?: boolean;
 }
+
+export type MasterNavEntry =
+  | { type: 'link'; view: MasterView }
+  | { type: 'parent'; view: MasterView; children: MasterView[] }
+  | { type: 'folder'; labelKey: string; children: MasterView[] };
 
 export interface MasterNavGroupConfig {
   id: MasterNavGroupId;
   labelKey: string;
   collapsible: boolean;
   defaultExpanded: boolean;
-  items: MasterView[];
+  entries: MasterNavEntry[];
 }
 
 export interface MasterNavLocationState {

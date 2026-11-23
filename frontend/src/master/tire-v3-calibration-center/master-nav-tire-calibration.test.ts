@@ -18,7 +18,10 @@ describe('master nav tire calibration center', () => {
 
   it('is listed under engineering group', () => {
     const engineering = MASTER_NAV_GROUPS.find((g) => g.id === 'engineering');
-    expect(engineering?.items).toContain('tire-v3-calibration-center');
+    const views = engineering?.entries
+      .filter((e): e is { type: 'link'; view: string } => e.type === 'link')
+      .map((e) => e.view);
+    expect(views).toContain('tire-v3-calibration-center');
   });
 
   it('is visible for master admin permission set', () => {

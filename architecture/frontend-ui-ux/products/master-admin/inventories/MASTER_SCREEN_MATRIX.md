@@ -1,7 +1,8 @@
 # Master Admin — Screen / Hub Matrix
 
-**SHA:** UX-006 closeout · **Epistemic:** CONFIRMED (routing); CONFIRMED (organization detail tabs)  
-**Contract:** [`NAVIGATION_URL_CONTRACT.md`](../../../governance/NAVIGATION_URL_CONTRACT.md) (MASTER_NAVIGATION_CONTRACT)
+**SHA:** Sidebar V1 (MAUX-DEC-SIDEBAR-V1-001) · **Epistemic:** CONFIRMED (routing); CONFIRMED (organization detail tabs)  
+**Contract:** [`NAVIGATION_URL_CONTRACT.md`](../../../governance/NAVIGATION_URL_CONTRACT.md) (MASTER_NAVIGATION_CONTRACT)  
+**Sidebar IA (grouping only):** 24 views unchanged — rail grouping in `MASTER_NAV_GROUPS` (V1); Support footer-only; nested `platform-integrations` parent.
 
 | `?view=` | Root component | PageContainer | URL helpers | Notes |
 |----------|----------------|---------------|-------------|-------|

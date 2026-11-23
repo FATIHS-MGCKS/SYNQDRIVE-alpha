@@ -1,0 +1,20 @@
+/** Master Admin sidebar V1 nav labels (MAUX SIDEBAR_V1). */
+export const masterSidebarV1De = {
+  'master.nav.group.verwaltung': 'Verwaltung',
+  'master.nav.group.produkteBusiness': 'Produkte & Business',
+  'master.nav.group.plattform': 'Plattform',
+  'master.nav.group.intelligence': 'Intelligence',
+  'master.nav.group.partnerServices': 'Partner & Services',
+  'master.nav.group.engineering': 'Engineering',
+  'master.nav.prospects': 'Akquise Center',
+  'master.nav.securityAccess': 'Nutzer & Rollen',
+  'master.nav.vehicles': 'Fahrzeuge',
+  'master.nav.deviceInventory': 'Geräte / PDI',
+  'master.nav.platformIntegrations': 'Integrationen & APIs',
+  'master.nav.serviceClientManagement': 'Service Clients',
+  'master.nav.vsiIntelligence': 'VSI Intelligence',
+  'master.nav.apdsIntelligence': 'APDS Intelligence',
+  'master.nav.batteryV2ShadowInspection': 'Battery Shadow',
+  'master.nav.tireV3CalibrationCenter': 'Tire Calibration',
+  'master.nav.account': 'Mein Konto',
+} as const;

@@ -11,8 +11,11 @@ describe('master-nav product-management', () => {
     expect(item?.permissions).toEqual(['MASTER_ADMIN']);
     expect(item?.permissions).not.toContain('master-billing');
     expect(tMasterNav('master.nav.productManagement')).toBe('Produktmanagement');
-    const commerce = MASTER_NAV_GROUPS.find((g) => g.id === 'commerce');
-    expect(commerce?.items).toContain('product-management');
+    const produkte = MASTER_NAV_GROUPS.find((g) => g.id === 'produkte-business');
+    const hasProduct = produkte?.entries.some(
+      (e) => (e.type === 'link' && e.view === 'product-management') || (e.type === 'parent' && e.view === 'product-management'),
+    );
+    expect(hasProduct).toBe(true);
   });
 
   it('normalizes direct URL view=product-management', () => {
