@@ -2,11 +2,13 @@ import { FuelType, VehicleType } from '@prisma/client';
 import type { RegisterHmOnlyVehicleDto } from '@modules/high-mobility/dto/high-mobility.dto';
 import type { HighMobilityVehicle } from '@prisma/client';
 import {
+  BATTERY_REFERENCE_CAPACITY_ALLOWED_SOURCES,
   BatteryReferenceCapacitySource,
   BatteryReferenceCapacityType,
 } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
 import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-document-versions';
 import { resolveFuelTypeStrict } from '../policy/activation-field-resolution';
+import type { VehicleTechnicalBaselineDraftV2 } from '../contracts/vehicle-technical-baseline-draft.v2';
 
 function resolveVehicleType(raw: string | undefined): VehicleType {
   if (!raw?.trim()) {
@@ -47,21 +49,52 @@ export function buildHmOnlyAdminBaselineDraft(
   };
 }
 
-export function buildHmOnlyTechnicalBaselineDraft(dto: RegisterHmOnlyVehicleDto) {
-  const fuel = normalizeHmOnlyFuelType(dto.fuelType);
-  if (fuel === FuelType.ELECTRIC || fuel === FuelType.PLUGIN_HYBRID) {
-    return {
-      version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
-      hvBatteryReference: {
-        capacityKwh: 77,
-        capacityType: BatteryReferenceCapacityType.USABLE,
-        source: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
-      },
-    };
+function parseOperatorBatteryReference(
+  dto: RegisterHmOnlyVehicleDto,
+): VehicleTechnicalBaselineDraftV2['hvBatteryReference'] | undefined {
+  const capacity = dto.hvBatteryUsableCapacityKwh;
+  const sourceRaw = dto.hvBatteryReferenceSource?.trim();
+  if (capacity == null || !Number.isFinite(capacity) || capacity <= 0) {
+    return undefined;
   }
-  return { version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 };
+  if (!sourceRaw) {
+    return undefined;
+  }
+  const allowed = BATTERY_REFERENCE_CAPACITY_ALLOWED_SOURCES as readonly string[];
+  if (!allowed.includes(sourceRaw)) {
+    return undefined;
+  }
+  return {
+    capacityKwh: capacity,
+    capacityType: BatteryReferenceCapacityType.USABLE,
+    source: sourceRaw as BatteryReferenceCapacitySource,
+  };
+}
+
+/**
+ * Technical baseline without fabricated OEM/battery guesses.
+ * HV battery reference is included only when the registration request carries
+ * an explicit capacity plus an allowed reference source (operator-provided evidence).
+ */
+export function buildHmOnlyTechnicalBaselineDraft(
+  dto: RegisterHmOnlyVehicleDto,
+): VehicleTechnicalBaselineDraftV2 {
+  const draft: VehicleTechnicalBaselineDraftV2 = {
+    version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
+  };
+  const hvBattery = parseOperatorBatteryReference(dto);
+  if (hvBattery) {
+    draft.hvBatteryReference = hvBattery;
+  }
+  return draft;
 }
 
 export function resolveHmOnlyVehicleType(dto: RegisterHmOnlyVehicleDto): VehicleType {
   return resolveVehicleType(dto.vehicleType);
+}
+
+/** Test / readiness aid: EV/PHEV fuel classes that require HV battery evidence when product mandates it. */
+export function hmOnlyFuelRequiresHvBatteryEvidence(fuel?: string): boolean {
+  const fuelType = normalizeHmOnlyFuelType(fuel);
+  return fuelType === FuelType.ELECTRIC || fuelType === FuelType.PLUGIN_HYBRID;
 }

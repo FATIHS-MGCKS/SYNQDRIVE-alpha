@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+import { BatteryReferenceCapacitySource } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
 import { HmOnlyCanonicalRegistrationService } from './hm-only-canonical-registration.service';
 
 function buildHarness(overrides?: {
@@ -37,14 +38,6 @@ function buildHarness(overrides?: {
         { product: { slug: 'RENTAL' }, status: 'ACTIVE' },
       ]),
     },
-    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        vehicleOnboardingCase: {
-          findFirst: jest.fn().mockResolvedValue({ draftIdentityJson: { version: 1, fuelType: 'GASOLINE', vin: hmRecord.vin } }),
-          update: jest.fn().mockResolvedValue({}),
-        },
-      }),
-    ),
   };
 
   const sourceAdoption = {
@@ -161,6 +154,65 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
         registryLifecycle: 'ACTIVE',
       },
     });
+    await expect(
+      service.register({
+        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+        actorUserId: null,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('passes capture concurrency tokens through admin and technical mutations', async () => {
+    const { service, capture } = buildHarness();
+    await service.register({
+      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+      actorUserId: null,
+    });
+    expect(capture.updateAdminBaseline).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedConcurrencyToken: 'tok-1' }),
+    );
+    expect(capture.updateTechnicalBaseline).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedConcurrencyToken: 'tok-2' }),
+    );
+  });
+
+  it('does not persist synthetic HV battery on electric fuel without operator evidence', async () => {
+    const { service, capture } = buildHarness();
+    await service.register({
+      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', fuelType: 'electric' },
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+      actorUserId: null,
+    });
+    const technicalCall = capture.updateTechnicalBaseline.mock.calls[0][0];
+    expect(technicalCall.body.hvBatteryReference).toBeUndefined();
+  });
+
+  it('forwards operator-verified HV reference through technical capture', async () => {
+    const { service, capture } = buildHarness();
+    await service.register({
+      dto: {
+        hmVehicleId: 'hm-1',
+        organizationId: 'org-a',
+        fuelType: 'electric',
+        hvBatteryUsableCapacityKwh: 64,
+        hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+      },
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+      actorUserId: null,
+    });
+    expect(capture.updateTechnicalBaseline.mock.calls[0][0].body.hvBatteryReference).toMatchObject({
+      capacityKwh: 64,
+      source: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
+    });
+  });
+
+  it('surfaces capture concurrency conflicts without bypassing capture APIs', async () => {
+    const { service, capture } = buildHarness();
+    capture.updateTechnicalBaseline.mockRejectedValueOnce(
+      new VehicleOnboardingError('ONBOARDING_CONCURRENCY_CONFLICT', 'Stale token'),
+    );
     await expect(
       service.register({
         dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },

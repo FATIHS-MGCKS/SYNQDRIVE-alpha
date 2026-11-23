@@ -199,6 +199,13 @@ export interface RegisterHmOnlyVehicleDto {
   mileageKm?: number;
   fuelType?: string;
   vehicleType?: string;
+  /**
+   * Optional HV usable capacity (kWh). Persisted only together with
+   * `hvBatteryReferenceSource` on the canonical onboarding path — never synthesized.
+   */
+  hvBatteryUsableCapacityKwh?: number;
+  /** Allowed battery reference source when `hvBatteryUsableCapacityKwh` is set. */
+  hvBatteryReferenceSource?: string;
 }
 
 export interface HmOnlyRegistrationResultDto {

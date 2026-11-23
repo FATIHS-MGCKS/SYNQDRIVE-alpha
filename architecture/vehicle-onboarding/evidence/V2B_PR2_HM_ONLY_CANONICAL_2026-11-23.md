@@ -9,9 +9,11 @@
 - `HmOnlyCanonicalRegistrationService` orchestrates `adoptProviderSource` → capture baselines → `evaluateAndSealReadiness` → `activateVehicle` (no inline `vehicle.create` on canonical path).
 - `VehicleRegistrationConvergenceService.registerHmOnlyCanonical` delegates to orchestrator when flag routes to convergence port.
 - Idempotency key: `hm-only-canonical-register:v1:{organizationId}:{hmVehicleId}` with resume for REGISTERED mirror + completed case.
-- Nest wiring: convergence module `forwardRef` → `VehicleOnboardingModule` exports orchestrator (HM still imports slim convergence module).
+- Nest wiring: `VehicleOnboardingActivationRailModule` + slim `VehicleRegistrationConvergenceModule` (HM does not import full VO graph).
+- **Recovery hardening:** no fabricated HV battery defaults; operator evidence via optional DTO fields only; no raw Prisma identity mutation.
+- **PR #2509 mismatch:** GitHub associated V2B title with Organizations P4 branch — use NEW draft PR on `cursor/vehicles-v2b-pr2-hm-only-canonical-44c2`.
 - Unit specs: orchestration, idempotent replay, readiness fail-closed, tenant/VIN guards; legacy routing specs unchanged (flag OFF).
-- PG-03 placeholder: `v2b-hm-only-canonical-convergence.postgres.integration.spec.ts` (gate `V2B_HM_ONLY_CANONICAL_PG=1`) — **not executed** in this PR (V2B-PR3).
+- PG-03: `PLACEHOLDER_NOT_E2E_VERIFIED` — real PostgreSQL E2E in V2B-PR3 only (`V2B_HM_ONLY_CANONICAL_PG=1`).
 
 ## Explicit non-effects
 
