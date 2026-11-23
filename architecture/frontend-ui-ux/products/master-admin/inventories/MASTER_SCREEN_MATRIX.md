@@ -16,17 +16,17 @@
 | product-management | `ProductManagementView` | standard **(in-view)** | | `PageContainer` inside view; App.tsx does not double-wrap (UX-001 verified) |
 | platform-integrations | `PlatformIntegrationsHub` | wide | `platform-integrations-url` | 5 tabs |
 | service-client-management | `CoreAppServiceClientsHub` | wide | | |
-| vsi-intelligence | `VsiMasterIntelligenceView` | wide | intelligence URL | |
-| apds-intelligence | `ApdsMasterIntelligenceView` | wide | | |
+| vsi-intelligence | `VsiMasterIntelligenceView` | wide | intelligence URL | UX-010: `MasterPageHeader` `context` (description visible) |
+| apds-intelligence | `ApdsMasterIntelligenceView` | wide | | UX-010: `MasterPageHeader` `context` |
 | high-mobility | `HighMobilityDataView` | standard | `hmTab` | |
 | parts-accessories | `PartsAccessoriesAdminView` | standard | | |
 | insurances | `InsurancesAdminView` | standard | | |
 | voice-assistant | `VoiceAssistantAdminView` | wide | `voiceSection`, `voiceOrgId` | |
 | platform-ops | `PlatformOpsHub` | wide | `platform-ops-url` | 7 sections |
 | support | `SupportView` | full | | 3-column ops |
-| battery-v2-shadow-inspection | `BatteryV2ShadowInspectionView` | wide | | engineering |
-| battery-v2-hv-inspection | `HvBatteryInspectionView` | wide | | |
-| tire-v3-calibration-center | `TireCalibrationCenterView` | wide | | |
+| battery-v2-shadow-inspection | `BatteryV2ShadowInspectionView` | wide | | UX-010: `context` header + icon actions |
+| battery-v2-hv-inspection | `HvBatteryInspectionView` | wide | | UX-010: `context` header |
+| tire-v3-calibration-center | `TireCalibrationCenterView` | wide | tire-calibration-center-url | UX-010: integrated header tabs + refresh ARIA |
 | architektur | `ArchitekturView` | standard | `archCategory` | |
 | changes | `ChangesView` | standard | | large internal changelog UI |
 

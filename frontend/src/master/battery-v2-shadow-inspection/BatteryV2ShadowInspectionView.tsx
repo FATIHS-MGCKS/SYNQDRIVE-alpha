@@ -322,6 +322,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   return (
     <>
       <MasterPageHeader
+        variant="context"
         title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.pageTitle')}
         description={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.pageDescription')}
         icon={<Battery className="w-6 h-6 text-status-info" />}

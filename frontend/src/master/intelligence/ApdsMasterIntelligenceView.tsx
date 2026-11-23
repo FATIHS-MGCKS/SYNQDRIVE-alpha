@@ -142,6 +142,7 @@ function ApdsMasterIntelligenceContent() {
   return (
     <>
       <MasterPageHeader
+        variant="context"
         title={t('master.intelligence.apds.title' as never)}
         description={t('master.intelligence.apds.description' as never)}
       />
