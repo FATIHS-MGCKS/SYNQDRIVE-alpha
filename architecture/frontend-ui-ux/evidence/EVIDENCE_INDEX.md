@@ -28,6 +28,7 @@
 | MAUX-EVID-UX010-2026-11-23 | AUDIT_DOCUMENT | `6394587609e761e6774256d5b888c53bb7bcc4ce` (#2511 merge) | UX-010 engineering hub headers aligned to PlatformOps `context` pattern | CONFIRMED | No browser visual certification |
 | FEUX-EVID-UX011-2026-11-23 | AUDIT_DOCUMENT | `698db6c0b1d4cfef4c8ea42febe0cfdcd4ee7f85` (#2512 merge) | UX-011 cross-product a11y audit closeout (dialogs/tables) | CONFIRMED | Bounded audit; not WCAG certified; partial Playwright |
 | FEUX-EVID-UX001-011-MERGE-2026-11-23 | AUDIT_DOCUMENT | `698db6c0b1d4cfef4c8ea42febe0cfdcd4ee7f85` | UX-001–UX-011 campaign merge register (GitHub-verified) | CONFIRMED | Merge only; no deploy attestation |
+| FEUX-EVID-AGENT-ROUTING-2026-11-23 | ARCHITECTURE_DOCUMENT | `23f437f6a` base | Canonical UI/UX authority map, Figma precedence, legacy supersession, agent routing validator | CONFIRMED | No app code; no AUTHORITY_ACTIVE promotion |
 | FEUX-EVID-P8-AUTH-GATE-001 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Access gate — no approved session | CONFIRMED | By design |
 | FEUX-EVID-P8-HTTP-001 | PRODUCTION_OBSERVATION | `2026-11-22T18:50:34Z` / prod `1e6a267c` | Unauthenticated origin HTTP 200 sample | CONFIRMED | curl CLI |
 | FEUX-EVID-P8-RUNTIME-2026-11-22 | AUDIT_DOCUMENT | `cac006567` / prod `1e6a267c` | P8 drift recheck +108 paths | CONFIRMED | git diff local |

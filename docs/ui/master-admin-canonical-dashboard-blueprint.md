@@ -1,3 +1,6 @@
+> **DOCUMENT STATUS:** `HISTORICAL_SUPERSEDED` — not current agent guidance. Successor: [`architecture/frontend-ui-ux/products/master-admin/`](../../architecture/frontend-ui-ux/products/master-admin/). See [`docs/ui/README.md`](./README.md).
+
+
 # Master Admin — Kanonisches Dashboard Blueprint (Plattform-Übersicht)
 
 **Datum:** 2026-08-18  

@@ -1,21 +1,34 @@
 ---
 alwaysApply: true
----
-
----
 description: Figma-based UI alignment rules
 globs:
   - "app/**/*.tsx"
   - "components/**/*.tsx"
   - "src/**/*.tsx"
+  - "frontend/**/*.tsx"
 ---
 
 When working on UI, design, layout, or frontend visual refinement:
 
-- Use the Figma MCP server first.
-- Treat Figma as the source of truth for visual design.
-- Treat the codebase as the source of truth for functionality.
-- Do not remove code-only functional UI additions just because they are not present in Figma.
-- Visually adapt code-only elements to match the active design language.
-- Preserve responsiveness, dark mode, light mode, sidebar/topbar behavior, and component consistency.
-- Refactor existing pages/components instead of regenerating entire screens whenever possible.
+## Authority (mandatory before edits)
+
+1. [`architecture/frontend-ui-ux/governance/CANONICAL_AUTHORITY_MAP.md`](../../architecture/frontend-ui-ux/governance/CANONICAL_AUTHORITY_MAP.md)
+2. [`architecture/frontend-ui-ux/governance/FIGMA_AND_VISUAL_PRECEDENCE.md`](../../architecture/frontend-ui-ux/governance/FIGMA_AND_VISUAL_PRECEDENCE.md)
+3. [`architecture/frontend-ui-ux/design-system/SHARED_DESIGN_SYSTEM.md`](../../architecture/frontend-ui-ux/design-system/SHARED_DESIGN_SYSTEM.md)
+4. Relevant product authority under `architecture/frontend-ui-ux/products/`
+
+## Figma
+
+- **Default contract:** registered FEUX architecture + implemented tokens — not unconditional Figma SSOT.
+- On **owner-approved redesign** tasks: use the Figma MCP server to inspect the named artifact.
+- Treat the **codebase** as source of truth for **functionality**.
+- Do not remove code-only functional UI because Figma omits it.
+- Visually harmonize code-only elements to the **current** design language (L0–L4, tokens).
+- If Figma and implementation disagree and the task is not an approved redesign: document the conflict; verify intended target — do not invent design intent.
+- Preserve responsiveness, dark/light mode, shell behavior, and component consistency.
+- Refactor existing pages/components instead of regenerating entire screens when possible.
+
+## Prohibited
+
+- Creating a parallel design system without owner approval.
+- Treating `docs/ui/*` (2026-08 pack) or `frontend/figma-*` stubs as current authority.

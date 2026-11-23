@@ -48,7 +48,7 @@ See [`./inventories/MASTER_SCREEN_MATRIX.md`](./inventories/MASTER_SCREEN_MATRIX
 
 ## Page framework (governing contract)
 
-**Source:** `docs/ui/master-admin-canonical-page-framework.md` (partially HISTORICAL) + code:
+**Source:** `architecture/frontend-ui-ux/products/master-admin/CURRENT_STATE.md` + code (historical `docs/ui/*` — superseded per `docs/ui/README.md`):
 
 | Element | Canonical component | Adoption |
 |---------|---------------------|----------|
