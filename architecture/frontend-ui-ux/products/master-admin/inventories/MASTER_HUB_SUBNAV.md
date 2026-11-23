@@ -38,7 +38,7 @@ Sections: overview, integrations, webhooks, settings, changelog — `frontend/sr
 
 ## Organization detail
 
-8 tabs — `frontend/src/master/organizations/types.ts` (`ORG_DETAIL_TABS`); URL via `frontend/src/master/navigation/master-nav-url.ts` (**PARTIAL**)
+8 tabs — `frontend/src/master/organizations/types.ts` (`ORG_DETAIL_TABS`); URL `orgTab` via `frontend/src/master/organizations/org.utils.ts`; tab bar `MasterPageTabs` with horizontal scroll + active-tab visibility (**CONFIRMED** — UX-005 2026-11-23)
 
 ## Voice assistant admin
 

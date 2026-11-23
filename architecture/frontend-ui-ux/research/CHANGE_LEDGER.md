@@ -18,3 +18,4 @@
 | 2026-11-23 | FEUX-UX-001-002 | UX-001 baseline correction (product-management PageContainer in-view); UX-002 `SHELL_LAYOUT_CONTRACT.md` | FEUX-EVID-UX001-002-2026-11-23 |
 | 2026-11-23 | RENTUX-UX-003 | Vehicle detail tab count 9; active-tab scroll visibility fix | RENTUX-EVID-UX003-2026-11-23 |
 | 2026-11-23 | FEUX-UX-004 | Bookings planner state consistency; Operator Today pattern attestation | FEUX-EVID-UX004-2026-11-23 |
+| 2026-11-23 | MAUX-UX-005 | Organization detail responsive tabs; shared MasterPageTabs scroll visibility | MAUX-EVID-UX005-2026-11-23 |
