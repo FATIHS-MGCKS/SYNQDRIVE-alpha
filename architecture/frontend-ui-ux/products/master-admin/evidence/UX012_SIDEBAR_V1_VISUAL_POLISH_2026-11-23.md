@@ -34,6 +34,14 @@
 
 ## Validation
 
-- Playwright `master-sidebar-v1-visual.spec.ts`: **11/11 PASS** (desktop-1280 project; viewport matrix inline)
-- Vitest: `Sidebar.v1.ui.test.tsx`, `nav-primitives.test.tsx`, `master-nav-sidebar-v1.test.ts`
-- `npm run build`, `npm run i18n:check`: PASS
+- Playwright `master-sidebar-v1-visual.spec.ts`: **12/12 PASS** (incl. full axe + keyboard tooltip)
+- Vitest: `Sidebar.v1.ui.test.tsx`, `nav-primitives.test.tsx`, `shell-nav-shared-regression.test.ts`, `master-nav-sidebar-v1.test.ts`
+- `npm run build`, `npm run i18n:check`, `i18n:pr-gate`: PASS
+- FEUX shared impact: [`FEUX-EVID-MAUX2517-SHARED-SHELL-NAV-2026-11-23.md`](../../../evidence/FEUX-EVID-MAUX2517-SHARED-SHELL-NAV-2026-11-23.md)
+
+## A11y closeout (PR #2517 review gates)
+
+- Master-local role chip: `bg-sidebar-accent` + `text-sidebar-accent-foreground` (no global token edits)
+- Master section labels: `!text-sidebar-foreground/80` (Master sidebar only)
+- Axe sidebar region light+dark: **0 violations** (`axe-sidebar-full.json`)
+- Keyboard collapsed tooltip: Playwright `collapsed-keyboard-tooltip-focus.png`

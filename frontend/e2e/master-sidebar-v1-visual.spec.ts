@@ -97,15 +97,59 @@ test.describe('Master Sidebar V1 — visual evidence', () => {
     expect(Number.parseFloat(dashStyles.minHeight)).toBeGreaterThanOrEqual(36);
   });
 
-  test('axe on desktop sidebar region', async ({ page }) => {
-    await openMasterSidebarView(page, 'dashboard', { width: 1280, height: 800 });
-    const results = await new AxeBuilder({ page }).include('[data-testid="master-sidebar-desktop"]').analyze();
-    await fs.writeFile(
-      path.join(EVIDENCE_DIR, 'axe-sidebar.json'),
-      JSON.stringify({ violations: results.violations.length, ids: results.violations.map((v) => v.id) }, null, 2),
+  test('axe on desktop sidebar region (full violations, no filter)', async ({ page }) => {
+    const summaries: Array<{ theme: string; violations: unknown[] }> = [];
+    for (const theme of ['light', 'dark'] as const) {
+      await page.addInitScript((t) => {
+        localStorage.setItem('synqdrive-theme-preference', t);
+      }, theme);
+      await openMasterSidebarView(page, 'dashboard', { width: 1280, height: 800, theme });
+      const results = await new AxeBuilder({ page }).include('[data-testid="master-sidebar-desktop"]').analyze();
+      summaries.push({
+        theme,
+        violations: results.violations.map((v) => ({
+          id: v.id,
+          impact: v.impact,
+          help: v.help,
+          nodes: v.nodes.map((n) => ({
+            html: n.html,
+            failureSummary: n.failureSummary,
+          })),
+        })),
+      });
+    }
+    await fs.writeFile(path.join(EVIDENCE_DIR, 'axe-sidebar-full.json'), JSON.stringify(summaries, null, 2));
+    const contrast = summaries.flatMap((s) =>
+      (s.violations as { id: string }[]).filter((v) => v.id === 'color-contrast').map((v) => ({ theme: s.theme, ...v })),
     );
-    const blocking = results.violations.filter((v) => v.id !== 'color-contrast');
-    expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+    expect(contrast, JSON.stringify(contrast, null, 2)).toEqual([]);
+    const allViolations = summaries.flatMap((s) => s.violations as { id: string }[]);
+    expect(allViolations, JSON.stringify(allViolations, null, 2)).toEqual([]);
+  });
+
+  test('collapsed nav tooltip visible and unclipped on keyboard focus', async ({ page }) => {
+    await openMasterSidebarView(page, 'dashboard', { width: 1280, height: 800 });
+    const sidebar = desktopSidebar(page);
+    await sidebar.locator('.sq-sidebar-footer__toggle').click();
+    const supportBtn = sidebar.locator('[data-master-nav-view="support"]');
+    await supportBtn.focus();
+    const tooltip = supportBtn.locator('.sq-overlay');
+    await expect
+      .poll(async () => tooltip.evaluate((el) => getComputedStyle(el).opacity))
+      .toBe('1');
+    const tipBox = await tooltip.boundingBox();
+    const shellBox = await sidebar.boundingBox();
+    expect(tipBox).toBeTruthy();
+    expect(shellBox).toBeTruthy();
+    if (tipBox && shellBox) {
+      expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(shellBox.x + shellBox.width + 220);
+      expect(tipBox.height).toBeGreaterThan(8);
+    }
+    await page.screenshot({
+      path: path.join(EVIDENCE_DIR, 'collapsed-keyboard-tooltip-focus.png'),
+      clip: shellBox ?? undefined,
+      animations: 'disabled',
+    });
   });
 
   test('mobile menu open', async ({ page }) => {

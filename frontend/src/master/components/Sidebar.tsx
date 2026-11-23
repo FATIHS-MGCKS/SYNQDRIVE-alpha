@@ -292,7 +292,7 @@ export function Sidebar({
             className={navSectionHeaderClass(isOpen, folderActive)}
             aria-expanded={isOpen}
           >
-            <span className={navSectionLabelClass}>{navLabel(entry.labelKey)}</span>
+            <span className={masterSectionLabelClass}>{navLabel(entry.labelKey)}</span>
             <ChevronRight
               className={cn(
                 'w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200',
@@ -419,7 +419,7 @@ export function Sidebar({
                   className={navSectionHeaderClass(isOpen, groupActive)}
                   aria-expanded={isOpen}
                 >
-                  <span className={navSectionLabelClass}>{navLabel(group.labelKey)}</span>
+                  <span className={masterSectionLabelClass}>{navLabel(group.labelKey)}</span>
                   <ChevronRight
                     className={cn(
                       'w-3.5 h-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-200',
@@ -590,10 +590,18 @@ export function Sidebar({
   }, [mobileOpen, navLabel]);
 
   const brandChip = (
-    <span className="sq-chip sq-chip-neutral !text-[10px] !font-bold uppercase tracking-[0.16em]">
+    <span
+      className={cn(
+        'sq-chip !text-[10px] !font-bold uppercase tracking-[0.16em]',
+        'bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/70',
+      )}
+      data-testid="master-sidebar-role-chip"
+    >
       {navLabel('master.nav.roleChip')}
     </span>
   );
+
+  const masterSectionLabelClass = cn(navSectionLabelClass, '!text-sidebar-foreground/80');
 
   return (
     <>
