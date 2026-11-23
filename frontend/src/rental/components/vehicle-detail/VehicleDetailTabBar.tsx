@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { cn } from '../../../components/ui/utils';
 import {
   chromeTabBarClass,
@@ -11,6 +12,7 @@ import {
   VEHICLE_DETAIL_TAB_PANEL_ID,
   VEHICLE_DETAIL_TAB_TRANSLATION_KEYS,
 } from '../../lib/vehicle-detail-a11y';
+import { scrollActiveVehicleDetailTabIntoView } from '../../lib/vehicle-detail-tab-scroll';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { VEHICLE_DETAIL_TAB_TRIGGER_CLASS } from '../../lib/vehicle-detail-mobile-ui';
 import type { VehicleDetailTab } from '../../lib/vehicle-overview.types';
@@ -30,6 +32,10 @@ export function VehicleDetailTabBar({ activeTab, onTabChange }: VehicleDetailTab
     getPanelId: (tab) => VEHICLE_DETAIL_TAB_PANEL_ID[tab],
     orientation: 'horizontal',
   });
+
+  useEffect(() => {
+    scrollActiveVehicleDetailTabIntoView(activeTab);
+  }, [activeTab]);
 
   return (
     <div className="mb-4 min-w-0 max-w-full">

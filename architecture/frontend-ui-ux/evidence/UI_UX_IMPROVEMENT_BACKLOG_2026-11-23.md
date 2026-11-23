@@ -7,7 +7,7 @@
 |----|----------|---------|------|-----------|----------|
 | UX-001 | P1 | MAUX | ~~Add `PageContainer` to product-management hub~~ | **CLOSED — ALREADY_IMPLEMENTED** (`ProductManagementView` L98 `variant="standard"`; no App.tsx wrapper by design) | [`MASTER_SCREEN_MATRIX.md`](../products/master-admin/inventories/MASTER_SCREEN_MATRIX.md) · baseline corrected |
 | UX-002 | P1 | FEUX | Document shell contract (Master vs Rental `AppShell` vs Operator shell) | **DONE** — authoritative contract | [`governance/SHELL_LAYOUT_CONTRACT.md`](../governance/SHELL_LAYOUT_CONTRACT.md) |
-| UX-003 | P1 | RENTUX | Vehicle detail tab IA review | 8 tabs — prioritize mobile overflow | `vehicle-detail/*` |
+| UX-003 | P1 | RENTUX | Vehicle detail tab IA review | **DONE** — 9 tabs verified; active-tab scroll-into-view fix | [`UX003_VEHICLE_DETAIL_NAVIGATION_2026-11-23.md`](../products/rental/evidence/UX003_VEHICLE_DETAIL_NAVIGATION_2026-11-23.md) |
 | UX-004 | P1 | RENTUX/OPUX | Standardize empty/loading on bookings + today | Revenue-critical paths | BookingsView, OperatorTodayView |
 | UX-005 | P1 | MAUX | Organizations detail responsive tab bar | Long horizontal tab lists | OrganizationDetailView |
 | UX-006 | P2 | FEUX | Consolidate navigation URL patterns guide | Query `?view=` vs `/operator` paths | master-nav-url, rental App |
