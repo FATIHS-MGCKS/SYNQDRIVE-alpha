@@ -76,4 +76,6 @@ export const masterOrganizationsDe = {
     'Organisations-Mitgliedschaft reaktiviert; Plattform-Kontosperre blockiert Anmeldung weiterhin.',
   'master.organizations.iam.roleAssignSuccess': 'Organisationsrolle zugewiesen.',
   'master.organizations.iam.mutationFailed': 'Aktion fehlgeschlagen: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Vorherige Seite',
+  'master.organizations.list.pagination.nextPage': 'Nächste Seite',
 };

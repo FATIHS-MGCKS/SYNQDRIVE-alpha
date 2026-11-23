@@ -76,4 +76,6 @@ export const masterOrganizationsIt = {
     'Appartenenza riattivata; la sospensione dell’account piattaforma blocca ancora l’accesso.',
   'master.organizations.iam.roleAssignSuccess': 'Ruolo organizzazione assegnato.',
   'master.organizations.iam.mutationFailed': 'Azione non riuscita: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Pagina precedente',
+  'master.organizations.list.pagination.nextPage': 'Pagina successiva',
 };

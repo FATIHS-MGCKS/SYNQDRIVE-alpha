@@ -76,4 +76,6 @@ export const masterOrganizationsNl = {
     'Lidmaatschap hersteld; platformschorsing blokkeert aanmelden nog steeds.',
   'master.organizations.iam.roleAssignSuccess': 'Organisatierol toegewezen.',
   'master.organizations.iam.mutationFailed': 'Actie mislukt: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Vorige pagina',
+  'master.organizations.list.pagination.nextPage': 'Volgende pagina',
 };

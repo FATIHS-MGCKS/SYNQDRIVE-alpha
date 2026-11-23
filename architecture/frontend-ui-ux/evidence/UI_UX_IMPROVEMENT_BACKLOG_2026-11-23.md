@@ -1,7 +1,8 @@
 # UI/UX improvement backlog (prioritized, implementation deferred)
 
 **Baseline:** [`FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](./FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md)  
-**Policy:** No implementation in the retirement PR — planning artifact only.
+**Campaign closure:** UX-001–UX-011 merged on `main` @ `698db6c0b1d4cfef4c8ea42febe0cfdcd4ee7f85` — see [`UX001_011_CAMPAIGN_MERGE_REGISTER_2026-11-23.md`](./UX001_011_CAMPAIGN_MERGE_REGISTER_2026-11-23.md).
+**Policy:** Original backlog was planning-only; implementation completed via PRs #2501–#2512 (not a deploy or production certification claim).
 
 | ID | Priority | Product | Item | Rationale | Evidence |
 |----|----------|---------|------|-----------|----------|
@@ -15,4 +16,4 @@
 | UX-008 | P2 | OPUX | Deep-link documentation for vehicle/booking routes | **DONE** — `/operator/scan` route + focus hygiene; route matching tests | [`UX008_OPERATOR_DEEPLINK_2026-11-23.md`](../products/operator/evidence/UX008_OPERATOR_DEEPLINK_2026-11-23.md) |
 | UX-009 | P2 | FEUX | i18n Integration 2 — touch high-traffic labels on UX-004 screens | **DONE** — `bookings.planner.loadError`; Operator Today `operator.today.*` + `formattingLocale` | [`UX009_HIGH_TRAFFIC_I18N_2026-11-23.md`](./UX009_HIGH_TRAFFIC_I18N_2026-11-23.md) |
 | UX-010 | P3 | MAUX | ~~Align engineering hubs headers with PlatformOps pattern~~ | **DONE** — `variant="context"` on five engineering hubs; tire tabs integrated in header | [`UX010_ENGINEERING_HUB_HEADER_2026-11-23.md`](../products/master-admin/evidence/UX010_ENGINEERING_HUB_HEADER_2026-11-23.md) |
-| UX-011 | P3 | ALL | Accessibility sweep on dialogs/tables (axe + manual) | Partial e2e coverage | legal/operator a11y specs as models |
+| UX-011 | P3 | ALL | ~~Accessibility sweep on dialogs/tables (axe + manual)~~ | **DONE** — bounded MAUX/OPUX/FEUX fixes + `cross-product-a11y-ux011` | [`UX011_CROSS_PRODUCT_ACCESSIBILITY_2026-11-23.md`](./UX011_CROSS_PRODUCT_ACCESSIBILITY_2026-11-23.md) |

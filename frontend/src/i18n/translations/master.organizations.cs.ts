@@ -76,4 +76,6 @@ export const masterOrganizationsCs = {
     'Členství v organizaci obnoveno; pozastavení účtu platformy stále blokuje přihlášení.',
   'master.organizations.iam.roleAssignSuccess': 'Organizační role přiřazena.',
   'master.organizations.iam.mutationFailed': 'Akce se nezdařila: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Předchozí stránka',
+  'master.organizations.list.pagination.nextPage': 'Další stránka',
 };

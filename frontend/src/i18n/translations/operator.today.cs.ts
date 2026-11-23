@@ -40,4 +40,5 @@ export const operatorTodayCs = {
   'operator.today.bucket.unassigned.title': 'Nepřiřazené',
   'operator.today.bucket.unassigned.subtitle': 'Týmová fronta — úkoly bez řešitele',
   'operator.today.feed.bucketUnavailable': '{bucketTitle} nedostupné',
+  'operator.bookings.detail.loadingAnnouncement': 'Načítání podrobností',
 } as const;

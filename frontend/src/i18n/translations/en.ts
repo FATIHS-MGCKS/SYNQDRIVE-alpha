@@ -1965,6 +1965,7 @@ export const en = {
   'bookings.planner.emptyDescription': 'Adjust filters or create a new booking.',
   'bookings.planner.emptyDatasetDescription': 'Create your first booking to populate the planner.',
   'bookings.planner.footer': '{count} booking(s) · click opens detail drawer',
+  'bookings.planner.openBookingAria': 'Open booking {{ref}}',
   'bookings.planner.prevMonth': 'Previous month',
   'bookings.planner.nextMonth': 'Next month',
   'bookings.planner.weekdaySun': 'Sun',

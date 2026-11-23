@@ -76,4 +76,6 @@ export const masterOrganizationsTr = {
     'Kuruluş üyeliği yeniden etkinleştirildi; platform hesabı askısı girişi hâlâ engelliyor.',
   'master.organizations.iam.roleAssignSuccess': 'Kuruluş rolü atandı.',
   'master.organizations.iam.mutationFailed': 'İşlem başarısız: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Önceki sayfa',
+  'master.organizations.list.pagination.nextPage': 'Sonraki sayfa',
 };

@@ -40,4 +40,5 @@ export const operatorTodayTr = {
   'operator.today.bucket.unassigned.title': 'Atanmamış',
   'operator.today.bucket.unassigned.subtitle': 'Ekip kuyruğu — atananı olmayan görevler',
   'operator.today.feed.bucketUnavailable': '{bucketTitle} kullanılamıyor',
+  'operator.bookings.detail.loadingAnnouncement': 'Ayrıntılar yükleniyor',
 } as const;

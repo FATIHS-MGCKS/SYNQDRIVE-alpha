@@ -225,5 +225,6 @@ export const pl = {
   ...serviceIntelligencePl,
   ...rentalMisuseStressStressGatePl,
   'bookings.planner.loadError': 'Nie udało się załadować rezerwacji.',
+  'bookings.planner.openBookingAria': 'Otwórz rezerwację {{ref}}',
   ...operatorTodayPl,
 } satisfies PartialTranslationDictionary;

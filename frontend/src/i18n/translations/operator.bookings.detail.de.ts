@@ -13,4 +13,5 @@ export const operatorBookingsDetailDe = {
   'operator.bookings.detail.gate.editCompleted': 'Abgeschlossene Buchungen sind schreibgeschützt',
   'operator.bookings.detail.gate.editActive':
     'Während aktiver Vermietung nur begrenzte Änderungen — Notizen separat',
+  'operator.bookings.detail.loadingAnnouncement': 'Details werden geladen',
 } as const;

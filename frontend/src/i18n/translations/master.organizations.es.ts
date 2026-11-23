@@ -76,4 +76,6 @@ export const masterOrganizationsEs = {
     'Membresía reactivada; la suspensión de la cuenta de plataforma sigue bloqueando el acceso.',
   'master.organizations.iam.roleAssignSuccess': 'Rol de organización asignado.',
   'master.organizations.iam.mutationFailed': 'La acción falló: {{error}}',
+  'master.organizations.list.pagination.prevPage': 'Página anterior',
+  'master.organizations.list.pagination.nextPage': 'Página siguiente',
 };

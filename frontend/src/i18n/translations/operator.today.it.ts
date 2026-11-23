@@ -40,4 +40,5 @@ export const operatorTodayIt = {
   'operator.today.bucket.unassigned.title': 'Non assegnato',
   'operator.today.bucket.unassigned.subtitle': 'Coda del team — attività senza assegnatario',
   'operator.today.feed.bucketUnavailable': '{bucketTitle} non disponibile',
+  'operator.bookings.detail.loadingAnnouncement': 'Caricamento dettagli',
 } as const;

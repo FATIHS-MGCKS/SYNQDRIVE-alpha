@@ -225,5 +225,6 @@ export const es = {
   ...serviceIntelligenceEs,
   ...rentalMisuseStressStressGateEs,
   'bookings.planner.loadError': 'No se pudieron cargar las reservas.',
+  'bookings.planner.openBookingAria': 'Abrir reserva {{ref}}',
   ...operatorTodayEs,
 } satisfies PartialTranslationDictionary;
