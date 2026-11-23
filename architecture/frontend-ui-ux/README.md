@@ -15,7 +15,11 @@ Canonical architectural memory for **shared visual foundation only**:
 - Canonical references: `frontend/src/styles/theme.css`, style contracts, `components/ui`, `components/patterns`, shared shell primitives
 - Typography, color, motion, accessibility **baselines**
 - Cross-product dependency inventory ([`inventories/SHARED_COMPONENTS.md`](./inventories/SHARED_COMPONENTS.md))
+- Canonical authority map ([`governance/CANONICAL_AUTHORITY_MAP.md`](./governance/CANONICAL_AUTHORITY_MAP.md)) — **agents start here**
 - Cross-product change policy ([`governance/CROSS_PRODUCT_CHANGE_POLICY.md`](./governance/CROSS_PRODUCT_CHANGE_POLICY.md))
+- Figma precedence ([`governance/FIGMA_AND_VISUAL_PRECEDENCE.md`](./governance/FIGMA_AND_VISUAL_PRECEDENCE.md))
+- Future redesign policy ([`governance/FUTURE_DESIGN_CHANGE_POLICY.md`](./governance/FUTURE_DESIGN_CHANGE_POLICY.md))
+- Legacy doc inventory ([`governance/LEGACY_UI_UX_DOCUMENT_INVENTORY.md`](./governance/LEGACY_UI_UX_DOCUMENT_INVENTORY.md))
 - Navigation & URL contract ([`governance/NAVIGATION_URL_CONTRACT.md`](./governance/NAVIGATION_URL_CONTRACT.md))
 - Rental↔Master comparison matrix **PROPOSED** ([`governance/RENTAL_MASTER_COMPARISON.md`](./governance/RENTAL_MASTER_COMPARISON.md))
 
@@ -61,4 +65,4 @@ bash architecture/scripts/validate-module-registry.sh
 
 ## Last updated
 
-2026-11-22 — Independent product authority split (PR #2490 remediation).
+2026-11-23 — Canonical agent routing + Figma precedence (FEUX-AUTHORITY-001).

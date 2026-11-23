@@ -11,6 +11,7 @@ import {
   validateAuthorityCompleteness,
   validateEvidenceIndex,
 } from './validate-authority-completeness.mjs';
+import { validateUiUxAgentRouting } from './validate-ui-ux-agent-routing.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '../../..');
@@ -536,6 +537,9 @@ validateAuthorityCompleteness(authorityDir, fail, {
   decisionIdPrefix: 'FEUX-DEC-',
 });
 validateEvidenceIndex(authorityDir, fail, { moduleLabel: 'FEUX', evidPrefix: 'FEUX-EVID-' });
+
+console.log('==> UI/UX agent authority routing');
+validateUiUxAgentRouting(repo, fail);
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');

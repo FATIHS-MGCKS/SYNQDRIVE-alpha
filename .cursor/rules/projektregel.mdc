@@ -37,10 +37,11 @@ You must follow these rules strictly.
 ## 2) Source of truth rules
 
 - The codebase is the source of truth for functionality, logic, routing, data flow, and backend integrations.
-- Figma is the source of truth for visual design, layout direction, spacing, hierarchy, styling, visual consistency, and UX intent.
+- The **registered UI/UX architecture** (`architecture/frontend-ui-ux/`) plus implemented tokens (`theme.css`, `SHARED_DESIGN_SYSTEM.md`) form the **default visual contract** for agents.
+- **Figma** is a design reference or an explicitly owner-approved redesign target — not an unconditional override of current architecture (see `governance/FIGMA_AND_VISUAL_PRECEDENCE.md`).
 - Do not remove functional UI additions that exist in code but are not present in Figma.
 - If an element exists in code but not in Figma, keep it and visually harmonize it to the current design language.
-- If a design mismatch exists between code and Figma, adapt the visual layer while preserving working functionality.
+- If a design mismatch exists between Figma and implementation, document the conflict and verify the intended target; on approved redesigns, adapt visually while preserving working functionality.
 
 ## 3) SynqDrive product architecture to preserve
 
@@ -152,9 +153,9 @@ When working on DIMO-related features, integrations, queries, triggers, agents, 
 
 ## 5) Figma implementation rules
 
-- When working on visual redesign, adaptation, or design alignment, use the Figma MCP server.
-- Inspect the relevant Figma files first before implementing UI changes.
-- Match Figma as closely as realistically possible in:
+- Before any frontend UI change, read `architecture/frontend-ui-ux/AGENT_CONTRACT.md` and product authorities (mandatory).
+- On **owner-approved redesign** tasks: use the Figma MCP server and inspect the named artifact before large visual changes.
+- Match approved Figma targets as closely as realistically possible when redesign is in scope:
   - spacing
   - hierarchy
   - layout
@@ -172,11 +173,11 @@ When working on DIMO-related features, integrations, queries, triggers, agents, 
 - Do not delete functional UI elements just because they are not present in Figma.
 - Make all code-only elements visually consistent with the active Figma design language.
 
-### Mandatory Figma MCP rule
+### Mandatory UI/UX read-first (all frontend tasks)
 When working on UI/UX/design tasks:
-- use the Figma MCP server for guidance and inspection
-- do not guess current design intent if the Figma source is available
-- inspect design changes first, then adapt existing code carefully
+- read Shared UI Design Foundation README, `SHARED_DESIGN_SYSTEM.md`, `CROSS_PRODUCT_CHANGE_POLICY.md`, and relevant product `AGENT_CONTRACT` + screen inventory
+- preserve L0–L4 surface semantics; reuse `components/ui` and `patterns` before inventing alternatives
+- on approved Figma redesigns: use the Figma MCP server for guidance; do not let stale Figma silently override registered architecture
 
 ## 6) Frontend rules
 
@@ -261,7 +262,7 @@ Before **new** modules or **substantive** cross-domain changes: read the platfor
 - Do not rebuild whole modules when targeted changes are enough.
 - Do not create duplicate competing architectures.
 - Do not silently ignore the intended DIMO architecture.
-- Do not ignore Figma when working on design/UI tasks.
+- Do not ignore registered FEUX UI/UX authority when working on design/UI tasks.
 - Do not use hardcoded tenant/account/entity assumptions.
 - Do not invent unrelated features.
 - Do not break working backend bindings.

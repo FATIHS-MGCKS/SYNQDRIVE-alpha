@@ -2,10 +2,15 @@
 
 ## Mandatory read-first sequence
 
-1. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
-2. `../../README.md` (Shared UI Design Foundation)
-3. This authority: `README.md`, `CURRENT_STATE.md`, `inventories/MASTER_SCREEN_MATRIX.md`
-4. `architecture/internationalization/` when touching user-visible Master chrome copy
+1. `../../governance/CANONICAL_AUTHORITY_MAP.md`
+2. `../../governance/FIGMA_AND_VISUAL_PRECEDENCE.md`
+3. `../../design-system/SHARED_DESIGN_SYSTEM.md` (L0–L4)
+4. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
+5. `../../README.md` (Shared UI Design Foundation)
+6. This authority: `README.md`, `CURRENT_STATE.md`, `inventories/MASTER_SCREEN_MATRIX.md`
+7. `architecture/internationalization/` when touching user-visible Master chrome copy
+
+**Do not** use `docs/ui/*` as current authority (`docs/ui/README.md` — superseded).
 
 ## Substantive change definition
 
