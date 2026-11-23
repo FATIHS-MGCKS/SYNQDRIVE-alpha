@@ -13,4 +13,5 @@ export const operatorBookingsDetailEn = {
   'operator.bookings.detail.gate.editCompleted': 'Completed bookings are read-only',
   'operator.bookings.detail.gate.editActive':
     'Limited changes during active rental — use notes separately',
+  'operator.bookings.detail.loadingAnnouncement': 'Loading details',
 } as const;

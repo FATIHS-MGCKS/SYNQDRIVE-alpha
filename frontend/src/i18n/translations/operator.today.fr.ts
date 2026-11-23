@@ -40,4 +40,5 @@ export const operatorTodayFr = {
   'operator.today.bucket.unassigned.title': 'Non assigné',
   'operator.today.bucket.unassigned.subtitle': 'File d’équipe — tâches sans responsable',
   'operator.today.feed.bucketUnavailable': '{bucketTitle} indisponible',
+  'operator.bookings.detail.loadingAnnouncement': 'Chargement des détails',
 } as const;

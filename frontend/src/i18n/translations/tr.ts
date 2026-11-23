@@ -59,5 +59,7 @@ export const tr = {
   'bookings.planner.emptyDatasetDescription':
     'Planlayıcıyı doldurmak için ilk rezervasyonu oluşturun.',
   'bookings.planner.loadError': 'Rezervasyonlar yüklenemedi.',
+  'bookings.planner.openBookingAria': 'Rezervasyonu aç {{ref}}',
+  'common.back': 'Geri',
   ...operatorTodayTr,
 } satisfies PartialTranslationDictionary;

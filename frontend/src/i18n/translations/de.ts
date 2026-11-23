@@ -2069,6 +2069,7 @@ export const de: Record<TranslationKey, string> = {
   'bookings.planner.emptyDatasetDescription':
     'Legen Sie die erste Buchung an, um den Planer zu befüllen.',
   'bookings.planner.footer': '{count} Buchung(en) · Klick oeffnet Detail-Drawer',
+  'bookings.planner.openBookingAria': 'Buchung {{ref}} öffnen',
   'bookings.planner.prevMonth': 'Vorheriger Monat',
   'bookings.planner.nextMonth': 'Naechster Monat',
   'bookings.planner.weekdaySun': 'So',

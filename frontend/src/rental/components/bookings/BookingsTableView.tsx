@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { DataTable, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
@@ -20,6 +21,8 @@ export function BookingsTableView({
   onEdit,
   onCancel,
 }: BookingsTableViewProps) {
+  const { t } = useLanguage();
+
   const columns = useMemo(
     () => [
       {
@@ -100,35 +103,51 @@ export function BookingsTableView({
         onRowClick={(b) => onRowClick(b.id)}
         rowActions={(b) => {
           const status = rowStatus(b);
-          if (status !== 'pending' && status !== 'confirmed') return null;
+          const refLabel = bookingRef(b.id);
+          const openLabel = t('bookings.planner.openBookingAria', { ref: refLabel });
           return (
             <div className="flex gap-1">
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(b.id);
-                  }}
-                  className="p-1 rounded-lg sq-tone-brand text-[10px]"
-                  title="Bearbeiten"
-                >
-                  <Icon name="pencil" className="w-3 h-3" />
-                </button>
-              )}
-              {onCancel && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCancel(b.id);
-                  }}
-                  className="p-1 rounded-lg sq-tone-critical text-[10px]"
-                  title="Stornieren"
-                >
-                  <Icon name="trash-2" className="w-3 h-3" />
-                </button>
-              )}
+              <button
+                type="button"
+                className="p-1 rounded-lg border border-border/60 text-[10px] min-h-[28px] min-w-[28px] flex items-center justify-center"
+                aria-label={openLabel}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRowClick(b.id);
+                }}
+              >
+                <Icon name="eye" className="w-3 h-3" aria-hidden />
+              </button>
+              {status === 'pending' || status === 'confirmed' ? (
+                <>
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(b.id);
+                      }}
+                      className="p-1 rounded-lg sq-tone-brand text-[10px]"
+                      title="Bearbeiten"
+                    >
+                      <Icon name="pencil" className="w-3 h-3" aria-hidden />
+                    </button>
+                  )}
+                  {onCancel && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCancel(b.id);
+                      }}
+                      className="p-1 rounded-lg sq-tone-critical text-[10px]"
+                      title="Stornieren"
+                    >
+                      <Icon name="trash-2" className="w-3 h-3" aria-hidden />
+                    </button>
+                  )}
+                </>
+              ) : null}
             </div>
           );
         }}

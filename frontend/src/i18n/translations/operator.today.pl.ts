@@ -40,4 +40,5 @@ export const operatorTodayPl = {
   'operator.today.bucket.unassigned.title': 'Nieprzypisane',
   'operator.today.bucket.unassigned.subtitle': 'Kolejka zespołu — zadania bez osoby odpowiedzialnej',
   'operator.today.feed.bucketUnavailable': '{bucketTitle} niedostępne',
+  'operator.bookings.detail.loadingAnnouncement': 'Ładowanie szczegółów',
 } as const;

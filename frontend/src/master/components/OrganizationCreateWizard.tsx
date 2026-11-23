@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { ArrowLeft, ChevronRight, UserPlus, X } from 'lucide-react';
 import { AppDialog } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 const BUSINESS_TYPES = [
   { label: 'Vermietung', value: 'RENTAL' },
@@ -11,6 +12,18 @@ const BUSINESS_TYPES = [
   { label: 'Logistik', value: 'LOGISTICS' },
   { label: 'Sonstiges', value: 'OTHER' },
 ];
+
+const FIELD_IDS = {
+  companyName: 'org-wizard-company-name',
+  shortCode: 'org-wizard-short-code',
+  businessType: 'org-wizard-business-type',
+  city: 'org-wizard-city',
+  country: 'org-wizard-country',
+  email: 'org-wizard-contact-email',
+  adminName: 'org-wizard-admin-name',
+  adminEmail: 'org-wizard-admin-email',
+  adminPassword: 'org-wizard-admin-password',
+} as const;
 
 interface OrganizationCreateWizardProps {
   open: boolean;
@@ -30,6 +43,7 @@ interface OrganizationCreateWizardProps {
 }
 
 export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: OrganizationCreateWizardProps) {
+  const { t } = useLanguage();
   const [step, setStep] = useState<1 | 2>(1);
   const [saving, setSaving] = useState(false);
   const [formName, setFormName] = useState('');
@@ -102,7 +116,7 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
                 type="button"
                 onClick={() => setStep(1)}
                 className="p-2 rounded-lg hover:bg-muted"
-                aria-label="Zurück"
+                aria-label={t('common.back')}
               >
                 <ArrowLeft className="w-4 h-4" aria-hidden />
               </button>
@@ -112,7 +126,7 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
             </DialogPrimitive.Title>
           </div>
           <button type="button" onClick={close} className="p-2 rounded-lg hover:bg-muted" aria-label="Schließen">
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden />
           </button>
         </div>
 
@@ -120,13 +134,23 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
           {step === 1 && (
             <>
               <div>
-                <label className={labelClass}>Firmenname *</label>
-                <input value={formName} onChange={(e) => setFormName(e.target.value)} className={inputClass} />
+                <label className={labelClass} htmlFor={FIELD_IDS.companyName}>
+                  Firmenname *
+                </label>
+                <input
+                  id={FIELD_IDS.companyName}
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className={inputClass}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Kürzel</label>
+                  <label className={labelClass} htmlFor={FIELD_IDS.shortCode}>
+                    Kürzel
+                  </label>
                   <input
+                    id={FIELD_IDS.shortCode}
                     value={formShortCode}
                     onChange={(e) =>
                       setFormShortCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12))
@@ -135,8 +159,15 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Branche</label>
-                  <select value={formType} onChange={(e) => setFormType(e.target.value)} className={inputClass}>
+                  <label className={labelClass} htmlFor={FIELD_IDS.businessType}>
+                    Branche
+                  </label>
+                  <select
+                    id={FIELD_IDS.businessType}
+                    value={formType}
+                    onChange={(e) => setFormType(e.target.value)}
+                    className={inputClass}
+                  >
                     {BUSINESS_TYPES.map((b) => (
                       <option key={b.value} value={b.value}>{b.label}</option>
                     ))}
@@ -145,17 +176,39 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Stadt</label>
-                  <input value={formCity} onChange={(e) => setFormCity(e.target.value)} className={inputClass} />
+                  <label className={labelClass} htmlFor={FIELD_IDS.city}>
+                    Stadt
+                  </label>
+                  <input
+                    id={FIELD_IDS.city}
+                    value={formCity}
+                    onChange={(e) => setFormCity(e.target.value)}
+                    className={inputClass}
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>Land</label>
-                  <input value={formCountry} onChange={(e) => setFormCountry(e.target.value)} className={inputClass} />
+                  <label className={labelClass} htmlFor={FIELD_IDS.country}>
+                    Land
+                  </label>
+                  <input
+                    id={FIELD_IDS.country}
+                    value={formCountry}
+                    onChange={(e) => setFormCountry(e.target.value)}
+                    className={inputClass}
+                  />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Kontakt-E-Mail</label>
-                <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className={inputClass} />
+                <label className={labelClass} htmlFor={FIELD_IDS.email}>
+                  Kontakt-E-Mail
+                </label>
+                <input
+                  id={FIELD_IDS.email}
+                  type="email"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  className={inputClass}
+                />
               </div>
             </>
           )}
@@ -166,16 +219,42 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
                 Organisation: <strong>{formName}</strong>
               </p>
               <div>
-                <label className={labelClass}>Admin Name</label>
-                <input value={adminName} disabled={skipAdmin} onChange={(e) => setAdminName(e.target.value)} className={inputClass} />
+                <label className={labelClass} htmlFor={FIELD_IDS.adminName}>
+                  Admin Name
+                </label>
+                <input
+                  id={FIELD_IDS.adminName}
+                  value={adminName}
+                  disabled={skipAdmin}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  className={inputClass}
+                />
               </div>
               <div>
-                <label className={labelClass}>Admin E-Mail</label>
-                <input type="email" value={adminEmail} disabled={skipAdmin} onChange={(e) => setAdminEmail(e.target.value)} className={inputClass} />
+                <label className={labelClass} htmlFor={FIELD_IDS.adminEmail}>
+                  Admin E-Mail
+                </label>
+                <input
+                  id={FIELD_IDS.adminEmail}
+                  type="email"
+                  value={adminEmail}
+                  disabled={skipAdmin}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className={inputClass}
+                />
               </div>
               <div>
-                <label className={labelClass}>Temporäres Passwort</label>
-                <input type="password" value={adminPassword} disabled={skipAdmin} onChange={(e) => setAdminPassword(e.target.value)} className={inputClass} />
+                <label className={labelClass} htmlFor={FIELD_IDS.adminPassword}>
+                  Temporäres Passwort
+                </label>
+                <input
+                  id={FIELD_IDS.adminPassword}
+                  type="password"
+                  value={adminPassword}
+                  disabled={skipAdmin}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className={inputClass}
+                />
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={skipAdmin} onChange={(e) => setSkipAdmin(e.target.checked)} />
@@ -202,3 +281,5 @@ export function OrganizationCreateWizard({ open, onOpenChange, onSubmit }: Organ
     </AppDialog>
   );
 }
+
+export { FIELD_IDS as ORG_CREATE_WIZARD_FIELD_IDS };

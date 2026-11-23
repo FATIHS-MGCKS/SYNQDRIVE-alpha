@@ -55,19 +55,31 @@
 3. **OPUX** `OperatorBookingDetailSheet` — `role="dialog"` without `aria-labelledby`; no focus trap/Escape; loading/error not announced. **Fix:** labelled title id, `usePortalModalA11y`, `role="status"` / `role="alert"`.
 4. **FEUX** `DataTable` — loading state not exposed on table. **Fix:** `aria-busy` while `loading`.
 
+### PR #2512 review closeout (F1–F3)
+
+| Finding | Remediation |
+|---------|-------------|
+| **F1** i18n-new-debt-gate (`Zurück`, pagination, operator loading) | `common.back`, `master.organizations.list.pagination.*`, `operator.bookings.detail.loadingAnnouncement` — 9 locales |
+| **F2** Wizard labels without `htmlFor`/`id` | Stable `org-wizard-*` ids on nine fields (both steps) |
+| **F3** Bookings rows without keyboard detail open | Always-visible open control in `BookingsTableView` (`bookings.planner.openBookingAria`); `stopPropagation` on button |
+
+New/updated regression: `organization-create-wizard.a11y.ui.test.tsx`, `bookings-table-view.a11y.ui.test.tsx`; vitest harnesses for localized aria (not source-only).
+
 ## Remaining accessibility debt
 
-- Hardcoded DE `aria-label` / dialog copy on Master org + Operator surfaces (pre-existing; not expanded).
+- Hardcoded DE visible wizard/dialog copy on Master org surfaces (pre-existing product copy; aria for F1 strings now i18n).
 - `AppDialog` close control remains DE-only (`Schließen`).
 - Color-contrast violations across StatusChip / muted tokens — **not** remediated in UX-011.
 - `PlatformOpsHub` integrated tabs still missing `tabsAriaLabel` (documented UX-010).
-- Bookings planner row actions — not axe-scanned in this pass.
+- Bookings planner axe (beyond keyboard open control) — not scanned in this pass.
 - Full WCAG 2.2 AA certification **not** claimed.
 
 ## Regression tests added
 
 - `frontend/e2e/cross-product-a11y-ux011.spec.ts`
 - `frontend/src/master/components/organizations-view-a11y.ui.test.tsx`
+- `frontend/src/master/components/organization-create-wizard.a11y.ui.test.tsx`
+- `frontend/src/rental/components/bookings/bookings-table-view.a11y.ui.test.tsx`
 - `frontend/src/operator/components/operator-booking-detail-sheet.a11y.ui.test.tsx`
 - `frontend/src/components/patterns/data-table-a11y.ui.test.tsx`
 

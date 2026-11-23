@@ -13,6 +13,7 @@ import { useOperatorShell } from '../context/OperatorShellContext';
 import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { OperatorGlassCard } from './OperatorGlassCard';
 
 interface OperatorBookingDetailSheetProps {
@@ -28,6 +29,7 @@ export function OperatorBookingDetailSheet({
   onPickupStart,
   onReturnStart,
 }: OperatorBookingDetailSheetProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { openSheet, triggerRefresh } = useOperatorShell();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -155,7 +157,7 @@ export function OperatorBookingDetailSheet({
             aria-live="polite"
           >
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            <span className="sr-only">Details werden geladen</span>
+            <span className="sr-only">{t('operator.bookings.detail.loadingAnnouncement')}</span>
           </div>
         )}
         {error && (
