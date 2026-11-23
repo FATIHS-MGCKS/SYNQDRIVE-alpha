@@ -46,6 +46,8 @@ Authoritative inventory: [`inventories/SHARED_COMPONENTS.md`](./inventories/SHAR
 | NO_SILENT_PROPAGATION | Master-only visual intent must not rely on unscoped globals |
 | PRODUCT_SPECIFIC_EVOLUTION | Visual divergence allowed per product authority |
 
+**Navigation / URL:** authoritative tri-product contract — [`governance/NAVIGATION_URL_CONTRACT.md`](./governance/NAVIGATION_URL_CONTRACT.md) (UX-006, 2026-11-23). Shell layout remains [`governance/SHELL_LAYOUT_CONTRACT.md`](./governance/SHELL_LAYOUT_CONTRACT.md).
+
 ## i18n boundary (CONFIRMED)
 
 Copy/locale owned by `architecture/internationalization/`. Master chrome debt tracked in MAUX authority.

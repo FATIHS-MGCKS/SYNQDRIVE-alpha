@@ -59,7 +59,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 ## Navigation and URL contracts
 
 - **24 top-level views** in `MASTER_NAV_ITEMS` (see [`inventories/MASTER_SCREEN_MATRIX.md`](./inventories/MASTER_SCREEN_MATRIX.md)).  
-- **Sub-states** via query: organization detail (`orgId`, `orgTab`), billing center sections, security hub sections, platform-ops / integrations drilldowns, HM tab, architektur category. Organization detail uses eight `MasterPageTabs` with horizontal scroll + active-tab scroll-into-view (UX-005, 2026-11-23).  
+- **Sub-states** via query: organization detail (`orgId`, `orgTab`), billing center sections, security hub sections, platform-ops / integrations drilldowns, HM tab, architektur category. Organization detail uses eight `MasterPageTabs` with horizontal scroll + active-tab scroll-into-view (UX-005, 2026-11-23). Hub navigation contract: [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md) (UX-006).  
 - **Legacy redirects** in `master-nav-url.ts` (`users` → `security-access`, deprecated engineering aliases).  
 - **i18n (CONFIRMED debt):** sidebar group labels via `tMasterNav` DE map (`master-nav-i18n.ts`), not platform `LanguageProvider` catalogs — cross-ref **Internationalization** authority.
 

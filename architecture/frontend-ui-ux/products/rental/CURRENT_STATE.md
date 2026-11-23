@@ -7,7 +7,9 @@
 
 ## Executive summary
 
-Rental is the primary **fleet operations** SPA: org-scoped sidebar navigation, in-memory view state with URL synchronization, `AppShell variant="rental"`, and the densest consumer of shared **patterns** (KPI cards, tables, vehicle detail chrome). It is documented as a **positive design reference** for polish only — not a layout donor for Master (RENTUX-DEC-REFERENCE-001, PROPOSED).
+Rental is the primary **fleet operations** SPA: org-scoped sidebar navigation, in-memory `currentView` with **feature-local** URL sync (not global `?view=` on every screen), `AppShell variant="rental"`, and the densest consumer of shared **patterns** (KPI cards, tables, vehicle detail chrome). It is documented as a **positive design reference** for polish only — not a layout donor for Master (RENTUX-DEC-REFERENCE-001, PROPOSED).
+
+**Navigation contract:** [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md) (RENTAL_NAVIGATION_CONTRACT).
 
 ## Shell and navigation
 

@@ -16,6 +16,7 @@ Canonical architectural memory for **shared visual foundation only**:
 - Typography, color, motion, accessibility **baselines**
 - Cross-product dependency inventory ([`inventories/SHARED_COMPONENTS.md`](./inventories/SHARED_COMPONENTS.md))
 - Cross-product change policy ([`governance/CROSS_PRODUCT_CHANGE_POLICY.md`](./governance/CROSS_PRODUCT_CHANGE_POLICY.md))
+- Navigation & URL contract ([`governance/NAVIGATION_URL_CONTRACT.md`](./governance/NAVIGATION_URL_CONTRACT.md))
 - Rental↔Master comparison matrix **PROPOSED** ([`governance/RENTAL_MASTER_COMPARISON.md`](./governance/RENTAL_MASTER_COMPARISON.md))
 
 ## Explicit non-scope

@@ -1,7 +1,7 @@
 # FEUX final UI/UX baseline — consolidated (code-verified)
 
 **Date:** 2026-11-23  
-**Main SHA (baseline pass):** `ff8871c6d959f521a6d3dc1775e6c2fae9af3f39`  
+**Main SHA (baseline pass):** `ff8871c6d959f521a6d3dc1775e6c2fae9af3f39` (navigation contract UX-006: `0e98c87d8`)  
 **Owner decision:** P9/P9C production-authenticated UI audit **RETIRED** (runtime removed; evidence preserved).  
 **Verification default:** `CODE_VERIFIED` unless noted.
 
@@ -22,7 +22,7 @@
 |------|----------------|-----------|------------|----------|
 | Theme tokens | `frontend/src/styles/theme.css`, Tailwind v4 via `vite.config.ts` | Central CSS variables, dark/light via `AppThemeContext` | Master/Rental/Operator do not share one shell component; token drift risk across products | P1 |
 | Components | `frontend/src/components/ui/` (~42 primitives) + `patterns/` | shadcn consistency, shared empty/error/skeleton patterns | Operator uses subset; some Rental-only wrappers (`rental/components/ui/Icon`) | P2 |
-| Navigation model | Master/Rental: query `?view=`; Operator: path + bottom tabs | Deep-linkable rental/master views; operator mobile-first | Inconsistent paradigms (query vs path) — shell contract documented (UX-002) | P2 |
+| Navigation model | Master: `?view=`; Rental: hybrid state + feature URLs; Operator: paths | Documented in [`NAVIGATION_URL_CONTRACT.md`](../governance/NAVIGATION_URL_CONTRACT.md) (UX-006) | Paradigms intentionally differ per product; Rental global `?view=` not universal | P2 (UX-007 legacy ids) |
 | i18n | Platform `frontend/src/i18n/*` | Nine-locale registry | Rental island `rental/i18n` transitional; hardcoded strings still in inventory debt | P2 |
 | Responsiveness | Rental desktop-first; Operator `sm` breakpoints | Operator touch targets, bottom nav | Master wide hubs on narrow viewports under-tested in authority | P2 |
 | Accessibility | axe in some e2e | Patterns include semantic chips/headers | Not uniformly audited per screen | P3 |
@@ -32,7 +32,7 @@
 | Screen | Source | Assessment | Strengths | Weaknesses | Priority | Verification |
 |--------|--------|------------|-----------|------------|----------|--------------|
 | Dashboard | `MasterDashboardView.tsx` | Dense ops KPI shell | Clear hub entry, uses patterns | Visual hierarchy varies vs Figma on sub-widgets | P2 | CODE_VERIFIED |
-| Organizations list/detail | `OrganizationsView.tsx`, `OrganizationDetailView.tsx` | Primary tenant admin surface | 8-tab detail, URL `orgTab` | Long forms; tab overflow on smaller widths | P1 | CODE_VERIFIED |
+| Organizations list/detail | `OrganizationsView.tsx`, `OrganizationDetailView.tsx` | Primary tenant admin surface | 8-tab detail, URL `orgTab` + scroll (UX-005) | Long forms | P2 | CODE_VERIFIED |
 | Security & access | `security-access/SecurityAccessHub.tsx` | IAM focal point | Sectioned hub, URL helpers | MFA/IAM complexity; loading states uneven | P1 | CODE_VERIFIED |
 | Connected vehicles | `connected-vehicles/ConnectedVehiclesHub.tsx` | High-value ops | DIMO drawer patterns (P6D4 tests) | Drawer density; permission copy i18n | P2 | CODE_VERIFIED |
 | Billing | `billing/BillingControlCenter.tsx` | Delegate + Stripe surfaces | Sectioned billing URL state | Master billing permission edge cases documented in V2A | P1 | CODE_VERIFIED |
@@ -71,7 +71,7 @@
 ## High-priority findings (actionable, not implemented)
 
 1. **Shell contract governance** — follow [`governance/SHELL_LAYOUT_CONTRACT.md`](../governance/SHELL_LAYOUT_CONTRACT.md) for cross-product edits (UX-002).
-2. **Navigation consistency** — document when to use `?view=` vs path routes; reduce legacy view ids in rental types.
+2. **Navigation contract** — follow [`governance/NAVIGATION_URL_CONTRACT.md`](../governance/NAVIGATION_URL_CONTRACT.md) (UX-006 DONE); UX-007 reduces legacy Rental view ids.
 3. **Empty/loading/error** — standardize on `patterns/EmptyState`, `ErrorState`, `Skeleton*` across top 10 revenue screens (bookings, fleet, vehicle detail, operator today).
 4. **Responsive pass** — Master wide hubs + Rental sidebar collapse at tablet breakpoints (P8 noted production authenticated gap remains for visual sign-off).
 5. **i18n debt** — continue Integration 2 provider consolidation; no new hardcoded strings on touched screens.

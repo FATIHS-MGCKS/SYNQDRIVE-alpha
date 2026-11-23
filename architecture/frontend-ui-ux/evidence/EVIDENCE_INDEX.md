@@ -30,3 +30,4 @@
 | FEUX-EVID-P8-MATRIX-2026-11-22 | AUDIT_DOCUMENT | `2026-11-22` / prod `1e6a267c` | Authenticated UI evidence matrix | CONFIRMED | Functional rows BLOCKED |
 | FEUX-EVID-P8-ACCESS-RECHECK-001 | AUDIT_DOCUMENT | `2026-11-22T18:59:55Z` / prod `1e6a267c` | SSH PASS; app session not provisioned | CONFIRMED | No credentials extracted |
 | FEUX-EVID-P9-AUDIT-FOUNDATION-001 | AUDIT_DOCUMENT | `cac006567` / P9B | Secure audit permission foundation | CONFIRMED | No prod provision |
+| FEUX-EVID-UX006-2026-11-23 | AUDIT_DOCUMENT | `0e98c87d8` | Tri-product navigation/URL contract | CONFIRMED | Docs + existing vitest |

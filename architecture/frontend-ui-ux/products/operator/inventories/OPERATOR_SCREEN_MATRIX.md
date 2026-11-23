@@ -1,6 +1,7 @@
 # Operator — Screen Matrix (mobile field UI)
 
-**Audited code SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
+**Audited code SHA:** UX-006 closeout  
+**Contract:** [`NAVIGATION_URL_CONTRACT.md`](../../../governance/NAVIGATION_URL_CONTRACT.md) (OPERATOR_NAVIGATION_CONTRACT)  
 **Router:** `frontend/src/operator/OperatorApp.tsx` (`/operator`, `/operator/vehicles/:vehicleId`, `/operator/bookings/:bookingId`)  
 **Shell:** `frontend/src/operator/OperatorShell.tsx`  
 **Device gate:** `frontend/src/operator/hooks/useIsOperatorDevice.ts` → `OperatorDesktopOnlyNotice` (`operator/components/OperatorDesktopOnlyNotice.tsx`)
