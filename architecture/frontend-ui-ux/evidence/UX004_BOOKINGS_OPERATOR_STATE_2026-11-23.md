@@ -13,6 +13,8 @@
 | Rental bookings planner | Empty state did not distinguish **zero bookings** vs **zero filter matches** (copy only implied filters) | P2 |
 | Rental bookings planner | Custom inline error banner duplicated `ErrorState` retry layout | P2 |
 | Rental bookings planner | Background reload did not signal refresh while keeping visible rows | P2 |
+| Rental bookings planner | Retry after initial failure left `apiLoaded=true` → false empty during pending retry | P2 (closeout) |
+| Rental bookings planner | Dataset vs filter empty shared same description copy | P2 (closeout) |
 | Operator Today | — | **Already compliant** (see below) |
 
 ## Remediation applied
@@ -25,6 +27,8 @@
 - **Partial error:** compact `ErrorState` above cached planner content (timeline/table/calendar).
 - **Empty:** `bookings.noBookings` vs `bookings.planner.emptyTitle` via `bookingsPlannerEmptyVariant`.
 - **Refresh:** `listRefreshing` from `BookingsView.loadBookings` when cache exists; status line + table `loading={refreshing}`.
+- **Retry without cache:** `setApiLoaded(false)` on reload when no cached rows → `SkeletonRows` during retry.
+- **Empty copy:** `bookings.planner.emptyDatasetDescription` vs `bookings.planner.emptyDescription` (9 locales).
 
 ### Operator (`OperatorTodayView`)
 

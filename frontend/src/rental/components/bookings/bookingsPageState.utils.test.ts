@@ -1,32 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { BookingFiltersState } from './bookingTypes';
 import {
   bookingsPlannerEmptyVariant,
   bookingsPlannerFatalError,
   bookingsPlannerInitialLoading,
   bookingsPlannerPartialError,
   bookingsPlannerShowViews,
-  hasActiveBookingPlannerFilters,
 } from './bookingsPageState.utils';
 
-const defaultFilters: BookingFiltersState = {
-  search: '',
-  status: 'all',
-  vehicleId: null,
-  stationId: null,
-  dateFrom: null,
-  dateTo: null,
-  showTerminal: false,
-};
-
 describe('bookingsPageState.utils', () => {
-  it('detects active planner filters', () => {
-    expect(hasActiveBookingPlannerFilters(defaultFilters)).toBe(false);
-    expect(hasActiveBookingPlannerFilters({ ...defaultFilters, search: 'Müller' })).toBe(true);
-    expect(hasActiveBookingPlannerFilters({ ...defaultFilters, status: 'active' })).toBe(true);
-    expect(hasActiveBookingPlannerFilters({ ...defaultFilters, showTerminal: true })).toBe(true);
-  });
-
   it('distinguishes initial loading from background refresh semantics', () => {
     expect(bookingsPlannerInitialLoading({ loading: true, hasCachedBookings: false })).toBe(true);
     expect(bookingsPlannerInitialLoading({ loading: true, hasCachedBookings: true })).toBe(false);

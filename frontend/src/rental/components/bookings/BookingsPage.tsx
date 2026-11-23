@@ -129,7 +129,7 @@ export function BookingsPage({
     emptyVariant === 'dataset' ? t('bookings.noBookings') : t('bookings.planner.emptyTitle');
   const emptyDescription =
     emptyVariant === 'dataset'
-      ? t('bookings.planner.emptyDescription')
+      ? t('bookings.planner.emptyDatasetDescription')
       : t('bookings.planner.emptyDescription');
 
   return (

@@ -2065,6 +2065,8 @@ export const de: Record<TranslationKey, string> = {
   'bookings.planner.loading': 'Buchungen werden geladen…',
   'bookings.planner.emptyTitle': 'Keine Buchungen fuer die aktuellen Filter',
   'bookings.planner.emptyDescription': 'Passen Sie Filter an oder legen Sie eine neue Buchung an.',
+  'bookings.planner.emptyDatasetDescription':
+    'Legen Sie die erste Buchung an, um den Planer zu befüllen.',
   'bookings.planner.footer': '{count} Buchung(en) · Klick oeffnet Detail-Drawer',
   'bookings.planner.prevMonth': 'Vorheriger Monat',
   'bookings.planner.nextMonth': 'Naechster Monat',

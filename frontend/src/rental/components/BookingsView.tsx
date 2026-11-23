@@ -129,6 +129,8 @@ export function BookingsView({
     setApiError(null);
     if (hadPlannerCacheRef.current) {
       setListRefreshing(true);
+    } else {
+      setApiLoaded(false);
     }
     api.bookings
       .list(orgId, { limit: BOOKINGS_LIST_LIMIT, page: 1 })

@@ -1,18 +1,4 @@
-import type { BookingFiltersState } from './bookingTypes';
-
 export type BookingsPlannerEmptyVariant = 'none' | 'dataset' | 'filter';
-
-export function hasActiveBookingPlannerFilters(filters: BookingFiltersState): boolean {
-  return (
-    filters.search.trim().length > 0 ||
-    filters.status !== 'all' ||
-    filters.vehicleId != null ||
-    filters.stationId != null ||
-    filters.dateFrom != null ||
-    filters.dateTo != null ||
-    filters.showTerminal
-  );
-}
 
 export function bookingsPlannerInitialLoading(input: {
   loading: boolean;

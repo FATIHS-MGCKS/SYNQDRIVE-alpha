@@ -55,4 +55,6 @@ export const tr = {
   ...tireWearV3Tr,
   ...serviceIntelligenceTr,
   ...rentalMisuseStressStressGateTr,
+  'bookings.planner.emptyDatasetDescription':
+    'Planlayıcıyı doldurmak için ilk rezervasyonu oluşturun.',
 } satisfies PartialTranslationDictionary;

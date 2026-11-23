@@ -86,6 +86,16 @@ describe('BookingsPage presentation states', () => {
     );
     expect(html).toContain('aria-hidden');
     expect(html).not.toContain('loader-2');
+    expect(html).not.toContain('bookings.planner.emptyDatasetDescription');
+  });
+
+  it('shows skeleton on retry pending without cached bookings (not false empty)', () => {
+    const html = renderToStaticMarkup(
+      <BookingsPage {...baseProps} bookings={[]} loading error={null} />,
+    );
+    expect(html).toContain('aria-hidden');
+    expect(html).not.toContain('bookings.noBookings');
+    expect(html).not.toContain('bookings.planner.emptyTitle');
   });
 
   it('shows fatal error with retry when load fails without cache', () => {
@@ -120,6 +130,8 @@ describe('BookingsPage presentation states', () => {
       <BookingsPage {...baseProps} bookings={[]} loading={false} />,
     );
     expect(emptyHtml).toContain('bookings.noBookings');
+    expect(emptyHtml).toContain('bookings.planner.emptyDatasetDescription');
+    expect(emptyHtml).not.toContain('bookings.planner.emptyDescription');
 
     const filteredHtml = renderToStaticMarkup(
       <BookingsPage
@@ -139,6 +151,25 @@ describe('BookingsPage presentation states', () => {
       />,
     );
     expect(filteredHtml).toContain('bookings.planner.emptyTitle');
+    expect(filteredHtml).toContain('bookings.planner.emptyDescription');
+    expect(filteredHtml).not.toContain('bookings.planner.emptyDatasetDescription');
+  });
+
+  it('shows populated planner after successful load', () => {
+    const html = renderToStaticMarkup(
+      <BookingsPage {...baseProps} bookings={[row('bk-1')]} loading={false} error={null} />,
+    );
+    expect(html).toContain('bookings.planner.footer:1');
+    expect(html).not.toContain('role="alert"');
+  });
+
+  it('shows fatal error after failed retry without cache', () => {
+    const html = renderToStaticMarkup(
+      <BookingsPage {...baseProps} bookings={[]} loading={false} error="Still failing" />,
+    );
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('Still failing');
+    expect(html).not.toContain('bookings.planner.emptyDatasetDescription');
   });
 
   it('shows refresh status without hiding populated views', () => {

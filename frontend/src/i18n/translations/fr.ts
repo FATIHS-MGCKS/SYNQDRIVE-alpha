@@ -374,6 +374,8 @@ export const fr = {
   'bookings.keepBooking': 'Garder la reservation',
   'bookings.confirmCancel': 'Oui, annuler',
   'bookings.bookingCreated': 'Reservation creee !',
+  'bookings.planner.emptyDatasetDescription':
+    'Créez une première réservation pour alimenter le planificateur.',
   'customers.title': 'Clients et conducteurs',
   'customers.searchPlaceholder': 'Rechercher clients...',
   'customers.addCustomer': 'Ajouter client',
