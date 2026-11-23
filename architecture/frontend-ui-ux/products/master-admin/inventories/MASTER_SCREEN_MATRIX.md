@@ -12,7 +12,7 @@
 | device-inventory | `PhysicalDeviceInventoryHub` | wide | | |
 | vehicle-logbook | `VehicleLogbookView` | standard | | |
 | billing | `BillingControlCenter` | wide | `masterBilling*` | multi-section |
-| product-management | `ProductManagementView` | **none** | | **GAP** |
+| product-management | `ProductManagementView` | standard **(in-view)** | | `PageContainer` inside view; App.tsx does not double-wrap (UX-001 verified) |
 | platform-integrations | `PlatformIntegrationsHub` | wide | `platform-integrations-url` | 5 tabs |
 | service-client-management | `CoreAppServiceClientsHub` | wide | | |
 | vsi-intelligence | `VsiMasterIntelligenceView` | wide | intelligence URL | |

@@ -22,7 +22,7 @@
 |------|----------------|-----------|------------|----------|
 | Theme tokens | `frontend/src/styles/theme.css`, Tailwind v4 via `vite.config.ts` | Central CSS variables, dark/light via `AppThemeContext` | Master/Rental/Operator do not share one shell component; token drift risk across products | P1 |
 | Components | `frontend/src/components/ui/` (~42 primitives) + `patterns/` | shadcn consistency, shared empty/error/skeleton patterns | Operator uses subset; some Rental-only wrappers (`rental/components/ui/Icon`) | P2 |
-| Navigation model | Master/Rental: query `?view=`; Operator: path + bottom tabs | Deep-linkable rental/master views; operator mobile-first | Inconsistent paradigms (query vs path); Master `product-management` lacks `PageContainer` (documented GAP) | P1 |
+| Navigation model | Master/Rental: query `?view=`; Operator: path + bottom tabs | Deep-linkable rental/master views; operator mobile-first | Inconsistent paradigms (query vs path) — shell contract documented (UX-002) | P2 |
 | i18n | Platform `frontend/src/i18n/*` | Nine-locale registry | Rental island `rental/i18n` transitional; hardcoded strings still in inventory debt | P2 |
 | Responsiveness | Rental desktop-first; Operator `sm` breakpoints | Operator touch targets, bottom nav | Master wide hubs on narrow viewports under-tested in authority | P2 |
 | Accessibility | axe in some e2e | Patterns include semantic chips/headers | Not uniformly audited per screen | P3 |
@@ -36,7 +36,7 @@
 | Security & access | `security-access/SecurityAccessHub.tsx` | IAM focal point | Sectioned hub, URL helpers | MFA/IAM complexity; loading states uneven | P1 | CODE_VERIFIED |
 | Connected vehicles | `connected-vehicles/ConnectedVehiclesHub.tsx` | High-value ops | DIMO drawer patterns (P6D4 tests) | Drawer density; permission copy i18n | P2 | CODE_VERIFIED |
 | Billing | `billing/BillingControlCenter.tsx` | Delegate + Stripe surfaces | Sectioned billing URL state | Master billing permission edge cases documented in V2A | P1 | CODE_VERIFIED |
-| Product management | `ProductManagementView.tsx` | **Layout gap** | Functional catalog wiring | **No `PageContainer`** — visual break vs other hubs | P1 | CODE_VERIFIED |
+| Product management | `ProductManagementView.tsx` | Compliant | In-view `PageContainer variant="standard"` | Prior matrix wrongly flagged GAP (UX-001 corrected) | — | CODE_VERIFIED |
 | Platform ops / integrations | `PlatformOpsHub`, `PlatformIntegrationsHub` | Engineering consoles | Consistent wide layout | Heavy tables; filter UX not standardized | P2 | CODE_VERIFIED |
 | Intelligence / battery / tire hubs | `master/intelligence/*`, `battery-v2-*`, `TireCalibrationCenterView` | Power-user tools | Isolated engineering UIs | Different header patterns than core hubs | P3 | CODE_VERIFIED |
 
@@ -70,7 +70,7 @@
 
 ## High-priority findings (actionable, not implemented)
 
-1. **Unify layout chrome** — align Master `PageContainer` usage (fix product-management gap); document Rental vs Master shell contracts.
+1. **Shell contract governance** — follow [`governance/SHELL_LAYOUT_CONTRACT.md`](../governance/SHELL_LAYOUT_CONTRACT.md) for cross-product edits (UX-002).
 2. **Navigation consistency** — document when to use `?view=` vs path routes; reduce legacy view ids in rental types.
 3. **Empty/loading/error** — standardize on `patterns/EmptyState`, `ErrorState`, `Skeleton*` across top 10 revenue screens (bookings, fleet, vehicle detail, operator today).
 4. **Responsive pass** — Master wide hubs + Rental sidebar collapse at tablet breakpoints (P8 noted production authenticated gap remains for visual sign-off).
