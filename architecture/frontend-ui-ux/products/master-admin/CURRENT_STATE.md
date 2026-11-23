@@ -54,7 +54,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 | Header pattern | `MasterPageHeader`, `MasterPageTabs`, `MasterPageSection` | Master-local | CONFIRMED |
 | Legacy tabs | `sq-tab-bar`, muted pills in some engineering views | Master-local debt | CONFIRMED |
 
-**Layout gap (CONFIRMED):** `product-management` renders without `PageContainer` (`Master/App.tsx`).
+**Layout (UX-001 corrected):** `product-management` uses in-view `PageContainer variant="standard"` in `ProductManagementView.tsx`; `App.tsx` intentionally omits an outer wrapper to avoid double padding.
 
 ## Navigation and URL contracts
 

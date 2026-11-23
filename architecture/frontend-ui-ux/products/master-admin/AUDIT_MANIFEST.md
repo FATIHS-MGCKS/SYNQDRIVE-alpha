@@ -31,4 +31,4 @@
 | 24 nav views | `master-nav.config.ts`, `App.tsx` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Sub-tabs sampled |
 | Hub subnav | `MASTER_HUB_SUBNAV.md` + hub utils | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Connected vehicles **PARTIAL** |
 | URL contract | `master-nav-url.ts` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED | Tests sampled |
-| product-management shell | `App.tsx` | Not verified | MAUX-EVID-CODE-001 | CONFIRMED GAP | No `PageContainer` |
+| product-management shell | `ProductManagementView.tsx` | CODE | MAUX-EVID-CODE-001 | CONFIRMED | In-view `PageContainer` (UX-001 baseline correction) |

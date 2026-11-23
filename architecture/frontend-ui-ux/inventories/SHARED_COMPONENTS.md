@@ -31,6 +31,8 @@
 | `nav-utils.ts` | via Sidebar patterns | rental sidebar |
 | `nav-primitives.tsx` | yes | partial |
 
+**Shell/layout contract:** [`governance/SHELL_LAYOUT_CONTRACT.md`](../governance/SHELL_LAYOUT_CONTRACT.md) (UX-002).
+
 ## `frontend/src/components/surface/`
 
 Liquid glass lens (feature-flagged) — **primarily Rental map/trips**, not Master ops.
