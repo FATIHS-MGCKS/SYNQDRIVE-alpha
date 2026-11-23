@@ -1,7 +1,8 @@
 # UI/UX improvement backlog (prioritized, implementation deferred)
 
 **Baseline:** [`FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](./FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md)  
-**Policy:** No implementation in the retirement PR — planning artifact only.
+**Campaign closure:** UX-001–UX-011 merged on `main` @ `698db6c0b1d4cfef4c8ea42febe0cfdcd4ee7f85` — see [`UX001_011_CAMPAIGN_MERGE_REGISTER_2026-11-23.md`](./UX001_011_CAMPAIGN_MERGE_REGISTER_2026-11-23.md).
+**Policy:** Original backlog was planning-only; implementation completed via PRs #2501–#2512 (not a deploy or production certification claim).
 
 | ID | Priority | Product | Item | Rationale | Evidence |
 |----|----------|---------|------|-----------|----------|

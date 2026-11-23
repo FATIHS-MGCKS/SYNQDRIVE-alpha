@@ -24,3 +24,4 @@
 | 2026-11-23 | OPUX-UX-008 | Operator deep-link route matching + `/operator/scan` registration | OPUX-EVID-UX008-2026-11-23 |
 | 2026-11-23 | FEUX-UX-009 | Targeted i18n on UX-004 surfaces (bookings planner load error; Operator Today chrome) | FEUX-EVID-UX009-2026-11-23 |
 | 2026-11-23 | FEUX-UX-011 | Cross-product a11y closeout — org wizard, booking sheet, DataTable `aria-busy` | FEUX-EVID-UX011-2026-11-23 |
+| 2026-11-23 | FEUX-UX-CAMPAIGN | UX-001–UX-011 merge register + ledger/index reconciliation (doc-only) | FEUX-EVID-UX001-011-MERGE-2026-11-23 |
