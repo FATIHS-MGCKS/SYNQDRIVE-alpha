@@ -42,9 +42,10 @@ import { HighMobilityDiagnosticsController } from './high-mobility-diagnostics.c
 // ── Compatibility intelligence (V4.6.77) ───────────────────────────────────
 import { HighMobilityCompatibilityController } from './compatibility/hm-compatibility.controller';
 import { HighMobilityCompatibilityService } from './compatibility/hm-compatibility.service';
+import { VehicleRegistrationConvergenceModule } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.module';
 
 @Module({
-  imports: [ConfigModule.forFeature(highMobilityConfig)],
+  imports: [ConfigModule.forFeature(highMobilityConfig), VehicleRegistrationConvergenceModule],
   controllers: [
     HighMobilityAdminController,
     HighMobilityWebhookController,

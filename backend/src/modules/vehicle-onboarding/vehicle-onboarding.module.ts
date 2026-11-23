@@ -31,6 +31,7 @@ import { VehicleIdentityReviewController } from './vehicle-identity-review/vehic
 import { VehicleIdentityP3Service } from './vehicle-identity-review/vehicle-identity-p3.service';
 import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-identity-review.service';
 import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd-integration/fsd-integration.module';
+import { VehicleRegistrationConvergenceModule } from './convergence/vehicle-registration-convergence.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd
     VsiReadonlySignalComposerModule,
     forwardRef(() => AiModule),
     forwardRef(() => DocumentExtractionModule),
+    VehicleRegistrationConvergenceModule,
   ],
   controllers: [
     VehicleIdentityReviewController,
@@ -84,6 +86,7 @@ import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd
     DimoSourceLinkOperatorAuthorizationService,
     VehicleOnboardingOffboardService,
     MasterDimoCanonicalRegistrationService,
+    VehicleRegistrationConvergenceModule,
   ],
 })
 export class VehicleOnboardingModule {}

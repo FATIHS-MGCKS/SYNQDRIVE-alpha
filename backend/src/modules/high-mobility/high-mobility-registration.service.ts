@@ -1,10 +1,18 @@
 import {
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { VehicleRegistrationConvergenceConfig } from '@config/vehicle-registration-convergence.config';
+import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.port';
+import type { VehicleRegistrationConvergencePort } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.port';
+import { isHmOnlyCanonicalRoutingEnabled } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
 import {
   assertHighMobilityRecordTenantAccess,
   assertHighMobilityTenantOperationalOrganization,
@@ -31,7 +39,24 @@ import type {
 export class HighMobilityRegistrationService {
   private readonly logger = new Logger(HighMobilityRegistrationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly configService?: ConfigService,
+    @Optional()
+    @Inject(VEHICLE_REGISTRATION_CONVERGENCE_PORT)
+    private readonly convergencePort?: VehicleRegistrationConvergencePort,
+  ) {}
+
+  private defaultConvergenceConfig(): VehicleRegistrationConvergenceConfig {
+    return { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false };
+  }
+
+  private resolveConvergenceConfig(): VehicleRegistrationConvergenceConfig {
+    return (
+      this.configService?.get<VehicleRegistrationConvergenceConfig>('vehicleRegistrationConvergence') ??
+      this.defaultConvergenceConfig()
+    );
+  }
 
   /**
    * Create and register an HM_ONLY vehicle in SynqDrive.
@@ -42,6 +67,18 @@ export class HighMobilityRegistrationService {
     dto: RegisterHmOnlyVehicleDto,
     access: { tenantOrganizationId: string; isMasterAdmin: boolean },
   ): Promise<HmOnlyRegistrationResultDto> {
+    const convergenceConfig = this.resolveConvergenceConfig();
+    if (isHmOnlyCanonicalRoutingEnabled(convergenceConfig)) {
+      if (!this.convergencePort) {
+        throw new ServiceUnavailableException({
+          code: 'VEHICLE_REGISTRATION_CONVERGENCE_WIRING_MISSING',
+          message:
+            'HM_ONLY canonical routing is enabled but convergence port is not wired. Disable VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED.',
+        });
+      }
+      return this.convergencePort.registerHmOnlyCanonical({ dto, access });
+    }
+
     const { hmVehicleId, organizationId, vehicleName, licensePlate, notes, mileageKm, fuelType, vehicleType } = dto;
 
     if (organizationId !== access.tenantOrganizationId && !access.isMasterAdmin) {
