@@ -87,7 +87,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 |------|-------|---------|
 | DIMO → tenant vehicle | Master `VehicleRegistrationModal` / Connected Vehicles | `POST …/register-from-dimo` → `VehiclesService.registerFromDimo` → `MasterDimoCanonicalRegistrationService` (VO-SIG P2) |
 | Manual create | Org fleet APIs | `POST organizations/:orgId/vehicles` → `VehiclesService.create` |
-| HM_ONLY | HM register API | `POST vehicles/register/hm-only` → `HighMobilityRegistrationService.registerHmOnlyVehicle` |
+| HM_ONLY | HM register API | `POST vehicles/register/hm-only` → `HighMobilityRegistrationService.registerHmOnlyVehicle` (legacy inline when `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED=false`; V2B-PR2 canonical VO orchestration when flag true — default off) |
 | HM health add-on | Post-register | `activate-high-mobility-health`, `link-high-mobility-full-telemetry` (`high-mobility-vehicle-register.controller.ts`) |
 | Deregister (retired) | Legacy Master Admin HTTP | `POST admin/vehicles/:vehicleId/deregister` → **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED` (use canonical offboard HTTP) |
 | Offboard (canonical) | Master Connected Vehicles | `POST admin/vehicle-onboarding/organizations/:organizationId/vehicles/:vehicleId/offboard` → `VehicleOffboardingService` (`OFFBOARDED` + outbox) |

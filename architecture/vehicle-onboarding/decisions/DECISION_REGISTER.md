@@ -103,4 +103,4 @@
 | **NON-EFFECTS** | No cutover in plan PR; no flag activation; DIMO semantics unchanged |
 | **EVIDENCE** | VO-EVID-2B-001 |
 | **VALIDATION** | PG matrix PG-01…PG-10 in plan; V2A characterization prerequisite |
-| **OPEN GAPS** | Owner decisions OWN-1…6; V2B-PR2+ implementation |
+| **OPEN GAPS** | Owner decisions OWN-1…6; V2B-PR3+ PG harness / cutover attestation |

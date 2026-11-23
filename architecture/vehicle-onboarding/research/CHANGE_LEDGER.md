@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-11-23 | **V2B-PR2 HM_ONLY canonical implementation** — `HmOnlyCanonicalRegistrationService`; convergence delegation; `VehicleOnboardingActivationRailModule` for HM→convergence wiring without full VO graph; default-OFF flag; unit tests + PG-03 placeholder (skipped) | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md`; no production cutover |
 | 2026-11-22 | **V2B canonical registration convergence plan** — architecture contract, PR sequence, PG matrix, flags/rollback; **no** runtime cutover | VO-EVID-2B-001; VO-DEC-2B-001 PROPOSED; module remains `AUDIT_IN_PROGRESS` |
 | 2026-11-22 | **V2B-PR1 convergence foundation** — default-OFF flags, convergence port stub, HM routing + billing hook gates (inactive @ default); fail-closed env validation | `V2B_PR1_CONVERGENCE_FOUNDATION_2026-11-22.md`; no cutover |
 | 2026-11-22 | **V2B-PR1 billing fail-closed hardening** — `BILLING_SINGLE_RAIL` NOT_ARMABLE at startup in PR1; removed premature `VehiclesService.create` hook suppression | same evidence doc |

@@ -25,6 +25,7 @@
 | VO-EVID-5-008 | VO5C-P2B4-0 platform prune emergency containment | REPO_CODE | [VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md](./VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md) |
 | VO-EVID-5-009 | VO5C-R2 security-floor rollback hardening + migration order proof | REPO_CODE | [VO5C_R2_SECURITY_FLOOR_ROLLBACK.md](./VO5C_R2_SECURITY_FLOOR_ROLLBACK.md) |
 | VO-EVID-2B-001 | V2B canonical registration convergence plan (design contract; no cutover) | REPO_DOCUMENTATION | [V2B_CANONICAL_REGISTRATION_CONVERGENCE_PLAN_2026-11-22.md](./V2B_CANONICAL_REGISTRATION_CONVERGENCE_PLAN_2026-11-22.md) |
+| VO-EVID-2B-002 | V2B-PR2 HM_ONLY canonical implementation (behind default-OFF flag) | REPO_CODE | [V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md](./V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md) |
 | VO-EVID-2A-001 | V2A registration & billing safety foundation (characterization; no cutover) | REPO_CODE | [V2A_REGISTRATION_BILLING_SAFETY_2026-11-22.md](./V2A_REGISTRATION_BILLING_SAFETY_2026-11-22.md) |
 | VO-EVID-0A-001 | VO-0A repository discovery anchor | REPO_AUDIT | Anchor SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` cited in CURRENT_STATE |
 
