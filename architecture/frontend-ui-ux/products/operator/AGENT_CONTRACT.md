@@ -2,8 +2,11 @@
 
 ## Mandatory read-first
 
-1. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
-2. `CURRENT_STATE.md`, `inventories/OPERATOR_SCREEN_MATRIX.md`
+1. `../../governance/CANONICAL_AUTHORITY_MAP.md`
+2. `../../governance/FIGMA_AND_VISUAL_PRECEDENCE.md`
+3. `../../design-system/SHARED_DESIGN_SYSTEM.md`
+4. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
+5. `CURRENT_STATE.md`, `inventories/OPERATOR_SCREEN_MATRIX.md`
 
 ## Substantive change definition
 

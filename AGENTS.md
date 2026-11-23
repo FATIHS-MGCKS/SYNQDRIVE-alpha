@@ -393,8 +393,23 @@ cd frontend && npm test
 
 - Preserve multi-tenant org scoping — no hardcoded org/vehicle IDs.
 - DIMO Segments are canonical trip boundaries; use DIMO MCP for DIMO work.
-- Figma is visual source of truth; codebase is functional source of truth.
 - AI Upload: never auto-apply unconfirmed extraction results.
+
+## Frontend UI/UX authority (mandatory for agents)
+
+Before **any** frontend change (bugs, layout, dialogs, tables, navigation, shared components, responsive work):
+
+1. Read [`architecture/frontend-ui-ux/governance/CANONICAL_AUTHORITY_MAP.md`](architecture/frontend-ui-ux/governance/CANONICAL_AUTHORITY_MAP.md).
+2. Read [`architecture/frontend-ui-ux/AGENT_CONTRACT.md`](architecture/frontend-ui-ux/AGENT_CONTRACT.md) and [`design-system/SHARED_DESIGN_SYSTEM.md`](architecture/frontend-ui-ux/design-system/SHARED_DESIGN_SYSTEM.md).
+3. Read [`governance/CROSS_PRODUCT_CHANGE_POLICY.md`](architecture/frontend-ui-ux/governance/CROSS_PRODUCT_CHANGE_POLICY.md) and [`governance/FIGMA_AND_VISUAL_PRECEDENCE.md`](architecture/frontend-ui-ux/governance/FIGMA_AND_VISUAL_PRECEDENCE.md).
+4. Read each affected product authority (`products/master-admin|rental|operator`) — `AGENT_CONTRACT.md`, `CURRENT_STATE.md`, screen inventory.
+5. For user-visible copy: follow [`architecture/internationalization/`](architecture/internationalization/) (9 locales).
+
+**Default visual contract:** registered FEUX architecture + implemented tokens — **not** unconditional Figma SSOT, **not** `docs/ui/*` (superseded — see [`docs/ui/README.md`](docs/ui/README.md)).
+
+Approved redesigns: [`governance/FUTURE_DESIGN_CHANGE_POLICY.md`](architecture/frontend-ui-ux/governance/FUTURE_DESIGN_CHANGE_POLICY.md).
+
+Validation: `bash architecture/frontend-ui-ux/scripts/validate-graph.sh` (+ product graphs) and `bash architecture/scripts/validate-module-registry.sh`.
 
 ## Internationalization (i18n)
 

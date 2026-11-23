@@ -8,6 +8,8 @@
 | FEUX-DEC-SHARED-TOKEN-SSOT-001 | theme.css + contracts as shared visual SSOT | VALIDATED | FEUX-EVID-CODE-THEME-001 |
 | FEUX-DEC-NO-I18N-DUP-001 | No competing i18n authority | VALIDATED | FEUX-EVID-CROSS-I18N-001 |
 | FEUX-DEC-RENTAL-REFERENCE-001 | Rental as positive reference (cross-product doc only) | PROPOSED | FEUX-EVID-CODE-RENTAL-001 |
+| FEUX-DEC-FIGMA-PRECEDENCE-001 | Registered architecture + tokens default; Figma reference on approved redesign | VALIDATED | FEUX-EVID-AGENT-ROUTING-2026-11-23 |
+| FEUX-DEC-AGENT-READ-FIRST-001 | Mandatory FEUX read-first order for all frontend agents | VALIDATED | FEUX-EVID-AGENT-ROUTING-2026-11-23 |
 
 ---
 
@@ -122,3 +124,41 @@
 | **TRADEOFFS** | Consistency vs. product-fit UX. |
 | **REMAINING_GAPS** | Quantified drift metrics between shells **UNKNOWN**. |
 | **EVIDENCE** | FEUX-EVID-CODE-RENTAL-001 |
+
+---
+
+## FEUX-DEC-FIGMA-PRECEDENCE-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED (governance) |
+| **BEFORE** | Root `AGENTS.md`, `projektregel.mdc`, and `Figma-rule.mdc` treated Figma as unconditional visual SSOT; conflicted with FEUX-DEC-SHARED-TOKEN-SSOT-001 and FEUX-EVID-GAP-FIGMA-001. |
+| **WHY** | Agents must not let stale or unverified Figma override implemented tokens and registered product authorities. |
+| **Considered alternatives** | (A) Delete all Figma rules — rejected: owner-approved redesigns still need Figma MCP. (B) Figma-only SSOT — rejected: no in-repo Figma SSOT. |
+| **CHANGE** | `governance/FIGMA_AND_VISUAL_PRECEDENCE.md`; remediated Cursor rules and `AGENTS.md`. |
+| **EXPECTED_EFFECT** | Default work follows `architecture/frontend-ui-ux/`; Figma used when explicitly scoped. |
+| **VALIDATION** | `validate-ui-ux-agent-routing.mjs` + `validate-graph.sh`. |
+| **OBSERVED_EFFECT** | **CONFIRMED** at documentation merge on branch (repo validators pass). Runtime agent compliance **UNKNOWN**. |
+| **NON_EFFECTS** | Does not add Figma files to repo; does not certify WCAG or production UI. |
+| **TRADEOFFS** | More read-first steps vs. fewer mistaken redesigns from obsolete artboards. |
+| **REMAINING_GAPS** | External Figma file ↔ production alignment still **UNKNOWN**. |
+| **EVIDENCE** | FEUX-EVID-AGENT-ROUTING-2026-11-23 |
+
+---
+
+## FEUX-DEC-AGENT-READ-FIRST-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED (governance) |
+| **BEFORE** | FEUX `AGENT_CONTRACT` listed reads but root agent instructions did not mandate foundation + product routing for all frontend tasks. |
+| **WHY** | One canonical four-domain authority tree requires enforced entry path for every UI change class. |
+| **Considered alternatives** | (A) Optional “recommended reads” — rejected. (B) Single mega-doc — rejected: preserves product independence. |
+| **CHANGE** | `CANONICAL_AUTHORITY_MAP.md`; expanded shared and product `AGENT_CONTRACT.md`; `AGENTS.md` frontend section. |
+| **EXPECTED_EFFECT** | Agents locate correct authority before editing tokens, shells, or inventories. |
+| **VALIDATION** | Graph validator agent-routing checks; registry unchanged (`AUDIT_IN_PROGRESS`). |
+| **OBSERVED_EFFECT** | **CONFIRMED** governance files present at PR SHA. Cannot prove agents read docs without human process. |
+| **NON_EFFECTS** | No AUTHORITY_ACTIVE promotion; no application code changes. |
+| **TRADEOFFS** | Validator enforces file presence, not human attention. |
+| **REMAINING_GAPS** | CI cannot attest read compliance — by design. |
+| **EVIDENCE** | FEUX-EVID-AGENT-ROUTING-2026-11-23 |

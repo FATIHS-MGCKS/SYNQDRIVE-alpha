@@ -151,6 +151,28 @@ nodes:
     evidence:
       - FEUX-EVID-CROSS-I18N-001
 
+  - id: FEUX-DEC-FIGMA-PRECEDENCE-001
+    type: decision
+    title: Figma reference vs registered architecture default
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Tokens + FEUX authorities default; Figma on approved redesign.
+    source_paths:
+      - architecture/frontend-ui-ux/governance/FIGMA_AND_VISUAL_PRECEDENCE.md
+    evidence:
+      - FEUX-EVID-AGENT-ROUTING-2026-11-23
+
+  - id: FEUX-DEC-AGENT-READ-FIRST-001
+    type: decision
+    title: Mandatory agent read-first routing
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: CANONICAL_AUTHORITY_MAP + contracts before frontend edits.
+    source_paths:
+      - architecture/frontend-ui-ux/governance/CANONICAL_AUTHORITY_MAP.md
+    evidence:
+      - FEUX-EVID-AGENT-ROUTING-2026-11-23
+
   - id: FEUX-GAP-001
     type: gap
     title: Figma productive artifacts unknown
@@ -357,3 +379,13 @@ nodes:
     epistemic_status: CONFIRMED
     source_paths:
       - architecture/frontend-ui-ux/evidence/P9_SECURE_AUDIT_ACCESS_FOUNDATION.md
+
+  - id: FEUX-EVID-AGENT-ROUTING-2026-11-23
+    type: evidence
+    title: Canonical UI/UX authority consolidation and agent routing
+    summary: Governance map, Figma precedence, legacy inventory, validator routing checks; docs/ui superseded.
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/frontend-ui-ux/governance/CANONICAL_AUTHORITY_MAP.md
+      - architecture/frontend-ui-ux/governance/LEGACY_UI_UX_DOCUMENT_INVENTORY.md

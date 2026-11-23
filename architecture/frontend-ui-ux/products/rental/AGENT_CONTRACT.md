@@ -2,9 +2,12 @@
 
 ## Mandatory read-first
 
-1. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
-2. `CURRENT_STATE.md`, `inventories/RENTAL_SCREEN_MATRIX.md`
-3. `architecture/internationalization/` for user-facing copy
+1. `../../governance/CANONICAL_AUTHORITY_MAP.md`
+2. `../../governance/FIGMA_AND_VISUAL_PRECEDENCE.md`
+3. `../../design-system/SHARED_DESIGN_SYSTEM.md`
+4. `../../governance/CROSS_PRODUCT_CHANGE_POLICY.md`
+5. `CURRENT_STATE.md`, `inventories/RENTAL_SCREEN_MATRIX.md`
+6. `architecture/internationalization/` for user-facing copy
 
 ## Substantive change definition
 

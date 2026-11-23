@@ -25,3 +25,4 @@
 | 2026-11-23 | FEUX-UX-009 | Targeted i18n on UX-004 surfaces (bookings planner load error; Operator Today chrome) | FEUX-EVID-UX009-2026-11-23 |
 | 2026-11-23 | FEUX-UX-011 | Cross-product a11y closeout — org wizard, booking sheet, DataTable `aria-busy` | FEUX-EVID-UX011-2026-11-23 |
 | 2026-11-23 | FEUX-UX-CAMPAIGN | UX-001–UX-011 merge register + ledger/index reconciliation (doc-only) | FEUX-EVID-UX001-011-MERGE-2026-11-23 |
+| 2026-11-23 | FEUX-AUTHORITY-001 | Canonical authority map, Figma precedence, legacy inventory, agent rules + routing validator | FEUX-EVID-AGENT-ROUTING-2026-11-23 |

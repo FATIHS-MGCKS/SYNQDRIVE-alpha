@@ -38,6 +38,18 @@ edges:
   - from: FEUX-DEC-NO-I18N-DUP-001
     relation: decides
     to: FEUX-AUTH-I18N-BOUNDARY-001
+  - from: FEUX-DEC-FIGMA-PRECEDENCE-001
+    relation: governs
+    to: FEUX-DOM-PLATFORM-001
+  - from: FEUX-DEC-AGENT-READ-FIRST-001
+    relation: governs
+    to: FEUX-DOM-PLATFORM-001
+  - from: FEUX-EVID-AGENT-ROUTING-2026-11-23
+    relation: supports
+    to: FEUX-DEC-AGENT-READ-FIRST-001
+  - from: FEUX-EVID-AGENT-ROUTING-2026-11-23
+    relation: supports
+    to: FEUX-DEC-FIGMA-PRECEDENCE-001
   - from: FEUX-EVID-CODE-THEME-001
     relation: supports
     to: FEUX-DATA-THEME-001
