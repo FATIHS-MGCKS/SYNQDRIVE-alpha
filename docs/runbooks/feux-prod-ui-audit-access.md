@@ -1,52 +1,15 @@
-# FEUX — Production UI read-only audit access (Variant B)
+# FEUX production UI audit access — RETIRED
 
-| Field | Value |
-|-------|-------|
-| **Milestones** | **P9A** architecture · **P9B** implementation (this repo) · **P9C** owner-provisioned Production session |
-| **Operational flag** | `FEUX_PROD_UI_AUDIT_AUTHORIZED=1` — **authorization marker only**; must pair with server grants + identity |
+**Status:** `RETIRED_BY_OWNER_DECISION` (2026-11-23)
 
-## Do NOT reuse
+The P9/P9B production-authenticated UI audit access system has been removed from the application runtime. Historical design and evidence remain under `architecture/frontend-ui-ux/evidence/P9_*` and merged PR **#2495**.
 
-| Identity | Verdict |
-|----------|---------|
-| `master-admin-smoke-lifecycle` (`MASTER_ADMIN`) | **FORBIDDEN** for FEUX UI audit |
-| Any `ORG_ADMIN` / `MASTER_ADMIN` bypass path | **FORBIDDEN** as audit persona |
+## Operator notes
 
-## P9C provisioning (owner-only — not executed by agents)
+- Do **not** provision new `ui-audit-*` platform permission grants.
+- If any **active** `UserPlatformPermissionGrant` rows with `ui-audit-master`, `ui-audit-rental`, or `ui-audit-operator` still exist in Production, revoke them via normal Master Admin IAM workflows (owner-controlled). Until revoked, JWT may still list deprecated permission strings; they have **no** special enforcement after retirement.
+- Do **not** set `FEUX_PROD_UI_AUDIT_AUTHORIZED` (removed from `.env.example`).
 
-1. Create **isolated smoke org** with synthetic data only.
-2. Create **USER** platform role identity(ies) — separate per product if needed.
-3. Membership: **read-only** module flags (`read: true`, `write/manage: false`) — never `ORG_ADMIN`.
-4. Grant **one** `UserPlatformPermissionGrant` per scope: `ui-audit-master` | `ui-audit-rental` | `ui-audit-operator`.
-5. Enforce MFA as for normal users — **no bypass**.
-6. Short session TTL; revoke grant + disable user after audit window.
-7. Store Playwright `storageState` in Cursor **Runtime Secret** path reference — **never git**.
+## Successor work
 
-## Browser harness
-
-```bash
-# Harness unit tests (no Production session) — CI-safe
-npx playwright test -c e2e/feux-prod-audit-playwright.config.ts feux-prod-audit-readonly.harness.spec.ts
-
-# Authenticated Production UI audit — skipped unless explicitly armed; no local webServer
-FEUX_PROD_UI_AUDIT_AUTHORIZED=1 \
-FEUX_PROD_AUDIT_BASE_URL=https://app.synqdrive.eu \
-FEUX_PROD_AUDIT_STORAGE_STATE_PATH=/path/outside/repo/.storageState.json \
-npx playwright test -c e2e/feux-prod-audit-playwright.config.ts feux-prod-audit-readonly.spec.ts
-```
-
-**Origin policy:** `FEUX_PROD_AUDIT_APPROVED_ORIGINS` (comma-separated) defaults to `https://app.synqdrive.eu`. Armed prod audit mode **rejects** `localhost` / `127.0.0.1`.
-
-**Server read policy:** `ui-audit-read-allowlist.ts` + `ui-audit-master-endpoint.policy.ts` — response-level master verdicts in `P9_MASTER_ENDPOINT_RESPONSE_EVIDENCE.md`. Master audit allowlist currently: **only** `GET /api/v1/admin/connectivity/platform-summary`.
-
-**Rental/Operator overlap:** overlapping paths (e.g. `bookings/today/*`) accept **either** `ui-audit-rental` **or** `ui-audit-operator` when both rules match (`userSatisfiesUiAuditReadRules`).
-
-**Session enforcement:** `UiAuditSessionEnforcementGuard` re-validates DB grants and `sessionVersion` on every request; UI audit revoke increments `sessionVersion`.
-
-## Offboarding
-
-1. Revoke platform permission grants.
-2. Increment `sessionVersion` / revoke refresh tokens.
-3. Set user `INACTIVE`.
-4. Delete ephemeral credential files.
-5. Append evidence row to FEUX audit matrix (no PII).
+Use [`architecture/frontend-ui-ux/evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md`](../../architecture/frontend-ui-ux/evidence/FEUX_FINAL_UI_UX_BASELINE_2026-11-23.md) and product screen matrices as the UI/UX improvement starting point.

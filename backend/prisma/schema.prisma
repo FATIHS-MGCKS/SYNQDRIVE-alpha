@@ -293,6 +293,7 @@ enum UserPlatformRole {
 
 enum PlatformPermissionKey {
   MASTER_BILLING @map("master-billing")
+  // P9 UI audit (RETIRED_BY_OWNER_DECISION): migration retained; no runtime grant/revoke APIs
   UI_AUDIT_MASTER  @map("ui-audit-master")
   UI_AUDIT_RENTAL  @map("ui-audit-rental")
   UI_AUDIT_OPERATOR @map("ui-audit-operator")

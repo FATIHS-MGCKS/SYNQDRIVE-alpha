@@ -3,6 +3,7 @@ import { PlatformPermissionKey } from '@prisma/client';
 /** Allowlisted platform JWT permission strings (issuer emits DB-resolved grants only). */
 export const PLATFORM_PERMISSION_JWT_VALUES = {
   MASTER_BILLING: 'master-billing',
+  /** @deprecated P9 UI audit retired — enum/migration retained; no runtime consumers */
   UI_AUDIT_MASTER: 'ui-audit-master',
   UI_AUDIT_RENTAL: 'ui-audit-rental',
   UI_AUDIT_OPERATOR: 'ui-audit-operator',
