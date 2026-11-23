@@ -48,7 +48,7 @@
 |--------|--------|------------|-----------|------------|----------|--------------|
 | Dashboard | `DashboardView.tsx` | Main landing | KPI cards, quick links | Competes visually with sidebar density | P2 | CODE_VERIFIED |
 | Fleet + vehicle detail | `FleetHubView.tsx`, `vehicle-detail/*` | Core product anchor | **9** tabs; roving a11y + horizontal scroll | Baseline **8-tab** count was wrong (UX-003) | P2 | CODE_VERIFIED |
-| Bookings / planner | `BookingsView.tsx`, `NewBookingView.tsx` | Revenue path | Planner integration | Error/empty on partial API failure varies | P1 | CODE_VERIFIED |
+| Bookings / planner | `BookingsPage.tsx`, `BookingsView.tsx` | Revenue path | Shared `SkeletonRows`/`ErrorState`; fatal vs partial error; empty dataset vs filter (UX-004) | — | P1 | CODE_VERIFIED |
 | Customers / finance | `CustomersView.tsx`, `FinanceView.tsx` | CRM + money | Unified finance navigation | Three finance modes in one view — cognitive load | P2 | CODE_VERIFIED |
 | Communication / AI | `CommunicationCenterView.tsx`, `AIAssistantView.tsx` | Omnichannel | Legacy route consolidation | Legacy ids (`whatsapp-business`) still in types | P2 | CODE_VERIFIED |
 | Settings / help | `SettingsView.tsx`, `HelpCenterView.tsx` | Org admin | MFA components shared | Settings depth vs operator simplicity gap | P3 | CODE_VERIFIED |
@@ -59,7 +59,7 @@
 
 | Screen | Source | Assessment | Strengths | Weaknesses | Priority | Verification |
 |--------|--------|------------|-----------|------------|----------|--------------|
-| Today | `OperatorTodayView.tsx` | Shift home | Task/booking summaries | Loading skeleton coverage partial | P1 | CODE_VERIFIED |
+| Today | `OperatorTodayView.tsx` | Shift home | Shared loading/empty/error/stale patterns (UX-004 verified compliant) | — | P1 | CODE_VERIFIED |
 | Vehicles | `OperatorVehiclesView.tsx` | Field fleet list | Card layout, search | Detail handoff via shell context — deep link clarity | P1 | CODE_VERIFIED |
 | Tasks | `OperatorTasksView.tsx` | Work queue | Touch-friendly lists | Filter persistence across tabs | P2 | CODE_VERIFIED |
 | Scan | `OperatorScanView.tsx` | QR/barcode | Mobile intent | Camera permission UX edge cases | P2 | CODE_VERIFIED |

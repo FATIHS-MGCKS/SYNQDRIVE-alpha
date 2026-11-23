@@ -53,6 +53,10 @@ Safe-area aware padding; glass cards (`OperatorGlassCard`); sheets for destructi
 
 `OperatorTaskCard.test.tsx`, `OperatorConnectivityBanner.test.tsx`, `OperatorTodayTaskFeed.test.tsx` — **CONFIRMED** unit-level; not full visual regression.
 
+## UX-004 (2026-11-23)
+
+`OperatorTodayView` — **verified compliant** with shared `EmptyState` / `ErrorState` / `SkeletonRows` and stale/offline banner; no code change in UX-004 PR. See [`../../evidence/UX004_BOOKINGS_OPERATOR_STATE_2026-11-23.md`](../../evidence/UX004_BOOKINGS_OPERATOR_STATE_2026-11-23.md).
+
 ## Responsive contract
 
 Main column `max-w-lg` mobile, `md:max-w-none` — intentional phone-first; not equivalent to Rental desktop fleet density.
