@@ -9,6 +9,7 @@ import { masterIntelligenceTr } from './master.intelligence.tr';
 import { tireWearV3Tr } from './tire.wearV3.tr';
 import { serviceIntelligenceTr } from './service-intelligence.tr';
 import { rentalMisuseStressStressGateTr } from './rental.misuseStress.stressGate.i18n';
+import { operatorTodayTr } from './operator.today.tr';
 
 /**
  * Turkish product-copy dictionary (partial).
@@ -57,4 +58,6 @@ export const tr = {
   ...rentalMisuseStressStressGateTr,
   'bookings.planner.emptyDatasetDescription':
     'Planlayıcıyı doldurmak için ilk rezervasyonu oluşturun.',
+  'bookings.planner.loadError': 'Rezervasyonlar yüklenemedi.',
+  ...operatorTodayTr,
 } satisfies PartialTranslationDictionary;

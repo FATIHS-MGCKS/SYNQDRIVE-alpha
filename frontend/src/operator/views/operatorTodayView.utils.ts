@@ -1,3 +1,4 @@
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { OperatorTodaySnapshot } from '../lib/operatorData';
 import type {
   OperatorTodayBucketSlice,
@@ -26,11 +27,21 @@ export interface OperatorTodayBucketSectionMeta {
   hideWhenEmpty: boolean;
 }
 
-export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = [
+interface OperatorTodayBucketSectionDef {
+  bucket: OperatorTodayFeedBucket;
+  titleKey: TranslationKey;
+  subtitleKey: TranslationKey;
+  variant: OperatorTodaySectionVariant;
+  collapsible: boolean;
+  defaultCollapsed: boolean;
+  hideWhenEmpty: boolean;
+}
+
+const OPERATOR_TODAY_BUCKET_SECTION_DEFS: OperatorTodayBucketSectionDef[] = [
   {
     bucket: 'NOW',
-    title: 'Jetzt erforderlich',
-    subtitle: 'Überfällige, kritische und unmittelbar blockierende Aufgaben',
+    titleKey: 'operator.today.bucket.now.title',
+    subtitleKey: 'operator.today.bucket.now.subtitle',
     variant: 'critical',
     collapsible: false,
     defaultCollapsed: false,
@@ -38,8 +49,8 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'TODAY',
-    title: 'Heute',
-    subtitle: 'Heute fällige und aktivierte Aufgaben',
+    titleKey: 'operator.today.bucket.today.title',
+    subtitleKey: 'operator.today.bucket.today.subtitle',
     variant: 'default',
     collapsible: false,
     defaultCollapsed: false,
@@ -47,8 +58,8 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'UPCOMING',
-    title: 'Demnächst',
-    subtitle: 'Aktiviert sich im definierten kommenden Zeitfenster',
+    titleKey: 'operator.today.bucket.upcoming.title',
+    subtitleKey: 'operator.today.bucket.upcoming.subtitle',
     variant: 'default',
     collapsible: false,
     defaultCollapsed: false,
@@ -56,8 +67,8 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'PLANNED',
-    title: 'Geplant',
-    subtitle: 'Zukünftige Erinnerungen und Aufgaben',
+    titleKey: 'operator.today.bucket.planned.title',
+    subtitleKey: 'operator.today.bucket.planned.subtitle',
     variant: 'default',
     collapsible: true,
     defaultCollapsed: true,
@@ -65,8 +76,8 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
   },
   {
     bucket: 'UNASSIGNED',
-    title: 'Unzugewiesen',
-    subtitle: 'Team-Queue — Aufgaben ohne Bearbeiter',
+    titleKey: 'operator.today.bucket.unassigned.title',
+    subtitleKey: 'operator.today.bucket.unassigned.subtitle',
     variant: 'team',
     collapsible: false,
     defaultCollapsed: false,
@@ -76,10 +87,19 @@ export const OPERATOR_TODAY_BUCKET_SECTIONS: OperatorTodayBucketSectionMeta[] = 
 
 export function getOperatorTodayBucketSections(
   canViewUnassigned: boolean,
+  t?: (key: TranslationKey) => string,
 ): OperatorTodayBucketSectionMeta[] {
-  return OPERATOR_TODAY_BUCKET_SECTIONS.filter(
+  return OPERATOR_TODAY_BUCKET_SECTION_DEFS.filter(
     (section) => section.bucket !== 'UNASSIGNED' || canViewUnassigned,
-  );
+  ).map((section) => ({
+    bucket: section.bucket,
+    title: t ? t(section.titleKey) : section.titleKey,
+    subtitle: t ? t(section.subtitleKey) : section.subtitleKey,
+    variant: section.variant,
+    collapsible: section.collapsible,
+    defaultCollapsed: section.defaultCollapsed,
+    hideWhenEmpty: section.hideWhenEmpty,
+  }));
 }
 
 export function bucketSliceHasContent(slice: OperatorTodayBucketSlice | undefined): boolean {

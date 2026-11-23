@@ -18,6 +18,7 @@ import { masterCvTechnicalSpecsFr } from './master.cv.technicalSpecs.fr';
 import { masterCvDimoPrivilegeFr } from './master.cv.dimoPrivilege.fr';
 import { masterCvOemSpecsFr } from './master.cv.oemSpecs.fr';
 import { rentalMisuseStressStressGateFr } from './rental.misuseStress.stressGate.i18n';
+import { operatorTodayFr } from './operator.today.fr';
 
 export const fr = {
   'dashboard.welcomeBack': 'Bon retour, {name}',
@@ -974,4 +975,6 @@ export const fr = {
   ...tireWearV3Fr,
   ...serviceIntelligenceFr,
   ...rentalMisuseStressStressGateFr,
+  'bookings.planner.loadError': 'Impossible de charger les réservations.',
+  ...operatorTodayFr,
 } satisfies PartialTranslationDictionary;

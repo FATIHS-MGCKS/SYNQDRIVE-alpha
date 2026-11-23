@@ -1,0 +1,43 @@
+export const operatorTodayCs = {
+  'operator.today.stale.offlineTitle': 'Offline — data z mezipaměti',
+  'operator.today.stale.staleTitle': 'Data mohou být zastaralá',
+  'operator.today.stale.offlineBody':
+    'Zobrazení vychází z posledního úspěšného načtení. Akce se synchronizují po obnovení připojení.',
+  'operator.today.stale.staleBody':
+    'Poslední načtení selhalo. Zobrazují se naposledy načtené úkoly.',
+  'operator.today.stale.refresh': 'Obnovit',
+  'operator.today.noOrg.title': 'Žádná organizace',
+  'operator.today.noOrg.description': 'Přihlaste se účtem pronájmové organizace.',
+  'operator.today.createBooking': 'Vytvořit rezervaci',
+  'operator.today.error.fatalTitle': 'Data pro dnešek nedostupná',
+  'operator.today.error.bookingsTitle': 'Rezervace nedostupné',
+  'operator.today.empty.title': 'Dnes je klid',
+  'operator.today.empty.description':
+    'Žádné naléhavé úkoly, předání ani blokace na dnešek.',
+  'operator.today.empty.allOpenTasks': 'Všechny otevřené úkoly ({count})',
+  'operator.today.header.title': 'Operativní přehled dne',
+  'operator.today.header.subtitle': 'Priorita podle naléhavosti — kritické a po termínu první.',
+  'operator.today.nav.allOpenWithCount': 'Vše otevřené ({count})',
+  'operator.today.nav.allTasks': 'Všechny úkoly',
+  'operator.today.alerts.sectionTitle': 'Provozní upozornění',
+  'operator.today.alert.severity.critical': 'Kritické',
+  'operator.today.alert.severity.warning': 'Varování',
+  'operator.today.blocked.sectionTitle': 'Blokovaná vozidla',
+  'operator.today.blocked.badge': 'Blokováno',
+  'operator.today.handover.now': 'Předání nyní',
+  'operator.today.handover.today': 'Předání dnes',
+  'operator.today.tablet.placeholder':
+    'Úkoly a rezervace se na tomto zařízení otevírají jako celoobrazovkové listy.',
+  'operator.today.bucket.now.title': 'Vyžadováno nyní',
+  'operator.today.bucket.now.subtitle':
+    'Po termínu, kritické a okamžitě blokující úkoly',
+  'operator.today.bucket.today.title': 'Dnes',
+  'operator.today.bucket.today.subtitle': 'Úkoly splatné a aktivované dnes',
+  'operator.today.bucket.upcoming.title': 'Brzy',
+  'operator.today.bucket.upcoming.subtitle': 'Aktivuje se v definovaném nadcházejícím okně',
+  'operator.today.bucket.planned.title': 'Plánované',
+  'operator.today.bucket.planned.subtitle': 'Budoucí připomínky a úkoly',
+  'operator.today.bucket.unassigned.title': 'Nepřiřazené',
+  'operator.today.bucket.unassigned.subtitle': 'Týmová fronta — úkoly bez řešitele',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} nedostupné',
+} as const;

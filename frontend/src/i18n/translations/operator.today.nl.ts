@@ -1,0 +1,43 @@
+export const operatorTodayNl = {
+  'operator.today.stale.offlineTitle': 'Offline — cachegegevens',
+  'operator.today.stale.staleTitle': 'Gegevens kunnen verouderd zijn',
+  'operator.today.stale.offlineBody':
+    'De weergave is gebaseerd op de laatste succesvolle ophaalactie. Acties synchroniseren zodra u weer online bent.',
+  'operator.today.stale.staleBody':
+    'De laatste ophaalactie is mislukt. De laatst geladen taken worden getoond.',
+  'operator.today.stale.refresh': 'Verversen',
+  'operator.today.noOrg.title': 'Geen organisatie',
+  'operator.today.noOrg.description': 'Meld u aan met een verhuurorganisatie-account.',
+  'operator.today.createBooking': 'Boeking aanmaken',
+  'operator.today.error.fatalTitle': 'Gegevens voor vandaag niet beschikbaar',
+  'operator.today.error.bookingsTitle': 'Boekingen niet beschikbaar',
+  'operator.today.empty.title': 'Vandaag is het rustig',
+  'operator.today.empty.description':
+    'Geen urgente taken, overdrachten of blokkades voor vandaag.',
+  'operator.today.empty.allOpenTasks': 'Alle open taken ({count})',
+  'operator.today.header.title': 'Operationeel dagoverzicht',
+  'operator.today.header.subtitle': 'Geprioriteerd op urgentie — kritisch en te laat eerst.',
+  'operator.today.nav.allOpenWithCount': 'Alle open ({count})',
+  'operator.today.nav.allTasks': 'Alle taken',
+  'operator.today.alerts.sectionTitle': 'Operationele meldingen',
+  'operator.today.alert.severity.critical': 'Kritiek',
+  'operator.today.alert.severity.warning': 'Waarschuwing',
+  'operator.today.blocked.sectionTitle': 'Geblokkeerde voertuigen',
+  'operator.today.blocked.badge': 'Geblokkeerd',
+  'operator.today.handover.now': 'Overdrachten nu',
+  'operator.today.handover.today': 'Overdrachten vandaag',
+  'operator.today.tablet.placeholder':
+    'Taken en boekingen openen op dit apparaat als volledige schermen.',
+  'operator.today.bucket.now.title': 'Nu vereist',
+  'operator.today.bucket.now.subtitle':
+    'Te laat, kritisch en onmiddellijk blokkerende taken',
+  'operator.today.bucket.today.title': 'Vandaag',
+  'operator.today.bucket.today.subtitle': 'Vandaag vervallen en geactiveerde taken',
+  'operator.today.bucket.upcoming.title': 'Binnenkort',
+  'operator.today.bucket.upcoming.subtitle': 'Wordt actief binnen het gedefinieerde aankomende venster',
+  'operator.today.bucket.planned.title': 'Gepland',
+  'operator.today.bucket.planned.subtitle': 'Toekomstige herinneringen en taken',
+  'operator.today.bucket.unassigned.title': 'Niet toegewezen',
+  'operator.today.bucket.unassigned.subtitle': 'Teamwachtrij — taken zonder toegewezen persoon',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} niet beschikbaar',
+} as const;

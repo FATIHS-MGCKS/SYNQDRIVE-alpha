@@ -18,6 +18,7 @@ import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 import { masterCvDimoPrivilegeNl } from './master.cv.dimoPrivilege.nl';
 import { masterCvOemSpecsNl } from './master.cv.oemSpecs.nl';
 import { rentalMisuseStressStressGateNl } from './rental.misuseStress.stressGate.i18n';
+import { operatorTodayNl } from './operator.today.nl';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -224,4 +225,6 @@ export const nl = {
   ...tireWearV3Nl,
   ...serviceIntelligenceNl,
   ...rentalMisuseStressStressGateNl,
+  'bookings.planner.loadError': 'Boekingen konden niet worden geladen.',
+  ...operatorTodayNl,
 } satisfies PartialTranslationDictionary;

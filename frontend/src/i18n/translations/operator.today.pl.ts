@@ -1,0 +1,43 @@
+export const operatorTodayPl = {
+  'operator.today.stale.offlineTitle': 'Offline — dane z pamięci podręcznej',
+  'operator.today.stale.staleTitle': 'Dane mogą być nieaktualne',
+  'operator.today.stale.offlineBody':
+    'Widok opiera się na ostatnim udanym pobraniu. Akcje zsynchronizują się po powrocie online.',
+  'operator.today.stale.staleBody':
+    'Ostatnie pobranie nie powiodło się. Wyświetlane są ostatnio załadowane zadania.',
+  'operator.today.stale.refresh': 'Odśwież',
+  'operator.today.noOrg.title': 'Brak organizacji',
+  'operator.today.noOrg.description': 'Zaloguj się na konto organizacji wynajmu.',
+  'operator.today.createBooking': 'Utwórz rezerwację',
+  'operator.today.error.fatalTitle': 'Dane na dziś niedostępne',
+  'operator.today.error.bookingsTitle': 'Rezerwacje niedostępne',
+  'operator.today.empty.title': 'Dziś spokojnie',
+  'operator.today.empty.description':
+    'Brak pilnych zadań, przekazań lub blokad na dziś.',
+  'operator.today.empty.allOpenTasks': 'Wszystkie otwarte zadania ({count})',
+  'operator.today.header.title': 'Operacyjny przegląd dnia',
+  'operator.today.header.subtitle': 'Priorytet według pilności — krytyczne i zaległe najpierw.',
+  'operator.today.nav.allOpenWithCount': 'Wszystkie otwarte ({count})',
+  'operator.today.nav.allTasks': 'Wszystkie zadania',
+  'operator.today.alerts.sectionTitle': 'Powiadomienia operacyjne',
+  'operator.today.alert.severity.critical': 'Krytyczne',
+  'operator.today.alert.severity.warning': 'Ostrzeżenie',
+  'operator.today.blocked.sectionTitle': 'Zablokowane pojazdy',
+  'operator.today.blocked.badge': 'Zablokowany',
+  'operator.today.handover.now': 'Przekazania teraz',
+  'operator.today.handover.today': 'Przekazania dziś',
+  'operator.today.tablet.placeholder':
+    'Zadania i rezerwacje otwierają się jako pełnoekranowe arkusze na tym urządzeniu.',
+  'operator.today.bucket.now.title': 'Wymagane teraz',
+  'operator.today.bucket.now.subtitle':
+    'Zaległe, krytyczne i natychmiast blokujące zadania',
+  'operator.today.bucket.today.title': 'Dziś',
+  'operator.today.bucket.today.subtitle': 'Zadania z terminem i aktywowane dziś',
+  'operator.today.bucket.upcoming.title': 'Wkrótce',
+  'operator.today.bucket.upcoming.subtitle': 'Aktywuje się w zdefiniowanym nadchodzącym oknie',
+  'operator.today.bucket.planned.title': 'Zaplanowane',
+  'operator.today.bucket.planned.subtitle': 'Przyszłe przypomnienia i zadania',
+  'operator.today.bucket.unassigned.title': 'Nieprzypisane',
+  'operator.today.bucket.unassigned.subtitle': 'Kolejka zespołu — zadania bez osoby odpowiedzialnej',
+  'operator.today.feed.bucketUnavailable': '{bucketTitle} niedostępne',
+} as const;

@@ -18,6 +18,7 @@ import { masterCvTechnicalSpecsPl } from './master.cv.technicalSpecs.pl';
 import { masterCvDimoPrivilegePl } from './master.cv.dimoPrivilege.pl';
 import { masterCvOemSpecsPl } from './master.cv.oemSpecs.pl';
 import { rentalMisuseStressStressGatePl } from './rental.misuseStress.stressGate.i18n';
+import { operatorTodayPl } from './operator.today.pl';
 
 export const pl = {
   'dashboard.welcomeBack': 'Witaj ponownie, {name}',
@@ -223,4 +224,6 @@ export const pl = {
   ...tireWearV3Pl,
   ...serviceIntelligencePl,
   ...rentalMisuseStressStressGatePl,
+  'bookings.planner.loadError': 'Nie udało się załadować rezerwacji.',
+  ...operatorTodayPl,
 } satisfies PartialTranslationDictionary;

@@ -1959,6 +1959,7 @@ export const en = {
   'bookings.planner.showTerminal': 'Cancelled / No-show',
   'bookings.planner.truncated': 'More bookings exist than could be loaded. Narrow filters or use vehicle view.',
   'bookings.planner.retry': 'Retry',
+  'bookings.planner.loadError': 'Bookings could not be loaded.',
   'bookings.planner.loading': 'Loading bookings…',
   'bookings.planner.emptyTitle': 'No bookings match the current filters',
   'bookings.planner.emptyDescription': 'Adjust filters or create a new booking.',

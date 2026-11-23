@@ -143,13 +143,13 @@ export function BookingsView({
         setApiLoaded(true);
       })
       .catch(() => {
-        setApiError('Buchungen konnten nicht geladen werden.');
+        setApiError(t('bookings.planner.loadError'));
         setApiLoaded(true);
       })
       .finally(() => {
         setListRefreshing(false);
       });
-  }, [orgId]);
+  }, [orgId, t]);
 
   useEffect(() => {
     loadBookings();

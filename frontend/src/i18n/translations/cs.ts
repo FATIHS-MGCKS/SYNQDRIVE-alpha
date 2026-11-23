@@ -18,6 +18,7 @@ import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
 import { masterCvDimoPrivilegeCs } from './master.cv.dimoPrivilege.cs';
 import { masterCvOemSpecsCs } from './master.cv.oemSpecs.cs';
 import { rentalMisuseStressStressGateCs } from './rental.misuseStress.stressGate.i18n';
+import { operatorTodayCs } from './operator.today.cs';
 
 export const cs = {
   'dashboard.welcomeBack': 'Vítejte zpět, {name}',
@@ -223,4 +224,6 @@ export const cs = {
   ...tireWearV3Cs,
   ...serviceIntelligenceCs,
   ...rentalMisuseStressStressGateCs,
+  'bookings.planner.loadError': 'Rezervace se nepodařilo načíst.',
+  ...operatorTodayCs,
 } satisfies PartialTranslationDictionary;

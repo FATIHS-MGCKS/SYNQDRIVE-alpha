@@ -163,6 +163,7 @@
 | MAUX-UX-005 | 2026-11-23 | UX | [#2504](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2504) | `0e98c87d8` **MERGED** | **MERGED** | **NO** | **NOT_CLAIMED** | Organization detail 8-tab responsive bar | [`UX005_ORGANIZATION_DETAIL_TABS_2026-11-23.md`](../frontend-ui-ux/products/master-admin/evidence/UX005_ORGANIZATION_DETAIL_TABS_2026-11-23.md) | vitest + 4× graph + registry | UX-006 |
 | FEUX-UX-006 | 2026-11-23 | UX | [#2505](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2505) | `dc59b5dee` **MERGED** | **MERGED** | **NO** | **NOT_CLAIMED** | Navigation/URL contract | [`UX006_NAVIGATION_URL_CONTRACT_2026-11-23.md`](../frontend-ui-ux/evidence/UX006_NAVIGATION_URL_CONTRACT_2026-11-23.md) | nav tests + 4× graph | UX-007 |
 | RENTUX-UX-007 | 2026-11-23 | UX | (PR TBD) | `dc59b5dee` base | **OPEN** | **NO** | **NOT_CLAIMED** | Legacy communication view cleanup | [`UX007_LEGACY_COMMUNICATION_VIEWS_2026-11-23.md`](../frontend-ui-ux/products/rental/evidence/UX007_LEGACY_COMMUNICATION_VIEWS_2026-11-23.md) | comm nav tests + build | Next UX-008 |
+| FEUX-UX-009 | 2026-11-23 | UX/i18n | (PR TBD) | `dd82f851b` base | **OPEN** | **NO** | **NOT_CLAIMED** | High-traffic i18n on bookings planner + Operator Today | [`UX009_HIGH_TRAFFIC_I18N_2026-11-23.md`](../frontend-ui-ux/evidence/UX009_HIGH_TRAFFIC_I18N_2026-11-23.md) | vitest + i18n:check + build | UX-010 |
 
 ---
 
