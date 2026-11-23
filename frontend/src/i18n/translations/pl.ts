@@ -10,6 +10,7 @@ import { tireWearV3Pl } from './tire.wearV3.pl';
 import { serviceIntelligencePl } from './service-intelligence.pl';
 import { masterPhysicalDeviceInventoryPl } from './master.physicalDeviceInventory.pl';
 import { masterIntelligencePl } from './master.intelligence.pl';
+import { masterSidebarV1Pl } from './master.sidebar.v1.pl';
 import { masterMotionPhysicsPl } from './master.motionPhysics.pl';
 import { masterVehicleIdentityPl } from './master.vehicleIdentity.pl';
 import { masterOneAutoPl } from './master.oneAuto.pl';
@@ -213,6 +214,7 @@ export const pl = {
   'trips.drivingImpact.quality.r1Contained': 'Obciążenie pojazdu tymczasowo niedostępne (ograniczenie czasowe R1).',
   ...masterPhysicalDeviceInventoryPl,
   ...masterIntelligencePl,
+  ...masterSidebarV1Pl,
   ...masterMotionPhysicsPl,
 ...masterVehicleIdentityPl,
   ...masterOneAutoPl,

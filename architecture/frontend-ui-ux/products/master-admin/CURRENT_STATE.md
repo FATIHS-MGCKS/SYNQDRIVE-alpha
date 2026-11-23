@@ -40,7 +40,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 
 1. User hits `/master` after `ProtectedRoute` + role check.  
 2. `MasterAppInner` parses URL → `MasterView` + auxiliary params (`orgId`, `masterBilling*`, `security-access-url`, intelligence params, `archCategory`, `hmTab`).  
-3. `Sidebar` renders grouped nav from `MASTER_NAV_GROUPS`; permissions from `master-nav-permissions.ts`.  
+3. `Sidebar` renders **Sidebar V1** grouped nav (`verwaltung` open by default; nested `platform-integrations` parent + Partner folder) from `MASTER_NAV_GROUPS`; permissions from `master-nav-permissions.ts`; Support footer-only (MAUX-DEC-SIDEBAR-V1-001).  
 4. Content branch in `App.tsx` mounts hub component inside `PageContainer` (variant per view).  
 5. Cross-hub navigation uses `handleMasterNavigate` / `navigateMaster` and MFA step-up via `MfaStepUpDialog`.
 
@@ -61,7 +61,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 - **24 top-level views** in `MASTER_NAV_ITEMS` (see [`inventories/MASTER_SCREEN_MATRIX.md`](./inventories/MASTER_SCREEN_MATRIX.md)).  
 - **Sub-states** via query: organization detail (`orgId`, `orgTab`), billing center sections, security hub sections, platform-ops / integrations drilldowns, HM tab, architektur category. Organization detail uses eight `MasterPageTabs` with horizontal scroll + active-tab scroll-into-view (UX-005, 2026-11-23). Hub navigation contract: [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md) (UX-006).  
 - **Legacy redirects** in `master-nav-url.ts` (`users` → `security-access`, deprecated engineering aliases).  
-- **i18n (CONFIRMED debt):** sidebar group labels via `tMasterNav` DE map (`master-nav-i18n.ts`), not platform `LanguageProvider` catalogs — cross-ref **Internationalization** authority.
+- **i18n:** Sidebar V1 labels via platform `master.sidebar.v1.*` dictionaries (9 locales) with `tMasterNav` fallback for unmigrated keys — cross-ref **Internationalization** authority.
 
 ## Shared vs Master-local components
 
@@ -87,7 +87,7 @@ See [`evidence/PRODUCTION_BASELINE.md`](./evidence/PRODUCTION_BASELINE.md).
 
 ## Accessibility and responsive
 
-- Sidebar collapse persisted; mobile primary shortcuts on selected nav items (`mobilePrimary`).  
+- Sidebar collapse persisted; no duplicate mobile primary rail (V1); Support + dynamic badge in footer only.  
 - **UNKNOWN:** axe/contrast audits; keyboard path through all hubs.
 
 ## API / data consumers (UI-facing)

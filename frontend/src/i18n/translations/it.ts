@@ -10,6 +10,7 @@ import { tireWearV3It } from './tire.wearV3.it';
 import { serviceIntelligenceIt } from './service-intelligence.it';
 import { masterPhysicalDeviceInventoryIt } from './master.physicalDeviceInventory.it';
 import { masterIntelligenceIt } from './master.intelligence.it';
+import { masterSidebarV1It } from './master.sidebar.v1.it';
 import { masterMotionPhysicsIt } from './master.motionPhysics.it';
 import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
 import { masterOneAutoIt } from './master.oneAuto.it';
@@ -213,6 +214,7 @@ export const it = {
   'trips.drivingImpact.quality.r1Contained': 'Carico veicolo temporaneamente non disponibile (contenimento temporale R1).',
   ...masterPhysicalDeviceInventoryIt,
   ...masterIntelligenceIt,
+  ...masterSidebarV1It,
   ...masterMotionPhysicsIt,
 ...masterVehicleIdentityIt,
   ...masterOneAutoIt,

@@ -1,7 +1,8 @@
-import { LogOut, PanelLeftClose, PanelLeftOpen, Plug, Menu, X, ChevronRight } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeftOpen, Menu, X, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   navItemClass,
+  subNavItemClass,
   navSectionHeaderClass,
   navSectionLabelClass,
   CollapsedNavTooltip,
@@ -9,12 +10,21 @@ import {
 import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 import { cn } from '../../components/ui/utils';
-import { MASTER_NAV_GROUPS, MASTER_MOBILE_PRIMARY_VIEWS, MASTER_NAV_ITEM_BY_ID } from '../navigation/master-nav.config';
-import { isMasterNavGroupActive, isMasterNavItemActive } from '../navigation/master-nav-active';
-import { canAccessMasterNavItem, isBillingOnlyMasterUser } from '../navigation/master-nav-permissions';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  MASTER_NAV_GROUPS,
+  MASTER_NAV_ITEM_BY_ID,
+  collectViewsFromGroup,
+} from '../navigation/master-nav.config';
+import {
+  isMasterNavGroupActive,
+  isMasterNavItemActive,
+  isMasterNavParentEntryActive,
+} from '../navigation/master-nav-active';
+import { isBillingOnlyMasterUser, isMasterNavItemVisible } from '../navigation/master-nav-permissions';
 import { tMasterNav } from '../navigation/master-nav-i18n';
 import { useMasterNavBadges, useMasterPlatformStatusLabel } from '../navigation/useMasterNavBadges';
-import type { MasterNavBadgeType, MasterView } from '../navigation/master-nav.types';
+import type { MasterNavBadgeType, MasterNavEntry, MasterView } from '../navigation/master-nav.types';
 import { MasterAccountSheet } from './MasterAccountSheet';
 
 export type { MasterView } from '../navigation/master-nav.types';
@@ -58,20 +68,63 @@ export function Sidebar({
   onOpenOwnSecurity,
 }: SidebarProps) {
   const mobileNavId = useId();
+  const { t } = useLanguage();
+  const navLabel = useCallback(
+    (key: string) => {
+      const fromPlatform = t(key as Parameters<typeof t>[0]);
+      return fromPlatform !== key ? fromPlatform : tMasterNav(key);
+    },
+    [t],
+  );
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
+    const ctx = { view: currentView, settingsTab, selectedOrgId };
     for (const g of MASTER_NAV_GROUPS) {
       init[g.id] = g.defaultExpanded;
+      if (g.collapsible && isMasterNavGroupActive(collectViewsFromGroup(g), ctx)) {
+        init[g.id] = true;
+      }
     }
     return init;
   });
+  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    const ctx = { view: currentView, settingsTab, selectedOrgId };
+    for (const group of MASTER_NAV_GROUPS) {
+      for (const entry of group.entries) {
+        if (entry.type === 'parent' && isMasterNavParentEntryActive(entry.view, entry.children, ctx)) {
+          init[entry.view] = true;
+        }
+      }
+    }
+    return init;
+  });
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    const ctx = { view: currentView, settingsTab, selectedOrgId };
+    for (const group of MASTER_NAV_GROUPS) {
+      for (const entry of group.entries) {
+        if (entry.type === 'folder') {
+          const folderKey = `${group.id}:${entry.labelKey}`;
+          if (entry.children.some((id) => isMasterNavItemActive(id, ctx))) {
+            init[folderKey] = true;
+          }
+        }
+      }
+    }
+    return init;
+  });
+  const previousViewRef = useRef<MasterView>(currentView);
+
   const badges = useMasterNavBadges();
   const platformLabel = useMasterPlatformStatusLabel(badges);
   const user = getStoredUser();
   const billingOnly = isBillingOnlyMasterUser();
   const firstMobileFocusRef = useRef<HTMLButtonElement>(null);
+  const supportItem = MASTER_NAV_ITEM_BY_ID.support;
 
   const activeCtx = useMemo(
     () => ({ view: currentView, settingsTab, selectedOrgId }),
@@ -81,18 +134,50 @@ export function Sidebar({
   const visibleGroups = useMemo(() => {
     return MASTER_NAV_GROUPS.map((group) => ({
       ...group,
-      items: group.items.filter((id) => {
-        const item = MASTER_NAV_ITEM_BY_ID[id];
-        return item && canAccessMasterNavItem(item);
-      }),
-    })).filter((g) => g.items.length > 0);
+      entries: group.entries
+        .map((entry) => {
+          if (entry.type === 'link') {
+            const item = MASTER_NAV_ITEM_BY_ID[entry.view];
+            return item && isMasterNavItemVisible(entry.view) ? entry : null;
+          }
+          if (entry.type === 'parent') {
+            const parent = MASTER_NAV_ITEM_BY_ID[entry.view];
+            if (!parent || !isMasterNavItemVisible(entry.view)) return null;
+            const children = entry.children.filter((id) => isMasterNavItemVisible(id));
+            if (children.length === 0) return { ...entry, children: [] as MasterView[] };
+            return { ...entry, children };
+          }
+          const children = entry.children.filter((id) => isMasterNavItemVisible(id));
+          if (children.length === 0) return null;
+          return { ...entry, children };
+        })
+        .filter(Boolean) as MasterNavEntry[],
+    })).filter((g) => g.entries.length > 0);
   }, []);
 
   useEffect(() => {
-    const activeGroupId = visibleGroups.find((g) => isMasterNavGroupActive(g.items, activeCtx))?.id;
-    if (!activeGroupId) return;
-    setExpanded((prev) => ({ ...prev, [activeGroupId]: true }));
-  }, [activeCtx, visibleGroups]);
+    const navigated = previousViewRef.current !== currentView;
+    previousViewRef.current = currentView;
+    if (!navigated) return;
+
+    for (const group of visibleGroups) {
+      const views = collectViewsFromGroup(group);
+      if (isMasterNavGroupActive(views, activeCtx)) {
+        setExpandedGroups((prev) => ({ ...prev, [group.id]: true }));
+      }
+      for (const entry of group.entries) {
+        if (entry.type === 'parent' && isMasterNavParentEntryActive(entry.view, entry.children, activeCtx)) {
+          setExpandedParents((prev) => ({ ...prev, [entry.view]: true }));
+        }
+        if (entry.type === 'folder') {
+          const folderKey = `${group.id}:${entry.labelKey}`;
+          if (entry.children.some((id) => isMasterNavItemActive(id, activeCtx))) {
+            setExpandedFolders((prev) => ({ ...prev, [folderKey]: true }));
+          }
+        }
+      }
+    }
+  }, [activeCtx, currentView, visibleGroups]);
 
   useEffect(() => {
     const onResize = () => {
@@ -126,19 +211,30 @@ export function Sidebar({
   );
 
   const toggleGroup = (groupId: string) => {
-    setExpanded((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+    setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
+  const toggleParent = (view: MasterView) => {
+    setExpandedParents((prev) => ({ ...prev, [view]: !prev[view] }));
+  };
+
+  const toggleFolder = (folderKey: string) => {
+    setExpandedFolders((prev) => ({ ...prev, [folderKey]: !prev[folderKey] }));
   };
 
   const renderNavButton = (
     itemId: MasterView,
-    opts?: { collapsed?: boolean; compact?: boolean; buttonRef?: React.Ref<HTMLButtonElement> },
+    opts?: { collapsed?: boolean; sub?: boolean; buttonRef?: React.Ref<HTMLButtonElement> },
   ) => {
     const item = MASTER_NAV_ITEM_BY_ID[itemId];
-    if (!item || !canAccessMasterNavItem(item)) return null;
+    if (!item || !isMasterNavItemVisible(itemId)) return null;
     const active = isMasterNavItemActive(itemId, activeCtx);
     const Icon = item.icon;
     const badgeVal = item.badge ? badges[item.badge] : undefined;
-    const label = tMasterNav(item.labelKey);
+    const label = navLabel(item.labelKey);
+    const className = opts?.sub
+      ? subNavItemClass(active)
+      : navItemClass(active, Boolean(opts?.collapsed));
 
     return (
       <button
@@ -146,9 +242,10 @@ export function Sidebar({
         ref={opts?.buttonRef}
         type="button"
         onClick={() => go(itemId)}
-        className={navItemClass(active, Boolean(opts?.collapsed))}
+        className={className}
         aria-current={active ? 'page' : undefined}
         aria-label={opts?.collapsed ? label : undefined}
+        data-master-nav-view={itemId}
       >
         <span className="relative shrink-0">
           <Icon className="w-[14px] h-[14px]" />
@@ -175,65 +272,170 @@ export function Sidebar({
     );
   };
 
+  const renderEntry = (entry: MasterNavEntry, groupId: string, mode: 'expanded' | 'collapsed' | 'mobile') => {
+    const collapsed = mode === 'collapsed';
+    if (entry.type === 'link') {
+      return renderNavButton(entry.view, { collapsed });
+    }
+    if (entry.type === 'folder') {
+      const folderKey = `${groupId}:${entry.labelKey}`;
+      const isOpen = expandedFolders[folderKey] ?? false;
+      const folderActive = entry.children.some((id) => isMasterNavItemActive(id, activeCtx));
+      if (collapsed) {
+        return entry.children.map((id) => renderNavButton(id, { collapsed }));
+      }
+      return (
+        <div key={folderKey} className="mt-1">
+          <button
+            type="button"
+            onClick={() => toggleFolder(folderKey)}
+            className={navSectionHeaderClass(isOpen, folderActive)}
+            aria-expanded={isOpen}
+          >
+            <span className={navSectionLabelClass}>{navLabel(entry.labelKey)}</span>
+            <ChevronRight
+              className={cn(
+                'w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200',
+                isOpen && 'rotate-90',
+              )}
+            />
+          </button>
+          {isOpen && (
+            <nav className="mt-0.5 ml-1 space-y-0.5 border-l border-border/60 pl-1.5" aria-label={navLabel(entry.labelKey)}>
+              {entry.children.map((id) => renderNavButton(id, { sub: true }))}
+            </nav>
+          )}
+        </div>
+      );
+    }
+    const parent = MASTER_NAV_ITEM_BY_ID[entry.view];
+    if (!parent) return null;
+    const parentActive = isMasterNavParentEntryActive(entry.view, entry.children, activeCtx);
+    const parentOpen = expandedParents[entry.view] ?? false;
+    const parentLabel = navLabel(parent.labelKey);
+    const ParentIcon = parent.icon;
+    const parentBadge = parent.badge ? badges[parent.badge] : undefined;
+
+    if (collapsed) {
+      return (
+        <>
+          {renderNavButton(entry.view, { collapsed })}
+          {entry.children.map((id) => renderNavButton(id, { collapsed }))}
+        </>
+      );
+    }
+
+    return (
+      <div key={entry.view} className="space-y-0.5">
+        <div className="flex items-stretch gap-0.5">
+          <button
+            type="button"
+            onClick={() => go(entry.view)}
+            className={cn(navItemClass(isMasterNavItemActive(entry.view, activeCtx)), 'flex-1 min-w-0')}
+            aria-current={isMasterNavItemActive(entry.view, activeCtx) ? 'page' : undefined}
+          >
+            <ParentIcon className="w-[14px] h-[14px] shrink-0" />
+            <span className="truncate">{parentLabel}</span>
+            {parent.badge && <NavBadge type={parent.badge} value={parentBadge} />}
+          </button>
+          {entry.children.length > 0 && (
+            <button
+              type="button"
+              onClick={() => toggleParent(entry.view)}
+              className={cn(
+                'shrink-0 flex items-center justify-center w-8 rounded-lg',
+                'text-muted-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              )}
+              aria-expanded={parentOpen}
+              aria-label={parentLabel}
+              data-master-nav-parent-toggle={entry.view}
+            >
+              <ChevronRight
+                className={cn('w-3.5 h-3.5 transition-transform duration-200', parentOpen && 'rotate-90')}
+              />
+            </button>
+          )}
+        </div>
+        {parentOpen && entry.children.length > 0 && (
+          <nav
+            className="ml-3 space-y-0.5 border-l border-border/60 pl-2"
+            aria-label={parentLabel}
+          >
+            {entry.children.map((id) => renderNavButton(id, { sub: true }))}
+          </nav>
+        )}
+      </div>
+    );
+  };
+
+  const renderDashboard = (mode: 'expanded' | 'collapsed' | 'mobile') => {
+    const collapsed = mode === 'collapsed';
+    const dash = MASTER_NAV_ITEM_BY_ID.dashboard;
+    if (!dash || !isMasterNavItemVisible('dashboard')) return null;
+    {
+      return (
+        <nav className={cn('space-y-0.5', collapsed ? 'w-full flex flex-col items-center' : 'mb-2')} aria-label={navLabel(dash.labelKey)}>
+          {renderNavButton('dashboard', {
+            collapsed,
+            buttonRef: mode === 'mobile' ? firstMobileFocusRef : undefined,
+          })}
+        </nav>
+      );
+    }
+    return null;
+  };
+
   const renderGroups = (mode: 'expanded' | 'collapsed' | 'mobile') => {
     const collapsed = mode === 'collapsed';
-    const isMobile = mode === 'mobile';
-
-    const primaryItems = isMobile
-      ? MASTER_MOBILE_PRIMARY_VIEWS.filter((id) => {
-          const item = MASTER_NAV_ITEM_BY_ID[id];
-          return item && canAccessMasterNavItem(item);
-        })
-      : [];
 
     return (
       <>
-        {isMobile && primaryItems.length > 0 && (
-          <div className="mb-3">
-            <div className={cn(navSectionLabelClass, 'mt-0 mb-1.5 px-2.5')}>{tMasterNav('master.nav.primarySection')}</div>
-            <nav className="space-y-0.5" aria-label={tMasterNav('master.nav.primarySection')}>
-              {primaryItems.map((id, idx) =>
-                renderNavButton(id, { buttonRef: idx === 0 ? firstMobileFocusRef : undefined }),
-              )}
-            </nav>
-            <div className="my-3 h-px bg-border" />
-          </div>
-        )}
-
+        {renderDashboard(mode)}
         {visibleGroups.map((group) => {
-          if (billingOnly && group.id !== 'overview' && group.id !== 'commerce') return null;
+          if (billingOnly && group.id !== 'produkte-business') return null;
 
-          const isOpen = group.collapsible ? expanded[group.id] : true;
-          const groupActive = isMasterNavGroupActive(group.items, activeCtx);
-          const showHeader = group.collapsible && !collapsed;
+          const isOpen =
+            billingOnly && group.id === 'produkte-business'
+              ? true
+              : group.collapsible
+                ? expandedGroups[group.id]
+                : true;
+          const groupViews = collectViewsFromGroup(group);
+          const groupActive = isMasterNavGroupActive(groupViews, activeCtx);
+
+          const entries =
+            billingOnly
+              ? group.entries.filter((e) => e.type === 'link' && e.view === 'billing')
+              : group.entries;
+
+          if (entries.length === 0) return null;
 
           return (
             <div key={group.id} className={collapsed ? 'w-full flex flex-col items-center' : 'mb-1'}>
-              {showHeader && (
+              {group.collapsible && !collapsed && (
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
                   className={navSectionHeaderClass(isOpen, groupActive)}
                   aria-expanded={isOpen}
                 >
-                  <span className={navSectionLabelClass}>{tMasterNav(group.labelKey)}</span>
-                  <ChevronRight className={cn('w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200', isOpen && 'rotate-90')} />
+                  <span className={navSectionLabelClass}>{navLabel(group.labelKey)}</span>
+                  <ChevronRight
+                    className={cn(
+                      'w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200',
+                      isOpen && 'rotate-90',
+                    )}
+                  />
                 </button>
               )}
-              {!group.collapsible && !collapsed && group.items.length > 1 && (
-                <div className={cn(navSectionLabelClass, 'mt-5 mb-1 px-2.5')}>{tMasterNav(group.labelKey)}</div>
-              )}
-              {!group.collapsible && !collapsed && group.items.length === 1 && group.id !== 'overview' && (
-                <div className={cn(navSectionLabelClass, 'mt-5 mb-1 px-2.5')}>{tMasterNav(group.labelKey)}</div>
-              )}
-              {collapsed && group.id !== 'overview' && <div className="w-4 h-px my-1.5 bg-border" />}
-              {(isOpen || collapsed || !group.collapsible) && (
-                <nav
-                  className={cn('space-y-0.5', collapsed ? 'w-full flex flex-col items-center' : 'mb-1')}
-                  aria-label={tMasterNav(group.labelKey)}
+              {(isOpen || collapsed) && (
+                <div
+                  className={cn('space-y-0.5', collapsed ? 'w-full flex flex-col items-center' : 'mb-1 mt-0.5')}
+                  role="navigation"
+                  aria-label={navLabel(group.labelKey)}
                 >
-                  {group.items.map((id) => renderNavButton(id, { collapsed }))}
-                </nav>
+                  {entries.map((entry) => renderEntry(entry, group.id, mode))}
+                </div>
               )}
             </div>
           );
@@ -245,7 +447,8 @@ export function Sidebar({
   const renderFooter = (mode: 'expanded' | 'collapsed' | 'mobile') => {
     const collapsed = mode === 'collapsed';
     const showCollapse = mode === 'expanded' || mode === 'collapsed';
-
+    const canSupport = supportItem && isMasterNavItemVisible('support');
+    const supportBadge = supportItem?.badge ? badges[supportItem.badge] : undefined;
     return (
       <div className="sq-sidebar-footer shrink-0 px-3 py-3 space-y-1 border-t border-sidebar-border">
         {!billingOnly && (
@@ -263,39 +466,51 @@ export function Sidebar({
             />
             {!collapsed && (
               <span className="truncate text-muted-foreground">
-                {tMasterNav('master.nav.systemStatus')}:{' '}
+                {navLabel('master.nav.systemStatus')}:{' '}
                 <span className="text-foreground font-semibold">
                   {platformLabel === 'degraded'
-                    ? tMasterNav('master.nav.systemStatusDegraded')
-                    : tMasterNav('master.nav.systemStatusOperational')}
+                    ? navLabel('master.nav.systemStatusDegraded')
+                    : navLabel('master.nav.systemStatusOperational')}
                 </span>
               </span>
             )}
             {collapsed && (
               <CollapsedNavTooltip
-                label={`${tMasterNav('master.nav.systemStatus')}: ${
+                label={`${navLabel('master.nav.systemStatus')}: ${
                   platformLabel === 'degraded'
-                    ? tMasterNav('master.nav.systemStatusDegraded')
-                    : tMasterNav('master.nav.systemStatusOperational')
+                    ? navLabel('master.nav.systemStatusDegraded')
+                    : navLabel('master.nav.systemStatusOperational')
                 }`}
               />
             )}
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={() => go('platform-integrations')}
-          className={cn(
-            navItemClass(currentView === 'platform-integrations', collapsed),
-            collapsed && 'relative group',
-          )}
-          aria-current={currentView === 'platform-integrations' ? 'page' : undefined}
-        >
-          <Plug className="w-[14px] h-[14px] shrink-0" />
-          {!collapsed && <span>{tMasterNav('master.nav.platformIntegrations')}</span>}
-          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.platformIntegrations')} />}
-        </button>
+        {canSupport && (
+          <button
+            type="button"
+            onClick={() => go('support')}
+            className={cn(navItemClass(currentView === 'support', collapsed), collapsed && 'relative group')}
+            aria-current={currentView === 'support' ? 'page' : undefined}
+            data-master-nav-view="support"
+          >
+            <span className="relative shrink-0">
+              <supportItem.icon className="w-[14px] h-[14px]" />
+              {collapsed && supportItem.badge && supportBadge && (
+                <span className="absolute -right-1 -top-1 min-w-[14px] rounded-full bg-[color:var(--brand)] px-0.5 text-[8px] font-bold leading-[14px] text-white tabular-nums">
+                  {supportBadge}
+                </span>
+              )}
+            </span>
+            {!collapsed && (
+              <>
+                <span>{navLabel(supportItem.labelKey)}</span>
+                {supportItem.badge && <NavBadge type={supportItem.badge} value={supportBadge} />}
+              </>
+            )}
+            {collapsed && <CollapsedNavTooltip label={navLabel(supportItem.labelKey)} />}
+          </button>
+        )}
 
         <button
           type="button"
@@ -314,11 +529,13 @@ export function Sidebar({
           </span>
           {!collapsed && (
             <span className="min-w-0 flex-1 truncate text-left">
-              <span className="block text-[12px] font-semibold text-foreground truncate">{user?.name || tMasterNav('master.nav.account')}</span>
+              <span className="block text-[12px] font-semibold text-foreground truncate">
+                {user?.name || navLabel('master.nav.account')}
+              </span>
               <span className="block text-[10px] text-muted-foreground truncate">{user?.email}</span>
             </span>
           )}
-          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.account')} />}
+          {collapsed && <CollapsedNavTooltip label={navLabel('master.nav.account')} />}
         </button>
 
         <button
@@ -330,8 +547,8 @@ export function Sidebar({
           className={cn(navItemClass(false, collapsed), collapsed && 'relative group')}
         >
           <LogOut className="w-[14px] h-[14px] shrink-0" />
-          {!collapsed && <span>{tMasterNav('master.nav.logout')}</span>}
-          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.logout')} />}
+          {!collapsed && <span>{navLabel('master.nav.logout')}</span>}
+          {collapsed && <CollapsedNavTooltip label={navLabel('master.nav.logout')} />}
         </button>
 
         {showCollapse && onToggleCollapse && (
@@ -342,22 +559,34 @@ export function Sidebar({
               'sq-sidebar-footer__toggle mt-1',
               collapsed && 'sq-sidebar-footer__toggle--icon-only relative group',
             )}
-            aria-label={collapsed ? tMasterNav('master.nav.expandSidebar') : tMasterNav('master.nav.collapseSidebar')}
+            aria-label={collapseToggleAriaLabel}
           >
             <span className="sq-sidebar-footer__icon">
               {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
             </span>
-            {!collapsed && <span className="sq-sidebar-footer__label">{tMasterNav('master.nav.collapseSidebar')}</span>}
-            {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.expandSidebar')} />}
+            {!collapsed && (
+              <span className="sq-sidebar-footer__label">{navLabel('master.nav.collapseSidebar')}</span>
+            )}
+            {collapsed && <CollapsedNavTooltip label={navLabel('master.nav.expandSidebar')} />}
           </button>
         )}
       </div>
     );
   };
 
+  const collapseToggleAriaLabel = useMemo(() => {
+    const key = isCollapsed ? 'master.nav.expandSidebar' : 'master.nav.collapseSidebar';
+    return navLabel(key);
+  }, [isCollapsed, navLabel]);
+
+  const mobileMenuToggleAriaLabel = useMemo(() => {
+    const key = mobileOpen ? 'master.nav.mobileMenuClose' : 'master.nav.mobileMenu';
+    return navLabel(key);
+  }, [mobileOpen, navLabel]);
+
   const brandChip = (
     <span className="sq-chip sq-chip-neutral !text-[10px] !font-bold uppercase tracking-[0.16em]">
-      {tMasterNav('master.nav.roleChip')}
+      {navLabel('master.nav.roleChip')}
     </span>
   );
 
@@ -370,7 +599,6 @@ export function Sidebar({
         onOpenOwnSecurity={onOpenOwnSecurity}
       />
 
-      {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b bg-sidebar border-sidebar-border pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center justify-between h-14 px-4">
           <button
@@ -379,7 +607,7 @@ export function Sidebar({
             className="p-2 -ml-2 rounded-md transition-colors hover:bg-accent text-muted-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-expanded={mobileOpen}
             aria-controls={mobileNavId}
-            aria-label={mobileOpen ? tMasterNav('master.nav.mobileMenuClose') : tMasterNav('master.nav.mobileMenu')}
+            aria-label={mobileMenuToggleAriaLabel}
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -413,18 +641,19 @@ export function Sidebar({
         />
       )}
 
-      {/* Desktop sidebar */}
       <div
         className={cn(
           'hidden lg:flex h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border transition-all duration-300 ease-in-out motion-reduce:transition-none',
           isCollapsed ? 'w-[52px]' : 'w-[260px]',
         )}
       >
-        <div className={cn('border-b border-sidebar-border shrink-0 flex flex-col items-center gap-1.5', isCollapsed ? 'px-2 py-3' : 'px-4 py-3')}>
-          <SynqDriveBrandLogo
-            variant={isCollapsed ? 'mark' : 'full'}
-            className="h-[18px] w-auto object-contain"
-          />
+        <div
+          className={cn(
+            'border-b border-sidebar-border shrink-0 flex flex-col items-center gap-1.5',
+            isCollapsed ? 'px-2 py-3' : 'px-4 py-3',
+          )}
+        >
+          <SynqDriveBrandLogo variant={isCollapsed ? 'mark' : 'full'} className="h-[18px] w-auto object-contain" />
           {!isCollapsed && brandChip}
         </div>
 

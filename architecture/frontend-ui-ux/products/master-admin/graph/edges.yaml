@@ -8,6 +8,12 @@ edges:
   - from: MAUX-DEC-CONTROL-PLANE-001
     relation: decides
     to: MAUX-DOM-001
+  - from: MAUX-DEC-SIDEBAR-V1-001
+    relation: decides
+    to: MAUX-ORCH-SHELL-001
+  - from: MAUX-EVID-SIDEBAR-V1-2026-11-23
+    relation: supports
+    to: MAUX-DEC-SIDEBAR-V1-001
   - from: MAUX-EVID-CODE-001
     relation: supports
     to: MAUX-ORCH-SHELL-001

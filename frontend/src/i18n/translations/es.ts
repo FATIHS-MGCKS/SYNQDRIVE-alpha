@@ -10,6 +10,7 @@ import { tireWearV3Es } from './tire.wearV3.es';
 import { serviceIntelligenceEs } from './service-intelligence.es';
 import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
 import { masterIntelligenceEs } from './master.intelligence.es';
+import { masterSidebarV1Es } from './master.sidebar.v1.es';
 import { masterMotionPhysicsEs } from './master.motionPhysics.es';
 import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
 import { masterOneAutoEs } from './master.oneAuto.es';
@@ -213,6 +214,7 @@ export const es = {
   'trips.drivingImpact.quality.r1Contained': 'Carga del vehículo no disponible temporalmente (contención temporal R1).',
   ...masterPhysicalDeviceInventoryEs,
   ...masterIntelligenceEs,
+  ...masterSidebarV1Es,
   ...masterMotionPhysicsEs,
 ...masterVehicleIdentityEs,
   ...masterOneAutoEs,

@@ -63,6 +63,7 @@ import { tireWearV3En } from './tire.wearV3.en';
 import { serviceIntelligenceEn } from './service-intelligence.en';
 import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
 import { masterIntelligenceEn } from './master.intelligence.en';
+import { masterSidebarV1En } from './master.sidebar.v1.en';
 import { masterMotionPhysicsEn } from './master.motionPhysics.en';
 import { masterVehicleIdentityEn } from './master.vehicleIdentity.en';
 import { masterOneAutoEn } from './master.oneAuto.en';
@@ -6021,6 +6022,7 @@ export const en = {
   ...masterPlatformOpsDiS4En,
   ...masterPhysicalDeviceInventoryEn,
   ...masterIntelligenceEn,
+  ...masterSidebarV1En,
   ...masterMotionPhysicsEn,
 ...masterVehicleIdentityEn,
   ...masterOneAutoEn,

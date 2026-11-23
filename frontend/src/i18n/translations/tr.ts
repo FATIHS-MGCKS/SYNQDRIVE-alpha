@@ -6,6 +6,7 @@ import { masterCvTechnicalSpecsTr } from './master.cv.technicalSpecs.tr';
 import { masterCvDimoPrivilegeTr } from './master.cv.dimoPrivilege.tr';
 import { masterCvOemSpecsTr } from './master.cv.oemSpecs.tr';
 import { masterIntelligenceTr } from './master.intelligence.tr';
+import { masterSidebarV1Tr } from './master.sidebar.v1.tr';
 import { tireWearV3Tr } from './tire.wearV3.tr';
 import { serviceIntelligenceTr } from './service-intelligence.tr';
 import { rentalMisuseStressStressGateTr } from './rental.misuseStress.stressGate.i18n';
@@ -23,6 +24,7 @@ export const tr = {
   ...masterCvDimoPrivilegeTr,
   ...masterCvOemSpecsTr,
   ...masterIntelligenceTr,
+  ...masterSidebarV1Tr,
   'master.registration.lvBatteryConstructionType.label': 'LV yapı tipi',
   'master.registration.lvBatteryConstructionType.leadAcid': 'Kurşun-asit (açık)',
   'master.registration.lvBatteryChemistryHint.label': 'Kimya (yalnızca AI ipucu)',
