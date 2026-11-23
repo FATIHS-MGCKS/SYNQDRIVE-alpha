@@ -27,7 +27,7 @@ export function navItemClass(active: boolean, collapsed = false): string {
 /** Nested / sub-nav item (expanded rail). */
 export function subNavItemClass(active: boolean): string {
   return cn(
-    'sq-nav-rail w-full flex items-center gap-2.5 pl-4 pr-2.5 py-[7px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-medium group',
+    'sq-nav-rail w-full flex items-center gap-2.5 pl-4 pr-2.5 py-[8px] min-h-[36px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-medium group',
     active
       ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active ring-1 ring-[color:var(--brand-soft)] shadow-[var(--shadow-1)]'
       : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:translate-x-[1px]',

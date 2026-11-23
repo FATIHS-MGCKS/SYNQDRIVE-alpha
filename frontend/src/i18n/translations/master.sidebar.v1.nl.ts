@@ -20,4 +20,5 @@ export const masterSidebarV1Nl = {
   'master.nav.collapseSidebar': 'Zijbalk inklappen',
   'master.nav.mobileMenu': 'Navigatie openen',
   'master.nav.mobileMenuClose': 'Navigatie sluiten',
+  'master.sidebar.toggleChildMenu': 'Submenu uit- of inklappen',
 } as const;

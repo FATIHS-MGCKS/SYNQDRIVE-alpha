@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 /** Tooltip shown when the sidebar is collapsed. */
 export function CollapsedNavTooltip({ label }: { label: string }) {
   return (
-    <div className="sq-overlay absolute left-full ml-2 px-2 py-1 text-[10.5px] font-medium whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-foreground">
+    <div className="sq-overlay absolute left-full ml-2 px-2 py-1 text-[10.5px] font-medium whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 motion-reduce:transition-none text-foreground">
       {label}
     </div>
   );

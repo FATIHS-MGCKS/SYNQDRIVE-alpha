@@ -20,4 +20,5 @@ export const masterSidebarV1Es = {
   'master.nav.collapseSidebar': 'Contraer barra lateral',
   'master.nav.mobileMenu': 'Abrir navegación',
   'master.nav.mobileMenuClose': 'Cerrar navegación',
+  'master.sidebar.toggleChildMenu': 'Expandir o contraer submenú',
 } as const;
