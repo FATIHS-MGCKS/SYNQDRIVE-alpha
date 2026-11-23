@@ -1,4 +1,4 @@
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { VehicleRegistrationConvergenceService } from './vehicle-registration-convergence.service';
 import { assertConvergenceOrganizationAuthorized } from './vehicle-registration-convergence.security';
 import {
@@ -30,20 +30,28 @@ describe('VehicleRegistrationConvergence foundation (V2B-PR1)', () => {
       assertConvergenceOrganizationAuthorized('org-b', {
         tenantOrganizationId: 'org-a',
         isMasterAdmin: false,
+        actorUserId: null,
       }),
     ).toThrow(BadRequestException);
   });
 
-  it('fail-closed port implementation when canonical routing armed (PR2 placeholder)', async () => {
-    const service = new VehicleRegistrationConvergenceService();
-    await expect(
-      service.registerHmOnlyCanonical({
-        dto: {
-          hmVehicleId: 'hm-1',
-          organizationId: 'org-a',
-        },
-        access: { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+  it('delegates to HM canonical orchestrator (V2B-PR2)', async () => {
+    const hmOnlyCanonical = {
+      register: jest.fn().mockResolvedValue({
+        success: true,
+        synqdriveVehicleId: 'veh-1',
+        hmVehicleId: 'hm-1',
+        vin: 'VIN',
+        sourceMode: 'HM_ONLY',
+        message: 'ok',
       }),
-    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    };
+    const service = new VehicleRegistrationConvergenceService(hmOnlyCanonical as never);
+    const result = await service.registerHmOnlyCanonical({
+      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+      access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'u1' },
+    });
+    expect(result.synqdriveVehicleId).toBe('veh-1');
+    expect(hmOnlyCanonical.register).toHaveBeenCalledTimes(1);
   });
 });

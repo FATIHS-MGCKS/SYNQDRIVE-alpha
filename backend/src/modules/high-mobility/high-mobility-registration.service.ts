@@ -65,7 +65,11 @@ export class HighMobilityRegistrationService {
    */
   async registerHmOnlyVehicle(
     dto: RegisterHmOnlyVehicleDto,
-    access: { tenantOrganizationId: string; isMasterAdmin: boolean },
+    access: {
+      tenantOrganizationId: string;
+      isMasterAdmin: boolean;
+      actorUserId: string | null;
+    },
   ): Promise<HmOnlyRegistrationResultDto> {
     const convergenceConfig = this.resolveConvergenceConfig();
     if (isHmOnlyCanonicalRoutingEnabled(convergenceConfig)) {

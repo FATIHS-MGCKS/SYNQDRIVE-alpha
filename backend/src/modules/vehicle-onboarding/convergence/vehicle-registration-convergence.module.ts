@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
+import { VehicleOnboardingActivationRailModule } from '../vehicle-onboarding-activation-rail.module';
+import { HmOnlyCanonicalRegistrationService } from '../hm-only-canonical/hm-only-canonical-registration.service';
 import { VehicleRegistrationConvergenceService } from './vehicle-registration-convergence.service';
 import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from './vehicle-registration-convergence.port';
 
 /**
- * Lightweight V2B-PR1 convergence wiring — no VehicleOnboarding / HM module graph.
- * HighMobility imports this module only to avoid Nest circular dependencies at boot.
+ * V2B HM convergence port — imports activation rail only (not full VehicleOnboardingModule).
  */
 @Module({
+  imports: [VehicleOnboardingActivationRailModule],
   providers: [
+    HmOnlyCanonicalRegistrationService,
     VehicleRegistrationConvergenceService,
     {
       provide: VEHICLE_REGISTRATION_CONVERGENCE_PORT,

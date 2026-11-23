@@ -41,7 +41,7 @@ describe('HighMobilityRegistrationService convergence routing (V2B-PR1)', () => 
 
     const result = await service.registerHmOnlyVehicle(
       { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-      { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+      { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
     );
 
     expect(result.synqdriveVehicleId).toBe('veh-legacy');
@@ -69,7 +69,7 @@ describe('HighMobilityRegistrationService convergence routing (V2B-PR1)', () => 
 
     await service.registerHmOnlyVehicle(
       { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-      { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+      { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
     );
 
     expect(convergencePort.registerHmOnlyCanonical).toHaveBeenCalledTimes(1);
@@ -91,7 +91,7 @@ describe('HighMobilityRegistrationService convergence routing (V2B-PR1)', () => 
     await expect(
       service.registerHmOnlyVehicle(
         { hmVehicleId: 'hm-1', organizationId: 'org-a' },
-        { tenantOrganizationId: 'org-a', isMasterAdmin: false },
+        { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });

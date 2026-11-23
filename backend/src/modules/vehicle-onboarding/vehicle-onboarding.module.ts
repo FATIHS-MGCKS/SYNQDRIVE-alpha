@@ -1,15 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
-import { Zb1RegistrationDocumentP4Service } from '@modules/document-extraction/zb1/zb1-registration-document-p4.service';
 import { AiModule } from '@modules/ai/ai.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { AuthModule } from '@shared/auth/auth.module';
-import { VehicleOnboardingCaseService } from './services/vehicle-onboarding-case.service';
-import { VehicleOnboardingActivationService } from './services/vehicle-onboarding-activation.service';
-import { VehicleOnboardingReadinessService } from './services/vehicle-onboarding-readiness.service';
-import { VehicleOnboardingCaptureService } from './services/vehicle-onboarding-capture.service';
-import { VehicleOnboardingSourceAdoptionService } from './services/vehicle-onboarding-source-adoption.service';
 import { VehicleOnboardingCaptureController } from './controllers/vehicle-onboarding-capture.controller';
 import { VehicleOnboardingSourceAdoptionController } from './controllers/vehicle-onboarding-source-adoption.controller';
 import { VehicleOnboardingProviderCandidateController } from './controllers/vehicle-onboarding-provider-candidate.controller';
@@ -22,15 +16,13 @@ import { VehicleOnboardingOffboardController } from './controllers/vehicle-onboa
 import { MasterVehicleOffboardAdmissionGuard } from './guards/master-vehicle-offboard-admission.guard';
 import { MasterVehicleOffboardMfaGuard } from './guards/master-vehicle-offboard-mfa.guard';
 import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
-import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
-import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
-import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
 import { MasterDimoCanonicalRegistrationService } from './master-dimo/master-dimo-canonical-registration.service';
 import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-readonly-composer.module';
 import { VehicleIdentityReviewController } from './vehicle-identity-review/vehicle-identity-review.controller';
 import { VehicleIdentityP3Service } from './vehicle-identity-review/vehicle-identity-p3.service';
 import { VehicleIdentityReviewService } from './vehicle-identity-review/vehicle-identity-review.service';
 import { FsdDiscoveryIntegrationModule } from '@modules/vehicle-intelligence/fsd-integration/fsd-integration.module';
+import { VehicleOnboardingActivationRailModule } from './vehicle-onboarding-activation-rail.module';
 import { VehicleRegistrationConvergenceModule } from './convergence/vehicle-registration-convergence.module';
 
 @Module({
@@ -42,6 +34,7 @@ import { VehicleRegistrationConvergenceModule } from './convergence/vehicle-regi
     VsiReadonlySignalComposerModule,
     forwardRef(() => AiModule),
     forwardRef(() => DocumentExtractionModule),
+    VehicleOnboardingActivationRailModule,
     VehicleRegistrationConvergenceModule,
   ],
   controllers: [
@@ -52,17 +45,6 @@ import { VehicleRegistrationConvergenceModule } from './convergence/vehicle-regi
     VehicleOnboardingOffboardController,
   ],
   providers: [
-    VehicleOnboardingSourceAdoptionAuthority,
-    ProductionFailClosedReadinessAuthority,
-    {
-      provide: VEHICLE_ONBOARDING_READINESS_AUTHORITY,
-      useExisting: ProductionFailClosedReadinessAuthority,
-    },
-    VehicleOnboardingReadinessService,
-    VehicleOnboardingCaseService,
-    VehicleOnboardingActivationService,
-    VehicleOnboardingCaptureService,
-    VehicleOnboardingSourceAdoptionService,
     VehicleOnboardingProviderCandidateService,
     VehicleOffboardingService,
     DimoSourceLinkAuditedDeactivationService,
@@ -76,10 +58,7 @@ import { VehicleRegistrationConvergenceModule } from './convergence/vehicle-regi
     VehicleIdentityP3Service,
   ],
   exports: [
-    VehicleOnboardingCaseService,
-    VehicleOnboardingActivationService,
-    VehicleOnboardingReadinessService,
-    VehicleOnboardingCaptureService,
+    VehicleOnboardingActivationRailModule,
     VehicleOffboardingService,
     VehicleOffboardPreflightService,
     DimoSourceLinkAuditedDeactivationService,

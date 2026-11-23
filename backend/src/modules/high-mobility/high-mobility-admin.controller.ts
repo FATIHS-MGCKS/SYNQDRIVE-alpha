@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -37,6 +38,10 @@ import type {
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+
+type AuthedRequest = {
+  user?: { id?: string };
+};
 
 @Controller('admin/high-mobility')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -348,11 +353,16 @@ export class HighMobilityAdminController {
   async createHmOnlyVehicle(
     @Param('id') id: string,
     @Body() body: Omit<RegisterHmOnlyVehicleDto, 'hmVehicleId'>,
+    @Req() req: AuthedRequest,
   ) {
     if (!body.organizationId) throw new BadRequestException('organizationId is required');
     return this.registrationService.registerHmOnlyVehicle(
       { ...body, hmVehicleId: id },
-      { tenantOrganizationId: body.organizationId, isMasterAdmin: true },
+      {
+        tenantOrganizationId: body.organizationId,
+        isMasterAdmin: true,
+        actorUserId: req.user?.id ?? null,
+      },
     );
   }
 
