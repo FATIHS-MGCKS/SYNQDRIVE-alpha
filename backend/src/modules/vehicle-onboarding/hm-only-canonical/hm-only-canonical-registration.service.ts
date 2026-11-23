@@ -18,6 +18,7 @@ import {
   normalizeHmOnlyFuelType,
 } from './hm-only-canonical-registration.mapper';
 import { resolveHmOnlyHvBatteryReference } from './hm-only-canonical-battery-document-substantiation';
+import { parseHmOnlyOperatorIdentityCapture } from './hm-only-operator-identity.validation';
 import {
   assertHmOnlyCanonicalProviderRecord,
   buildHmOnlySuccessResult,
@@ -108,6 +109,19 @@ export class HmOnlyCanonicalRegistrationService {
       }),
     );
     token = adminResult.case.concurrencyToken;
+
+    const operatorIdentity = parseHmOnlyOperatorIdentityCapture(input.dto);
+    const identityResult = await runVehicleOnboardingHttp(() =>
+      this.capture.updateIdentityOperatorModelYear({
+        organizationId: input.dto.organizationId,
+        caseId,
+        actorUserId,
+        model: operatorIdentity.model,
+        year: operatorIdentity.year,
+        expectedConcurrencyToken: token,
+      }),
+    );
+    token = identityResult.case.concurrencyToken;
 
     const operatorFuel = normalizeHmOnlyFuelType(input.dto.fuelType);
     if (operatorFuel) {

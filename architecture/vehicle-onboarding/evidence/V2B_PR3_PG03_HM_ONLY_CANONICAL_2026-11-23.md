@@ -12,7 +12,19 @@
 - Reuses `createHmOnlyCanonicalPgHarness`, VO-4 production fail-closed readiness, VO-5B registry outbox processor.
 - **Not in scope:** production flag arm (`VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` remains default OFF), Stripe mutations, OWN-3 activation, V2B-PR4.
 
-## Test matrix (PG-03 A–N)
+## CI post-mortem (run 45260164891 @ `1e6c4349b`)
+
+- **Root cause:** `buildHmOnlyAdminBaselineDraft` omitted `version: 1` → admin capture `UNSUPPORTED_CONTRACT_VERSION`.
+- **Secondary:** HM provider identity supplies make only; canonical path lacked governed operator **model/year** capture → readiness/activation could not complete on real PG.
+- **Fixture:** PG-03-H duplicate VIN used two HM mirrors with same `(vin, package_type, source_mode)` → Prisma unique violation (fixture defect).
+
+## Repair (same PR #2515)
+
+- Admin baseline draft now includes `VEHICLE_ADMIN_BASELINE_DRAFT_VERSION`.
+- `updateIdentityOperatorModelYear` capture API + DTO `model`/`year` on canonical HM register.
+- PG-03 cases expanded/strengthened (17 cases): ICE happy path, billing D1/D2, BEV substantiation J/J2, operator identity O, capture-based rollback N.
+
+## Test matrix (PG-03)
 
 | ID | Topic |
 |----|--------|

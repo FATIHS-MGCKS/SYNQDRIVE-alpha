@@ -51,6 +51,7 @@ function buildHarness(overrides?: {
   };
   const capture = {
     updateAdminBaseline: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-2' } }),
+    updateIdentityOperatorModelYear: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-2a' } }),
     updateIdentityOperatorFuelType: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-2b' } }),
     updateTechnicalBaseline: jest.fn().mockResolvedValue({ case: { concurrencyToken: 'tok-3' } }),
   };
@@ -80,7 +81,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
   it('happy path orchestrates adopt → capture → readiness → activation', async () => {
     const { service, sourceAdoption, capture, readiness, activation } = buildHarness();
     const result = await service.register({
-      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
       access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     expect(result.synqdriveVehicleId).toBe('veh-canonical');
@@ -92,6 +93,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
       }),
     );
     expect(capture.updateAdminBaseline).toHaveBeenCalled();
+    expect(capture.updateIdentityOperatorModelYear).toHaveBeenCalled();
     expect(capture.updateTechnicalBaseline).toHaveBeenCalled();
     expect(readiness.evaluateAndSealReadiness).toHaveBeenCalled();
     expect(activation.activateVehicle).toHaveBeenCalledWith(
@@ -115,7 +117,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     });
 
     const result = await service.register({
-      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
       access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
 
@@ -130,7 +132,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     });
     await expect(
       service.register({
-        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
         access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toMatchObject({ code: 'READINESS_NOT_SEALED' });
@@ -141,7 +143,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     prisma.highMobilityVehicle.findUnique = jest.fn().mockResolvedValue(null);
     await expect(
       service.register({
-        dto: { hmVehicleId: 'hm-missing', organizationId: 'org-a' },
+        dto: { hmVehicleId: 'hm-missing', organizationId: 'org-a', model: 'iX', year: 2023 },
         access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
@@ -157,7 +159,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     });
     await expect(
       service.register({
-        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
         access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -166,7 +168,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
   it('passes capture concurrency tokens through admin and technical mutations', async () => {
     const { service, capture, sourceAdoption } = buildHarness();
     await service.register({
-      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
       access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     expect(capture.updateAdminBaseline).toHaveBeenCalledWith(
@@ -180,7 +182,13 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
   it('does not persist synthetic HV battery on electric fuel without operator evidence', async () => {
     const { service, capture } = buildHarness();
     await service.register({
-      dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', fuelType: 'electric' },
+      dto: {
+        hmVehicleId: 'hm-1',
+        organizationId: 'org-a',
+        model: 'iX',
+        year: 2023,
+        fuelType: 'electric',
+      },
       access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: 'user-actor' },
     });
     const technicalCall = capture.updateTechnicalBaseline.mock.calls[0][0];
@@ -203,6 +211,8 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
       dto: {
         hmVehicleId: 'hm-1',
         organizationId: 'org-a',
+        model: 'iX',
+        year: 2023,
         fuelType: 'electric',
         hvBatteryUsableCapacityKwh: 64,
         hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
@@ -226,6 +236,8 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
         dto: {
           hmVehicleId: 'hm-1',
           organizationId: 'org-a',
+          model: 'iX',
+          year: 2023,
           hvBatteryUsableCapacityKwh: 64,
           hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
           hvBatteryReferenceServiceEventId: 'evt-1',
@@ -248,6 +260,9 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
         dto: {
           hmVehicleId: 'hm-1',
           organizationId: 'org-a',
+          model: 'iX',
+          year: 2023,
+          fuelType: 'ELECTRIC',
           hvBatteryUsableCapacityKwh: 64,
           hvBatteryReferenceSource: BatteryReferenceCapacitySource.MANUFACTURER_VERIFIED,
           hvBatteryReferenceDocumentId: 'doc-other-org',
@@ -264,7 +279,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     );
     await expect(
       service.register({
-        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
         access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -280,7 +295,7 @@ describe('HmOnlyCanonicalRegistrationService (V2B-PR2)', () => {
     });
     await expect(
       service.register({
-        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a' },
+        dto: { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'iX', year: 2023 },
         access: { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       }),
     ).rejects.toBeInstanceOf(VehicleOnboardingError);

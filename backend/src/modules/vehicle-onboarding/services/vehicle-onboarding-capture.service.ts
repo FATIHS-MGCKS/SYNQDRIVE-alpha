@@ -56,6 +56,7 @@ type PendingCaptureAudit = {
     | 'ADMIN_BASELINE_UPDATED'
     | 'TECHNICAL_BASELINE_UPDATED'
     | 'IDENTITY_FUEL_UPDATED'
+    | 'IDENTITY_MODEL_YEAR_UPDATED'
     | 'READINESS_SEALED';
 };
 
@@ -174,6 +175,54 @@ export class VehicleOnboardingCaptureService {
             organizationId: input.organizationId,
             caseId: caseRow.id,
             mutationType: 'ADMIN_BASELINE_UPDATED',
+          },
+        };
+      },
+    );
+    this.recordPendingAudit(pendingAudit);
+    const caseProjection = await this.getCase(input.organizationId, input.caseId);
+    return { case: caseProjection, semanticNoop: result.semanticNoop };
+  }
+
+  async updateIdentityOperatorModelYear(input: {
+    organizationId: string;
+    caseId: string;
+    actorUserId: string | null;
+    model: string;
+    year: number;
+    expectedConcurrencyToken: string | null;
+  }): Promise<CaptureMutationResult> {
+    const { result, pendingAudit } = await this.mutateDraft(
+      input.organizationId,
+      input.caseId,
+      input.expectedConcurrencyToken,
+      async (tx, caseRow) => {
+        const identity = parseValidatedIdentityDraft(caseRow);
+        if (identity.model === input.model && identity.year === input.year) {
+          return { semanticNoop: true, pendingAudit: null };
+        }
+        await invalidateReadinessSealIfReady(tx, caseRow);
+        await tx.vehicleOnboardingCase.update({
+          where: { id: caseRow.id },
+          data: {
+            draftIdentityJson: {
+              ...identity,
+              version: VEHICLE_IDENTITY_DRAFT_VERSION,
+              model: input.model,
+              year: input.year,
+            } as unknown as Prisma.InputJsonValue,
+            lastActorUserId: input.actorUserId,
+            concurrencyToken: randomUUID(),
+            ...(caseRow.status === 'OPEN' ? { status: 'IN_PROGRESS' } : {}),
+          },
+        });
+        return {
+          semanticNoop: false,
+          pendingAudit: {
+            actorUserId: input.actorUserId,
+            organizationId: input.organizationId,
+            caseId: caseRow.id,
+            mutationType: 'IDENTITY_MODEL_YEAR_UPDATED',
           },
         };
       },
@@ -351,6 +400,8 @@ export class VehicleOnboardingCaptureService {
       ADMIN_BASELINE_UPDATED: 'Vehicle onboarding admin baseline updated',
       TECHNICAL_BASELINE_UPDATED: 'Vehicle onboarding technical baseline updated',
       IDENTITY_FUEL_UPDATED: 'Vehicle onboarding identity fuel updated from operator registration',
+      IDENTITY_MODEL_YEAR_UPDATED:
+        'Vehicle onboarding identity model and year updated from operator registration',
       READINESS_SEALED: 'Vehicle onboarding readiness sealed',
     };
     void this.audit.record({
