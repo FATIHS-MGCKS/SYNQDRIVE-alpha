@@ -145,6 +145,11 @@ export function getMasterSidebarMainNavViews(): MasterView[] {
   return views;
 }
 
+/** Footer-only views (not in main rail). */
+export function getMasterSidebarFooterViews(): MasterView[] {
+  return ['support'];
+}
+
 export function getGroupIdForView(view: string): string | null {
   if (view === 'dashboard') return null;
   for (const group of MASTER_NAV_GROUPS) {

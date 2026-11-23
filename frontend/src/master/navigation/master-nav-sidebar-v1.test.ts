@@ -7,7 +7,14 @@ import {
   getMasterSidebarMainNavViews,
   collectViewsFromGroup,
 } from './master-nav.config';
-import { getVisibleMasterNavItemIds, isBillingOnlyMasterUser, canAccessMasterNavItem } from './master-nav-permissions';
+import {
+  getVisibleMasterNavItemIds,
+  isBillingOnlyMasterUser,
+  canAccessMasterNavItem,
+  isMasterNavItemVisible,
+} from './master-nav-permissions';
+import { getMasterSidebarFooterViews } from './master-nav.config';
+import { normalizeMasterNavLocation } from './master-nav-url';
 import { MASTER_NAV_ITEM_BY_ID } from './master-nav.config';
 import * as auth from '../../lib/auth';
 
@@ -26,6 +33,17 @@ const sidebarSource = readFileSync(resolve(__dirname, '../components/Sidebar.tsx
 describe('Master Admin Sidebar V1', () => {
   it('keeps exactly 24 registered nav items', () => {
     expect(MASTER_NAV_ITEMS).toHaveLength(24);
+  });
+
+  it('counts each registered view exactly once across main rail and footer', () => {
+    const counts = new Map<string, number>();
+    const bump = (id: string) => counts.set(id, (counts.get(id) ?? 0) + 1);
+    for (const id of getMasterSidebarMainNavViews()) bump(id);
+    for (const id of getMasterSidebarFooterViews()) bump(id);
+    for (const item of MASTER_NAV_ITEMS) {
+      expect(counts.get(item.id), item.id).toBe(1);
+    }
+    expect([...counts.values()].reduce((a, b) => a + b, 0)).toBe(24);
   });
 
   it('places each registered view exactly once in main nav or footer', () => {
@@ -75,6 +93,10 @@ describe('Master Admin Sidebar V1', () => {
     expect(isBillingOnlyMasterUser()).toBe(true);
     expect(getVisibleMasterNavItemIds()).toEqual(['dashboard', 'billing']);
     expect(canAccessMasterNavItem(MASTER_NAV_ITEM_BY_ID['vsi-intelligence']!)).toBe(false);
+    expect(isMasterNavItemVisible('dashboard')).toBe(true);
+    expect(isMasterNavItemVisible('billing')).toBe(true);
+    expect(isMasterNavItemVisible('organizations')).toBe(false);
+    expect(canAccessMasterNavItem(MASTER_NAV_ITEM_BY_ID.dashboard!)).toBe(false);
   });
 
   it('does not duplicate support in main nav or render integrations in footer', () => {
@@ -89,6 +111,12 @@ describe('Master Admin Sidebar V1', () => {
   it('does not render mobile primary shortcut rail', () => {
     expect(sidebarSource).not.toContain('MASTER_MOBILE_PRIMARY_VIEWS');
     expect(sidebarSource).not.toContain('primarySection');
+  });
+
+  it('normalizes legacy Master URL aliases', () => {
+    expect(normalizeMasterNavLocation('?view=hm-compatibility').view).toBe('high-mobility');
+    expect(normalizeMasterNavLocation('?view=platform-health').view).toBe('platform-ops');
+    expect(normalizeMasterNavLocation('?view=users').view).toBe('security-access');
   });
 
   it('includes engineering hub views in engineering group', () => {

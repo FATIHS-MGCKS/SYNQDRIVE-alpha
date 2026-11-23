@@ -25,3 +25,8 @@ export function getVisibleMasterNavItemIds(): MasterView[] {
   }
   return MASTER_NAV_ITEMS.filter(canAccessMasterNavItem).map((i) => i.id);
 }
+
+/** Sidebar / chrome visibility (includes billing-only dashboard; does not grant route access). */
+export function isMasterNavItemVisible(id: MasterView): boolean {
+  return getVisibleMasterNavItemIds().includes(id);
+}

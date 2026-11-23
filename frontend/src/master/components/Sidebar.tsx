@@ -21,7 +21,7 @@ import {
   isMasterNavItemActive,
   isMasterNavParentEntryActive,
 } from '../navigation/master-nav-active';
-import { canAccessMasterNavItem, isBillingOnlyMasterUser } from '../navigation/master-nav-permissions';
+import { isBillingOnlyMasterUser, isMasterNavItemVisible } from '../navigation/master-nav-permissions';
 import { tMasterNav } from '../navigation/master-nav-i18n';
 import { useMasterNavBadges, useMasterPlatformStatusLabel } from '../navigation/useMasterNavBadges';
 import type { MasterNavBadgeType, MasterNavEntry, MasterView } from '../navigation/master-nav.types';
@@ -81,13 +81,43 @@ export function Sidebar({
   const [accountOpen, setAccountOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
+    const ctx = { view: currentView, settingsTab, selectedOrgId };
     for (const g of MASTER_NAV_GROUPS) {
       init[g.id] = g.defaultExpanded;
+      if (g.collapsible && isMasterNavGroupActive(collectViewsFromGroup(g), ctx)) {
+        init[g.id] = true;
+      }
     }
     return init;
   });
-  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    const ctx = { view: currentView, settingsTab, selectedOrgId };
+    for (const group of MASTER_NAV_GROUPS) {
+      for (const entry of group.entries) {
+        if (entry.type === 'parent' && isMasterNavParentEntryActive(entry.view, entry.children, ctx)) {
+          init[entry.view] = true;
+        }
+      }
+    }
+    return init;
+  });
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    const ctx = { view: currentView, settingsTab, selectedOrgId };
+    for (const group of MASTER_NAV_GROUPS) {
+      for (const entry of group.entries) {
+        if (entry.type === 'folder') {
+          const folderKey = `${group.id}:${entry.labelKey}`;
+          if (entry.children.some((id) => isMasterNavItemActive(id, ctx))) {
+            init[folderKey] = true;
+          }
+        }
+      }
+    }
+    return init;
+  });
+  const previousViewRef = useRef<MasterView>(currentView);
 
   const badges = useMasterNavBadges();
   const platformLabel = useMasterPlatformStatusLabel(badges);
@@ -108,22 +138,16 @@ export function Sidebar({
         .map((entry) => {
           if (entry.type === 'link') {
             const item = MASTER_NAV_ITEM_BY_ID[entry.view];
-            return item && canAccessMasterNavItem(item) ? entry : null;
+            return item && isMasterNavItemVisible(entry.view) ? entry : null;
           }
           if (entry.type === 'parent') {
             const parent = MASTER_NAV_ITEM_BY_ID[entry.view];
-            if (!parent || !canAccessMasterNavItem(parent)) return null;
-            const children = entry.children.filter((id) => {
-              const child = MASTER_NAV_ITEM_BY_ID[id];
-              return child && canAccessMasterNavItem(child);
-            });
+            if (!parent || !isMasterNavItemVisible(entry.view)) return null;
+            const children = entry.children.filter((id) => isMasterNavItemVisible(id));
             if (children.length === 0) return { ...entry, children: [] as MasterView[] };
             return { ...entry, children };
           }
-          const children = entry.children.filter((id) => {
-            const child = MASTER_NAV_ITEM_BY_ID[id];
-            return child && canAccessMasterNavItem(child);
-          });
+          const children = entry.children.filter((id) => isMasterNavItemVisible(id));
           if (children.length === 0) return null;
           return { ...entry, children };
         })
@@ -132,6 +156,10 @@ export function Sidebar({
   }, []);
 
   useEffect(() => {
+    const navigated = previousViewRef.current !== currentView;
+    previousViewRef.current = currentView;
+    if (!navigated) return;
+
     for (const group of visibleGroups) {
       const views = collectViewsFromGroup(group);
       if (isMasterNavGroupActive(views, activeCtx)) {
@@ -149,7 +177,7 @@ export function Sidebar({
         }
       }
     }
-  }, [activeCtx, visibleGroups]);
+  }, [activeCtx, currentView, visibleGroups]);
 
   useEffect(() => {
     const onResize = () => {
@@ -199,7 +227,7 @@ export function Sidebar({
     opts?: { collapsed?: boolean; sub?: boolean; buttonRef?: React.Ref<HTMLButtonElement> },
   ) => {
     const item = MASTER_NAV_ITEM_BY_ID[itemId];
-    if (!item || !canAccessMasterNavItem(item)) return null;
+    if (!item || !isMasterNavItemVisible(itemId)) return null;
     const active = isMasterNavItemActive(itemId, activeCtx);
     const Icon = item.icon;
     const badgeVal = item.badge ? badges[item.badge] : undefined;
@@ -217,6 +245,7 @@ export function Sidebar({
         className={className}
         aria-current={active ? 'page' : undefined}
         aria-label={opts?.collapsed ? label : undefined}
+        data-master-nav-view={itemId}
       >
         <span className="relative shrink-0">
           <Icon className="w-[14px] h-[14px]" />
@@ -319,6 +348,7 @@ export function Sidebar({
               )}
               aria-expanded={parentOpen}
               aria-label={parentLabel}
+              data-master-nav-parent-toggle={entry.view}
             >
               <ChevronRight
                 className={cn('w-3.5 h-3.5 transition-transform duration-200', parentOpen && 'rotate-90')}
@@ -334,11 +364,6 @@ export function Sidebar({
             {entry.children.map((id) => renderNavButton(id, { sub: true }))}
           </nav>
         )}
-        {!parentOpen && parentActive && entry.children.some((id) => isMasterNavItemActive(id, activeCtx)) && (
-          <nav className="ml-3 space-y-0.5 border-l border-border/60 pl-2" aria-label={parentLabel}>
-            {entry.children.map((id) => renderNavButton(id, { sub: true }))}
-          </nav>
-        )}
       </div>
     );
   };
@@ -346,7 +371,7 @@ export function Sidebar({
   const renderDashboard = (mode: 'expanded' | 'collapsed' | 'mobile') => {
     const collapsed = mode === 'collapsed';
     const dash = MASTER_NAV_ITEM_BY_ID.dashboard;
-    if (!dash || !canAccessMasterNavItem(dash)) return null;
+    if (!dash || !isMasterNavItemVisible('dashboard')) return null;
     {
       return (
         <nav className={cn('space-y-0.5', collapsed ? 'w-full flex flex-col items-center' : 'mb-2')} aria-label={navLabel(dash.labelKey)}>
@@ -369,7 +394,12 @@ export function Sidebar({
         {visibleGroups.map((group) => {
           if (billingOnly && group.id !== 'produkte-business') return null;
 
-          const isOpen = group.collapsible ? expandedGroups[group.id] : true;
+          const isOpen =
+            billingOnly && group.id === 'produkte-business'
+              ? true
+              : group.collapsible
+                ? expandedGroups[group.id]
+                : true;
           const groupViews = collectViewsFromGroup(group);
           const groupActive = isMasterNavGroupActive(groupViews, activeCtx);
 
@@ -417,8 +447,11 @@ export function Sidebar({
   const renderFooter = (mode: 'expanded' | 'collapsed' | 'mobile') => {
     const collapsed = mode === 'collapsed';
     const showCollapse = mode === 'expanded' || mode === 'collapsed';
-    const canSupport = supportItem && canAccessMasterNavItem(supportItem);
+    const canSupport = supportItem && isMasterNavItemVisible('support');
     const supportBadge = supportItem?.badge ? badges[supportItem.badge] : undefined;
+    const collapseToggleAriaLabel = t(
+      (collapsed ? 'master.nav.expandSidebar' : 'master.nav.collapseSidebar') as Parameters<typeof t>[0],
+    );
 
     return (
       <div className="sq-sidebar-footer shrink-0 px-3 py-3 space-y-1 border-t border-sidebar-border">
@@ -463,8 +496,16 @@ export function Sidebar({
             onClick={() => go('support')}
             className={cn(navItemClass(currentView === 'support', collapsed), collapsed && 'relative group')}
             aria-current={currentView === 'support' ? 'page' : undefined}
+            data-master-nav-view="support"
           >
-            <supportItem.icon className="w-[14px] h-[14px] shrink-0" />
+            <span className="relative shrink-0">
+              <supportItem.icon className="w-[14px] h-[14px]" />
+              {collapsed && supportItem.badge && supportBadge && (
+                <span className="absolute -right-1 -top-1 min-w-[14px] rounded-full bg-[color:var(--brand)] px-0.5 text-[8px] font-bold leading-[14px] text-white tabular-nums">
+                  {supportBadge}
+                </span>
+              )}
+            </span>
             {!collapsed && (
               <>
                 <span>{navLabel(supportItem.labelKey)}</span>
@@ -522,9 +563,7 @@ export function Sidebar({
               'sq-sidebar-footer__toggle mt-1',
               collapsed && 'sq-sidebar-footer__toggle--icon-only relative group',
             )}
-            aria-label={
-              collapsed ? navLabel('master.nav.expandSidebar') : navLabel('master.nav.collapseSidebar')
-            }
+            aria-label={collapseToggleAriaLabel}
           >
             <span className="sq-sidebar-footer__icon">
               {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
@@ -538,6 +577,14 @@ export function Sidebar({
       </div>
     );
   };
+
+  const mobileMenuToggleAriaLabel = useMemo(
+    () =>
+      t(
+        (mobileOpen ? 'master.nav.mobileMenuClose' : 'master.nav.mobileMenu') as Parameters<typeof t>[0],
+      ),
+    [mobileOpen, t],
+  );
 
   const brandChip = (
     <span className="sq-chip sq-chip-neutral !text-[10px] !font-bold uppercase tracking-[0.16em]">
@@ -562,7 +609,7 @@ export function Sidebar({
             className="p-2 -ml-2 rounded-md transition-colors hover:bg-accent text-muted-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-expanded={mobileOpen}
             aria-controls={mobileNavId}
-            aria-label={mobileOpen ? navLabel('master.nav.mobileMenuClose') : navLabel('master.nav.mobileMenu')}
+            aria-label={mobileMenuToggleAriaLabel}
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
