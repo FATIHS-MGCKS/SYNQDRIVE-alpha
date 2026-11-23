@@ -19,3 +19,4 @@
 | 2026-11-23 | RENTUX-UX-003 | Vehicle detail tab count 9; active-tab scroll visibility fix | RENTUX-EVID-UX003-2026-11-23 |
 | 2026-11-23 | FEUX-UX-004 | Bookings planner state consistency; Operator Today pattern attestation | FEUX-EVID-UX004-2026-11-23 |
 | 2026-11-23 | MAUX-UX-005 | Organization detail responsive tabs; shared MasterPageTabs scroll visibility | MAUX-EVID-UX005-2026-11-23 |
+| 2026-11-23 | FEUX-UX-006 | Tri-product navigation/URL contract (Master query, Rental hybrid, Operator paths) | FEUX-EVID-UX006-2026-11-23 |

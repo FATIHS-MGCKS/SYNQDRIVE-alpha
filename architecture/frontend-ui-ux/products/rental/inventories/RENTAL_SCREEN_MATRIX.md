@@ -1,7 +1,8 @@
 # Rental — Screen / View Matrix
 
-**Audited code SHA:** `413175e8ca72355764a3d47936ad7eff78d415aa`  
-**State mechanism:** in-memory `currentView` + URL sync in `frontend/src/rental/App.tsx`  
+**Audited code SHA:** UX-006 closeout  
+**State mechanism:** in-memory `currentView` in `frontend/src/rental/App.tsx`; **feature-local** URL sync (communication, finance, fleet-health, tasks, invoices, voice) — not every sidebar view writes `?view=`  
+**Contract:** [`NAVIGATION_URL_CONTRACT.md`](../../../governance/NAVIGATION_URL_CONTRACT.md) (RENTAL_NAVIGATION_CONTRACT)  
 **Shell:** `frontend/src/rental/components/Sidebar.tsx` + `components/TopBar.tsx` (layout via `App.tsx`)
 
 | View id | Primary component | Epistemic | Source path (`frontend/src/rental/...`) |

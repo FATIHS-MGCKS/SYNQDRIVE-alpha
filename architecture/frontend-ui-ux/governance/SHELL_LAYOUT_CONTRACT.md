@@ -1,7 +1,7 @@
 # Shell & layout contract (FEUX / MAUX / RENTUX / OPUX)
 
 **Status:** VALIDATED (code inspection, `b8bfd55cc91b4c42b03c7c543791510c830bdc3c`)  
-**Related:** [`CROSS_PRODUCT_CHANGE_POLICY.md`](./CROSS_PRODUCT_CHANGE_POLICY.md) · [`../inventories/SHARED_COMPONENTS.md`](../inventories/SHARED_COMPONENTS.md)
+**Related:** [`NAVIGATION_URL_CONTRACT.md`](./NAVIGATION_URL_CONTRACT.md) · [`CROSS_PRODUCT_CHANGE_POLICY.md`](./CROSS_PRODUCT_CHANGE_POLICY.md) · [`../inventories/SHARED_COMPONENTS.md`](../inventories/SHARED_COMPONENTS.md)
 
 This document describes **actual** layout ownership. Products are **not** required to share one shell implementation; changes must respect the boundaries below before editing shared code.
 

@@ -1,6 +1,7 @@
 # Master Admin — Screen / Hub Matrix
 
-**SHA:** UX-005 closeout · **Epistemic:** CONFIRMED (routing); CONFIRMED (organization detail tabs)
+**SHA:** UX-006 closeout · **Epistemic:** CONFIRMED (routing); CONFIRMED (organization detail tabs)  
+**Contract:** [`NAVIGATION_URL_CONTRACT.md`](../../../governance/NAVIGATION_URL_CONTRACT.md) (MASTER_NAVIGATION_CONTRACT)
 
 | `?view=` | Root component | PageContainer | URL helpers | Notes |
 |----------|----------------|---------------|-------------|-------|

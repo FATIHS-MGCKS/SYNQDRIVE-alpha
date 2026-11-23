@@ -71,4 +71,4 @@ Operator is **not** a shrunken Rental SPA; field workflows are purpose-built. No
 
 ## Deep link and refresh bridges
 
-`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize URL params with shell state after external navigation (CONFIRMED imports in `OperatorShell.tsx`). Exact query contract **PARTIAL** (INFERRED until dedicated URL audit) — requires dedicated evidence pass before AUTHORITY_ACTIVE.
+`OperatorDeepLinkBridge` and `OperatorHandoverRefreshBridge` synchronize path/query with shell state (CONFIRMED). Query/path contract documented in [`NAVIGATION_URL_CONTRACT.md`](../../governance/NAVIGATION_URL_CONTRACT.md) (UX-006).
