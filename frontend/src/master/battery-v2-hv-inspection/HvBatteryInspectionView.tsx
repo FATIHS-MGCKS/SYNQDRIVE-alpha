@@ -176,6 +176,7 @@ export default function HvBatteryInspectionView({ organizations }: Props) {
   return (
     <div className="space-y-6 pb-10">
       <MasterPageHeader
+        variant="context"
         title={t('master.hvBattery.pageTitle')}
         description={t('master.hvBattery.pageDescription')}
         icon={<BatteryCharging className="w-6 h-6 text-status-info" />}
