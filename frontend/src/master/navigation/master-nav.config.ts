@@ -3,7 +3,6 @@ import {
   Building2,
   Target,
   Car,
-  BookOpen,
   CreditCard,
   Plug,
   KeyRound,
@@ -32,7 +31,6 @@ export const MASTER_NAV_ITEMS: MasterNavItemConfig[] = [
   { id: 'security-access', labelKey: 'master.nav.securityAccess', icon: ShieldCheck, permissions: ['MASTER_ADMIN'], badge: 'security-attention' },
   { id: 'vehicles', labelKey: 'master.nav.vehicles', icon: Car, permissions: ['MASTER_ADMIN'], badge: 'connectivity-warning' },
   { id: 'device-inventory', labelKey: 'master.nav.deviceInventory', icon: Boxes, permissions: ['MASTER_ADMIN'] },
-  { id: 'vehicle-logbook', labelKey: 'master.nav.vehicleLogbook', icon: BookOpen, permissions: ['MASTER_ADMIN'] },
   { id: 'billing', labelKey: 'master.nav.billing', icon: CreditCard, permissions: ['MASTER_ADMIN', 'master-billing'], badge: 'billing-anomaly' },
   { id: 'product-management', labelKey: 'master.nav.productManagement', icon: Package, permissions: ['MASTER_ADMIN'] },
   { id: 'platform-integrations', labelKey: 'master.nav.platformIntegrations', icon: Plug, permissions: ['MASTER_ADMIN'], badge: 'integration-attention' },
@@ -68,7 +66,6 @@ export const MASTER_NAV_GROUPS: MasterNavGroupConfig[] = [
       { type: 'link', view: 'vehicles' },
       { type: 'link', view: 'security-access' },
       { type: 'link', view: 'device-inventory' },
-      { type: 'link', view: 'vehicle-logbook' },
     ],
   },
   {
