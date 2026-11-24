@@ -102,6 +102,8 @@ These certify **tested engineering contracts** at merge time — **not** current
 
 | **PR10** | Evaluate and remove obsolete legacy/shadow **helpers** after successful cutover; preserve rollback capability |
 
+**PR9A deliverable:** [V2B_PR9A_DIRECT_PRODUCTION_READINESS_2026-11-24.md](./V2B_PR9A_DIRECT_PRODUCTION_READINESS_2026-11-24.md) (VO-EVID-2B-011).
+
 ---
 
 ## Operational status @ policy revision
