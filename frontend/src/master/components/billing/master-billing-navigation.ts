@@ -12,7 +12,14 @@ export type MasterBillingLegacySection =
   | 'invoices-payments'
   | 'system-sync';
 
-export type MasterBillingInvoicesTab = 'invoices';
+export type MasterBillingInvoicesTab = 'invoices' | 'credit-notes';
+
+export const MASTER_BILLING_INVOICES_TABS: Array<{ id: MasterBillingInvoicesTab; label: string }> = [
+  { id: 'invoices', label: 'Rechnungen' },
+  { id: 'credit-notes', label: 'Gutschriften' },
+];
+
+export const MASTER_BILLING_PRICING_PRODUCT_PARAM = 'masterBillingProductKey';
 
 export type MasterBillingReconciliationTab = 'drifts' | 'platform-sync' | 'webhooks';
 
@@ -110,6 +117,7 @@ export interface MasterBillingLocationState {
   subTab: string | null;
   orgId: string | null;
   subscriptionId: string | null;
+  pricingProductKey?: string | null;
 }
 
 export function readMasterBillingLocation(search = ''): MasterBillingLocationState {
@@ -124,6 +132,7 @@ export function readMasterBillingLocation(search = ''): MasterBillingLocationSta
     subTab: rawSubTab ? (LEGACY_SUB_TAB_MAP[rawSubTab] ?? rawSubTab) : null,
     orgId: legacyOrgId,
     subscriptionId,
+    pricingProductKey: params.get(MASTER_BILLING_PRICING_PRODUCT_PARAM),
   };
 }
 
@@ -157,6 +166,12 @@ export function buildMasterBillingSearch(
     params.set(MASTER_BILLING_ORG_PARAM, input.orgId);
   }
 
+  if (input.pricingProductKey === null) {
+    params.delete(MASTER_BILLING_PRICING_PRODUCT_PARAM);
+  } else if (input.pricingProductKey) {
+    params.set(MASTER_BILLING_PRICING_PRODUCT_PARAM, input.pricingProductKey);
+  }
+
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -185,6 +200,7 @@ export function pushMasterBillingNavigation(input: {
   orgId?: string | null;
   section?: MasterBillingSection;
   subTab?: string | null;
+  pricingProductKey?: string | null;
   replace?: boolean;
 }) {
   if (typeof window === 'undefined') return;
@@ -193,7 +209,13 @@ export function pushMasterBillingNavigation(input: {
   const subscriptionId = input.orgId ?? null;
 
   const billingQuery = buildMasterBillingSearch(
-    { section, subTab, subscriptionId, orgId: input.orgId ?? null },
+    {
+      section,
+      subTab,
+      subscriptionId,
+      orgId: input.orgId ?? null,
+      pricingProductKey: input.pricingProductKey ?? null,
+    },
     '',
   );
   const params = new URLSearchParams(billingQuery.startsWith('?') ? billingQuery.slice(1) : billingQuery);

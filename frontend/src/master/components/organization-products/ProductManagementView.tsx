@@ -9,6 +9,7 @@ import { MasterPageHeader } from '../../shell/MasterPageHeader';
 import type { AdminCatalogProductRow } from '../../organizations/product-management.types';
 import { ProductRoadmapOverview } from './ProductRoadmapOverview';
 import { ProductCommercialHub } from './ProductCommercialHub';
+import { ProductCommercialScopePanel } from './ProductCommercialScopePanel';
 import type { MasterBillingSection } from '../billing/master-billing-navigation';
 import type { OrganizationOperationalRowDto } from '../../organizations/types';
 import { fetchProductManagementOrgPage, shouldUpdateOrgListState } from './product-management-org-list';
@@ -21,6 +22,7 @@ interface ProductManagementViewProps {
     section: MasterBillingSection;
     subTab?: string | null;
     orgId?: string | null;
+    pricingProductKey?: string | null;
   }) => void;
 }
 
@@ -118,6 +120,7 @@ export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: Prod
 
       <div className="space-y-8 mt-6">
         <ProductCommercialHub selectedOrgId={selectedOrgId} onOpenBilling={onOpenBilling} />
+        <ProductCommercialScopePanel catalog={catalog} />
 
         <MasterPageSection title="Produktübersicht">
           {loading && <MasterLoadingState variant="card" count={3} />}

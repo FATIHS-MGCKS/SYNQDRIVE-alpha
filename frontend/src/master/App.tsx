@@ -582,6 +582,7 @@ function MasterAppInner() {
                 orgId: input.orgId ?? null,
                 section: input.section,
                 subTab: input.subTab,
+                pricingProductKey: input.pricingProductKey ?? null,
                 replace: true,
               });
             }}
