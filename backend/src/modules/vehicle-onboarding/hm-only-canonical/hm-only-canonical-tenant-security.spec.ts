@@ -23,7 +23,7 @@ describe('HmOnlyCanonicalReadinessObservationService tenant short-circuit', () =
       },
       organization: { findUniqueOrThrow: orgFindUniqueOrThrow, findUnique: jest.fn() },
       organizationProduct: { findMany: orgProductFindMany, findFirst: jest.fn() },
-      vehicle: { findFirst: jest.fn() },
+      vehicle: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       vehicleOnboardingCase: { findFirst: jest.fn() },
     };
 
@@ -38,6 +38,7 @@ describe('HmOnlyCanonicalReadinessObservationService tenant short-circuit', () =
         vehicleType: 'SEDAN',
       },
       access: { tenantOrganizationId: 'org-b', isMasterAdmin: false, actorUserId: null },
+      skipReadOnlyTransaction: true,
     });
 
     expect(result.canonicalReadiness).toBe('CANONICAL_READINESS_NOT_EVALUABLE');

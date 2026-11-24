@@ -75,6 +75,7 @@ describe('HmOnlyCanonicalReadinessObservationService', () => {
         vehicleType: 'SEDAN',
       },
       access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      skipReadOnlyTransaction: true,
     });
 
     expect(result.legacyAdmission).toBe('LEGACY_ADMISSIBLE');

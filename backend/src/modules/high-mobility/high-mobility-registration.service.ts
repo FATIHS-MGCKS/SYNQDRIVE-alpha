@@ -17,7 +17,8 @@ import {
   isHmOnlyShadowCompareEnabled,
 } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
 import { HmOnlyCanonicalReadinessObservationService } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observation.service';
-import { freezeHmPreRegistrationSnapshot } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-observation-snapshot';
+import { buildHmObservationEvaluationSnapshot } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-observation-snapshot';
+import { sanitizeObservationErrorCode } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observability';
 import {
   assertHighMobilityRecordTenantAccess,
   assertHighMobilityTenantOperationalOrganization,
@@ -123,17 +124,19 @@ export class HighMobilityRegistrationService {
     );
 
     if (isHmOnlyShadowCompareEnabled(convergenceConfig) && this.hmReadinessObservation) {
+      const preRegistrationSnapshot = await buildHmObservationEvaluationSnapshot(
+        this.prisma,
+        hmRecord,
+        organizationId,
+      );
       void this.hmReadinessObservation
         .observeHmOnlyRegistrationAttempt({
           dto,
           access,
-          preRegistrationSnapshot: freezeHmPreRegistrationSnapshot(hmRecord),
+          preRegistrationSnapshot,
         })
         .catch((error) => {
-          const code =
-            error && typeof error === 'object' && 'code' in error
-              ? String((error as { code: unknown }).code)
-              : 'OBSERVATION_INTERNAL_ERROR';
+          const code = sanitizeObservationErrorCode(error);
           this.logger.warn({
             msg: 'hm_only_shadow_readiness_observation_failed',
             hmVehicleId: dto.hmVehicleId,

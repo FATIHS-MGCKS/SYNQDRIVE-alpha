@@ -1,6 +1,14 @@
 import type { ProductSlug } from '@prisma/client';
 
-export type HmLegacyAdmissionVerdict = 'LEGACY_ADMISSIBLE' | 'LEGACY_BLOCKED';
+export type HmLegacyAdmissionVerdict = 'LEGACY_ADMISSIBLE' | 'LEGACY_BLOCKED' | 'LEGACY_NOT_EVALUABLE';
+
+export type HmObservationDivergenceClassification =
+  | 'ADMISSION_DIVERGENCE'
+  | 'TECHNICAL_READINESS_DIVERGENCE'
+  | 'LEGACY_RECONCILIATION_REQUIRED'
+  | 'CANONICAL_IDEMPOTENT_REPLAY'
+  | 'NO_DIVERGENCE'
+  | 'COMPARISON_NOT_EVALUABLE';
 
 export type HmCanonicalAdmissionVerdict =
   | 'CANONICAL_ADMISSION_ELIGIBLE'
@@ -38,6 +46,7 @@ export interface HmOnlyReadinessObservationResult {
   powertrainClass: 'ICE' | 'BEV' | 'HV' | 'UNKNOWN';
   providerMirrorFreshness: 'FRESH' | 'STALE' | 'UNKNOWN';
   divergenceLegacyOnly: boolean;
+  divergenceClassification: HmObservationDivergenceClassification;
   /** Predictive only — no billing side effects. */
   metadata: {
     /** Tenant-safe org id for logging (authenticated tenant when available). */

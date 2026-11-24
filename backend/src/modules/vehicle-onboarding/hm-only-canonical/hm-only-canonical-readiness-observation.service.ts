@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { HighMobilityVehicle } from '@prisma/client';
 import type { RegisterHmOnlyVehicleDto } from '@modules/high-mobility/dto/high-mobility.dto';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -16,10 +16,11 @@ import {
   evaluateProjectedHmOnlyCanonicalReadiness,
 } from './hm-only-canonical-readiness-projection';
 import { normalizeHmOnlyFuelType } from './hm-only-canonical-registration.mapper';
+import { type HmOnlyReadinessObservationResult } from './hm-only-canonical-readiness-observation.types';
 import {
-  type HmOnlyReadinessObservationResult,
-} from './hm-only-canonical-readiness-observation.types';
-import { recordHmReadinessObservation, sanitizeObservationErrorCode } from './hm-only-canonical-readiness-observability';
+  recordHmReadinessObservation,
+  sanitizeObservationErrorCode,
+} from './hm-only-canonical-readiness-observability';
 import { parseHmOnlyOperatorIdentityCapture } from './hm-only-operator-identity.validation';
 import {
   assertHmObservationAuthenticatedOrgScope,
@@ -29,13 +30,12 @@ import { classifyHmOnlyCanonicalAdmission } from './hm-only-canonical-admission.
 import { predictHmOnlyActivationBilling } from './hm-only-canonical-activation-billing-prediction';
 import {
   assertHmPreRegistrationSnapshotUnchanged,
+  buildHmObservationEvaluationSnapshot,
   type HmPreRegistrationObservationSnapshot,
-  freezeHmPreRegistrationSnapshot,
 } from './hm-only-canonical-observation-snapshot';
-import {
-  withHmObservationConcurrency,
-  withHmObservationTimeout,
-} from './hm-only-canonical-observation-concurrency';
+import { runHmObservationEvaluation } from './hm-only-canonical-observation-concurrency';
+import { runHmObservationInReadOnlyTransaction, type HmObservationReadDb } from './hm-only-canonical-observation-readonly-tx';
+import { classifyHmObservationDivergence } from './hm-only-canonical-observation-divergence';
 
 const MIRROR_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -43,9 +43,6 @@ const MIRROR_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 export class HmOnlyCanonicalReadinessObservationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Pure readiness evaluation — read-only DB access, no onboarding mutation, no billing, no activation.
-   */
   async observeHmOnlyRegistrationAttempt(input: {
     dto: RegisterHmOnlyVehicleDto;
     access: {
@@ -54,36 +51,53 @@ export class HmOnlyCanonicalReadinessObservationService {
       actorUserId: string | null;
     };
     preRegistrationSnapshot?: HmPreRegistrationObservationSnapshot;
+    /** Integration tests may skip READ ONLY transaction (mock prisma). */
+    skipReadOnlyTransaction?: boolean;
   }): Promise<HmOnlyReadinessObservationResult> {
     const started = Date.now();
-    const concurrency = await withHmObservationConcurrency(() =>
-      withHmObservationTimeout(() => this.evaluateInternal(input, started)),
-    );
-    if (concurrency === 'OBSERVATION_OVERLOAD') {
-      const overload = this.buildNotEvaluableResult(input, started, 'OBSERVATION_OVERLOAD', {
-        tenantScopeMismatch: input.dto.organizationId !== input.access.tenantOrganizationId,
-      });
-      recordHmReadinessObservation(overload, 'OBSERVATION_OVERLOAD');
+
+    const run = await runHmObservationEvaluation(async () => {
+      const txResult = input.skipReadOnlyTransaction
+        ? await this.evaluateInternal(this.prisma, input, started)
+        : await runHmObservationInReadOnlyTransaction(this.prisma, async (tx) =>
+            this.evaluateInternal(tx, input, started),
+          );
+
+      if (txResult === 'OBSERVATION_DB_CONSISTENCY_UNAVAILABLE') {
+        return this.buildNotEvaluableResult(input, started, 'OBSERVATION_DB_CONSISTENCY_UNAVAILABLE');
+      }
+
+      return txResult;
+    });
+
+    if (run.status === 'OVERLOAD') {
+      const overload = this.buildNotEvaluableResult(input, started, 'OBSERVATION_OVERLOAD');
+      this.safeRecord(overload, 'OBSERVATION_OVERLOAD');
       return overload;
     }
-    if (concurrency === 'OBSERVATION_TIMEOUT') {
-      const timeout = this.buildNotEvaluableResult(input, started, 'OBSERVATION_TIMEOUT', {
-        tenantScopeMismatch: input.dto.organizationId !== input.access.tenantOrganizationId,
-      });
-      recordHmReadinessObservation(timeout, 'OBSERVATION_TIMEOUT');
+
+    if (run.status === 'TIMEOUT') {
+      const timeout = this.buildNotEvaluableResult(input, started, 'OBSERVATION_TIMEOUT');
+      this.safeRecord(timeout, 'OBSERVATION_TIMEOUT');
       return timeout;
     }
 
     try {
-      recordHmReadinessObservation(concurrency);
-      return concurrency;
+      this.safeRecord(run.value);
+      return run.value;
     } catch (error) {
       const code = sanitizeObservationErrorCode(error);
-      const fallback = this.buildNotEvaluableResult(input, started, code, {
-        tenantScopeMismatch: input.dto.organizationId !== input.access.tenantOrganizationId,
-      });
-      recordHmReadinessObservation(fallback, code);
+      const fallback = this.buildNotEvaluableResult(input, started, code);
+      this.safeRecord(fallback, code);
       return fallback;
+    }
+  }
+
+  private safeRecord(result: HmOnlyReadinessObservationResult, errorCode?: string): void {
+    try {
+      recordHmReadinessObservation(result, errorCode);
+    } catch {
+      /* metrics/logger isolation */
     }
   }
 
@@ -93,8 +107,14 @@ export class HmOnlyCanonicalReadinessObservationService {
     reasonCode: string,
     opts?: { tenantScopeMismatch?: boolean },
   ): HmOnlyReadinessObservationResult {
+    const div = classifyHmObservationDivergence({
+      legacyAdmission: 'LEGACY_NOT_EVALUABLE',
+      canonicalAdmission: 'CANONICAL_ADMISSION_NOT_EVALUABLE',
+      canonicalReadiness: 'CANONICAL_READINESS_NOT_EVALUABLE',
+      evaluationCompleteness: 'NOT_EVALUABLE',
+    });
     return {
-      legacyAdmission: 'LEGACY_BLOCKED',
+      legacyAdmission: 'LEGACY_NOT_EVALUABLE',
       legacyBlockerReasonCodes: [reasonCode],
       canonicalAdmission: 'CANONICAL_ADMISSION_NOT_EVALUABLE',
       canonicalAdmissionBlockerReasonCodes: [reasonCode],
@@ -107,7 +127,8 @@ export class HmOnlyCanonicalReadinessObservationService {
       evaluationCompleteness: 'NOT_EVALUABLE',
       powertrainClass: 'UNKNOWN',
       providerMirrorFreshness: 'UNKNOWN',
-      divergenceLegacyOnly: false,
+      divergenceLegacyOnly: div.divergenceLegacyOnly,
+      divergenceClassification: div.classification,
       metadata: {
         organizationId: input.access.tenantOrganizationId,
         hmVehicleId: input.dto.hmVehicleId,
@@ -119,6 +140,30 @@ export class HmOnlyCanonicalReadinessObservationService {
   }
 
   private async evaluateInternal(
+    db: HmObservationReadDb,
+    input: {
+      dto: RegisterHmOnlyVehicleDto;
+      access: {
+        tenantOrganizationId: string;
+        isMasterAdmin: boolean;
+        actorUserId: string | null;
+      };
+      preRegistrationSnapshot?: HmPreRegistrationObservationSnapshot;
+    },
+    started: number,
+  ): Promise<HmOnlyReadinessObservationResult> {
+    try {
+      return await this.evaluateInternalCore(db, input, started);
+    } catch (error) {
+      const code = sanitizeObservationErrorCode(error);
+      return this.buildNotEvaluableResult(input, started, code, {
+        tenantScopeMismatch: input.dto.organizationId !== input.access.tenantOrganizationId,
+      });
+    }
+  }
+
+  private async evaluateInternalCore(
+    db: HmObservationReadDb,
     input: {
       dto: RegisterHmOnlyVehicleDto;
       access: {
@@ -137,14 +182,11 @@ export class HmOnlyCanonicalReadinessObservationService {
 
     let hmRecord: HighMobilityVehicle | null =
       input.preRegistrationSnapshot?.hmRecord ??
-      (await this.prisma.highMobilityVehicle.findUnique({
+      (await db.highMobilityVehicle.findUnique({
         where: { id: input.dto.hmVehicleId },
       }));
     if (!hmRecord) {
-      throw new NotFoundException(`HM vehicle ${input.dto.hmVehicleId} not found`);
-    }
-    if (input.preRegistrationSnapshot && input.preRegistrationSnapshot.hmVehicleId !== hmRecord.id) {
-      throw new NotFoundException('Observation snapshot hm id mismatch');
+      return this.buildNotEvaluableResult(input, started, 'NOT_FOUND');
     }
 
     const recordScope = assertHmObservationRecordTenantScope({
@@ -157,15 +199,16 @@ export class HmOnlyCanonicalReadinessObservationService {
     }
 
     const snapshot =
-      input.preRegistrationSnapshot ?? freezeHmPreRegistrationSnapshot(hmRecord);
+      input.preRegistrationSnapshot ??
+      (await buildHmObservationEvaluationSnapshot(db, hmRecord, input.dto.organizationId));
 
-    const legacy = await classifyHmOnlyLegacyAdmission(this.prisma, {
+    const legacy = await classifyHmOnlyLegacyAdmission(db as PrismaService, {
       dto: input.dto,
       access: input.access,
       hmRecord,
     });
 
-    const admission = await classifyHmOnlyCanonicalAdmission(this.prisma, {
+    const admission = await classifyHmOnlyCanonicalAdmission(db as PrismaService, {
       dto: input.dto,
       access: input.access,
       hmRecord,
@@ -198,12 +241,11 @@ export class HmOnlyCanonicalReadinessObservationService {
         );
       }
 
-      const operatorFuel = normalizeHmOnlyFuelType(input.dto.fuelType);
-      if (input.dto.fuelType?.trim() && !operatorFuel) {
+      if (input.dto.fuelType?.trim() && !normalizeHmOnlyFuelType(input.dto.fuelType)) {
         canonicalBlockers.push('INVALID_CAPTURE_PAYLOAD');
       }
 
-      const org = await this.prisma.organization.findUniqueOrThrow({
+      const org = await db.organization.findUniqueOrThrow({
         where: { id: input.dto.organizationId },
       });
       if (org.status !== OrganizationStatus.ACTIVE) {
@@ -212,11 +254,11 @@ export class HmOnlyCanonicalReadinessObservationService {
 
       try {
         selectedProduct = await resolveMasterDimoReadinessProduct(
-          this.prisma,
+          db as PrismaService,
           input.dto.organizationId,
         );
         const entitled = await isOrganizationProductEntitled(
-          this.prisma,
+          db as PrismaService,
           input.dto.organizationId,
           selectedProduct,
         );
@@ -231,7 +273,7 @@ export class HmOnlyCanonicalReadinessObservationService {
       try {
         assertHmOnlyBatteryInputContract(input.dto);
         hvBattery = await resolveHmOnlyHvBatteryReference(
-          this.prisma,
+          db as PrismaService,
           input.dto.organizationId,
           input.dto,
         );
@@ -296,7 +338,7 @@ export class HmOnlyCanonicalReadinessObservationService {
     }
 
     const snapshotOk = await assertHmPreRegistrationSnapshotUnchanged(
-      this.prisma,
+      db,
       snapshot,
       input.dto.organizationId,
     );
@@ -308,7 +350,7 @@ export class HmOnlyCanonicalReadinessObservationService {
     const providerMirrorFreshness =
       mirrorAgeMs <= MIRROR_STALE_MS ? 'FRESH' : ('STALE' as const);
 
-    const billing = await predictHmOnlyActivationBilling(this.prisma, {
+    const billing = await predictHmOnlyActivationBilling(db as PrismaService, {
       organizationId: input.dto.organizationId,
       admissionVerdict: admission.verdict,
       canonicalReadiness,
@@ -320,10 +362,12 @@ export class HmOnlyCanonicalReadinessObservationService {
       },
     });
 
-    const divergenceLegacyOnly =
-      legacy.verdict === 'LEGACY_ADMISSIBLE' &&
-      admission.verdict === 'CANONICAL_ADMISSION_ELIGIBLE' &&
-      canonicalReadiness !== 'CANONICAL_READINESS_PASS';
+    const div = classifyHmObservationDivergence({
+      legacyAdmission: legacy.verdict,
+      canonicalAdmission: admission.verdict,
+      canonicalReadiness,
+      evaluationCompleteness: completeness,
+    });
 
     return {
       legacyAdmission: legacy.verdict,
@@ -339,7 +383,8 @@ export class HmOnlyCanonicalReadinessObservationService {
       evaluationCompleteness: completeness,
       powertrainClass,
       providerMirrorFreshness,
-      divergenceLegacyOnly,
+      divergenceLegacyOnly: div.divergenceLegacyOnly,
+      divergenceClassification: div.classification,
       metadata: {
         organizationId: input.access.tenantOrganizationId,
         hmVehicleId: input.dto.hmVehicleId,
@@ -350,10 +395,16 @@ export class HmOnlyCanonicalReadinessObservationService {
   }
 
   private tenantDeniedResult(
-    input: { dto: RegisterHmOnlyVehicleDto; access: { tenantOrganizationId: string; hmVehicleId?: never } },
+    input: { dto: RegisterHmOnlyVehicleDto; access: { tenantOrganizationId: string } },
     started: number,
     reasonCode: 'ORG_SCOPE_MISMATCH' | 'HM_TENANT_ACCESS_DENIED',
   ): HmOnlyReadinessObservationResult {
+    const div = classifyHmObservationDivergence({
+      legacyAdmission: 'LEGACY_BLOCKED',
+      canonicalAdmission: 'CANONICAL_ADMISSION_NOT_EVALUABLE',
+      canonicalReadiness: 'CANONICAL_READINESS_NOT_EVALUABLE',
+      evaluationCompleteness: 'NOT_EVALUABLE',
+    });
     return {
       legacyAdmission: 'LEGACY_BLOCKED',
       legacyBlockerReasonCodes: [reasonCode],
@@ -368,7 +419,8 @@ export class HmOnlyCanonicalReadinessObservationService {
       evaluationCompleteness: 'NOT_EVALUABLE',
       powertrainClass: 'UNKNOWN',
       providerMirrorFreshness: 'UNKNOWN',
-      divergenceLegacyOnly: false,
+      divergenceLegacyOnly: div.divergenceLegacyOnly,
+      divergenceClassification: div.classification,
       metadata: {
         organizationId: input.access.tenantOrganizationId,
         hmVehicleId: input.dto.hmVehicleId,

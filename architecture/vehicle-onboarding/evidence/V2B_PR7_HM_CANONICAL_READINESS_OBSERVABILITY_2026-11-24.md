@@ -121,11 +121,25 @@ PR6 retired the notion of comparing legacy **create billing hook** vs outbox. PR
 | F6 observability | Process-local bounded counters (`metricsScope: PROCESS_LOCAL`); sanitized error codes in logs |
 | F7 matrix | PR7-06/07/12 + strengthened tenant/divergence scenarios in PG gate |
 
+## Runtime safety seal (OPERATION `SYNQDRIVE_VEHICLES_V2B_PR7_FINAL_RUNTIME_SAFETY_SEAL`)
+
+| Control | Status |
+|---------|--------|
+| R1 concurrency slot until work settles | `runHmObservationEvaluation` — slot held until `fn()` finally; timeout returns early without late publish |
+| R2 exception boundary | Full evaluation inside try/catch → structured `NOT_EVALUABLE`; metrics/logger isolated |
+| R3 snapshot / RR read-only tx | `preExistingVehicleIdsForVin`; stable duplicate VIN ≠ race; `SET TRANSACTION READ ONLY` |
+| R4 divergence taxonomy | `divergenceClassification` + truth-table unit tests |
+| R5 non-mutation certification | Observation inside row fingerprint; negative-control mutation test PR7-21 |
+| R6 authority parity | `hm-only-canonical-provider-admission.authority.ts` shared with classifier; shadow uses `sanitizeObservationErrorCode` |
+| R7 scenario matrix | PR7-06 HV baseline rule; PR7-07 mandatory HV cannot be waived by deferred tire/brake profile |
+
+**Production observation readiness:** **NO_GO** — metrics remain `PROCESS_LOCAL`; multi-replica export is a **mandatory PR8/PR9 pre-arm gate**, not optional cleanup.
+
 ## Lifecycle
 
 | Stage | Status |
 |-------|--------|
-| Implementation | **DRAFT PR #2522** (safety closeout) |
+| Implementation | **DRAFT PR #2522** (runtime safety seal) |
 | Production shadow arm | **FORBIDDEN** in this PR |
 | HM canonical cutover | **NO_GO** until OWN-5 |
 | Billing cutover single-rail flag | **NO_GO** (redundant) |
