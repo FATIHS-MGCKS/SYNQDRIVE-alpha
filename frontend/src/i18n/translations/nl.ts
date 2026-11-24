@@ -15,6 +15,7 @@ import { masterMotionPhysicsNl } from './master.motionPhysics.nl';
 import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterOneAutoNl } from './master.oneAuto.nl';
 import { masterOrganizationsNl } from './master.organizations.nl';
+import { masterProductCommercialNl } from './master.productCommercial.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 import { masterCvDimoPrivilegeNl } from './master.cv.dimoPrivilege.nl';
 import { masterCvOemSpecsNl } from './master.cv.oemSpecs.nl';
@@ -222,6 +223,7 @@ export const nl = {
 ...masterVehicleIdentityNl,
   ...masterOneAutoNl,
   ...masterOrganizationsNl,
+  ...masterProductCommercialNl,
   ...masterCvTechnicalSpecsNl,
   ...masterCvDimoPrivilegeNl,
   ...masterCvOemSpecsNl,

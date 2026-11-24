@@ -180,6 +180,36 @@ export function sectionNeedsOperationalData(section: MasterBillingSection): bool
   return section === 'overview' || section === 'subscriptions';
 }
 
+/** Navigate to Master Billing with canonical URL params (Product Management drill-down). */
+export function pushMasterBillingNavigation(input: {
+  orgId?: string | null;
+  section?: MasterBillingSection;
+  subTab?: string | null;
+  replace?: boolean;
+}) {
+  if (typeof window === 'undefined') return;
+  const section = input.section ?? 'pricing';
+  const subTab = input.subTab ?? defaultSubTabForSection(section);
+  const subscriptionId = input.orgId ?? null;
+
+  const billingQuery = buildMasterBillingSearch(
+    { section, subTab, subscriptionId, orgId: input.orgId ?? null },
+    '',
+  );
+  const params = new URLSearchParams(billingQuery.startsWith('?') ? billingQuery.slice(1) : billingQuery);
+  params.set('view', 'billing');
+  if (input.orgId) {
+    params.set('orgId', input.orgId);
+  }
+
+  const next = `${window.location.pathname}?${params.toString()}`;
+  if (input.replace) {
+    window.history.replaceState(null, '', next);
+  } else {
+    window.history.pushState(null, '', next);
+  }
+}
+
 /** @deprecated use sectionNeedsOperationalData */
 export function sectionNeedsCoreData(section: MasterBillingSection): boolean {
   return sectionNeedsOperationalData(section);

@@ -8,6 +8,7 @@ import { OrganizationDetailView } from './components/OrganizationDetailView';
 import { ConnectedVehiclesHub } from './connected-vehicles/ConnectedVehiclesHub';
 import { PhysicalDeviceInventoryHub } from './physical-device-inventory/PhysicalDeviceInventoryHub';
 import { BillingControlCenter } from './components/billing/BillingControlCenter';
+import { pushMasterBillingNavigation } from './components/billing/master-billing-navigation';
 import { SupportView } from './components/SupportView';
 import { PlatformIntegrationsHub } from './platform-integrations/PlatformIntegrationsHub';
 import { migratePlatformIntegrationsParams } from './platform-integrations/platform-integrations-url';
@@ -573,6 +574,17 @@ function MasterAppInner() {
           <ProductManagementView
             onOpenOrgProducts={(orgId) => {
               navigateMaster('organizations', { orgId, orgTab: 'products' });
+            }}
+            onOpenBilling={(input) => {
+              setBillingFocusOrgId(input.orgId ?? null);
+              setCurrentView('billing');
+              pushMasterNavState({ view: 'billing', orgId: input.orgId ?? undefined });
+              pushMasterBillingNavigation({
+                orgId: input.orgId ?? null,
+                section: input.section,
+                subTab: input.subTab,
+                replace: true,
+              });
             }}
           />
         )}
