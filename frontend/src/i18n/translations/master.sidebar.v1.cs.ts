@@ -20,4 +20,5 @@ export const masterSidebarV1Cs = {
   'master.nav.collapseSidebar': 'Sbalit postranní panel',
   'master.nav.mobileMenu': 'Otevřít navigaci',
   'master.nav.mobileMenuClose': 'Zavřít navigaci',
+  'master.sidebar.toggleChildMenu': 'Rozbalit nebo sbalit podmenu',
 } as const;

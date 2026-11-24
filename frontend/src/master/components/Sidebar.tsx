@@ -292,7 +292,7 @@ export function Sidebar({
             className={navSectionHeaderClass(isOpen, folderActive)}
             aria-expanded={isOpen}
           >
-            <span className={navSectionLabelClass}>{navLabel(entry.labelKey)}</span>
+            <span className={masterSectionLabelClass}>{navLabel(entry.labelKey)}</span>
             <ChevronRight
               className={cn(
                 'w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200',
@@ -301,7 +301,7 @@ export function Sidebar({
             />
           </button>
           {isOpen && (
-            <nav className="mt-0.5 ml-1 space-y-0.5 border-l border-border/60 pl-1.5" aria-label={navLabel(entry.labelKey)}>
+            <nav className="mt-0.5 ml-3 space-y-0.5 border-l border-border/60 pl-2" aria-label={navLabel(entry.labelKey)}>
               {entry.children.map((id) => renderNavButton(id, { sub: true }))}
             </nav>
           )}
@@ -318,10 +318,10 @@ export function Sidebar({
 
     if (collapsed) {
       return (
-        <>
+        <div key={entry.view} className="w-full flex flex-col items-center space-y-0.5 border-t border-border/40 pt-0.5 first:border-t-0">
           {renderNavButton(entry.view, { collapsed })}
           {entry.children.map((id) => renderNavButton(id, { collapsed }))}
-        </>
+        </div>
       );
     }
 
@@ -347,7 +347,7 @@ export function Sidebar({
                 'text-muted-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               )}
               aria-expanded={parentOpen}
-              aria-label={parentLabel}
+              aria-label={navLabel('master.sidebar.toggleChildMenu')}
               data-master-nav-parent-toggle={entry.view}
             >
               <ChevronRight
@@ -419,10 +419,10 @@ export function Sidebar({
                   className={navSectionHeaderClass(isOpen, groupActive)}
                   aria-expanded={isOpen}
                 >
-                  <span className={navSectionLabelClass}>{navLabel(group.labelKey)}</span>
+                  <span className={masterSectionLabelClass}>{navLabel(group.labelKey)}</span>
                   <ChevronRight
                     className={cn(
-                      'w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200',
+                      'w-3.5 h-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-200',
                       isOpen && 'rotate-90',
                     )}
                   />
@@ -450,7 +450,12 @@ export function Sidebar({
     const canSupport = supportItem && isMasterNavItemVisible('support');
     const supportBadge = supportItem?.badge ? badges[supportItem.badge] : undefined;
     return (
-      <div className="sq-sidebar-footer shrink-0 px-3 py-3 space-y-1 border-t border-sidebar-border">
+      <div
+        className={cn(
+          'sq-sidebar-footer shrink-0 py-3 space-y-1 border-t border-sidebar-border',
+          collapsed ? 'px-1.5' : 'px-[18px]',
+        )}
+      >
         {!billingOnly && (
           <button
             type="button"
@@ -585,10 +590,18 @@ export function Sidebar({
   }, [mobileOpen, navLabel]);
 
   const brandChip = (
-    <span className="sq-chip sq-chip-neutral !text-[10px] !font-bold uppercase tracking-[0.16em]">
+    <span
+      className={cn(
+        'sq-chip !text-[10px] !font-bold uppercase tracking-[0.16em]',
+        'bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/70',
+      )}
+      data-testid="master-sidebar-role-chip"
+    >
       {navLabel('master.nav.roleChip')}
     </span>
   );
+
+  const masterSectionLabelClass = cn(navSectionLabelClass, '!text-sidebar-foreground/80');
 
   return (
     <>
@@ -642,6 +655,7 @@ export function Sidebar({
       )}
 
       <div
+        data-testid="master-sidebar-desktop"
         className={cn(
           'hidden lg:flex h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border transition-all duration-300 ease-in-out motion-reduce:transition-none',
           isCollapsed ? 'w-[52px]' : 'w-[260px]',

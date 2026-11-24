@@ -20,4 +20,5 @@ export const masterSidebarV1It = {
   'master.nav.collapseSidebar': 'Comprimi barra laterale',
   'master.nav.mobileMenu': 'Apri navigazione',
   'master.nav.mobileMenuClose': 'Chiudi navigazione',
+  'master.sidebar.toggleChildMenu': 'Espandi o comprimi sottomenu',
 } as const;

@@ -20,4 +20,5 @@ export const masterSidebarV1Tr = {
   'master.nav.collapseSidebar': 'Kenar çubuğunu daralt',
   'master.nav.mobileMenu': 'Gezinmeyi aç',
   'master.nav.mobileMenuClose': 'Gezinmeyi kapat',
+  'master.sidebar.toggleChildMenu': 'Alt menüyü aç veya kapat',
 } as const;

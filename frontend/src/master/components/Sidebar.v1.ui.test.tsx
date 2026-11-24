@@ -115,6 +115,21 @@ describe('Master Sidebar V1 UI', () => {
       expect(collapseBtn?.getAttribute('aria-label')).toBe(expandLabel);
     });
 
+    it('uses distinct aria-label on parent submenu chevron vs primary link', () => {
+      const { container } = renderSidebar({ locale, currentView: 'high-mobility' });
+      const desktop = container.querySelector('.hidden.lg\\:flex') as HTMLElement;
+      const toggle = desktop?.querySelector(
+        '[data-master-nav-parent-toggle="platform-integrations"]',
+      ) as HTMLButtonElement;
+      const toggleLabel = translateKey(locale, 'master.sidebar.toggleChildMenu').text;
+      const linkLabel = translateKey(locale, 'master.nav.platformIntegrations').text;
+      const parentRow = toggle?.closest('.flex.items-stretch') as HTMLElement;
+
+      expect(toggle?.getAttribute('aria-label')).toBe(toggleLabel);
+      expect(parentRow?.textContent).toContain(linkLabel);
+      expect(toggle?.getAttribute('aria-label')).not.toBe(linkLabel);
+    });
+
     it('uses localized mobile menu toggle aria-label and updates on open', () => {
       const { container } = renderSidebar({ locale });
       const mobileToggle = container.querySelector('.lg\\:hidden button[aria-controls]') as HTMLButtonElement;
