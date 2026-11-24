@@ -8,3 +8,4 @@
 | 2026-11-23 | UX-010 engineering hub header alignment (`context` variant; tire header tabs) | MAUX-EVID-UX010-2026-11-23 |
 | 2026-11-23 | UX-011 organizations table/dialog a11y | MAUX-EVID-UX011-2026-11-23 |
 | 2026-11-23 | Sidebar V1 — group tree, nested integrations, footer Support badge, 9-locale nav keys | MAUX-EVID-SIDEBAR-V1-2026-11-23 |
+| 2026-11-23 | Sidebar V1 visual polish + Playwright evidence harness (audit P1/P2/P3 targeted) | MAUX-EVID-UX012-SIDEBAR-V1-VISUAL-POLISH-2026-11-23 |

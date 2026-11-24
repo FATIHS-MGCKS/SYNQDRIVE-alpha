@@ -21,4 +21,5 @@ export const masterSidebarV1De = {
   'master.nav.collapseSidebar': 'Sidebar einklappen',
   'master.nav.mobileMenu': 'Navigation öffnen',
   'master.nav.mobileMenuClose': 'Navigation schließen',
+  'master.sidebar.toggleChildMenu': 'Untermenü ein- oder ausklappen',
 } as const;

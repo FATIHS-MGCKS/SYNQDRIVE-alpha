@@ -21,4 +21,5 @@ export const masterSidebarV1En = {
   'master.nav.collapseSidebar': 'Collapse sidebar',
   'master.nav.mobileMenu': 'Open navigation',
   'master.nav.mobileMenuClose': 'Close navigation',
+  'master.sidebar.toggleChildMenu': 'Expand or collapse submenu',
 } as const;

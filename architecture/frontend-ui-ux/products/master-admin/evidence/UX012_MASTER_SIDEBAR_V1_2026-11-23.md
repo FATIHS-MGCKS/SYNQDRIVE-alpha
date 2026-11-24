@@ -35,7 +35,7 @@
 - `npm run i18n:check`: PASS
 - `npm run build`: PASS
 - MAUX `validate-graph.sh`: run at PR SHA
-- Playwright sidebar visual: NOT_RUN
+- Playwright sidebar visual: superseded by [`UX012_SIDEBAR_V1_VISUAL_POLISH_2026-11-23.md`](./UX012_SIDEBAR_V1_VISUAL_POLISH_2026-11-23.md)
 
 ## Limitations
 

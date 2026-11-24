@@ -26,3 +26,4 @@
 | 2026-11-23 | FEUX-UX-011 | Cross-product a11y closeout — org wizard, booking sheet, DataTable `aria-busy` | FEUX-EVID-UX011-2026-11-23 |
 | 2026-11-23 | FEUX-UX-CAMPAIGN | UX-001–UX-011 merge register + ledger/index reconciliation (doc-only) | FEUX-EVID-UX001-011-MERGE-2026-11-23 |
 | 2026-11-23 | FEUX-AUTHORITY-001 | Canonical authority map, Figma precedence, legacy inventory, agent rules + routing validator | FEUX-EVID-AGENT-ROUTING-2026-11-23 |
+| 2026-11-23 | FEUX-MAUX-2517-SHARED-NAV | Bounded shared shell: `subNavItemClass` 36px rhythm + `CollapsedNavTooltip` focus visibility (Master+Rental); Operator unaffected | [FEUX-EVID-MAUX2517-SHARED-SHELL-NAV-2026-11-23.md](../evidence/FEUX-EVID-MAUX2517-SHARED-SHELL-NAV-2026-11-23.md) |

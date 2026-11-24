@@ -20,4 +20,5 @@ export const masterSidebarV1Pl = {
   'master.nav.collapseSidebar': 'Zwiń panel boczny',
   'master.nav.mobileMenu': 'Otwórz nawigację',
   'master.nav.mobileMenuClose': 'Zamknij nawigację',
+  'master.sidebar.toggleChildMenu': 'Rozwiń lub zwiń podmenu',
 } as const;
