@@ -278,8 +278,10 @@ export class HmOnlyCanonicalReadinessObservationService {
         if (!entitled) {
           canonicalBlockers.push('PRODUCT_ENTITLEMENT_NOT_ACTIVE');
         }
-      } catch {
-        canonicalBlockers.push('PRODUCT_RESOLUTION_FAILED');
+      } catch (error) {
+        canonicalBlockers.push(
+          error instanceof VehicleOnboardingError ? error.code : 'PRODUCT_RESOLUTION_FAILED',
+        );
       }
 
       let hvBattery = null;

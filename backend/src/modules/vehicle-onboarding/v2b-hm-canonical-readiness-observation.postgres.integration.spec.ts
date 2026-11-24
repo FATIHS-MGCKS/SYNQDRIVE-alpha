@@ -32,6 +32,7 @@ import {
 } from './hm-only-canonical/hm-only-canonical-observation-readonly-tx';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { createHmOnlyCanonicalPgHarness } from './testing/v2b-hm-only-canonical-pg.harness';
 
 const run = process.env.V2B_HM_CANONICAL_READINESS_OBSERVATION_PG === '1';
 
@@ -336,12 +337,18 @@ async function assertRowFingerprintUnchanged(
     const orgId = await createOrg(prisma, { status: OrganizationStatus.SUSPENDED });
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
     const before = await snapshotCounts(prisma, orgId);
+    const access = { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null };
     const result = await observation.observeHmOnlyRegistrationAttempt({
       dto: iceDto(hmId, orgId),
-      access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      access,
     });
+    expect(result.legacyAdmission).toBe('LEGACY_BLOCKED');
     expect(result.legacyBlockerReasonCodes).toContain('ORG_NOT_OPERATIONAL');
-    expect(result.canonicalBlockerReasonCodes).toContain('ORG_STATUS_NOT_ACTIVE');
+    expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_BLOCKED');
+    expect(result.canonicalAdmissionBlockerReasonCodes).toContain('ORG_NOT_OPERATIONAL');
+    expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
+    expect(result.canonicalBlockerReasonCodes).not.toContain('ORG_STATUS_NOT_ACTIVE');
+    expect(result.expectedBillingClassification).not.toBe('BILLABLE_IF_ACTIVATED');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgId));
   });
 
@@ -354,6 +361,8 @@ async function assertRowFingerprintUnchanged(
       access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
     });
     expect(result.canonicalBlockerReasonCodes).toContain('PRODUCT_ENTITLEMENT_NOT_ACTIVE');
+    expect(result.canonicalBlockerReasonCodes).not.toContain('PRODUCT_RESOLUTION_FAILED');
+    expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgId));
   });
 
@@ -500,42 +509,35 @@ async function assertRowFingerprintUnchanged(
 
   it('PR7-12b canonical completed case yields idempotent replay classification', async () => {
     const orgId = await createOrg(prisma);
-    const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
-    const vehicleId = randomUUID();
-    const caseId = randomUUID();
-    const idempotencyKey = hmOnlyCanonicalRegistrationIdempotencyKey(orgId, hmId);
-    await prisma.vehicle.create({
-      data: minimalVehicleCreate(orgId, vin, {
-        id: vehicleId,
-        model: 'Canonical',
-        year: 2022,
-        vehicleName: 'Canonical',
-      }),
-    });
-    await prisma.vehicleOnboardingCase.create({
-      data: {
-        id: caseId,
+    const { hmId } = await createApprovedHmMirror(prisma, orgId);
+    const harness = createHmOnlyCanonicalPgHarness(prisma);
+    const access = { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null };
+    const dto = iceDto(hmId, orgId);
+    const registered = await harness.hmOnlyCanonical.register({ dto, access });
+    const vehicleId = registered.synqdriveVehicleId;
+    expect(vehicleId).toBeTruthy();
+    const completedCase = await prisma.vehicleOnboardingCase.findFirst({
+      where: {
         organizationId: orgId,
-        sourceMode: 'HIGH_MOBILITY',
-        status: 'COMPLETED',
-        primarySourceProvider: 'HIGH_MOBILITY',
-        primarySourceScopeKey: `org:${orgId}`,
-        primarySourceExternalId: hmId,
-        idempotencyKey,
         vehicleId,
+        status: 'COMPLETED',
+        idempotencyKey: hmOnlyCanonicalRegistrationIdempotencyKey(orgId, hmId),
       },
     });
-    await prisma.highMobilityVehicle.update({
-      where: { id: hmId },
-      data: { synqdriveVehicleId: vehicleId, registrationState: 'NOT_REGISTERED' },
-    });
+    expect(completedCase?.completedAt).toBeTruthy();
+    const outboxBefore = await prisma.vehicleRegistryLifecycleOutbox.count({ where: { organizationId: orgId } });
+    const billingBefore = await prisma.billingQuantityEvent.count({ where: { organizationId: orgId } });
     await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
-      const result = await observation.observeHmOnlyRegistrationAttempt({
-        dto: iceDto(hmId, orgId),
-        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
-      });
+      const result = await observation.observeHmOnlyRegistrationAttempt({ dto, access });
       expect(result.canonicalAdmission).toBe('CANONICAL_IDEMPOTENT_REPLAY');
       expect(result.expectedBillingClassification).toBe('NO_NEW_EFFECT_IDEMPOTENT_REPLAY');
+      expect(
+        await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } }),
+      ).toMatchObject({ id: vehicleId });
+      expect(await prisma.vehicleRegistryLifecycleOutbox.count({ where: { organizationId: orgId } })).toBe(
+        outboxBefore,
+      );
+      expect(await prisma.billingQuantityEvent.count({ where: { organizationId: orgId } })).toBe(billingBefore);
     });
   });
 
