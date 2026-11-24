@@ -288,6 +288,8 @@ async function assertRowFingerprintUnchanged(
     expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_NOT_EVALUABLE');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgA));
     assertCountsUnchanged(beforeB, await snapshotCounts(prisma, orgB));
+    await assertRowFingerprintUnchanged(orgA, hmId, async () => undefined);
+    await assertRowFingerprintUnchanged(orgB, hmId, async () => undefined);
   });
 
   it('PR7-09 inactive organization blocks canonical', async () => {
