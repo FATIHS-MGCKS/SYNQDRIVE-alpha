@@ -4,11 +4,13 @@
  */
 import {
   BusinessType,
+  FuelType,
   OrganizationStatus,
   PrismaClient,
   ProductSlug,
   VehicleRegistryLifecycle,
 } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { HighMobilityRegistrationService } from '@modules/high-mobility/high-mobility-registration.service';
@@ -91,7 +93,7 @@ function configService(shadowCompareEnabled: boolean): ConfigService {
   it('PR7-SHADOW-01 shadow ON — legacy registration + observation result', async () => {
     const orgId = await createOrg(prisma);
     const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
-    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as never);
+    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as unknown as PrismaService);
     const observeSpy = jest.spyOn(observation, 'observeHmOnlyRegistrationAttempt');
     const registration = new HighMobilityRegistrationService(
       prisma as never,
@@ -159,10 +161,11 @@ function configService(shadowCompareEnabled: boolean): ConfigService {
         model: 'Existing',
         year: 2019,
         vehicleName: 'Existing',
+        fuelType: FuelType.GASOLINE,
         registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
       },
     });
-    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as never);
+    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as unknown as PrismaService);
     const registration = new HighMobilityRegistrationService(
       prisma as never,
       configService(true),
@@ -186,32 +189,28 @@ function configService(shadowCompareEnabled: boolean): ConfigService {
     expect(await prisma.vehicle.count({ where: { organizationId: orgId } })).toBe(before);
   });
 
-  it('PR7-SHADOW-04 concurrent HM mutation yields observation race (not PASS)', async () => {
+  it('PR7-SHADOW-04 stale shadowFrozenHmRecord after HM mutation is NOT_EVALUABLE', async () => {
     const orgId = await createOrg(prisma);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
-    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as never);
+    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as unknown as PrismaService);
     const hmRow = await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } });
-    const [result] = await Promise.all([
-      observation.observeHmOnlyRegistrationAttempt({
-        dto: {
-          hmVehicleId: hmId,
-          organizationId: orgId,
-          model: 'X5',
-          year: 2022,
-          fuelType: 'GASOLINE',
-          vehicleType: 'SEDAN',
-        },
-        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
-        shadowFrozenHmRecord: hmRow,
-      }),
-      (async () => {
-        await new Promise((r) => setTimeout(r, 30));
-        await prisma.highMobilityVehicle.update({
-          where: { id: hmId },
-          data: { registrationState: 'REGISTERED' },
-        });
-      })(),
-    ]);
+    const shadowFrozenHmRecord = { ...hmRow };
+    await prisma.highMobilityVehicle.update({
+      where: { id: hmId },
+      data: { registrationState: 'REGISTERED' },
+    });
+    const result = await observation.observeHmOnlyRegistrationAttempt({
+      dto: {
+        hmVehicleId: hmId,
+        organizationId: orgId,
+        model: 'X5',
+        year: 2022,
+        fuelType: 'GASOLINE',
+        vehicleType: 'SEDAN',
+      },
+      access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      shadowFrozenHmRecord,
+    });
     expect(result.evaluationCompleteness).toBe('NOT_EVALUABLE');
     expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
     expect(

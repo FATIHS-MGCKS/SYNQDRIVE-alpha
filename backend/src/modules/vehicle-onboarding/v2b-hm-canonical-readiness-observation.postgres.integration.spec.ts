@@ -22,13 +22,16 @@ import {
   captureHmObservationDbFingerprint,
 } from './testing/v2b-hm-observation-db-fingerprint';
 import { hmOnlyCanonicalRegistrationIdempotencyKey } from './hm-only-canonical/hm-only-canonical-registration.types';
-import { buildHmObservationEvaluationSnapshot } from './hm-only-canonical/hm-only-canonical-observation-snapshot';
+import {
+  assertHmPreRegistrationSnapshotUnchanged,
+  buildHmObservationEvaluationSnapshot,
+} from './hm-only-canonical/hm-only-canonical-observation-snapshot';
 import {
   HM_OBSERVATION_PRISMA_ISOLATION,
   runHmObservationInReadOnlyTransaction,
 } from './hm-only-canonical/hm-only-canonical-observation-readonly-tx';
 import { Prisma } from '@prisma/client';
-import { BatteryReferenceCapacitySource } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
+import { PrismaService } from '@shared/database/prisma.service';
 
 const run = process.env.V2B_HM_CANONICAL_READINESS_OBSERVATION_PG === '1';
 
@@ -184,6 +187,31 @@ function assertCountsUnchanged(before: DbCounts, after: DbCounts) {
   expect(after).toEqual(before);
 }
 
+function minimalVehicleCreate(
+  orgId: string,
+  vin: string,
+  overrides?: {
+    id?: string;
+    model?: string;
+    year?: number;
+    vehicleName?: string;
+    registryLifecycle?: VehicleRegistryLifecycle;
+    fuelType?: FuelType;
+  },
+) {
+  return {
+    organizationId: orgId,
+    vin,
+    make: 'BMW',
+    model: overrides?.model ?? 'Test',
+    year: overrides?.year ?? 2020,
+    vehicleName: overrides?.vehicleName ?? 'Test',
+    fuelType: overrides?.fuelType ?? FuelType.GASOLINE,
+    registryLifecycle: overrides?.registryLifecycle ?? VehicleRegistryLifecycle.ACTIVE,
+    ...(overrides?.id ? { id: overrides.id } : {}),
+  };
+}
+
 async function assertRowFingerprintUnchanged(
   db: PrismaClient,
   orgId: string,
@@ -192,18 +220,20 @@ async function assertRowFingerprintUnchanged(
 ) {
   const before = await captureHmObservationDbFingerprint(db, orgId, hmId);
   await run();
-  const after = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
+  const after = await captureHmObservationDbFingerprint(db, orgId, hmId);
   assertHmObservationFingerprintsEqual(before, after);
 }
 
 (run ? describe : describe.skip)('V2B-PR7 HM readiness observation (postgres)', () => {
   jest.setTimeout(120_000);
   let prisma: PrismaClient;
+  let prismaService: PrismaService;
   let observation: HmOnlyCanonicalReadinessObservationService;
 
   beforeAll(() => {
     prisma = new PrismaClient();
-    observation = new HmOnlyCanonicalReadinessObservationService(prisma);
+    prismaService = prisma as unknown as PrismaService;
+    observation = new HmOnlyCanonicalReadinessObservationService(prismaService);
   });
 
   afterAll(async () => {
@@ -285,6 +315,8 @@ async function assertRowFingerprintUnchanged(
     const { hmId } = await createApprovedHmMirror(prisma, orgA);
     const before = await snapshotCounts(prisma, orgA);
     const beforeB = await snapshotCounts(prisma, orgB);
+    const fingerprintOrgABefore = await captureHmObservationDbFingerprint(prisma, orgA, hmId);
+    const fingerprintOrgBBefore = await captureHmObservationDbFingerprint(prisma, orgB, hmId);
     const result = await observation.observeHmOnlyRegistrationAttempt({
       dto: iceDto(hmId, orgB),
       access: { tenantOrganizationId: orgB, isMasterAdmin: false, actorUserId: null },
@@ -294,12 +326,14 @@ async function assertRowFingerprintUnchanged(
     expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_NOT_EVALUABLE');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgA));
     assertCountsUnchanged(beforeB, await snapshotCounts(prisma, orgB));
-    await assertRowFingerprintUnchanged(orgA, hmId, async () => undefined);
-    await assertRowFingerprintUnchanged(orgB, hmId, async () => undefined);
+    const fingerprintOrgAAfter = await captureHmObservationDbFingerprint(prisma, orgA, hmId);
+    const fingerprintOrgBAfter = await captureHmObservationDbFingerprint(prisma, orgB, hmId);
+    assertHmObservationFingerprintsEqual(fingerprintOrgABefore, fingerprintOrgAAfter);
+    assertHmObservationFingerprintsEqual(fingerprintOrgBBefore, fingerprintOrgBAfter);
   });
 
   it('PR7-09 inactive organization blocks canonical', async () => {
-    const orgId = await createOrg(prisma, { status: OrganizationStatus.OFFBOARDED });
+    const orgId = await createOrg(prisma, { status: OrganizationStatus.SUSPENDED });
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
     const before = await snapshotCounts(prisma, orgId);
     const result = await observation.observeHmOnlyRegistrationAttempt({
@@ -327,15 +361,11 @@ async function assertRowFingerprintUnchanged(
     const orgId = await createOrg(prisma);
     const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
     await prisma.vehicle.create({
-      data: {
-        organizationId: orgId,
-        vin,
-        make: 'BMW',
+      data: minimalVehicleCreate(orgId, vin, {
         model: 'Existing',
         year: 2019,
         vehicleName: 'Existing',
-        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-      },
+      }),
     });
     const before = await snapshotCounts(prisma, orgId);
     const result = await observation.observeHmOnlyRegistrationAttempt({
@@ -352,15 +382,12 @@ async function assertRowFingerprintUnchanged(
     const orgId = await createOrg(prisma);
     const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
     await prisma.vehicle.create({
-      data: {
-        organizationId: orgId,
-        vin,
-        make: 'BMW',
+      data: minimalVehicleCreate(orgId, vin, {
         model: 'Offboarded',
         year: 2018,
         vehicleName: 'Offboarded',
         registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
-      },
+      }),
     });
     const before = await snapshotCounts(prisma, orgId);
     const result = await observation.observeHmOnlyRegistrationAttempt({
@@ -446,16 +473,12 @@ async function assertRowFingerprintUnchanged(
     const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
     const vehicleId = randomUUID();
     await prisma.vehicle.create({
-      data: {
+      data: minimalVehicleCreate(orgId, vin, {
         id: vehicleId,
-        organizationId: orgId,
-        vin,
-        make: 'BMW',
         model: 'Legacy',
         year: 0,
         vehicleName: 'Legacy',
-        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-      },
+      }),
     });
     await prisma.highMobilityVehicle.update({
       where: { id: hmId },
@@ -482,16 +505,12 @@ async function assertRowFingerprintUnchanged(
     const caseId = randomUUID();
     const idempotencyKey = hmOnlyCanonicalRegistrationIdempotencyKey(orgId, hmId);
     await prisma.vehicle.create({
-      data: {
+      data: minimalVehicleCreate(orgId, vin, {
         id: vehicleId,
-        organizationId: orgId,
-        vin,
-        make: 'BMW',
         model: 'Canonical',
         year: 2022,
         vehicleName: 'Canonical',
-        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-      },
+      }),
     });
     await prisma.vehicleOnboardingCase.create({
       data: {
@@ -542,36 +561,47 @@ async function assertRowFingerprintUnchanged(
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgId));
   });
 
-  it('PR7-22 concurrent vehicle insert during observation is NOT_EVALUABLE', async () => {
+  it('PR7-22 stale pre-registration snapshot after HM mutation is NOT_EVALUABLE', async () => {
     const orgId = await createOrg(prisma);
-    const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
+    const { hmId } = await createApprovedHmMirror(prisma, orgId);
     const hmRow = await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } });
     const preRegistrationSnapshot = await buildHmObservationEvaluationSnapshot(prisma, hmRow, orgId);
-    const concurrentMutation = (async () => {
-      await new Promise((r) => setTimeout(r, 40));
-      await prisma.vehicle.create({
-        data: {
-          organizationId: orgId,
-          vin,
-          make: 'BMW',
-          model: 'Racer',
-          year: 2024,
-          vehicleName: 'Racer',
-          registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-        },
-      });
-    })();
-    const [result] = await Promise.all([
-      observation.observeHmOnlyRegistrationAttempt({
-        dto: iceDto(hmId, orgId),
-        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
-        preRegistrationSnapshot,
-      }),
-      concurrentMutation,
-    ]);
+    await prisma.highMobilityVehicle.update({
+      where: { id: hmId },
+      data: { registrationState: 'REGISTERED' },
+    });
+    const result = await observation.observeHmOnlyRegistrationAttempt({
+      dto: iceDto(hmId, orgId),
+      access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      preRegistrationSnapshot,
+    });
     expect(result.evaluationCompleteness).toBe('NOT_EVALUABLE');
     expect(result.canonicalBlockerReasonCodes).toContain('OBSERVATION_SNAPSHOT_RACE');
     expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
+  });
+
+  it('PR7-22b RepeatableRead cannot observe vehicle rows committed after snapshot', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
+    const hmRow = await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } });
+    const outsider = new PrismaClient();
+    try {
+      const seenInsideTx = await runHmObservationInReadOnlyTransaction(prismaService, async (tx) => {
+        const snapshot = await buildHmObservationEvaluationSnapshot(tx, hmRow, orgId);
+        await outsider.vehicle.create({
+          data: minimalVehicleCreate(orgId, vin, { model: 'PostSnapshot', vehicleName: 'PostSnapshot' }),
+        });
+        const check = await assertHmPreRegistrationSnapshotUnchanged(tx, snapshot, orgId);
+        return { snapshot, check };
+      });
+      if (seenInsideTx === 'OBSERVATION_DB_CONSISTENCY_UNAVAILABLE') {
+        throw new Error('unexpected OBSERVATION_DB_CONSISTENCY_UNAVAILABLE');
+      }
+      expect(seenInsideTx.check.ok).toBe(true);
+      expect(seenInsideTx.snapshot.preExistingVehicleIdsForVin).toHaveLength(0);
+    } finally {
+      await outsider.$disconnect();
+    }
   });
 
   it('PR7-20 shadow-hook pre-registration snapshot sequence', async () => {
@@ -599,15 +629,11 @@ async function assertRowFingerprintUnchanged(
     const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
     const before = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
     await prisma.vehicle.create({
-      data: {
-        organizationId: orgId,
-        vin: `${vin}-mut`,
-        make: 'BMW',
+      data: minimalVehicleCreate(orgId, `${vin}-mut`, {
         model: 'Mutated',
         year: 2020,
         vehicleName: 'Mutated',
-        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-      },
+      }),
     });
     const after = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
     expect(() => assertHmObservationFingerprintsEqual(before, after)).toThrow();
@@ -615,7 +641,7 @@ async function assertRowFingerprintUnchanged(
 
   it('PR7-TX-01 observation transaction RepeatableRead + read_only', async () => {
     const orgId = await createOrg(prisma);
-    const outcome = await runHmObservationInReadOnlyTransaction(prisma, async (tx) => {
+    const outcome = await runHmObservationInReadOnlyTransaction(prismaService, async (tx) => {
       const [ro, iso] = await Promise.all([
         tx.$queryRaw<{ transaction_read_only: string }[]>`SHOW transaction_read_only`,
         tx.$queryRaw<{ transaction_isolation: string }[]>`SHOW transaction_isolation`,
@@ -632,7 +658,7 @@ async function assertRowFingerprintUnchanged(
 
   it('PR7-TX-02 postgres rejects writes inside observation transaction', async () => {
     const orgId = await createOrg(prisma);
-    const outcome = await runHmObservationInReadOnlyTransaction(prisma, async (tx) => {
+    const outcome = await runHmObservationInReadOnlyTransaction(prismaService, async (tx) => {
       await tx.$executeRaw`
         UPDATE organizations
         SET company_name = company_name

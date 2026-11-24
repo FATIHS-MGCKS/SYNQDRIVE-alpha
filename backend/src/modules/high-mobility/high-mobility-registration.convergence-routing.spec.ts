@@ -30,6 +30,7 @@ describe('HighMobilityRegistrationService convergence routing (V2B-PR1)', () => 
       get: jest.fn().mockReturnValue({
         hmOnlyCanonicalEnabled: false,
         billingSingleRailEnabled: false,
+        shadowCompareEnabled: false,
       }),
     };
 
@@ -59,6 +60,7 @@ describe('HighMobilityRegistrationService convergence routing (V2B-PR1)', () => 
       get: jest.fn().mockReturnValue({
         hmOnlyCanonicalEnabled: true,
         billingSingleRailEnabled: false,
+        shadowCompareEnabled: false,
       }),
     };
     const service = new HighMobilityRegistrationService(
@@ -80,6 +82,7 @@ describe('HighMobilityRegistrationService convergence routing (V2B-PR1)', () => 
       get: jest.fn().mockReturnValue({
         hmOnlyCanonicalEnabled: true,
         billingSingleRailEnabled: false,
+        shadowCompareEnabled: false,
       }),
     };
     const service = new HighMobilityRegistrationService(
