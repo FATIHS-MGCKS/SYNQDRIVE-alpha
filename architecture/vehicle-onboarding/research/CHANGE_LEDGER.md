@@ -96,7 +96,8 @@
 | 2026-11-24 | **V2B-PR6** — Single registration billing authority reconciliation post manual registration retirement; authority matrix; VO-DEC-2B-003; characterization spec; NOT_ARMABLE message clarification; no runtime flag arm | Draft PR [#2521](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2521) |
 | 2026-11-24 | **V2B-PR6 closeout** — Harness isolation tests; rg-backed billing caller discovery; VO graph validator path repair; graph nodes VO-DEC-2B-003/VO-EVID-2B-006; convergence plan §1B normative reconciliation | PR #2521 |
 | 2026-11-24 | **V2B-PR7** — Non-mutating HM legacy/canonical readiness observation; shadow compare flag default OFF; PG PR7 30/30; no dual-billing shadow | Merged PR [#2522](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2522) @ `ff90ff14a` |
-| 2026-11-24 | **V2B-PR8** — Owner decision package OWN-3…6; PR9 cutover contract; legacy fleet inventory spec; VO-EVID-2B-008; **no** runtime/flag arm | Draft PR (branch `cursor/v2b-pr8-architecture-owner-decision-readiness-44c2`) |
+| 2026-11-24 | **V2B-PR8** — Owner decision package OWN-3…6; PR9 cutover contract; legacy fleet inventory spec; VO-EVID-2B-008; **no** runtime/flag arm | Draft PR [#2523](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2523) |
+| 2026-11-24 | **V2B-PR8 closeout** — Unambiguous soak contract (14d AND 200 attempts); PR9 dependency order; routing rollback contract; PostgreSQL evidence 60/60 discrete matrices | same PR #2523 |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

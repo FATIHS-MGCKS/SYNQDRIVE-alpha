@@ -11,13 +11,22 @@
 
 | Assertion | Result | Evidence |
 |-----------|--------|----------|
-| `origin/main` HEAD | **VERIFIED** `ff90ff14a6db64bc27d284beface47dc90a018d2` | `git log origin/main -1` |
+| `origin/main` HEAD (PR7 merge) | **VERIFIED** | `PR7_MERGE_SHA=ff90ff14a6db64bc27d284beface47dc90a018d2` — PR #2522 |
 | V2B-PR1 … PR7 merged | **VERIFIED** | #2499, #2510, #2515, #2519, #2520, #2521, #2522 |
-| PR #2518 | **CLOSED** without merge | Docs-only closeout superseded by main evidence |
-| PR7 PostgreSQL matrix | **30/30 PASS** (VO-5B job after merge) | CI run on branch → main merge attestation in #2522 |
-| PG-03 (HM canonical) | **18/18 PASS** | VO-5B postgres workflow |
-| PG-05 (billing outbox) | **12/12 PASS** | VO-5B postgres workflow |
-| PR7 workflow checks | **78/78 PASS** on final repair SHA (`f31b3c252` → merged `ff90ff14`) | GitHub Actions branch CI (Vehicle Detail flake retrigger) |
+| PR #2518 | **CLOSED** without merge | Docs-only closeout superseded on main |
+| PR7 final branch HEAD (pre-merge) | **VERIFIED** | `FINAL_PR7_HEAD=f31b3c252e95aeb3c65fd7fabe4eacf5d1681a50` |
+| PR7 workflows (branch) | **VERIFIED** | `PR7_WORKFLOWS=24/24_SUCCESS` on `FINAL_PR7_HEAD` — GitHub Actions PR #2522 check runs |
+
+### PostgreSQL certification counts (discrete matrices — do not conflate)
+
+| Metric | Count | Scope |
+|--------|-------|--------|
+| `PR7_POSTGRESQL` | **30/30** | VO-5B `V2B_HM_CANONICAL_READINESS_OBSERVATION_PG` matrix (`v2b-hm-canonical-readiness-observation.postgres.integration.spec.ts`) |
+| `PG03_POSTGRESQL` | **18/18** | HM_ONLY canonical harness (`V2B_PG03_*` in same VO-5B job family) |
+| `PG05_POSTGRESQL` | **12/12** | Provider billing / outbox parity PostgreSQL suite |
+| `TOTAL_SELECTED_POSTGRESQL` | **60/60** | Sum of the three matrices above (30+18+12) |
+
+Additional CI job or unit-test counts are **out of band** for this table and require a **separate** evidence artifact (workflow run URL + SHA) if cited.
 
 **Reconciled artifacts:** `CURRENT_STATE.md`, `DECISION_REGISTER.md`, `V2B_CANONICAL_REGISTRATION_CONVERGENCE_PLAN_2026-11-22.md`, `V2B_PR7_*`, `PROGRESS_LEDGER.md`, vehicle-onboarding knowledge graph.
 
@@ -116,27 +125,54 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 **Production observation readiness:** **NO_GO** (`PROCESS_LOCAL` metrics).  
 **HM canonical cutover readiness:** **NO_GO** until OWN-3/4/5/6 + PR9.
 
-**Mandatory prerequisites before production flag arm:**
+**Engineering capabilities required before certified soak (not satisfied @ PR8):**
 
-1. Multi-replica observation aggregation (Prometheus/OpenTelemetry — bounded labels).
-2. Bounded reason-code observability (no VIN labels).
-3. Observation completeness measurement (`evaluationCompleteness` distribution).
-4. Snapshot consistency certification (PR7 RR + fingerprint gates) **sustained** in staging.
-5. PG-03 / PG-05 / PR7 regression on release candidate SHA.
-6. Provider onboarding + idempotent replay validation (PG-03-M, PR7-12b).
-7. **Rollback procedure:** set canonical flag OFF; legacy path remains; no data migration required.
-8. **Explicit owner authorization** recorded (PR9 attestation artifact).
+- Multi-replica observation aggregation (Prometheus/OpenTelemetry — bounded labels; no VIN labels).
+- Bounded reason-code observability and `evaluationCompleteness` distribution.
+- Snapshot consistency certification (PR7 RR + fingerprint gates) sustained in staging.
 
-**Soak policy (volume-aware — not time-only):**
+**Proposed staging shadow soak contract (OWN-5 — pending explicit owner approval):**
 
-| Metric | Minimum evidence volume | Success threshold | Abort |
-|--------|-------------------------|-------------------|-------|
-| Shadow observations | ≥ **200** completed evaluations **or** ≥ **14 calendar days** with ≥ **20 evals/day**, whichever is later | `NOT_EVALUABLE` + error rate < **2%**; admission/readiness divergence documented | Error rate ≥ **5%** over 24h; sustained `OBSERVATION_SNAPSHOT_RACE` without explainable load tests |
-| Divergence (`divergenceLegacyOnly`) | Same window | ≥ **95%** of divergences mapped to known rule ids (OWN-3 doc) | Unmapped divergence class > **10%** of evals |
-| Billing prediction mismatch | Same window | Informational only — **no billing writes** | N/A (no abort on prediction alone) |
-| Canonical flag soak (post shadow) | ≥ **50** disposable PG activations + **10** staging dry-runs | 0 duplicate vehicle.id; 1 outbox per case | Any double outbox or billing quantity duplicate |
+All conditions below must be satisfied **together** (no OR / no “whichever is later”):
 
-**Proposed staging soak duration:** **14 days minimum** *and* volume gates above — insufficient registration traffic **extends** soak (no calendar-only sign-off).
+| Requirement | Contract |
+|-------------|----------|
+| Calendar window | **Minimum 14 calendar days** of staging observation (continuous window; gaps require restart) |
+| Eligible attempts | **Minimum 200 eligible observation attempts** in that window |
+| Conjunction | **Both** calendar and attempt minimums must pass |
+| Controlled scenarios | Staging test orgs and operator-run scenarios **may** contribute; must be labeled in reporting |
+| Synthetic vs organic | **Must** be reported separately in soak evidence |
+| Deduplication | Repeated **identical** evaluations (same org + vehicle/case fingerprint within dedupe window) **must not** count toward the 200 attempt minimum |
+| Scenario diversity | **Minimum 5** distinct scenario classes (e.g. ICE pass, BEV doc path, hybrid, org-suspended admission block, stale HM mirror) with ≥ **10** attempts each |
+| Denominators | Every success-rate threshold names its denominator explicitly (see table below) |
+| Prediction vs activation | **Historical snapshot predictions** (shadow readiness + billing **predictive** fields) are **not** actual activation outcomes; canonical activation soak is a **separate** certification phase |
+
+**Proposed success thresholds (denominators explicit):**
+
+| Metric | Denominator | Success | Abort |
+|--------|-------------|---------|-------|
+| Observation errors | Eligible attempts (post-dedupe) | (`NOT_EVALUABLE` ∪ hard errors) / eligible < **2%** | ≥ **5%** over any rolling 24h |
+| Mapped divergences | Evaluations with `divergenceLegacyOnly=true` | ≥ **95%** map to documented rule ids (OWN-3) | Unmapped > **10%** of divergence denominator |
+| Billing prediction | Shadow evaluations with predictive billing field | Informational; **no** billing writes | Does not gate soak alone |
+| Canonical staging activations (post-shadow phase) | Distinct `COMPLETED` HM canonical cases on staging | 0 duplicate `vehicle.id`; exactly **1** `VEHICLE_ACTIVATED` outbox per case | Duplicate outbox or billing quantity |
+
+**Canonical staging activation certification (separate phase, post shadow soak):** engineering PR delivers disposable/staging proof; operational **flag-arm attestation** is a separate PR9 ops record — not merged with engineering soak evidence.
+
+### Rollback contract (routing rollback — not data rollback)
+
+Disabling `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` is **routing rollback only**. It does **not** undo durable onboarding, vehicles, links, outbox facts, or billing ledger entries.
+
+| Step | Action |
+|------|--------|
+| Admission | **Stop** new HM registration requests during rollback window (maintenance banner / ops runbook) |
+| Drain | Allow in-flight registration operations to complete or fail closed per existing contracts |
+| Config | Verify flag **OFF** on **all** runtime replicas; no mixed routing |
+| Mixed routing | **Prevent** concurrent canonical + legacy HM register paths across replicas during transition |
+| Preserve | Completed canonical cases, `vehicle.id`, source links, `metadata.connectionIdentity`, committed lifecycle outbox events, authoritative billing quantities |
+| Partial cases | Reconcile in-flight / partial cases per VO-3 idempotency; **do not** auto-delete vehicles or reverse billing |
+| Resume | Validate legacy routing on **all** replicas before resuming normal HM registration traffic |
+
+**Explicitly forbidden on rollback:** automatic vehicle deletion, billing reversal, removal of completed cases, or outbox erasure.
 
 ---
 
@@ -170,20 +206,25 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 
 | Gate | Status @ PR8 |
 |------|----------------|
-| **ENGINEERING_MERGE_READINESS** | **MET** — PR1–PR7 on main; CI matrix green |
-| **STAGING_OBSERVATION_READINESS** | **NOT MET** — metrics export + soak |
+| **ENGINEERING_MERGE_READINESS** | **MET** — PR1–PR7 on main |
+| **STAGING_OBSERVATION_READINESS** | **NOT MET** — multi-replica metrics + certified soak |
 | **PRODUCTION_OBSERVATION_READINESS** | **NOT MET** |
 | **HM_CANONICAL_CUTOVER_READINESS** | **NOT MET** |
 
-**PR9 mandatory blockers (ordered):**
+**Dependency order (mandatory — multi-replica aggregation precedes certified soak):**
 
-1. OWN-3 disposition recorded (waivers or strict A).
-2. OWN-4 disposition recorded.
-3. OWN-6 inventory executed (read-only) OR explicit owner waive with risk acceptance.
-4. Staging shadow soak passes volume + threshold table (§ Step 5).
-5. Multi-replica observability merged + deployed to staging.
-6. Owner-signed flag arm checklist (`VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED`).
-7. Post-arm smoke: PG-03 subset on staging org; rollback drill documented.
+| Order | Prerequisite | Type |
+|-------|--------------|------|
+| 1 | Owner policy decisions recorded (OWN-3, OWN-4, OWN-5, OWN-6) | **Owner / governance** |
+| 2 | Multi-replica metrics aggregation **implemented** and deployed to staging | **Engineering PR** |
+| 3 | Staging deployment + monitoring validation (export paths, dashboards, alert smoke) | **Engineering + ops** |
+| 4 | Read-only legacy fleet inventory executed (OWN-6 spec) OR documented owner waive | **Ops / owner** |
+| 5 | Staging shadow soak + certification against § Step 5 contract | **Ops evidence** |
+| 6 | Canonical staging activation certification (distinct from shadow predictions) | **Engineering + ops** |
+| 7 | Rollback drill (routing rollback contract) on staging | **Ops** |
+| 8 | **Explicit production cutover authorization** + flag-arm attestation artifact | **Owner ops — PR9** |
+
+Engineering merge PRs (e.g. metrics export, staging config) are **separate** from production **flag-arm attestations**. PR9 is the operational attestation track; it does not substitute for engineering delivery at steps 2–3.
 
 **PR10:** Optional inert-helper cleanup — **not** a prerequisite for single billing authority (VO-DEC-2B-003).
 
@@ -193,10 +234,10 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 
 | Decision ID | Status |
 |-------------|--------|
-| OWN-3 | **PENDING_OWNER_APPROVAL** |
-| OWN-4 | **PENDING_OWNER_APPROVAL** |
-| OWN-5 | **PENDING_OWNER_APPROVAL** |
-| OWN-6 | **PENDING_OWNER_APPROVAL** |
+| OWN-3 (`VO-DEC-OWN-3`) | **PENDING_OWNER_APPROVAL** |
+| OWN-4 (`VO-DEC-OWN-4`) | **PENDING_OWNER_APPROVAL** |
+| OWN-5 (`VO-DEC-OWN-5`) | **PENDING_OWNER_APPROVAL** |
+| OWN-6 (`VO-DEC-OWN-6`) | **PENDING_OWNER_APPROVAL** |
 | VO-DEC-2B-004 | **VALIDATED (repository)** after PR7 merge |
 
 **Owner decisions approved:** **NONE** (no inferred approval).  

@@ -192,7 +192,7 @@
 | Field | Value |
 |-------|-------|
 | **STATUS** | PENDING_OWNER_APPROVAL |
-| **RECOMMENDATION** | Volume-aware soak + multi-replica observability before `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` arm (PR9) |
+| **RECOMMENDATION** | Multi-replica metrics **before** certified soak; staging shadow soak = **14 days AND ≥200** eligible attempts (proposed); routing-only rollback contract; flag arm in PR9 attestation only |
 | **EVIDENCE** | VO-EVID-2B-008 § Step 5 |
 | **NON-EFFECTS** | **FLAGS_ARMED: NO**; production observation **NO_GO** |
 
