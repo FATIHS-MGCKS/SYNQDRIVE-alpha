@@ -17,6 +17,11 @@ import { BatteryReferenceCapacitySource } from '@modules/vehicle-intelligence/ba
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
 import { HmOnlyCanonicalReadinessObservationService } from './hm-only-canonical/hm-only-canonical-readiness-observation.service';
 import type { RegisterHmOnlyVehicleDto } from '@modules/high-mobility/dto/high-mobility.dto';
+import {
+  assertHmObservationFingerprintsEqual,
+  captureHmObservationDbFingerprint,
+} from './testing/v2b-hm-observation-db-fingerprint';
+import { hmOnlyCanonicalRegistrationIdempotencyKey } from './hm-only-canonical/hm-only-canonical-registration.types';
 
 const run = process.env.V2B_HM_CANONICAL_READINESS_OBSERVATION_PG === '1';
 
@@ -172,6 +177,17 @@ function assertCountsUnchanged(before: DbCounts, after: DbCounts) {
   expect(after).toEqual(before);
 }
 
+async function assertRowFingerprintUnchanged(
+  orgId: string,
+  hmId: string,
+  run: () => Promise<unknown>,
+) {
+  const before = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
+  await run();
+  const after = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
+  assertHmObservationFingerprintsEqual(before, after);
+}
+
 (run ? describe : describe.skip)('V2B-PR7 HM readiness observation (postgres)', () => {
   jest.setTimeout(120_000);
   let prisma: PrismaClient;
@@ -195,9 +211,11 @@ function assertCountsUnchanged(before: DbCounts, after: DbCounts) {
       access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
     });
     expect(result.legacyAdmission).toBe('LEGACY_ADMISSIBLE');
+    expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_ELIGIBLE');
     expect(result.canonicalReadiness).toBe('CANONICAL_READINESS_PASS');
     expect(result.powertrainClass).toBe('ICE');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgId));
+    await assertRowFingerprintUnchanged(orgId, hmId, async () => undefined);
   });
 
   it('PR7-02 eligible HM BEV candidate with substantiated battery doc', async () => {
@@ -262,6 +280,8 @@ function assertCountsUnchanged(before: DbCounts, after: DbCounts) {
       access: { tenantOrganizationId: orgB, isMasterAdmin: false, actorUserId: null },
     });
     expect(result.legacyBlockerReasonCodes).toContain('HM_TENANT_ACCESS_DENIED');
+    expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
+    expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_NOT_EVALUABLE');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgA));
     assertCountsUnchanged(beforeB, await snapshotCounts(prisma, orgB));
   });
@@ -371,7 +391,116 @@ function assertCountsUnchanged(before: DbCounts, after: DbCounts) {
       access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
     });
     expect(result.expectedBillingClassification).toBe('NON_BILLABLE_IF_ACTIVATED');
+    expect(result.billingPredictionReasonCode).toBe('NO_BASE_PLAN');
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgId));
+  });
+
+  it('PR7-06 invalid fuel type blocks canonical readiness', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId } = await createApprovedHmMirror(prisma, orgId);
+    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+      const result = await observation.observeHmOnlyRegistrationAttempt({
+        dto: iceDto(hmId, orgId, { fuelType: 'NOT_A_FUEL' }),
+        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      });
+      expect(result.canonicalReadiness).toBe('CANONICAL_READINESS_BLOCKED');
+      expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_ELIGIBLE');
+    });
+  });
+
+  it('PR7-07 forbidden battery contract cannot bypass readiness', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId } = await createApprovedHmMirror(prisma, orgId);
+    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+      const result = await observation.observeHmOnlyRegistrationAttempt({
+        dto: {
+          ...iceDto(hmId, orgId, { fuelType: 'ELECTRIC', model: 'i4', year: 2023 }),
+          hvBatteryReferenceServiceEventId: 'forbidden',
+        },
+        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      });
+      expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
+      expect(result.canonicalBlockerReasonCodes).toContain('INVALID_CAPTURE_PAYLOAD');
+    });
+  });
+
+  it('PR7-12 legacy HM registered vehicle requires reconciliation', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
+    const vehicleId = randomUUID();
+    await prisma.vehicle.create({
+      data: {
+        id: vehicleId,
+        organizationId: orgId,
+        vin,
+        make: 'BMW',
+        model: 'Legacy',
+        year: 0,
+        vehicleName: 'Legacy',
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+      },
+    });
+    await prisma.highMobilityVehicle.update({
+      where: { id: hmId },
+      data: {
+        registrationState: 'REGISTERED',
+        synqdriveVehicleId: vehicleId,
+      },
+    });
+    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+      const result = await observation.observeHmOnlyRegistrationAttempt({
+        dto: iceDto(hmId, orgId),
+        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      });
+      expect(result.canonicalAdmission).toBe('CANONICAL_LEGACY_RECONCILIATION_REQUIRED');
+      expect(result.canonicalReadiness).toBe('CANONICAL_READINESS_NOT_EVALUABLE');
+      expect(result.expectedBillingClassification).toBe('UNKNOWN');
+    });
+  });
+
+  it('PR7-12b canonical completed case yields idempotent replay classification', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
+    const vehicleId = randomUUID();
+    const caseId = randomUUID();
+    const idempotencyKey = hmOnlyCanonicalRegistrationIdempotencyKey(orgId, hmId);
+    await prisma.vehicle.create({
+      data: {
+        id: vehicleId,
+        organizationId: orgId,
+        vin,
+        make: 'BMW',
+        model: 'Canonical',
+        year: 2022,
+        vehicleName: 'Canonical',
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+      },
+    });
+    await prisma.vehicleOnboardingCase.create({
+      data: {
+        id: caseId,
+        organizationId: orgId,
+        sourceMode: 'HIGH_MOBILITY',
+        status: 'COMPLETED',
+        primarySourceProvider: 'HIGH_MOBILITY',
+        primarySourceScopeKey: `org:${orgId}`,
+        primarySourceExternalId: hmId,
+        idempotencyKey,
+        vehicleId,
+      },
+    });
+    await prisma.highMobilityVehicle.update({
+      where: { id: hmId },
+      data: { synqdriveVehicleId: vehicleId, registrationState: 'NOT_REGISTERED' },
+    });
+    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+      const result = await observation.observeHmOnlyRegistrationAttempt({
+        dto: iceDto(hmId, orgId),
+        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+      });
+      expect(result.canonicalAdmission).toBe('CANONICAL_IDEMPOTENT_REPLAY');
+      expect(result.expectedBillingClassification).toBe('NO_NEW_EFFECT_IDEMPOTENT_REPLAY');
+    });
   });
 
   it('PR7-17 repeated evaluation: zero durable mutation', async () => {

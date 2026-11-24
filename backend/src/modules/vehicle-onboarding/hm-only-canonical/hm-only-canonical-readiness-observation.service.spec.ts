@@ -37,7 +37,12 @@ describe('HmOnlyCanonicalReadinessObservationService', () => {
           businessType: 'RENTAL',
         }),
       },
-      vehicle: { findFirst: jest.fn().mockResolvedValue(null) },
+      vehicle: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      vehicleOnboardingCase: { findFirst: jest.fn().mockResolvedValue(null) },
+      billingBillableVehicleAssignment: { count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]) },
       organizationProduct: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -73,6 +78,7 @@ describe('HmOnlyCanonicalReadinessObservationService', () => {
     });
 
     expect(result.legacyAdmission).toBe('LEGACY_ADMISSIBLE');
+    expect(result.canonicalAdmission).toBe('CANONICAL_ADMISSION_ELIGIBLE');
     expect(result.canonicalReadiness).toBe('CANONICAL_READINESS_PASS');
     expect(result.divergenceLegacyOnly).toBe(false);
     expect(getHmReadinessObservationMetric('hm_observation_evaluated_total')).toBe(1);

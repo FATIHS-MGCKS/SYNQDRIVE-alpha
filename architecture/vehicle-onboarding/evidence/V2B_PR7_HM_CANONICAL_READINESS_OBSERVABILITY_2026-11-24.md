@@ -109,11 +109,23 @@ Scenarios covered in CI: PR7-01…05, 08…11, 13…19 (missing model/year, batt
 
 PR6 retired the notion of comparing legacy **create billing hook** vs outbox. PR7 shadow compares **legacy admission** vs **canonical readiness** only; `expectedBillingClassification` is a **read model prediction**, not a second billing rail.
 
+## Closeout (observation safety)
+
+| Control | Implementation |
+|---------|------------------|
+| F1 tenant short-circuit | Org scope + HM record ownership before entitlement/battery/org reads; deny → `NOT_EVALUABLE` (never `PASS`) |
+| F2 admission vs readiness | `classifyHmOnlyCanonicalAdmission` separate from `evaluateReadinessRules`; verdicts `CANONICAL_ADMISSION_*` vs `CANONICAL_READINESS_*` |
+| F3 billing prediction | `predictHmOnlyActivationBilling` uses `BillableVehiclesService.buildPolicyContext` + `evaluateBillableVehiclePolicy` with hypothetical CONNECTED vehicle |
+| F4 snapshot consistency | Shadow fires after legacy HM pre-create load; `preRegistrationSnapshot` + post-eval race check |
+| F5 PG fingerprints | `captureHmObservationDbFingerprint` content equality (not count-only) |
+| F6 observability | Process-local bounded counters (`metricsScope: PROCESS_LOCAL`); sanitized error codes in logs |
+| F7 matrix | PR7-06/07/12 + strengthened tenant/divergence scenarios in PG gate |
+
 ## Lifecycle
 
 | Stage | Status |
 |-------|--------|
-| Implementation | **DRAFT PR** |
+| Implementation | **DRAFT PR #2522** (safety closeout) |
 | Production shadow arm | **FORBIDDEN** in this PR |
 | HM canonical cutover | **NO_GO** until OWN-5 |
 | Billing cutover single-rail flag | **NO_GO** (redundant) |

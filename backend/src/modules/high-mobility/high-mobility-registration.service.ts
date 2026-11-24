@@ -17,6 +17,7 @@ import {
   isHmOnlyShadowCompareEnabled,
 } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
 import { HmOnlyCanonicalReadinessObservationService } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observation.service';
+import { freezeHmPreRegistrationSnapshot } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-observation-snapshot';
 import {
   assertHighMobilityRecordTenantAccess,
   assertHighMobilityTenantOperationalOrganization,
@@ -89,19 +90,6 @@ export class HighMobilityRegistrationService {
       return this.convergencePort.registerHmOnlyCanonical({ dto, access });
     }
 
-    if (isHmOnlyShadowCompareEnabled(convergenceConfig) && this.hmReadinessObservation) {
-      void this.hmReadinessObservation
-        .observeHmOnlyRegistrationAttempt({ dto, access })
-        .catch((error) => {
-          this.logger.warn({
-            msg: 'hm_only_shadow_readiness_observation_failed',
-            hmVehicleId: dto.hmVehicleId,
-            organizationId: dto.organizationId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-    }
-
     const { hmVehicleId, organizationId, vehicleName, licensePlate, notes, mileageKm, fuelType, vehicleType } = dto;
 
     if (organizationId !== access.tenantOrganizationId && !access.isMasterAdmin) {
@@ -133,6 +121,27 @@ export class HighMobilityRegistrationService {
       organizationId,
       access.isMasterAdmin,
     );
+
+    if (isHmOnlyShadowCompareEnabled(convergenceConfig) && this.hmReadinessObservation) {
+      void this.hmReadinessObservation
+        .observeHmOnlyRegistrationAttempt({
+          dto,
+          access,
+          preRegistrationSnapshot: freezeHmPreRegistrationSnapshot(hmRecord),
+        })
+        .catch((error) => {
+          const code =
+            error && typeof error === 'object' && 'code' in error
+              ? String((error as { code: unknown }).code)
+              : 'OBSERVATION_INTERNAL_ERROR';
+          this.logger.warn({
+            msg: 'hm_only_shadow_readiness_observation_failed',
+            hmVehicleId: dto.hmVehicleId,
+            organizationId: access.tenantOrganizationId,
+            observationErrorCode: code,
+          });
+        });
+    }
 
     // Prevent duplicate VIN registration within this org
     const existingVehicle = await this.prisma.vehicle.findFirst({

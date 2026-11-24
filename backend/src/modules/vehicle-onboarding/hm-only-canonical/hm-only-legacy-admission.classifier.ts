@@ -43,6 +43,13 @@ export async function classifyHmOnlyLegacyAdmission(
     blockers.push('HM_TENANT_ACCESS_DENIED');
   }
 
+  if (blockers.some((code) => code === 'ORG_SCOPE_MISMATCH' || code === 'HM_TENANT_ACCESS_DENIED')) {
+    return {
+      verdict: 'LEGACY_BLOCKED',
+      blockerReasonCodes: blockers,
+    };
+  }
+
   if (hmRecord.clearanceStatus !== 'APPROVED') {
     blockers.push('HM_CLEARANCE_NOT_APPROVED');
   }
