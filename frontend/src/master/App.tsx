@@ -17,7 +17,6 @@ import { InsurancesAdminView } from './components/InsurancesAdminView';
 import { VoiceAssistantAdminView } from './components/VoiceAssistantAdminView';
 import { ArchitekturView } from './components/ArchitekturView';
 import { ChangesView } from './components/ChangesView';
-import VehicleLogbookView from './components/VehicleLogbookView';
 import BatteryV2ShadowInspectionView from './battery-v2-shadow-inspection/BatteryV2ShadowInspectionView';
 import HvBatteryInspectionView from './battery-v2-hv-inspection/HvBatteryInspectionView';
 import { VsiMasterIntelligenceView } from './intelligence/VsiMasterIntelligenceView';
@@ -670,12 +669,6 @@ function MasterAppInner() {
         {currentView === 'changes' && (
           <PageContainer variant="standard">
             <ChangesView isDarkMode={isDarkMode} />
-          </PageContainer>
-        )}
-
-        {currentView === 'vehicle-logbook' && (
-          <PageContainer variant="standard">
-            <VehicleLogbookView isDarkMode={isDarkMode} />
           </PageContainer>
         )}
 

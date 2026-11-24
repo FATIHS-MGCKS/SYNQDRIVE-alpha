@@ -25,7 +25,6 @@ export type MasterView =
   | 'high-mobility'
   | 'architektur'
   | 'changes'
-  | 'vehicle-logbook'
   | 'battery-v2-shadow-inspection'
   | 'battery-v2-hv-inspection'
   | 'vsi-intelligence'
@@ -38,7 +37,9 @@ export type MasterView =
   /** @deprecated URL redirect only */
   | 'trip-detection-logic'
   /** @deprecated URL redirect only */
-  | 'performance-logic';
+  | 'performance-logic'
+  /** @deprecated Master UI removed — redirects to vehicles overview */
+  | 'vehicle-logbook';
 
 export type MasterNavBadgeType =
   | 'platform-critical'

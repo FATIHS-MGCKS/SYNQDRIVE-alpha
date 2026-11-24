@@ -7,12 +7,12 @@ const CANONICAL_VIEWS: MasterView[] = [
   'service-client-management',
   'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
-  'architektur', 'changes', 'vehicle-logbook', 'battery-v2-shadow-inspection', 'battery-v2-hv-inspection',
+  'architektur', 'changes', 'battery-v2-shadow-inspection', 'battery-v2-hv-inspection',
   'vsi-intelligence', 'apds-intelligence', 'tire-v3-calibration-center',
 ];
 
 const LEGACY_VIEWS: MasterView[] = [
-  'hm-compatibility', 'health-tracking', 'trip-detection-logic', 'performance-logic',
+  'hm-compatibility', 'health-tracking', 'trip-detection-logic', 'performance-logic', 'vehicle-logbook',
 ];
 
 export const ALL_MASTER_VIEWS: MasterView[] = [...CANONICAL_VIEWS, ...LEGACY_VIEWS];
@@ -54,6 +54,10 @@ export function normalizeMasterNavLocation(search: string): MasterNavLocationSta
     view = 'platform-ops';
   }
   if (view === 'fleet-connection') {
+    view = 'vehicles';
+    if (!params.get('cvSection')) params.set('cvSection', 'overview');
+  }
+  if (view === 'vehicle-logbook') {
     view = 'vehicles';
     if (!params.get('cvSection')) params.set('cvSection', 'overview');
   }
