@@ -68,6 +68,7 @@ import { masterMotionPhysicsEn } from './master.motionPhysics.en';
 import { masterVehicleIdentityEn } from './master.vehicleIdentity.en';
 import { masterOneAutoEn } from './master.oneAuto.en';
 import { masterOrganizationsEn } from './master.organizations.en';
+import { masterProductCommercialEn } from './master.productCommercial.en';
 import { masterRegistrationBrakeEn } from './master.registration.brake.en';
 import { masterCvTechnicalSpecsEn } from './master.cv.technicalSpecs.en';
 import { masterCvDimoPrivilegeEn } from './master.cv.dimoPrivilege.en';
@@ -6029,6 +6030,7 @@ export const en = {
 ...masterVehicleIdentityEn,
   ...masterOneAutoEn,
   ...masterOrganizationsEn,
+  ...masterProductCommercialEn,
   ...masterRegistrationBrakeEn,
   ...masterCvTechnicalSpecsEn,
   ...masterCvDimoPrivilegeEn,

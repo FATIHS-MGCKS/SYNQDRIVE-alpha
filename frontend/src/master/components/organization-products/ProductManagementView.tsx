@@ -8,6 +8,8 @@ import { PageContainer } from '../../shell/PageContainer';
 import { MasterPageHeader } from '../../shell/MasterPageHeader';
 import type { AdminCatalogProductRow } from '../../organizations/product-management.types';
 import { ProductRoadmapOverview } from './ProductRoadmapOverview';
+import { ProductCommercialHub } from './ProductCommercialHub';
+import type { MasterBillingSection } from '../billing/master-billing-navigation';
 import type { OrganizationOperationalRowDto } from '../../organizations/types';
 import { fetchProductManagementOrgPage, shouldUpdateOrgListState } from './product-management-org-list';
 
@@ -15,9 +17,14 @@ const ORG_PAGE_SIZE = 25;
 
 interface ProductManagementViewProps {
   onOpenOrgProducts: (orgId: string) => void;
+  onOpenBilling: (input: {
+    section: MasterBillingSection;
+    subTab?: string | null;
+    orgId?: string | null;
+  }) => void;
 }
 
-export function ProductManagementView({ onOpenOrgProducts }: ProductManagementViewProps) {
+export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: ProductManagementViewProps) {
   const [catalog, setCatalog] = useState<AdminCatalogProductRow[]>([]);
   const [stats, setStats] = useState<Array<{ slug: string; totalOrgs?: number; active?: number; trial?: number }>>(
     [],
@@ -110,6 +117,8 @@ export function ProductManagementView({ onOpenOrgProducts }: ProductManagementVi
       />
 
       <div className="space-y-8 mt-6">
+        <ProductCommercialHub selectedOrgId={selectedOrgId} onOpenBilling={onOpenBilling} />
+
         <MasterPageSection title="Produktübersicht">
           {loading && <MasterLoadingState variant="card" count={3} />}
           {error && <MasterErrorState title="Katalog" error={error} onRetry={() => void refreshCatalog()} />}
