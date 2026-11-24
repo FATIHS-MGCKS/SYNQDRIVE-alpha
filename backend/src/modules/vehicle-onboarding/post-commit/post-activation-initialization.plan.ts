@@ -40,7 +40,7 @@ export const POST_ACTIVATION_INITIALIZATION_PLAN: PostActivationInitializationPl
     effect: 'billingQuantity.onVehicleProvisioned',
     classification: 'POST_COMMIT_IDEMPOTENT',
     notes:
-      'VO5B-AB1: VehicleRegistryLifecycleOutboxProcessor consumes VEHICLE_ACTIVATED; event-time effectiveAt; idempotency vehicle-registry:<eventId>:billing-activate:v1. Legacy registerFromDimo/create fire-and-forget hooks remain disjoint (later cutover).',
+      'VO5B-AB1 + V2B-PR6: VehicleRegistryLifecycleOutboxProcessor consumes VEHICLE_ACTIVATED; event-time effectiveAt; idempotency vehicle-registry:<eventId>:billing-activate:v1. Public manual create retired (V2B-PR4); no production fire-and-forget registration hook.',
   },
   {
     effect: 'tire/brake/battery baseline materialization',

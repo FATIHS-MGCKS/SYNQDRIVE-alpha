@@ -3,7 +3,7 @@ import { buildRegistryActivateBillingIdempotencyKey } from '@modules/billing/reg
 import { shouldSuppressLegacyVehicleCreateBillingHook } from './vehicle-registration-convergence.routing';
 
 describe('V2B provider billing parity characterization', () => {
-  it('keeps legacy create billing hook unsuppressed while single-rail is not armable', () => {
+  it('single-rail suppress helper is inert post-PR4 (no production create hook)', () => {
     expect(
       shouldSuppressLegacyVehicleCreateBillingHook({
         hmOnlyCanonicalEnabled: true,

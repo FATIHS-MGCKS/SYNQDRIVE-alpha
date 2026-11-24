@@ -209,11 +209,11 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 | **V2B-PR3** | HM_ONLY PG harness PG-03 + security regressions | Tests | — |
 | **V2B-PR4** | **Manual registration removal** — DIMO/HM-only channel restriction | HTTP/UI lockdown; no flag arm | — |
 | **V2B-PR5** | Provider-only billing/outbox parity + registration admission tests | Tests | — |
-| **V2B-PR6** | Single billing rail suppress legacy hook | Behind `BILLING_SINGLE_RAIL` | off |
+| **V2B-PR6** | Single registration billing authority (reconciled post-PR4) | Evidence + characterization; **no** new armable transition | — |
 | **V2B-PR7** | Shadow compare + ops metrics | Shadow only | off |
 | **V2B-PR8** | Docs + authority + decision register | Docs | — |
 | **V2B-PR9** | Owner flag arm attestation (separate ops PR) | **Production** | owner-only |
-| **V2B-PR10** | Remove legacy hook (post soak) | Delete code | on by default |
+| **V2B-PR10** | Remove inert legacy helpers + harness cleanup (post OWN-5) | Delete dead routing / optional harness tighten | owner-only |
 
 **No merge to production flags** in V2B-PR1–8 without owner instruction.
 
