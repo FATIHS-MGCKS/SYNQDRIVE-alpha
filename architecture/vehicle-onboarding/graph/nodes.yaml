@@ -386,7 +386,7 @@ nodes:
     title: V2B-PR8 owner decision readiness package
     source_type: ARCHITECTURE_DOCUMENT
     epistemic_status: CONFIRMED
-    summary: OWN-3…6 decision matrices; PR9 cutover gates; legacy fleet inventory spec; no flag arm.
+    summary: OWN-3…6 PENDING_OWNER_APPROVAL; soak 14d AND 200 attempts; PR9 ordered deps; routing rollback; PG 60/60 evidence table.
     source_paths:
       - architecture/vehicle-onboarding/evidence/V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md
 
