@@ -185,11 +185,12 @@ function assertCountsUnchanged(before: DbCounts, after: DbCounts) {
 }
 
 async function assertRowFingerprintUnchanged(
+  db: PrismaClient,
   orgId: string,
   hmId: string,
   run: () => Promise<unknown>,
 ) {
-  const before = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
+  const before = await captureHmObservationDbFingerprint(db, orgId, hmId);
   await run();
   const after = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
   assertHmObservationFingerprintsEqual(before, after);
@@ -213,7 +214,7 @@ async function assertRowFingerprintUnchanged(
     const orgId = await createOrg(prisma);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
     const before = await snapshotCounts(prisma, orgId);
-    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+    await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
       const result = await observation.observeHmOnlyRegistrationAttempt({
         dto: iceDto(hmId, orgId),
         access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
@@ -411,7 +412,7 @@ async function assertRowFingerprintUnchanged(
   it('PR7-06 BEV missing mandatory HV technical baseline (VO-RDY-HV-BATTERY-001)', async () => {
     const orgId = await createOrg(prisma);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
-    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+    await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
       const result = await observation.observeHmOnlyRegistrationAttempt({
         dto: iceDto(hmId, orgId, { fuelType: 'ELECTRIC', model: 'i4', year: 2023 }),
         access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
@@ -425,7 +426,7 @@ async function assertRowFingerprintUnchanged(
   it('PR7-07 deferred brake/tire policy cannot waive mandatory BEV HV baseline', async () => {
     const orgId = await createOrg(prisma);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
-    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+    await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
       const result = await observation.observeHmOnlyRegistrationAttempt({
         dto: {
           ...iceDto(hmId, orgId, { fuelType: 'ELECTRIC', model: 'i4', year: 2023 }),
@@ -463,7 +464,7 @@ async function assertRowFingerprintUnchanged(
         synqdriveVehicleId: vehicleId,
       },
     });
-    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+    await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
       const result = await observation.observeHmOnlyRegistrationAttempt({
         dto: iceDto(hmId, orgId),
         access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
@@ -509,7 +510,7 @@ async function assertRowFingerprintUnchanged(
       where: { id: hmId },
       data: { synqdriveVehicleId: vehicleId, registrationState: 'NOT_REGISTERED' },
     });
-    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+    await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
       const result = await observation.observeHmOnlyRegistrationAttempt({
         dto: iceDto(hmId, orgId),
         access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
@@ -541,6 +542,38 @@ async function assertRowFingerprintUnchanged(
     assertCountsUnchanged(before, await snapshotCounts(prisma, orgId));
   });
 
+  it('PR7-22 concurrent vehicle insert during observation is NOT_EVALUABLE', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
+    const hmRow = await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } });
+    const preRegistrationSnapshot = await buildHmObservationEvaluationSnapshot(prisma, hmRow, orgId);
+    const concurrentMutation = (async () => {
+      await new Promise((r) => setTimeout(r, 40));
+      await prisma.vehicle.create({
+        data: {
+          organizationId: orgId,
+          vin,
+          make: 'BMW',
+          model: 'Racer',
+          year: 2024,
+          vehicleName: 'Racer',
+          registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+        },
+      });
+    })();
+    const [result] = await Promise.all([
+      observation.observeHmOnlyRegistrationAttempt({
+        dto: iceDto(hmId, orgId),
+        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+        preRegistrationSnapshot,
+      }),
+      concurrentMutation,
+    ]);
+    expect(result.evaluationCompleteness).toBe('NOT_EVALUABLE');
+    expect(result.canonicalBlockerReasonCodes).toContain('OBSERVATION_SNAPSHOT_RACE');
+    expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
+  });
+
   it('PR7-20 shadow-hook pre-registration snapshot sequence', async () => {
     const orgId = await createOrg(prisma);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
@@ -550,7 +583,7 @@ async function assertRowFingerprintUnchanged(
       hmRecord,
       orgId,
     );
-    await assertRowFingerprintUnchanged(orgId, hmId, async () => {
+    await assertRowFingerprintUnchanged(prisma, orgId, hmId, async () => {
       const result = await observation.observeHmOnlyRegistrationAttempt({
         dto: iceDto(hmId, orgId),
         access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },

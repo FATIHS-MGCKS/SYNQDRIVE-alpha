@@ -77,10 +77,22 @@ function configService(shadowCompareEnabled: boolean): ConfigService {
     await prisma.$disconnect();
   });
 
-  it('PR7-SHADOW-01 shadow ON — legacy registration completes', async () => {
+  async function waitForObservationCall(spy: jest.SpyInstance, ms = 5_000) {
+    const deadline = Date.now() + ms;
+    while (spy.mock.calls.length === 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    expect(spy.mock.calls.length).toBeGreaterThan(0);
+    return spy.mock.results[0]?.value as Promise<
+      Awaited<ReturnType<HmOnlyCanonicalReadinessObservationService['observeHmOnlyRegistrationAttempt']>>
+    >;
+  }
+
+  it('PR7-SHADOW-01 shadow ON — legacy registration + observation result', async () => {
     const orgId = await createOrg(prisma);
     const { hmId, vin } = await createApprovedHmMirror(prisma, orgId);
     const observation = new HmOnlyCanonicalReadinessObservationService(prisma as never);
+    const observeSpy = jest.spyOn(observation, 'observeHmOnlyRegistrationAttempt');
     const registration = new HighMobilityRegistrationService(
       prisma as never,
       configService(true),
@@ -103,10 +115,13 @@ function configService(shadowCompareEnabled: boolean): ConfigService {
 
     expect(result.synqdriveVehicleId).toBeTruthy();
     expect(await prisma.vehicle.count({ where: { organizationId: orgId } })).toBe(vehiclesBefore + 1);
+    const observationResult = await waitForObservationCall(observeSpy);
+    expect(observationResult.evaluationCompleteness).not.toBe('NOT_EVALUABLE');
+    expect(observationResult.canonicalReadiness).toBe('CANONICAL_READINESS_PASS');
     const linked = await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } });
     expect(linked.registrationState).toBe('REGISTERED');
     expect(linked.vin).toBe(vin);
-    await new Promise((r) => setTimeout(r, 300));
+    observeSpy.mockRestore();
   });
 
   it('PR7-SHADOW-02 shadow OFF — registration without observation wiring', async () => {
@@ -169,5 +184,39 @@ function configService(shadowCompareEnabled: boolean): ConfigService {
       ),
     ).rejects.toThrow();
     expect(await prisma.vehicle.count({ where: { organizationId: orgId } })).toBe(before);
+  });
+
+  it('PR7-SHADOW-04 concurrent HM mutation yields observation race (not PASS)', async () => {
+    const orgId = await createOrg(prisma);
+    const { hmId } = await createApprovedHmMirror(prisma, orgId);
+    const observation = new HmOnlyCanonicalReadinessObservationService(prisma as never);
+    const hmRow = await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } });
+    const [result] = await Promise.all([
+      observation.observeHmOnlyRegistrationAttempt({
+        dto: {
+          hmVehicleId: hmId,
+          organizationId: orgId,
+          model: 'X5',
+          year: 2022,
+          fuelType: 'GASOLINE',
+          vehicleType: 'SEDAN',
+        },
+        access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+        shadowFrozenHmRecord: hmRow,
+      }),
+      (async () => {
+        await new Promise((r) => setTimeout(r, 30));
+        await prisma.highMobilityVehicle.update({
+          where: { id: hmId },
+          data: { registrationState: 'REGISTERED' },
+        });
+      })(),
+    ]);
+    expect(result.evaluationCompleteness).toBe('NOT_EVALUABLE');
+    expect(result.canonicalReadiness).not.toBe('CANONICAL_READINESS_PASS');
+    expect(
+      result.canonicalBlockerReasonCodes.includes('OBSERVATION_SNAPSHOT_RACE') ||
+        result.legacyBlockerReasonCodes.includes('OBSERVATION_SNAPSHOT_RACE'),
+    ).toBe(true);
   });
 });

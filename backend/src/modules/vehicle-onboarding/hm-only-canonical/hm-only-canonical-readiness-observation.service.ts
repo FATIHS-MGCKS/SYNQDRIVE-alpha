@@ -51,6 +51,8 @@ export class HmOnlyCanonicalReadinessObservationService {
       actorUserId: string | null;
     };
     preRegistrationSnapshot?: HmPreRegistrationObservationSnapshot;
+    /** Shadow hook: in-memory HM row at fire time; snapshot built inside concurrency slot. */
+    shadowFrozenHmRecord?: HighMobilityVehicle;
     /** Integration tests may skip READ ONLY transaction (mock prisma). */
     skipReadOnlyTransaction?: boolean;
   }): Promise<HmOnlyReadinessObservationResult> {
@@ -157,6 +159,7 @@ export class HmOnlyCanonicalReadinessObservationService {
         actorUserId: string | null;
       };
       preRegistrationSnapshot?: HmPreRegistrationObservationSnapshot;
+      shadowFrozenHmRecord?: HighMobilityVehicle;
     },
     started: number,
   ): Promise<HmOnlyReadinessObservationResult> {
@@ -180,6 +183,7 @@ export class HmOnlyCanonicalReadinessObservationService {
         actorUserId: string | null;
       };
       preRegistrationSnapshot?: HmPreRegistrationObservationSnapshot;
+      shadowFrozenHmRecord?: HighMobilityVehicle;
     },
     started: number,
   ): Promise<HmOnlyReadinessObservationResult> {
@@ -190,6 +194,7 @@ export class HmOnlyCanonicalReadinessObservationService {
 
     let hmRecord: HighMobilityVehicle | null =
       input.preRegistrationSnapshot?.hmRecord ??
+      input.shadowFrozenHmRecord ??
       (await db.highMobilityVehicle.findUnique({
         where: { id: input.dto.hmVehicleId },
       }));

@@ -1,8 +1,13 @@
 import { VehicleRegistryLifecycle } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   assertHighMobilityRecordTenantAccess,
+  assertHighMobilityTenantOperationalOrganization,
 } from '@modules/high-mobility/high-mobility-tenant-access.policy';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import {
@@ -10,17 +15,13 @@ import {
   type HmOnlyCanonicalOrchestrationResult,
   hmOnlyCanonicalRegistrationIdempotencyKey,
 } from './hm-only-canonical-registration.types';
-import {
-  evaluateHmOnlyCanonicalResumeAdmissionVerdict,
-  evaluateHmOnlyProviderAdmissionBlockers,
-  lookupExistingVehicleForHmAdmission,
-  throwIfHmProviderAdmissionBlocked,
-} from './hm-only-canonical-provider-admission.authority';
+import { evaluateHmOnlyCanonicalResumeAdmissionVerdict } from './hm-only-canonical-provider-admission.authority';
 
 export type HmOnlyCanonicalResumeOutcome =
   | { kind: 'NOT_RESUMABLE' }
   | { kind: 'IDEMPOTENT_SUCCESS'; result: HmOnlyCanonicalOrchestrationResult };
 
+/** Runtime canonical activation gate — error contract frozen against `origin/main`. */
 export async function assertHmOnlyCanonicalProviderRecord(
   prisma: PrismaService,
   input: HmOnlyCanonicalOrchestrationInput,
@@ -37,19 +38,78 @@ export async function assertHmOnlyCanonicalProviderRecord(
     organizationId,
     input.access.isMasterAdmin,
   );
+  if (hmRecord.clearanceStatus !== 'APPROVED') {
+    throw new BadRequestException(
+      `HM vehicle clearance is not APPROVED (current: ${hmRecord.clearanceStatus})`,
+    );
+  }
+  if (hmRecord.sourceMode !== 'HM_ONLY') {
+    throw new BadRequestException(
+      `registerHmOnlyVehicle is only for HM_ONLY source mode vehicles (got: ${hmRecord.sourceMode})`,
+    );
+  }
 
-  const existingVehicle = await lookupExistingVehicleForHmAdmission(prisma, hmRecord, organizationId);
-  const blockers = await evaluateHmOnlyProviderAdmissionBlockers(prisma, {
-    dto: input.dto,
-    access: input.access,
-    hmRecord,
-  });
-  throwIfHmProviderAdmissionBlocked(blockers, {
-    hmVehicleId,
+  await assertHighMobilityTenantOperationalOrganization(
+    prisma,
     organizationId,
-    hmRecord,
-    existingVehicle,
-  });
+    input.access.isMasterAdmin,
+  );
+
+  const existingVehicle =
+    (hmRecord.synqdriveVehicleId
+      ? await prisma.vehicle.findFirst({
+          where: { id: hmRecord.synqdriveVehicleId, organizationId },
+          select: {
+            id: true,
+            organizationId: true,
+            registryLifecycle: true,
+          },
+        })
+      : null) ??
+    (await prisma.vehicle.findFirst({
+      where: { vin: hmRecord.vin, organizationId },
+      select: {
+        id: true,
+        organizationId: true,
+        registryLifecycle: true,
+      },
+    }));
+  if (
+    existingVehicle &&
+    (existingVehicle.registryLifecycle === VehicleRegistryLifecycle.OFFBOARDED ||
+      existingVehicle.registryLifecycle === VehicleRegistryLifecycle.ARCHIVED)
+  ) {
+    throw new VehicleOnboardingError(
+      'SOURCE_ALREADY_REGISTERED',
+      'A vehicle with this VIN belongs to an offboarded or archived lifecycle; explicit re-onboarding is required',
+      { vehicleId: existingVehicle.id, registryLifecycle: existingVehicle.registryLifecycle },
+    );
+  }
+  if (existingVehicle && hmRecord.synqdriveVehicleId !== existingVehicle.id) {
+    throw new ConflictException(
+      `A vehicle with VIN ${hmRecord.vin} already exists in organization ${organizationId}`,
+    );
+  }
+
+  if (
+    hmRecord.registrationState === 'REGISTERED' &&
+    hmRecord.synqdriveVehicleId &&
+    !existingVehicle
+  ) {
+    throw new ConflictException(
+      `HM vehicle ${hmVehicleId} is already registered as SynqDrive vehicle ${hmRecord.synqdriveVehicleId}`,
+    );
+  }
+
+  if (
+    hmRecord.registrationState === 'REGISTERED' &&
+    !hmRecord.synqdriveVehicleId &&
+    existingVehicle
+  ) {
+    throw new ConflictException(
+      `HM vehicle ${hmVehicleId} is already registered as SynqDrive vehicle ${existingVehicle.id}`,
+    );
+  }
 
   return hmRecord;
 }

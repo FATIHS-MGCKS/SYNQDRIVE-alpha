@@ -17,7 +17,6 @@ import {
   isHmOnlyShadowCompareEnabled,
 } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
 import { HmOnlyCanonicalReadinessObservationService } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observation.service';
-import { buildHmObservationEvaluationSnapshot } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-observation-snapshot';
 import { sanitizeObservationErrorCode } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observability';
 import {
   assertHighMobilityRecordTenantAccess,
@@ -125,7 +124,7 @@ export class HighMobilityRegistrationService {
     );
 
     if (isHmOnlyShadowCompareEnabled(convergenceConfig)) {
-      this.fireHmOnlyShadowReadinessObservation(dto, access, hmRecord, organizationId);
+      this.fireHmOnlyShadowReadinessObservation(dto, access, hmRecord);
     }
 
     // Prevent duplicate VIN registration within this org
@@ -275,8 +274,6 @@ export class HighMobilityRegistrationService {
     }));
   }
 
-  private static readonly HM_SHADOW_SNAPSHOT_TIMEOUT_MS = 5_000;
-
   private fireHmOnlyShadowReadinessObservation(
     dto: RegisterHmOnlyVehicleDto,
     access: {
@@ -285,23 +282,18 @@ export class HighMobilityRegistrationService {
       actorUserId: string | null;
     },
     hmRecord: HighMobilityVehicle,
-    organizationId: string,
   ): void {
     const observation = this.hmReadinessObservation;
     if (!observation) {
       return;
     }
-    void (async () => {
-      try {
-        const preRegistrationSnapshot = await this.withShadowSnapshotTimeout(
-          buildHmObservationEvaluationSnapshot(this.prisma, hmRecord, organizationId),
-        );
-        await observation.observeHmOnlyRegistrationAttempt({
-          dto,
-          access,
-          preRegistrationSnapshot,
-        });
-      } catch (error) {
+    void observation
+      .observeHmOnlyRegistrationAttempt({
+        dto,
+        access,
+        shadowFrozenHmRecord: { ...hmRecord },
+      })
+      .catch((error) => {
         const code = sanitizeObservationErrorCode(error);
         this.logger.warn({
           msg: 'hm_only_shadow_readiness_observation_failed',
@@ -309,20 +301,7 @@ export class HighMobilityRegistrationService {
           organizationId: access.tenantOrganizationId,
           observationErrorCode: code,
         });
-      }
-    })();
-  }
-
-  private async withShadowSnapshotTimeout<T>(promise: Promise<T>): Promise<T> {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        setTimeout(
-          () => reject(new Error('OBSERVATION_SNAPSHOT_TIMEOUT')),
-          HighMobilityRegistrationService.HM_SHADOW_SNAPSHOT_TIMEOUT_MS,
-        );
-      }),
-    ]);
+      });
   }
 
   private normalizeFuelType(fuel?: string): string {

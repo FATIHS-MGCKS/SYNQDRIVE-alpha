@@ -11,6 +11,15 @@ describe('hm-only-canonical-observation-concurrency', () => {
     jest.useRealTimers();
   });
 
+  it('releases slot when evaluation throws synchronously', async () => {
+    await expect(
+      runHmObservationEvaluation(() => {
+        throw new Error('sync-fail');
+      }),
+    ).rejects.toThrow('sync-fail');
+    expect(getHmObservationInFlightCount()).toBe(0);
+  });
+
   it('releases slot exactly once after evaluation settles', async () => {
     const result = await runHmObservationEvaluation(async () => 'ok');
     expect(result).toEqual({ status: 'OK', value: 'ok' });

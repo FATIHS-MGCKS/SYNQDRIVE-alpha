@@ -1,5 +1,4 @@
 import { HighMobilityRegistrationService } from './high-mobility-registration.service';
-import * as snapshotModule from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-observation-snapshot';
 
 describe('HighMobilityRegistrationService shadow readiness observation', () => {
   const baseHm = {
@@ -58,11 +57,8 @@ describe('HighMobilityRegistrationService shadow readiness observation', () => {
     expect(observe).not.toHaveBeenCalled();
   });
 
-  it('shadow ON — legacy registration succeeds and observation is fire-and-forget', async () => {
+  it('shadow ON — passes frozen HM row; snapshot built inside observation slot', async () => {
     const observe = jest.fn().mockResolvedValue({});
-    jest
-      .spyOn(snapshotModule, 'buildHmObservationEvaluationSnapshot')
-      .mockResolvedValue(snapshotModule.freezeHmPreRegistrationSnapshot(baseHm as never));
     const configService = {
       get: jest.fn().mockReturnValue({
         hmOnlyCanonicalEnabled: false,
@@ -84,15 +80,16 @@ describe('HighMobilityRegistrationService shadow readiness observation', () => {
 
     expect(result.synqdriveVehicleId).toBe('veh-legacy');
     await new Promise((r) => setTimeout(r, 20));
-    expect(observe).toHaveBeenCalledTimes(1);
-    jest.restoreAllMocks();
+    expect(observe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shadowFrozenHmRecord: expect.objectContaining({ id: 'hm-1', vin: 'VINLEG001' }),
+      }),
+    );
+    expect(observe.mock.calls[0][0].preRegistrationSnapshot).toBeUndefined();
   });
 
-  it('snapshot failure — legacy registration still succeeds', async () => {
-    const observe = jest.fn();
-    jest
-      .spyOn(snapshotModule, 'buildHmObservationEvaluationSnapshot')
-      .mockRejectedValue(new Error('snapshot-db-down'));
+  it('observation rejection — legacy registration still succeeds', async () => {
+    const observe = jest.fn().mockRejectedValue(new Error('observe-failed'));
     const configService = {
       get: jest.fn().mockReturnValue({
         hmOnlyCanonicalEnabled: false,
@@ -111,14 +108,10 @@ describe('HighMobilityRegistrationService shadow readiness observation', () => {
       { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'X5', year: 2022 },
       { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
     );
-
     expect(result.synqdriveVehicleId).toBe('veh-legacy');
-    await new Promise((r) => setTimeout(r, 20));
-    expect(observe).not.toHaveBeenCalled();
-    jest.restoreAllMocks();
   });
 
-  it('stable duplicate VIN — legacy blocked before registration tx', async () => {
+  it('stable duplicate VIN — legacy blocked before vehicle create', async () => {
     const configService = {
       get: jest.fn().mockReturnValue({
         hmOnlyCanonicalEnabled: false,
@@ -127,13 +120,17 @@ describe('HighMobilityRegistrationService shadow readiness observation', () => {
       }),
     };
     const prisma = legacyPrisma({
-      vehicleFindFirst: { id: 'existing', vin: 'VINLEG001' },
+      vehicleFindFirst: {
+        id: 'existing-veh',
+        vin: 'VINLEG001',
+        organizationId: 'org-a',
+      },
     });
     const service = new HighMobilityRegistrationService(
       prisma as never,
       configService as never,
       { registerHmOnlyCanonical: jest.fn() },
-      { observeHmOnlyRegistrationAttempt: jest.fn() } as never,
+      { observeHmOnlyRegistrationAttempt: jest.fn().mockResolvedValue({}) } as never,
     );
 
     await expect(
@@ -141,7 +138,7 @@ describe('HighMobilityRegistrationService shadow readiness observation', () => {
         { hmVehicleId: 'hm-1', organizationId: 'org-a', model: 'X5', year: 2022 },
         { tenantOrganizationId: 'org-a', isMasterAdmin: false, actorUserId: null },
       ),
-    ).rejects.toThrow('already exists');
+    ).rejects.toThrow(/already exists/);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

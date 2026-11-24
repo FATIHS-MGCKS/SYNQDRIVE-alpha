@@ -37,7 +37,8 @@ export async function runHmObservationEvaluation<T>(
   let value!: T;
   let error: unknown;
 
-  const work = fn()
+  const work = Promise.resolve()
+    .then(() => fn())
     .then((v) => {
       outcome = 'ok';
       value = v;
