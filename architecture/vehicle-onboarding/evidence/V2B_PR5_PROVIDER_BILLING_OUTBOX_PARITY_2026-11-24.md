@@ -32,7 +32,7 @@
 | PG-05-I | Manual registration retirement contract |
 | PG-05-J | DIMO idempotent retry → single outbox |
 | PG-05-K | DIMO canonical end-to-end: durable billing before outbox publish → processor retry invokes billing again → one ledger row, delta +1, PUBLISHED |
-| PG-05-L | HM canonical: pre-billing validation failure (transient lifecycle) → retry → one `VEHICLE_CONNECTED`, delta +1 |
+| PG-05-L | HM canonical: transient pre-billing handler failure (test-spied) → retry → one `VEHICLE_CONNECTED`, delta +1 |
 
 **Quantity authority:** assertions use `billing_quantity_events.quantityBefore` / `quantityAfter` / `delta` (not subscription item projection sync).
 

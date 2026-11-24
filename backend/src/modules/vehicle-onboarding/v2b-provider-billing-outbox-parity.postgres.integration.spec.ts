@@ -349,7 +349,7 @@ function hmDto(hmId: string, orgId: string): RegisterHmOnlyVehicleDto {
     expect(published.status).toBe(VehicleRegistryLifecycleOutboxStatus.PUBLISHED);
   });
 
-  it('PG-05-L HM canonical: pre-billing validation failure retries to single quantity event', async () => {
+  it('PG-05-L HM canonical: pre-billing transient failure retries to single quantity event', async () => {
     const orgId = await createRentalOrg(prisma);
     await ensureBasePlan(prisma, orgId, 0);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
@@ -364,20 +364,16 @@ function hmDto(hmId: string, orgId: string): RegisterHmOnlyVehicleDto {
       where: { idempotencyKey: activationOutboxIdempotencyKey(caseRow.id) },
     });
     const processor = registryBillingProcessor(prisma);
-    await prisma.vehicle.update({
-      where: { id: result.synqdriveVehicleId },
-      data: { registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED },
-    });
+    const provisionSpy = jest
+      .spyOn(BillingQuantityVehicleIntegration.prototype, 'onVehicleProvisioned')
+      .mockRejectedValueOnce(new Error('pg05l_transient_before_billing_commit'));
     expect(await processor.processRow(outbox.id)).toBe('retry');
+    provisionSpy.mockRestore();
     expect(
       await prisma.billingQuantityEvent.count({
         where: { organizationId: orgId, vehicleId: result.synqdriveVehicleId },
       }),
     ).toBe(0);
-    await prisma.vehicle.update({
-      where: { id: result.synqdriveVehicleId },
-      data: { registryLifecycle: VehicleRegistryLifecycle.ACTIVE },
-    });
     await prisma.vehicleRegistryLifecycleOutbox.update({
       where: { id: outbox.id },
       data: { nextRetryAt: null },
