@@ -9,7 +9,13 @@
 | VO-DEC-2-002 | VO-2.1 persistence integrity and migration proof | PROPOSED | VO-EVID-2-002 |
 | VO-DEC-2B-001 | V2B canonical registration convergence (HM/manual → activation rail) | PROPOSED | VO-EVID-2B-001 |
 | VO-DEC-2B-002 | V2B-PR4 manual registration removal (DIMO/HM-only channels) | VALIDATED (repository) | VO-EVID-2B-004 |
-| VO-DEC-2B-004 | V2B-PR7 HM readiness observation (no billing shadow) | PROPOSED (repository) | VO-EVID-2B-007 |
+| VO-DEC-2B-003 | V2B-PR6 single registration billing authority | VALIDATED (repository) | VO-EVID-2B-006 |
+| VO-DEC-2B-004 | V2B-PR7 HM readiness observation (no billing shadow) | VALIDATED (repository) | VO-EVID-2B-007 |
+| VO-DEC-OWN-3 | HM_ONLY readiness waiver policy (cutover) | OWNER_APPROVED | VO-EVID-2B-009 |
+| VO-DEC-OWN-4 | Registration billing retroactive policy | OWNER_APPROVED | VO-EVID-2B-009 |
+| VO-DEC-OWN-5 | HM canonical shadow/staging soak cutover (2026-11-24 attestation) | SUPERSEDED | VO-EVID-2B-009 |
+| VO-DEC-OWN-5B | Direct controlled production cutover (no shadow soak) | OWNER_APPROVED | VO-EVID-2B-010 |
+| VO-DEC-OWN-6 | Legacy fleet read-only inventory / repair | OWNER_APPROVED | VO-EVID-2B-009 |
 
 ---
 
@@ -147,7 +153,7 @@
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PROPOSED (repository) |
+| **STATUS** | VALIDATED (repository) |
 | **BEFORE** | Convergence plan PR7 described generic “shadow compare + ops metrics” without billing-shadow exclusion |
 | **WHY** | VO-DEC-2B-003 established single registration billing authority; PR7 must not introduce redundant dual-billing shadow |
 | **CHANGE** | `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` (default OFF) triggers **read-only** legacy vs canonical readiness observation; billing field is predictive only |
@@ -157,3 +163,70 @@
 | **EVIDENCE** | VO-EVID-2B-007 (`V2B_PR7_HM_CANONICAL_READINESS_OBSERVABILITY_2026-11-24.md`) |
 | **VALIDATION** | `v2b-hm-canonical-readiness-observation.postgres.integration.spec.ts`; unit specs |
 | **OPEN GAPS** | OWN-3…6 owner attestation; HM canonical flag arm (V2B-PR9) |
+
+---
+
+## VO-DEC-OWN-3
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | OWNER_APPROVED |
+| **OWNER_DECISION_DATE** | 2026-11-24 |
+| **APPROVED_OPTION** | OWN-3-A |
+| **CHANGE** | Mandatory readiness preserved; no undocumented waivers; tire/brake deferral only under existing authoritative readiness profiles |
+| **EVIDENCE** | VO-EVID-2B-009 (`V2B_PR8_OWNER_ATTESTATION_2026-11-24.md`) |
+| **NON-EFFECTS** | No runtime/profile change in PR #2523; operational soak/cutover gates unchanged |
+
+---
+
+## VO-DEC-OWN-4
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | OWNER_APPROVED |
+| **OWNER_DECISION_DATE** | 2026-11-24 |
+| **APPROVED_OPTION** | OWN-4-A |
+| **CHANGE** | `NO_AUTOMATIC_RETROACTIVE_BILLING`; no registration quantity backfill; contractual obligations preserved; forward-only canonical activation billing |
+| **EVIDENCE** | VO-EVID-2B-009 |
+| **NON-EFFECTS** | No billing backfill; no Stripe mutations |
+
+---
+
+## VO-DEC-OWN-5
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | SUPERSEDED |
+| **SUPERSEDED_BY** | VO-DEC-OWN-5B @ 2026-11-24 |
+| **OWNER_DECISION_DATE** | 2026-11-24 |
+| **HISTORICAL** | Shadow soak (14d AND 200 attempts), staging observation, multi-replica shadow metrics — **no longer required** for cutover |
+| **EVIDENCE** | VO-EVID-2B-009 (preserved verbatim attestation) |
+
+---
+
+## VO-DEC-OWN-5B
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | OWNER_APPROVED |
+| **OWNER_DECISION_DATE** | 2026-11-24 |
+| **APPROVED_POLICY** | `DIRECT_CONTROLLED_PRODUCTION_CUTOVER_WITHOUT_SHADOW_SOAK` |
+| **CHANGE** | Ten direct production release gates; no calendar soak; shadow flag not required; HM canonical flag owner-gated ON after PR9B authorization |
+| **ENGINEERING_EVIDENCE** | PG03 18/18, PG05 12/12, PR7 30/30, total PG 60/60, PR7 workflows 24/24 — repository certification, not production attestation |
+| **EVIDENCE** | VO-EVID-2B-010 |
+| **OPEN GAPS** | PR9A–C execution; production activation authorization **NOT GRANTED** in PR #2523 |
+| **NON-EFFECTS** | **FLAGS_ARMED: NO**; **DEPLOYED: NO** |
+
+---
+
+## VO-DEC-OWN-6
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | OWNER_APPROVED |
+| **OWNER_DECISION_DATE** | 2026-11-24 |
+| **APPROVED_OPTION** | OWN-6-A |
+| **CHANGE** | Read-only legacy fleet inventory approved as policy; no automated repairs/migrations |
+| **EVIDENCE** | VO-EVID-2B-009 |
+| **OPEN GAPS** | Inventory **execution** on production DB not authorized by this attestation |
+| **NON-EFFECTS** | No production access; no migration |

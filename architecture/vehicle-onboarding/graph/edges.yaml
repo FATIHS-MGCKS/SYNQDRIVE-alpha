@@ -31,3 +31,30 @@ edges:
   - from: VO-EVID-2B-007
     relation: supports
     to: VO-DEC-2B-004
+  - from: VO-EVID-2B-008
+    relation: supports
+    to: VO-DEC-OWN-3
+  - from: VO-EVID-2B-008
+    relation: supports
+    to: VO-DEC-OWN-4
+  - from: VO-EVID-2B-008
+    relation: supports
+    to: VO-DEC-OWN-5
+  - from: VO-EVID-2B-008
+    relation: supports
+    to: VO-DEC-OWN-6
+  - from: VO-EVID-2B-009
+    relation: supports
+    to: VO-DEC-OWN-3
+  - from: VO-EVID-2B-009
+    relation: supports
+    to: VO-DEC-OWN-4
+  - from: VO-EVID-2B-009
+    relation: supports
+    to: VO-DEC-OWN-5
+  - from: VO-EVID-2B-010
+    relation: supports
+    to: VO-DEC-OWN-5B
+  - from: VO-EVID-2B-009
+    relation: supports
+    to: VO-DEC-OWN-6

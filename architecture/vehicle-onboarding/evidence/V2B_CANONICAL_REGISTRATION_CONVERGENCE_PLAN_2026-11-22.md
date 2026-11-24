@@ -231,7 +231,9 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 | **V2B-PR6** | Single registration billing authority (reconciled post-PR4) | Evidence + characterization; **no** new armable transition | — |
 | **V2B-PR7** | HM readiness observation (legacy vs canonical; bounded metrics) — **no billing shadow** | `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` | off |
 | **V2B-PR8** | Docs + authority + decision register | Docs | — |
-| **V2B-PR9** | Owner flag arm attestation (separate ops PR) | **Production** | owner-only |
+| **V2B-PR9A** | Production readiness + inventory | Ops/docs | owner-gated |
+| **V2B-PR9B** | Owner release authorization | Ops attestation | owner-only |
+| **V2B-PR9C** | Direct production cutover + smoke | **Production** ops | owner-only |
 | **V2B-PR10** | Remove inert legacy helpers + harness cleanup (post OWN-5) | Delete dead routing / optional harness tighten | owner-only |
 
 **No merge to production flags** in V2B-PR1–8 without owner instruction.
@@ -242,10 +244,11 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 |----|----------|
 | OWN-1 | **SUPERSEDED_BY_OWNER_DECISION** — manual create removed; option M-A not implemented. |
 | OWN-2 | **NOT_APPLICABLE_AFTER_REMOVAL** — new manual vehicles cannot be created. |
-| OWN-3 | Approve HM_ONLY readiness profile waivers (baseline strictness). |
-| OWN-4 | Approve **no retroactive billing** for legacy fleet (explicit). |
-| OWN-5 | Approve flag names, soak duration, and production arm order (HM → billing; manual channel removed). |
-| OWN-6 | Approve optional **registry repair** migration (off by default) for HM-only legacy rows. |
+| OWN-3 | **OWNER_APPROVED** (OWN-3-A) — [attestation](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md) @ 2026-11-24. |
+| OWN-4 | **OWNER_APPROVED** (OWN-4-A) — no retroactive registration billing. |
+| OWN-5 (shadow) | **SUPERSEDED** — historical attestation only. |
+| OWN-5B | **OWNER_APPROVED** — direct production cutover; **PR9A–C**; no shadow soak. |
+| OWN-6 | **OWNER_APPROVED** (OWN-6-A) — inventory policy only; production execution not authorized by attestation. |
 
 ## 10. Risks and mitigations
 
@@ -272,6 +275,6 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 | Stage | Status |
 |-------|--------|
 | Design contract (this document) | **PROPOSED** (§1B normative for post-PR4 facts) |
-| Implementation | **IN PROGRESS** (V2B-PR1–PR6 merged or open; cutover flags not armed) |
+| Implementation | **IN PROGRESS** (V2B-PR1–PR7 **merged** @ `ff90ff14`; V2B-PR8 owner package **DRAFT**; cutover flags not armed) |
 | Cutover | **FORBIDDEN** until owner approval |
 | Production validation | **NOT CLAIMED** |
