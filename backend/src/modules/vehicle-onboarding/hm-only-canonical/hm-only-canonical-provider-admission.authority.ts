@@ -1,9 +1,57 @@
 import { VehicleRegistryLifecycle, type HighMobilityVehicle } from '@prisma/client';
 import type { RegisterHmOnlyVehicleDto } from '@modules/high-mobility/dto/high-mobility.dto';
 import type { PrismaService } from '@shared/database/prisma.service';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { assertHighMobilityTenantOperationalOrganization } from '@modules/high-mobility/high-mobility-tenant-access.policy';
 import { hmOnlyCanonicalRegistrationIdempotencyKey } from './hm-only-canonical-registration.types';
 import type { HmCanonicalAdmissionVerdict } from './hm-only-canonical-readiness-observation.types';
+import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+
+/**
+ * Observation + canonical assert share provider-gate and resume-idempotency evaluation.
+ * Activation orchestration (source adoption, readiness seal) remains outside this module.
+ */
+export function throwIfHmProviderAdmissionBlocked(
+  blockers: string[],
+  ctx: {
+    hmVehicleId: string;
+    organizationId: string;
+    hmRecord: Pick<HighMobilityVehicle, 'vin' | 'synqdriveVehicleId' | 'registrationState'>;
+    existingVehicle?: { id: string; registryLifecycle: VehicleRegistryLifecycle } | null;
+  },
+): void {
+  if (blockers.length === 0) {
+    return;
+  }
+  if (blockers.includes('SOURCE_ALREADY_REGISTERED') && ctx.existingVehicle) {
+    throw new VehicleOnboardingError(
+      'SOURCE_ALREADY_REGISTERED',
+      'A vehicle with this VIN belongs to an offboarded or archived lifecycle; explicit re-onboarding is required',
+      { vehicleId: ctx.existingVehicle.id, registryLifecycle: ctx.existingVehicle.registryLifecycle },
+    );
+  }
+  if (blockers.includes('VIN_ALREADY_EXISTS_IN_ORG')) {
+    throw new ConflictException(
+      `A vehicle with VIN ${ctx.hmRecord.vin} already exists in organization ${ctx.organizationId}`,
+    );
+  }
+  if (blockers.includes('HM_CLEARANCE_NOT_APPROVED')) {
+    throw new BadRequestException('HM vehicle clearance is not APPROVED');
+  }
+  if (blockers.includes('HM_SOURCE_MODE_NOT_HM_ONLY')) {
+    throw new BadRequestException('registerHmOnlyVehicle is only for HM_ONLY source mode vehicles');
+  }
+  if (blockers.includes('ORG_NOT_OPERATIONAL')) {
+    throw new BadRequestException('Organization is not operational for High Mobility registration');
+  }
+  if (blockers.includes('HM_REGISTERED_STATE_INCONSISTENT')) {
+    const targetId = ctx.hmRecord.synqdriveVehicleId ?? ctx.existingVehicle?.id ?? 'unknown';
+    throw new ConflictException(
+      `HM vehicle ${ctx.hmVehicleId} is already registered as SynqDrive vehicle ${targetId}`,
+    );
+  }
+  throw new BadRequestException('HM provider admission blocked');
+}
 
 export async function lookupExistingVehicleForHmAdmission(
   prisma: PrismaService,

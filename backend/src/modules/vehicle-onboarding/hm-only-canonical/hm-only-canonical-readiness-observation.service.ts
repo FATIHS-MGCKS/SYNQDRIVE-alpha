@@ -56,7 +56,9 @@ export class HmOnlyCanonicalReadinessObservationService {
   }): Promise<HmOnlyReadinessObservationResult> {
     const started = Date.now();
 
-    const run = await runHmObservationEvaluation(async () => {
+    let run: Awaited<ReturnType<typeof runHmObservationEvaluation<HmOnlyReadinessObservationResult>>>;
+    try {
+      run = await runHmObservationEvaluation(async () => {
       const txResult = input.skipReadOnlyTransaction
         ? await this.evaluateInternal(this.prisma, input, started)
         : await runHmObservationInReadOnlyTransaction(this.prisma, async (tx) =>
@@ -68,7 +70,13 @@ export class HmOnlyCanonicalReadinessObservationService {
       }
 
       return txResult;
-    });
+      });
+    } catch (error) {
+      const code = sanitizeObservationErrorCode(error);
+      const fallback = this.buildNotEvaluableResult(input, started, code);
+      this.safeRecord(fallback, code);
+      return fallback;
+    }
 
     if (run.status === 'OVERLOAD') {
       const overload = this.buildNotEvaluableResult(input, started, 'OBSERVATION_OVERLOAD');

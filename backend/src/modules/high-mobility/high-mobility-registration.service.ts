@@ -25,6 +25,7 @@ import {
   highMobilityRecordOrgWhere,
 } from './high-mobility-tenant-access.policy';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { HighMobilityVehicle } from '@prisma/client';
 import type {
   RegisterHmOnlyVehicleDto,
   HmOnlyRegistrationResultDto,
@@ -123,27 +124,8 @@ export class HighMobilityRegistrationService {
       access.isMasterAdmin,
     );
 
-    if (isHmOnlyShadowCompareEnabled(convergenceConfig) && this.hmReadinessObservation) {
-      const preRegistrationSnapshot = await buildHmObservationEvaluationSnapshot(
-        this.prisma,
-        hmRecord,
-        organizationId,
-      );
-      void this.hmReadinessObservation
-        .observeHmOnlyRegistrationAttempt({
-          dto,
-          access,
-          preRegistrationSnapshot,
-        })
-        .catch((error) => {
-          const code = sanitizeObservationErrorCode(error);
-          this.logger.warn({
-            msg: 'hm_only_shadow_readiness_observation_failed',
-            hmVehicleId: dto.hmVehicleId,
-            organizationId: access.tenantOrganizationId,
-            observationErrorCode: code,
-          });
-        });
+    if (isHmOnlyShadowCompareEnabled(convergenceConfig)) {
+      this.fireHmOnlyShadowReadinessObservation(dto, access, hmRecord, organizationId);
     }
 
     // Prevent duplicate VIN registration within this org
@@ -291,6 +273,56 @@ export class HighMobilityRegistrationService {
       registrationState: row.registrationState,
       organizationId: row.organizationId,
     }));
+  }
+
+  private static readonly HM_SHADOW_SNAPSHOT_TIMEOUT_MS = 5_000;
+
+  private fireHmOnlyShadowReadinessObservation(
+    dto: RegisterHmOnlyVehicleDto,
+    access: {
+      tenantOrganizationId: string;
+      isMasterAdmin: boolean;
+      actorUserId: string | null;
+    },
+    hmRecord: HighMobilityVehicle,
+    organizationId: string,
+  ): void {
+    const observation = this.hmReadinessObservation;
+    if (!observation) {
+      return;
+    }
+    void (async () => {
+      try {
+        const preRegistrationSnapshot = await this.withShadowSnapshotTimeout(
+          buildHmObservationEvaluationSnapshot(this.prisma, hmRecord, organizationId),
+        );
+        await observation.observeHmOnlyRegistrationAttempt({
+          dto,
+          access,
+          preRegistrationSnapshot,
+        });
+      } catch (error) {
+        const code = sanitizeObservationErrorCode(error);
+        this.logger.warn({
+          msg: 'hm_only_shadow_readiness_observation_failed',
+          hmVehicleId: dto.hmVehicleId,
+          organizationId: access.tenantOrganizationId,
+          observationErrorCode: code,
+        });
+      }
+    })();
+  }
+
+  private async withShadowSnapshotTimeout<T>(promise: Promise<T>): Promise<T> {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(
+          () => reject(new Error('OBSERVATION_SNAPSHOT_TIMEOUT')),
+          HighMobilityRegistrationService.HM_SHADOW_SNAPSHOT_TIMEOUT_MS,
+        );
+      }),
+    ]);
   }
 
   private normalizeFuelType(fuel?: string): string {

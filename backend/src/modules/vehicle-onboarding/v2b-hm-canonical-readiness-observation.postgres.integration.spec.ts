@@ -23,6 +23,11 @@ import {
 } from './testing/v2b-hm-observation-db-fingerprint';
 import { hmOnlyCanonicalRegistrationIdempotencyKey } from './hm-only-canonical/hm-only-canonical-registration.types';
 import { buildHmObservationEvaluationSnapshot } from './hm-only-canonical/hm-only-canonical-observation-snapshot';
+import {
+  HM_OBSERVATION_PRISMA_ISOLATION,
+  runHmObservationInReadOnlyTransaction,
+} from './hm-only-canonical/hm-only-canonical-observation-readonly-tx';
+import { Prisma } from '@prisma/client';
 import { BatteryReferenceCapacitySource } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
 
 const run = process.env.V2B_HM_CANONICAL_READINESS_OBSERVATION_PG === '1';
@@ -573,6 +578,36 @@ async function assertRowFingerprintUnchanged(
     });
     const after = await captureHmObservationDbFingerprint(prisma, orgId, hmId);
     expect(() => assertHmObservationFingerprintsEqual(before, after)).toThrow();
+  });
+
+  it('PR7-TX-01 observation transaction RepeatableRead + read_only', async () => {
+    const orgId = await createOrg(prisma);
+    const outcome = await runHmObservationInReadOnlyTransaction(prisma, async (tx) => {
+      const [ro, iso] = await Promise.all([
+        tx.$queryRaw<{ transaction_read_only: string }[]>`SHOW transaction_read_only`,
+        tx.$queryRaw<{ transaction_isolation: string }[]>`SHOW transaction_isolation`,
+      ]);
+      expect(ro[0]?.transaction_read_only?.toLowerCase()).toBe('on');
+      expect(iso[0]?.transaction_isolation?.toLowerCase()).toContain('repeatable');
+      const org = await tx.organization.findUnique({ where: { id: orgId } });
+      expect(org?.id).toBe(orgId);
+      return 'ok';
+    });
+    expect(outcome).toBe('ok');
+    expect(HM_OBSERVATION_PRISMA_ISOLATION).toBe(Prisma.TransactionIsolationLevel.RepeatableRead);
+  });
+
+  it('PR7-TX-02 postgres rejects writes inside observation transaction', async () => {
+    const orgId = await createOrg(prisma);
+    const outcome = await runHmObservationInReadOnlyTransaction(prisma, async (tx) => {
+      await tx.$executeRaw`
+        UPDATE organizations
+        SET company_name = company_name
+        WHERE id = ${orgId}::uuid
+      `;
+      return 'should-not-reach';
+    });
+    expect(outcome).toBe('OBSERVATION_DB_CONSISTENCY_UNAVAILABLE');
   });
 
   it('PR7-19 concurrent evaluations: zero durable mutation', async () => {

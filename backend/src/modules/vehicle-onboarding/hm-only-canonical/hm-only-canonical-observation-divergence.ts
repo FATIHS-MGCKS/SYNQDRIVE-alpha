@@ -12,15 +12,6 @@ export function classifyHmObservationDivergence(input: {
   canonicalReadiness: HmCanonicalReadinessVerdict;
   evaluationCompleteness: HmEvaluationCompleteness;
 }): { classification: HmObservationDivergenceClassification; divergenceLegacyOnly: boolean } {
-  if (
-    input.evaluationCompleteness === 'NOT_EVALUABLE' ||
-    input.canonicalAdmission === 'CANONICAL_ADMISSION_NOT_EVALUABLE' ||
-    input.canonicalReadiness === 'CANONICAL_READINESS_NOT_EVALUABLE' ||
-    input.legacyAdmission === 'LEGACY_NOT_EVALUABLE'
-  ) {
-    return { classification: 'COMPARISON_NOT_EVALUABLE', divergenceLegacyOnly: false };
-  }
-
   if (input.canonicalAdmission === 'CANONICAL_IDEMPOTENT_REPLAY') {
     return { classification: 'CANONICAL_IDEMPOTENT_REPLAY', divergenceLegacyOnly: false };
   }
@@ -29,13 +20,26 @@ export function classifyHmObservationDivergence(input: {
     return { classification: 'LEGACY_RECONCILIATION_REQUIRED', divergenceLegacyOnly: false };
   }
 
+  if (input.canonicalAdmission === 'CANONICAL_ADMISSION_BLOCKED') {
+    const legacyAdmits = input.legacyAdmission === 'LEGACY_ADMISSIBLE';
+    if (legacyAdmits) {
+      return { classification: 'ADMISSION_DIVERGENCE', divergenceLegacyOnly: true };
+    }
+    return { classification: 'NO_DIVERGENCE', divergenceLegacyOnly: false };
+  }
+
+  const comparisonIndeterminate =
+    input.canonicalAdmission === 'CANONICAL_ADMISSION_NOT_EVALUABLE' ||
+    input.legacyAdmission === 'LEGACY_NOT_EVALUABLE' ||
+    input.evaluationCompleteness === 'NOT_EVALUABLE';
+
+  if (comparisonIndeterminate) {
+    return { classification: 'COMPARISON_NOT_EVALUABLE', divergenceLegacyOnly: false };
+  }
+
   const legacyAdmits = input.legacyAdmission === 'LEGACY_ADMISSIBLE';
   const admissionEligible = input.canonicalAdmission === 'CANONICAL_ADMISSION_ELIGIBLE';
   const readinessPass = input.canonicalReadiness === 'CANONICAL_READINESS_PASS';
-
-  if (legacyAdmits && !admissionEligible) {
-    return { classification: 'ADMISSION_DIVERGENCE', divergenceLegacyOnly: true };
-  }
 
   if (legacyAdmits && admissionEligible && !readinessPass) {
     return { classification: 'TECHNICAL_READINESS_DIVERGENCE', divergenceLegacyOnly: true };

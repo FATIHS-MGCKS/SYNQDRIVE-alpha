@@ -26,6 +26,7 @@ const ALLOWLISTED_ERROR_CODES = new Set([
   'OBSERVATION_TIMEOUT',
   'OBSERVATION_SNAPSHOT_RACE',
   'OBSERVATION_DB_CONSISTENCY_UNAVAILABLE',
+  'OBSERVATION_SNAPSHOT_TIMEOUT',
   'NOT_FOUND',
   'ORG_SCOPE_MISMATCH',
   'HM_TENANT_ACCESS_DENIED',
@@ -55,6 +56,9 @@ export function sanitizeObservationErrorCode(error: unknown): string {
   }
   if (error instanceof NotFoundException) {
     return 'NOT_FOUND';
+  }
+  if (error instanceof Error && error.message === 'OBSERVATION_SNAPSHOT_TIMEOUT') {
+    return 'OBSERVATION_SNAPSHOT_TIMEOUT';
   }
   return 'OBSERVATION_INTERNAL_ERROR';
 }

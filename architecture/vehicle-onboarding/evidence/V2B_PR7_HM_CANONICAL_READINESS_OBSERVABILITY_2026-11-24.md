@@ -130,7 +130,10 @@ PR6 retired the notion of comparing legacy **create billing hook** vs outbox. PR
 | R3 snapshot / RR read-only tx | `preExistingVehicleIdsForVin`; stable duplicate VIN ≠ race; `SET TRANSACTION READ ONLY` |
 | R4 divergence taxonomy | `divergenceClassification` + truth-table unit tests |
 | R5 non-mutation certification | Observation inside row fingerprint; negative-control mutation test PR7-21 |
-| R6 authority parity | `hm-only-canonical-provider-admission.authority.ts` shared with classifier; shadow uses `sanitizeObservationErrorCode` |
+| R6 authority parity | Provider gate + resume verdict shared (`assertHmOnlyCanonicalProviderRecord`, `tryResume` resume branch); activation orchestration outside authority |
+| Residual FIX-1 | Prisma `RepeatableRead` + `SET TRANSACTION READ ONLY`; PG write-rejection test PR7-TX-02 |
+| Residual FIX-2 | Shadow snapshot/observe fully isolated (fire-and-forget); legacy path never awaits observation |
+| Residual FIX-5 | `v2b-hm-shadow-legacy-registration.postgres.integration.spec.ts` exercises `HighMobilityRegistrationService` |
 | R7 scenario matrix | PR7-06 HV baseline rule; PR7-07 mandatory HV cannot be waived by deferred tire/brake profile |
 
 **Production observation readiness:** **NO_GO** — metrics remain `PROCESS_LOCAL`; multi-replica export is a **mandatory PR8/PR9 pre-arm gate**, not optional cleanup.

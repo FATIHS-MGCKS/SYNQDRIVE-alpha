@@ -1,13 +1,8 @@
 import { VehicleRegistryLifecycle } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import {
   assertHighMobilityRecordTenantAccess,
-  assertHighMobilityTenantOperationalOrganization,
 } from '@modules/high-mobility/high-mobility-tenant-access.policy';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import {
@@ -15,6 +10,12 @@ import {
   type HmOnlyCanonicalOrchestrationResult,
   hmOnlyCanonicalRegistrationIdempotencyKey,
 } from './hm-only-canonical-registration.types';
+import {
+  evaluateHmOnlyCanonicalResumeAdmissionVerdict,
+  evaluateHmOnlyProviderAdmissionBlockers,
+  lookupExistingVehicleForHmAdmission,
+  throwIfHmProviderAdmissionBlocked,
+} from './hm-only-canonical-provider-admission.authority';
 
 export type HmOnlyCanonicalResumeOutcome =
   | { kind: 'NOT_RESUMABLE' }
@@ -36,78 +37,19 @@ export async function assertHmOnlyCanonicalProviderRecord(
     organizationId,
     input.access.isMasterAdmin,
   );
-  if (hmRecord.clearanceStatus !== 'APPROVED') {
-    throw new BadRequestException(
-      `HM vehicle clearance is not APPROVED (current: ${hmRecord.clearanceStatus})`,
-    );
-  }
-  if (hmRecord.sourceMode !== 'HM_ONLY') {
-    throw new BadRequestException(
-      `registerHmOnlyVehicle is only for HM_ONLY source mode vehicles (got: ${hmRecord.sourceMode})`,
-    );
-  }
 
-  await assertHighMobilityTenantOperationalOrganization(
-    prisma,
+  const existingVehicle = await lookupExistingVehicleForHmAdmission(prisma, hmRecord, organizationId);
+  const blockers = await evaluateHmOnlyProviderAdmissionBlockers(prisma, {
+    dto: input.dto,
+    access: input.access,
+    hmRecord,
+  });
+  throwIfHmProviderAdmissionBlocked(blockers, {
+    hmVehicleId,
     organizationId,
-    input.access.isMasterAdmin,
-  );
-
-  const existingVehicle =
-    (hmRecord.synqdriveVehicleId
-      ? await prisma.vehicle.findFirst({
-          where: { id: hmRecord.synqdriveVehicleId, organizationId },
-          select: {
-            id: true,
-            organizationId: true,
-            registryLifecycle: true,
-          },
-        })
-      : null) ??
-    (await prisma.vehicle.findFirst({
-      where: { vin: hmRecord.vin, organizationId },
-      select: {
-        id: true,
-        organizationId: true,
-        registryLifecycle: true,
-      },
-    }));
-  if (
-    existingVehicle &&
-  (existingVehicle.registryLifecycle === VehicleRegistryLifecycle.OFFBOARDED ||
-      existingVehicle.registryLifecycle === VehicleRegistryLifecycle.ARCHIVED)
-  ) {
-    throw new VehicleOnboardingError(
-      'SOURCE_ALREADY_REGISTERED',
-      'A vehicle with this VIN belongs to an offboarded or archived lifecycle; explicit re-onboarding is required',
-      { vehicleId: existingVehicle.id, registryLifecycle: existingVehicle.registryLifecycle },
-    );
-  }
-  if (existingVehicle && hmRecord.synqdriveVehicleId !== existingVehicle.id) {
-    throw new ConflictException(
-      `A vehicle with VIN ${hmRecord.vin} already exists in organization ${organizationId}`,
-    );
-  }
-
-  if (
-    hmRecord.registrationState === 'REGISTERED' &&
-    hmRecord.synqdriveVehicleId &&
-    !existingVehicle
-  ) {
-    throw new ConflictException(
-      `HM vehicle ${hmVehicleId} is already registered as SynqDrive vehicle ${hmRecord.synqdriveVehicleId}`,
-    );
-  }
-
-  if (
-    hmRecord.registrationState === 'REGISTERED' &&
-    !hmRecord.synqdriveVehicleId &&
-    existingVehicle
-  ) {
-    throw new ConflictException(
-      `HM vehicle ${hmVehicleId} is already registered as SynqDrive vehicle ${existingVehicle.id}`,
-    );
-  }
+    hmRecord,
+    existingVehicle,
+  });
 
   return hmRecord;
 }
@@ -170,24 +112,19 @@ export async function tryResumeHmOnlyCanonicalRegistration(
     );
   }
 
-  const completedCase = await prisma.vehicleOnboardingCase.findFirst({
-    where: {
-      organizationId: input.dto.organizationId,
-      idempotencyKey,
-      status: 'COMPLETED',
-      vehicleId: vehicle.id,
-    },
-    select: { id: true },
+  const resumeVerdict = await evaluateHmOnlyCanonicalResumeAdmissionVerdict(prisma, {
+    dto: input.dto,
+    hmRecord: hm as import('@prisma/client').HighMobilityVehicle,
   });
 
-  if (completedCase) {
+  if (resumeVerdict.verdict === 'CANONICAL_IDEMPOTENT_REPLAY') {
     return {
       kind: 'IDEMPOTENT_SUCCESS',
       result: buildHmOnlySuccessResult(vehicle.id, input.dto.hmVehicleId, vehicle.vin ?? hm.vin),
     };
   }
 
-  if (hm.registrationState === 'REGISTERED' && hm.synqdriveVehicleId) {
+  if (resumeVerdict.verdict === 'CANONICAL_LEGACY_RECONCILIATION_REQUIRED') {
     throw new VehicleOnboardingError(
       'HM_LEGACY_REGISTRATION_BLOCKING_CANONICAL',
       'HM vehicle was registered outside canonical onboarding; explicit reconciliation required before canonical replay',

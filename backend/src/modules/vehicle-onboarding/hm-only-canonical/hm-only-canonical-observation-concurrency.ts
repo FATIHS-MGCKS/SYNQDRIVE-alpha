@@ -50,23 +50,33 @@ export async function runHmObservationEvaluation<T>(
       inFlight = Math.max(0, inFlight - 1);
     });
 
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timer = new Promise<'timeout'>((resolve) => {
-    setTimeout(() => resolve('timeout'), timeoutMs);
+    timeoutId = setTimeout(() => resolve('timeout'), timeoutMs);
   });
 
-  const race = await Promise.race([work.then(() => 'done' as const), timer]);
+  try {
+    const race = await Promise.race([work.then(() => 'done' as const), timer]);
 
-  if (race === 'timeout') {
-    void work.catch(() => {
-      /* late rejection after timeout — slot already released in work.finally */
-    });
-    return { status: 'TIMEOUT' };
-  }
+    if (race === 'timeout') {
+      void work.catch(() => {
+        /* late rejection after timeout — slot released in work.finally */
+      });
+      return { status: 'TIMEOUT' };
+    }
 
-  if (outcome === 'ok') {
-    return { status: 'OK', value };
+    if (outcome === 'ok') {
+      return { status: 'OK', value };
+    }
+    if (outcome === 'err') {
+      throw error;
+    }
+    throw new Error('OBSERVATION_INTERNAL_ERROR');
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
   }
-  throw error;
 }
 
 /** @deprecated use runHmObservationEvaluation */
