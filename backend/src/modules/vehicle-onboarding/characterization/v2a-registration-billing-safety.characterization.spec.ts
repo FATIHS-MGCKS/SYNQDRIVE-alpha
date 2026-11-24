@@ -193,10 +193,15 @@ describe('V2A registration & billing safety characterization', () => {
         service.create('org-man', { vin: 'VINMAN001', make: 'M', model: 'X', year: 2024 } as never, 'user-1'),
       ).rejects.toMatchObject({ response: { code: 'MANUAL_VEHICLE_REGISTRATION_RETIRED' } });
 
-      await service.createVehicleRowForIntegrationHarness(
+      const { createVehicleRowForIntegrationHarness } = await import(
+        '@modules/vehicles/testing/vehicle-row-integration.harness'
+      );
+      await createVehicleRowForIntegrationHarness(
+        prisma as never,
         'org-man',
         { vin: 'VINMAN001', make: 'M', model: 'X', year: 2024 } as never,
         'user-1',
+        { billingQuantity: billingQuantity as never },
       );
       expect(billingQuantity.onVehicleProvisioned).toHaveBeenCalledWith({
         organizationId: 'org-man',

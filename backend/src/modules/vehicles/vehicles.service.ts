@@ -1602,7 +1602,7 @@ export class VehiclesService {
 
   /**
    * Public manual registration channel — retired (V2B-PR4).
-   * Use DIMO / HM canonical registration or `createVehicleRowForIntegrationHarness` in tests only.
+   * Use DIMO or HM canonical registration; integration fixtures use `vehicle-row-integration.harness.ts`.
    */
   async create(
     _organizationId: string,
@@ -1610,55 +1610,6 @@ export class VehiclesService {
     _createdByUserId?: string,
   ): Promise<Vehicle> {
     throw legacyManualVehicleRegistrationDisabledException();
-  }
-
-  /**
-   * Integration/E2E harness only — creates a vehicle row without a provider registration channel.
-   * Not exposed on HTTP; does not substitute DIMO/HM onboarding or registry activation.
-   */
-  async createVehicleRowForIntegrationHarness(
-    organizationId: string,
-    data: Omit<Prisma.VehicleCreateInput, 'organization'>,
-    createdByUserId?: string,
-    options?: { invokeLegacyBillingHook?: boolean },
-  ): Promise<Vehicle> {
-    let vehicle: Vehicle;
-    try {
-      vehicle = await this.prisma.vehicle.create({
-        data: {
-          ...data,
-          organization: { connect: { id: organizationId } },
-          createdByUserId: createdByUserId ?? null,
-        },
-      });
-    } catch (error) {
-      if (isPrismaUniqueViolation(error, ['vin', 'organizationId'])) {
-        throw new ConflictException({
-          code: 'VEHICLE_VIN_ALREADY_EXISTS',
-          message: 'A vehicle with this VIN already exists in the organization',
-        });
-      }
-      throw error;
-    }
-
-    if (options?.invokeLegacyBillingHook !== false) {
-      void this.billingQuantity
-        ?.onVehicleProvisioned({
-          organizationId,
-          vehicleId: vehicle.id,
-          actorUserId: createdByUserId ?? null,
-        })
-        .catch((error) => {
-          this.logger.warn({
-            msg: 'billing.quantity.vehicle_provision_hook_failed',
-            organizationId,
-            vehicleId: vehicle.id,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-    }
-
-    return vehicle;
   }
 
   async findByOrganization(

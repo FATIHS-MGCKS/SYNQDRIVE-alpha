@@ -30,7 +30,8 @@
 
 | ID | Topic | Status |
 |----|--------|--------|
-| PG-04-N | Manual POST / service.create does not persist vehicle or outbox | HTTP + unit specs |
+| PG-04-N | Manual POST / service.create does not persist vehicle or outbox | Supertest HTTP (`vehicles-manual-registration-retired.http-security.integration.spec.ts`) + unit specs |
+| HARNESS | `createVehicleRowForIntegrationHarness` | Test-only module `vehicles/testing/vehicle-row-integration.harness.ts`; production fail-closed unless `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1` |
 | PG-03 | HM_ONLY canonical regression | Unchanged (VO-5B gate) |
 
 ## Owner decisions (delta)
