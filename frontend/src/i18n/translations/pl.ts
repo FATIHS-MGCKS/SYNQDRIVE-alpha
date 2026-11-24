@@ -170,6 +170,8 @@ export const pl = {
   'master.cv.addVehicle.success': 'Pojazd zarejestrowany',
   'master.cv.addVehicle.errorGeneric': 'Rejestracja nie powiodla sie',
   'master.cv.addVehicle.errorDuplicateVin': 'Pojazd z tym VIN juz istnieje w organizacji',
+  'master.cv.addVehicle.manualRetired':
+    'Rejestracja pojazdu recznie nie jest juz dostepna. Nowe pojazdy rejestruj przez DIMO lub High Mobility.',
   'master.cv.addVehicle.dimoNotFound': 'Nie mozna zaladowac pojazdu DIMO',
   'master.cv.addVehicle.dimoLoadFailed': 'Nie mozna zaladowac listy DIMO',
   'master.cv.addVehicle.demoUnavailableTitle': 'Pojazdy demo',

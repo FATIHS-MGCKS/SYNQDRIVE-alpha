@@ -1024,27 +1024,5 @@ export async function persistMasterRegisteredVehicle(
     };
   }
 
-  const vin = rv.vin?.trim();
-  if (!vin) {
-    throw new Error('VIN_REQUIRED');
-  }
-
-  const created = await api.vehicles.create(orgId, {
-    vin,
-    make: rv.make?.trim() || 'Unknown',
-    model: rv.model?.trim() || 'Unknown',
-    year: rv.year || new Date().getFullYear(),
-    ...extraData,
-  });
-
-  const vehicleId = created?.id ?? created?.vehicle?.id;
-  if (!vehicleId) {
-    throw new Error('MANUAL_CREATE_NO_VEHICLE_ID');
-  }
-  const id = String(vehicleId);
-  const baselineFailures = await applyManualBaselinesAfterCreate(orgId, id, rv);
-  return {
-    vehicleId: id,
-    baselineFailures: baselineFailures.length > 0 ? baselineFailures : undefined,
-  };
+  throw new Error('MANUAL_REGISTRATION_RETIRED');
 }

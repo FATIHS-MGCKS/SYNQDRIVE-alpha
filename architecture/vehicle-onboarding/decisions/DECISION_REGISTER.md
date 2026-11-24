@@ -8,6 +8,7 @@
 | VO-DEC-2-001 | VO-2 persistence foundation schema | PROPOSED | VO-EVID-2-001 |
 | VO-DEC-2-002 | VO-2.1 persistence integrity and migration proof | PROPOSED | VO-EVID-2-002 |
 | VO-DEC-2B-001 | V2B canonical registration convergence (HM/manual → activation rail) | PROPOSED | VO-EVID-2B-001 |
+| VO-DEC-2B-002 | V2B-PR4 manual registration removal (DIMO/HM-only channels) | VALIDATED (repository) | VO-EVID-2B-004 |
 
 ---
 
@@ -103,4 +104,21 @@
 | **NON-EFFECTS** | No cutover in plan PR; no flag activation; DIMO semantics unchanged |
 | **EVIDENCE** | VO-EVID-2B-001 |
 | **VALIDATION** | PG matrix PG-01…PG-10 in plan; V2A characterization prerequisite |
-| **OPEN GAPS** | Owner decisions OWN-1…6; V2B-PR3+ PG harness / cutover attestation |
+| **OPEN GAPS** | OWN-3…6; V2B-PR5+ billing parity / cutover attestation |
+
+---
+
+## VO-DEC-2B-002
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED (repository) |
+| **BEFORE** | Manual `POST /organizations/:orgId/vehicles` and Master manual create UI remained parallel registration channels |
+| **WHY** | Owner decision `MANUAL_REGISTRATION_REMOVED` — consolidate new vehicle registration to DIMO and High Mobility only |
+| **CHANGE** | Fail-closed HTTP retirement contract; UI removal; `VehiclesService.create` retired; harness-only `createVehicleRowForIntegrationHarness` for tests |
+| **ALTERNATIVES REJECTED** | Option M-A manual canonical onboarding; UI-only hiding without API lockdown |
+| **EXPECTED EFFECT** | No new manually registered vehicles; existing manual fleet rows unchanged and editable |
+| **NON-EFFECTS** | No billing single-rail arm; no HM/DIMO flag arm; no data migration |
+| **EVIDENCE** | VO-EVID-2B-004 (`V2B_PR4_MANUAL_REGISTRATION_REMOVAL_2026-11-24.md`) |
+| **VALIDATION** | Manual registration HTTP + unit specs; VO-5B PG-03 regression |
+| **OPEN GAPS** | V2B-PR5 provider billing parity tests |

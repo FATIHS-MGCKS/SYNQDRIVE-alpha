@@ -243,7 +243,7 @@ function httpContext(input: {
           ),
         ).resolves.toBe(true);
 
-        const vehicle = await createFleetVehicle(vehicles, boot.orgId, boot.adminId, 'E');
+        const vehicle = await createFleetVehicle(prisma, boot.orgId, boot.adminId, 'E');
         expect(vehicle.organizationId).toBe(boot.orgId);
 
         const ctx = httpContext({
@@ -274,7 +274,7 @@ function httpContext(input: {
         await setOrganizationStatus(prisma, bootA.orgId, OrganizationStatus.ACTIVE);
         await setOrganizationStatus(prisma, bootB.orgId, OrganizationStatus.ACTIVE);
         await assignFleetProductActive(products, bootA.orgId, maActorId);
-        const vehicleA = await createFleetVehicle(vehicles, bootA.orgId, bootA.adminId, 'A');
+        const vehicleA = await createFleetVehicle(prisma, bootA.orgId, bootA.adminId, 'A');
         const userB = tenantJwtUser({ userId: bootB.adminId, orgId: bootB.orgId });
         await expect(
           vehicleOwnership.canActivate(

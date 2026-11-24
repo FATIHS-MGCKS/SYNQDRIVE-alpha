@@ -171,6 +171,8 @@ export const nl = {
   'master.cv.addVehicle.success': 'Voertuig geregistreerd',
   'master.cv.addVehicle.errorGeneric': 'Registratie mislukt',
   'master.cv.addVehicle.errorDuplicateVin': 'Voertuig met dit VIN bestaat al in de organisatie',
+  'master.cv.addVehicle.manualRetired':
+    'Handmatige voertuigregistratie is niet meer beschikbaar. Registreer nieuwe voertuigen via DIMO of High Mobility.',
   'master.cv.addVehicle.dimoNotFound': 'DIMO-voertuig niet gevonden',
   'master.cv.addVehicle.dimoLoadFailed': 'DIMO-voertuigen laden mislukt',
   'master.cv.addVehicle.demoUnavailableTitle': 'Demovoertuigen',

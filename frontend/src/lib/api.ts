@@ -4527,6 +4527,7 @@ export const api = {
     getByOrg: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}`),
     fleetMap: (orgId: string) =>
       get<FleetMapVehicleResponse[]>(`/organizations/${orgId}/fleet-map`),
+    /** @deprecated Manual vehicle registration retired (V2B-PR4). Use registerFromDimo or HM register. */
     create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles`, data),
     update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/vehicles/${id}`, data),
     getOemSpecificationSuggestions: (orgId: string, vehicleId: string) =>

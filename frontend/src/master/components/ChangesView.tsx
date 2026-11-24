@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'v2b-pr4-manual-registration-removal-2026-11-24',
+    version: '4.9.5040',
+    title: 'V2B-PR4 — manual vehicle registration retired (DIMO / High Mobility only)',
+    summary: [
+      'POST /organizations/:orgId/vehicles returns MANUAL_VEHICLE_REGISTRATION_RETIRED; Master Connected Vehicles manual add menu removed.',
+      'Existing vehicles remain editable; DIMO register-from-dimo and HM_ONLY canonical paths unchanged (flags default OFF).',
+      'Integration harness createVehicleRowForIntegrationHarness retained for tests only.',
+    ],
+    reason: 'Owner decision MANUAL_REGISTRATION_REMOVED — registration channel consolidation.',
+    previousBehavior: 'Master Admin could register fleet vehicles without DIMO or HM via manual create and legacy billing hook.',
+    details:
+      'architecture/vehicle-onboarding/evidence/V2B_PR4_MANUAL_REGISTRATION_REMOVAL_2026-11-24.md; backend legacy-manual-vehicle-registration.errors.ts; frontend ConnectedVehicleAddMenu.tsx',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-11-24T00:00:00.000Z',
+  },
+  {
     id: 'apds-v3-p1b1-r2-closeout-2026-11-11',
     version: '4.9.5037',
     title: 'APDS V3 P1B1 R2 — fleet-wide shadow security/resource closeout',

@@ -25,6 +25,8 @@ export const tr = {
   ...masterCvOemSpecsTr,
   ...masterIntelligenceTr,
   ...masterSidebarV1Tr,
+  'master.cv.addVehicle.manualRetired':
+    'Manuel araç kaydı artık kullanılamıyor. Yeni araçları yalnızca DIMO veya High Mobility ile kaydedin.',
   'master.registration.lvBatteryConstructionType.label': 'LV yapı tipi',
   'master.registration.lvBatteryConstructionType.leadAcid': 'Kurşun-asit (açık)',
   'master.registration.lvBatteryChemistryHint.label': 'Kimya (yalnızca AI ipucu)',

@@ -36,6 +36,7 @@ import {
   legacyVehicleDeleteDisabledException,
   legacyVehicleDestructionDisabledException,
 } from './legacy-vehicle-destruction.errors';
+import { legacyManualVehicleRegistrationDisabledException } from './legacy-manual-vehicle-registration.errors';
 import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import dimoConfig from '@config/dimo.config';
@@ -1599,46 +1600,16 @@ export class VehiclesService {
 
   // ── CRUD ──────────────────────────────────────────────────────────
 
+  /**
+   * Public manual registration channel — retired (V2B-PR4).
+   * Use DIMO or HM canonical registration; integration fixtures use `vehicle-row-integration.harness.ts`.
+   */
   async create(
-    organizationId: string,
-    data: Omit<Prisma.VehicleCreateInput, 'organization'>,
-    createdByUserId?: string,
+    _organizationId: string,
+    _data: Omit<Prisma.VehicleCreateInput, 'organization'>,
+    _createdByUserId?: string,
   ): Promise<Vehicle> {
-    let vehicle: Vehicle;
-    try {
-      vehicle = await this.prisma.vehicle.create({
-        data: {
-          ...data,
-          organization: { connect: { id: organizationId } },
-          createdByUserId: createdByUserId ?? null,
-        },
-      });
-    } catch (error) {
-      if (isPrismaUniqueViolation(error, ['vin', 'organizationId'])) {
-        throw new ConflictException({
-          code: 'VEHICLE_VIN_ALREADY_EXISTS',
-          message: 'A vehicle with this VIN already exists in the organization',
-        });
-      }
-      throw error;
-    }
-
-    void this.billingQuantity
-      ?.onVehicleProvisioned({
-        organizationId,
-        vehicleId: vehicle.id,
-        actorUserId: createdByUserId ?? null,
-      })
-      .catch((error) => {
-        this.logger.warn({
-          msg: 'billing.quantity.vehicle_provision_hook_failed',
-          organizationId,
-          vehicleId: vehicle.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-
-    return vehicle;
+    throw legacyManualVehicleRegistrationDisabledException();
   }
 
   async findByOrganization(

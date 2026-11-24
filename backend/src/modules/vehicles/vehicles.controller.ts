@@ -14,6 +14,7 @@ import {
   Optional,
   Logger,
 } from '@nestjs/common';
+import { legacyManualVehicleRegistrationDisabledException } from './legacy-manual-vehicle-registration.errors';
 import { VehiclesService } from './vehicles.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
@@ -233,11 +234,11 @@ export class VehiclesController {
   @UseGuards(OrgScopingGuard, PermissionsGuard)
   @RequirePermission('fleet', 'write')
   async createByOrg(
-    @Param('orgId') orgId: string,
-    @Body() body: Omit<Prisma.VehicleCreateInput, 'organization'>,
-    @Req() req: any,
+    @Param('orgId') _orgId: string,
+    @Body() _body: Omit<Prisma.VehicleCreateInput, 'organization'>,
+    @Req() _req: any,
   ) {
-    return this.vehiclesService.create(orgId, body, req.user?.id);
+    throw legacyManualVehicleRegistrationDisabledException();
   }
 
   @Post('organizations/:orgId/vehicles/register-from-dimo')

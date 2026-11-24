@@ -170,6 +170,8 @@ export const cs = {
   'master.cv.addVehicle.success': 'Vozidlo zaregistrovano',
   'master.cv.addVehicle.errorGeneric': 'Registrace selhala',
   'master.cv.addVehicle.errorDuplicateVin': 'Vozidlo s timto VIN jiz v organizaci existuje',
+  'master.cv.addVehicle.manualRetired':
+    'Rucni registrace vozidla uz neni k dispozici. Nova vozidla registrujte pres DIMO nebo High Mobility.',
   'master.cv.addVehicle.dimoNotFound': 'DIMO vozidlo nenalezeno',
   'master.cv.addVehicle.dimoLoadFailed': 'Nepodarilo se nacist DIMO vozidla',
   'master.cv.addVehicle.demoUnavailableTitle': 'Demo vozidla',

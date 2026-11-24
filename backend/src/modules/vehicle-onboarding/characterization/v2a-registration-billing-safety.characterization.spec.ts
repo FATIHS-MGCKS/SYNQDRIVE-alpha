@@ -153,8 +153,8 @@ describe('V2A registration & billing safety characterization', () => {
     });
   });
 
-  describe('C — Manual legacy create rail', () => {
-    it('invokes fire-and-forget billingQuantity.onVehicleProvisioned with distinct idempotency namespace', async () => {
+  describe('C — Manual legacy create rail (retired V2B-PR4)', () => {
+    it('rejects public manual create; harness path retains legacy billing hook for fixtures only', async () => {
       const billingQuantity = {
         onVehicleProvisioned: jest.fn().mockResolvedValue({ created: true }),
       };
@@ -189,7 +189,20 @@ describe('V2A registration & billing safety characterization', () => {
         billingQuantity,
       );
 
-      await service.create('org-man', { vin: 'VINMAN001', make: 'M', model: 'X', year: 2024 } as never, 'user-1');
+      await expect(
+        service.create('org-man', { vin: 'VINMAN001', make: 'M', model: 'X', year: 2024 } as never, 'user-1'),
+      ).rejects.toMatchObject({ response: { code: 'MANUAL_VEHICLE_REGISTRATION_RETIRED' } });
+
+      const { createVehicleRowForIntegrationHarness } = await import(
+        '@modules/vehicles/testing/vehicle-row-integration.harness'
+      );
+      await createVehicleRowForIntegrationHarness(
+        prisma as never,
+        'org-man',
+        { vin: 'VINMAN001', make: 'M', model: 'X', year: 2024 } as never,
+        'user-1',
+        { billingQuantity: billingQuantity as never },
+      );
       expect(billingQuantity.onVehicleProvisioned).toHaveBeenCalledWith({
         organizationId: 'org-man',
         vehicleId: 'veh-manual',

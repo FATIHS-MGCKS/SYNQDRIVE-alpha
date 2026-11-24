@@ -18,6 +18,7 @@ import { OrganizationsService } from '../organizations.service';
 import { OrganizationRoleService } from '@modules/users/organization-role.service';
 import { OrganizationRoleVersionService } from '@modules/users/organization-role-version.service';
 import { ProductsService } from '@modules/products/products.service';
+import { createVehicleRowForIntegrationHarness } from '@modules/vehicles/testing/vehicle-row-integration.harness';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 
 export const P5B1_JWT_SECRET = 'p5b1-disposable-org-e2e-jwt-secret';
@@ -173,12 +174,13 @@ export async function assignFleetProductTrial(
 }
 
 export async function createFleetVehicle(
-  vehicles: VehiclesService,
+  prisma: PrismaClient,
   orgId: string,
   actorUserId: string,
   suffix: string,
 ) {
-  return vehicles.create(
+  return createVehicleRowForIntegrationHarness(
+    prisma,
     orgId,
     {
       vin: `VIN${suffix}${randomUUID().replace(/-/g, '').slice(0, 12)}`,
@@ -190,6 +192,7 @@ export async function createFleetVehicle(
       status: VehicleStatus.AVAILABLE,
     },
     actorUserId,
+    { invokeLegacyBillingHook: false },
   );
 }
 
