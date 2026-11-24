@@ -242,10 +242,10 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 |----|----------|
 | OWN-1 | **SUPERSEDED_BY_OWNER_DECISION** — manual create removed; option M-A not implemented. |
 | OWN-2 | **NOT_APPLICABLE_AFTER_REMOVAL** — new manual vehicles cannot be created. |
-| OWN-3 | **PENDING_OWNER_APPROVAL** — see [V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md](./V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md) (recommended: strict readiness; DEFERRED tires/brakes only). |
-| OWN-4 | **PENDING_OWNER_APPROVAL** — recommended `NO_AUTOMATIC_RETROACTIVE_BILLING`. |
-| OWN-5 | **PENDING_OWNER_APPROVAL** — volume-aware soak + multi-replica observability; PR9 flag arm. |
-| OWN-6 | **PENDING_OWNER_APPROVAL** — read-only legacy fleet inventory spec; optional repair is separate project. |
+| OWN-3 | **OWNER_APPROVED** (OWN-3-A) — [attestation](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md) @ 2026-11-24. |
+| OWN-4 | **OWNER_APPROVED** (OWN-4-A) — no retroactive registration billing. |
+| OWN-5 | **OWNER_APPROVED** (corrected soak/cutover policy); metrics + soak + PR9 flag arm still **open**. |
+| OWN-6 | **OWNER_APPROVED** (OWN-6-A) — inventory policy only; production execution not authorized by attestation. |
 
 ## 10. Risks and mitigations
 

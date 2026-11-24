@@ -386,53 +386,62 @@ nodes:
     title: V2B-PR8 owner decision readiness package
     source_type: ARCHITECTURE_DOCUMENT
     epistemic_status: CONFIRMED
-    summary: OWN-3…6 PENDING_OWNER_APPROVAL; soak 14d AND 200 attempts; PR9 ordered deps; routing rollback; PG 60/60 evidence table.
+    summary: OWN-3…6 policy package; attestation VO-EVID-2B-009; soak 14d AND 200 attempts; PR9 ordered deps.
     source_paths:
       - architecture/vehicle-onboarding/evidence/V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md
+
+  - id: VO-EVID-2B-009
+    type: evidence
+    title: V2B-PR8 owner attestation (OWN-3…6 binding)
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Owner-approved policies 2026-11-24; no prod deploy or flag arm.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_PR8_OWNER_ATTESTATION_2026-11-24.md
 
   - id: VO-DEC-OWN-3
     type: decision
     title: OWN-3 readiness waiver policy
     epistemic_status: CONFIRMED
-    decision_status: PENDING_OWNER_APPROVAL
-    summary: PENDING_OWNER_APPROVAL; recommended strict readiness without undocumented waivers.
+    decision_status: OWNER_APPROVED
+    summary: OWNER_APPROVED OWN-3-A; mandatory readiness; DEFERRED tires/brakes per profile only.
     source_paths:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
-      - VO-EVID-2B-008
+      - VO-EVID-2B-009
 
   - id: VO-DEC-OWN-4
     type: decision
     title: OWN-4 no retroactive registration billing
     epistemic_status: CONFIRMED
-    decision_status: PENDING_OWNER_APPROVAL
-    summary: PENDING_OWNER_APPROVAL; recommended NO_AUTOMATIC_RETROACTIVE_BILLING.
+    decision_status: OWNER_APPROVED
+    summary: OWNER_APPROVED OWN-4-A; NO_AUTOMATIC_RETROACTIVE_BILLING.
     source_paths:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
-      - VO-EVID-2B-008
+      - VO-EVID-2B-009
 
   - id: VO-DEC-OWN-5
     type: decision
     title: OWN-5 cutover soak and flag arm order
     epistemic_status: CONFIRMED
-    decision_status: PENDING_OWNER_APPROVAL
-    summary: PENDING_OWNER_APPROVAL; volume-aware soak; HM canonical flag owner-gated in PR9.
+    decision_status: OWNER_APPROVED
+    summary: OWNER_APPROVED cutover contract; ops gates open; flag arm still PR9.
     source_paths:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
-      - VO-EVID-2B-008
+      - VO-EVID-2B-009
 
   - id: VO-DEC-OWN-6
     type: decision
     title: OWN-6 legacy fleet inventory specification
     epistemic_status: CONFIRMED
-    decision_status: PENDING_OWNER_APPROVAL
-    summary: PENDING_OWNER_APPROVAL; read-only cohort spec; no automated repair in V2B.
+    decision_status: OWNER_APPROVED
+    summary: OWNER_APPROVED OWN-6-A read-only inventory policy; execution not authorized alone.
     source_paths:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
-      - VO-EVID-2B-008
+      - VO-EVID-2B-009
 
   - id: VO-PERSIST-CASE-001
     type: persist

@@ -3,7 +3,7 @@
 **Operation:** `SYNQDRIVE_VEHICLES_V2B_PR8_ARCHITECTURE_OWNER_DECISION_READINESS`  
 **Repository baseline:** `origin/main` @ `ff90ff14a6db64bc27d284beface47dc90a018d2` (PR #2522 merge)  
 **Scope:** Architecture governance and owner decision package only — **no** runtime behavior, **no** flag arm, **no** production writes.  
-**Status:** `PENDING_OWNER_APPROVAL` (OWN-3 … OWN-6)
+**Status:** OWN-3 … OWN-6 **OWNER_APPROVED** @ 2026-11-24 — see [V2B_PR8_OWNER_ATTESTATION_2026-11-24.md](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md). Operational cutover gates remain **NOT MET**.
 
 ---
 
@@ -60,7 +60,7 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 
 ---
 
-## Step 3 — OWN-3 readiness policy (PENDING_OWNER_APPROVAL)
+## Step 3 — OWN-3 readiness policy (OWNER_APPROVED — OWN-3-A)
 
 **Recommendation:** Preserve mandatory readiness requirements. No undocumented waivers. Tire/brake deferral only via existing profile `DEFERRED` rules.
 
@@ -87,7 +87,7 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 
 ---
 
-## Step 4 — OWN-4 billing policy (PENDING_OWNER_APPROVAL)
+## Step 4 — OWN-4 billing policy (OWNER_APPROVED — OWN-4-A)
 
 **Recommendation:** **`NO_AUTOMATIC_RETROACTIVE_BILLING`** — no backfill quantity events for pre-canonical HM inline registrations.
 
@@ -110,7 +110,7 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 
 ---
 
-## Step 5 — OWN-5 cutover policy (PENDING_OWNER_APPROVAL)
+## Step 5 — OWN-5 cutover policy (OWNER_APPROVED — corrected cutover contract)
 
 **Flag semantics (repository truth):**
 
@@ -131,7 +131,7 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 - Bounded reason-code observability and `evaluationCompleteness` distribution.
 - Snapshot consistency certification (PR7 RR + fingerprint gates) sustained in staging.
 
-**Proposed staging shadow soak contract (OWN-5 — pending explicit owner approval):**
+**Staging shadow soak contract (OWNER_APPROVED @ 2026-11-24; execution not complete):**
 
 All conditions below must be satisfied **together** (no OR / no “whichever is later”):
 
@@ -176,7 +176,7 @@ Disabling `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` is **routing rollback
 
 ---
 
-## Step 6 — OWN-6 legacy fleet inventory (PENDING_OWNER_APPROVAL)
+## Step 6 — OWN-6 legacy fleet inventory (OWNER_APPROVED — OWN-6-A policy; execution separate)
 
 **Specification:** read-only SQL/report contract — **no** production agent execution in PR8; operator runs in approved read-only session when authorized.
 
@@ -215,7 +215,7 @@ Disabling `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` is **routing rollback
 
 | Order | Prerequisite | Type |
 |-------|--------------|------|
-| 1 | Owner policy decisions recorded (OWN-3, OWN-4, OWN-5, OWN-6) | **Owner / governance** |
+| 1 | Owner policy decisions recorded (OWN-3, OWN-4, OWN-5, OWN-6) | **Owner / governance** — **MET (2026-11-24 attestation)**; does **not** complete downstream ops gates |
 | 2 | Multi-replica metrics aggregation **implemented** and deployed to staging | **Engineering PR** |
 | 3 | Staging deployment + monitoring validation (export paths, dashboards, alert smoke) | **Engineering + ops** |
 | 4 | Read-only legacy fleet inventory executed (OWN-6 spec) OR documented owner waive | **Ops / owner** |
@@ -234,12 +234,21 @@ Engineering merge PRs (e.g. metrics export, staging config) are **separate** fro
 
 | Decision ID | Status |
 |-------------|--------|
-| OWN-3 (`VO-DEC-OWN-3`) | **PENDING_OWNER_APPROVAL** |
-| OWN-4 (`VO-DEC-OWN-4`) | **PENDING_OWNER_APPROVAL** |
-| OWN-5 (`VO-DEC-OWN-5`) | **PENDING_OWNER_APPROVAL** |
-| OWN-6 (`VO-DEC-OWN-6`) | **PENDING_OWNER_APPROVAL** |
+| OWN-3 (`VO-DEC-OWN-3`) | **OWNER_APPROVED** (OWN-3-A) @ 2026-11-24 |
+| OWN-4 (`VO-DEC-OWN-4`) | **OWNER_APPROVED** (OWN-4-A) @ 2026-11-24 |
+| OWN-5 (`VO-DEC-OWN-5`) | **OWNER_APPROVED** (corrected cutover policy) @ 2026-11-24 |
+| OWN-6 (`VO-DEC-OWN-6`) | **OWNER_APPROVED** (OWN-6-A) @ 2026-11-24 |
 | VO-DEC-2B-004 | **VALIDATED (repository)** after PR7 merge |
 
-**Owner decisions approved:** **NONE** (no inferred approval).  
+**Attestation:** [V2B_PR8_OWNER_ATTESTATION_2026-11-24.md](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md) — **no** production activation, deploy, or feature-flag authorization.
+
+**Owner decisions pending:** **NONE** for OWN-3…6 policy options listed in attestation; **OWN-3-B/C, OWN-4-B, OWN-6-B** remain unselected; **production cutover** authorization **pending** (PR9).
+
 **Flags armed:** **NONE**.  
 **Production readiness:** **NO_GO**.
+
+---
+
+## Step 9 — PR9 engineering handoff
+
+Next engineering deliverable (separate PR from #2523): **multi-replica HM readiness observation metrics aggregation and certification** — see attestation § PR9 engineering handoff.
