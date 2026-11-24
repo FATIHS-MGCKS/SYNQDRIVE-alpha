@@ -28,3 +28,6 @@ edges:
   - from: VO-EVID-2B-006
     relation: supports
     to: VO-DEC-2B-003
+  - from: VO-EVID-2B-007
+    relation: supports
+    to: VO-DEC-2B-004

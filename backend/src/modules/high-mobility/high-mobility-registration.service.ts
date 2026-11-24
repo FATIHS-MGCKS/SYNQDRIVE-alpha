@@ -12,7 +12,11 @@ import { ConfigService } from '@nestjs/config';
 import type { VehicleRegistrationConvergenceConfig } from '@config/vehicle-registration-convergence.config';
 import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.port';
 import type { VehicleRegistrationConvergencePort } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.port';
-import { isHmOnlyCanonicalRoutingEnabled } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
+import {
+  isHmOnlyCanonicalRoutingEnabled,
+  isHmOnlyShadowCompareEnabled,
+} from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
+import { HmOnlyCanonicalReadinessObservationService } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observation.service';
 import {
   assertHighMobilityRecordTenantAccess,
   assertHighMobilityTenantOperationalOrganization,
@@ -45,10 +49,12 @@ export class HighMobilityRegistrationService {
     @Optional()
     @Inject(VEHICLE_REGISTRATION_CONVERGENCE_PORT)
     private readonly convergencePort?: VehicleRegistrationConvergencePort,
+    @Optional()
+    private readonly hmReadinessObservation?: HmOnlyCanonicalReadinessObservationService,
   ) {}
 
   private defaultConvergenceConfig(): VehicleRegistrationConvergenceConfig {
-    return { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false };
+    return { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false, shadowCompareEnabled: false };
   }
 
   private resolveConvergenceConfig(): VehicleRegistrationConvergenceConfig {
@@ -81,6 +87,19 @@ export class HighMobilityRegistrationService {
         });
       }
       return this.convergencePort.registerHmOnlyCanonical({ dto, access });
+    }
+
+    if (isHmOnlyShadowCompareEnabled(convergenceConfig) && this.hmReadinessObservation) {
+      void this.hmReadinessObservation
+        .observeHmOnlyRegistrationAttempt({ dto, access })
+        .catch((error) => {
+          this.logger.warn({
+            msg: 'hm_only_shadow_readiness_observation_failed',
+            hmVehicleId: dto.hmVehicleId,
+            organizationId: dto.organizationId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
     }
 
     const { hmVehicleId, organizationId, vehicleName, licensePlate, notes, mileageKm, fuelType, vehicleType } = dto;
