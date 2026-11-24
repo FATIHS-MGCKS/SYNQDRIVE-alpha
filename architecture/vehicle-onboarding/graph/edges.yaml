@@ -22,3 +22,9 @@ edges:
   - from: VO-EVID-2-002
     relation: supports
     to: VO-DEC-2-002
+  - from: VO-EVID-2B-004
+    relation: supports
+    to: VO-DEC-2B-002
+  - from: VO-EVID-2B-006
+    relation: supports
+    to: VO-DEC-2B-003

@@ -121,4 +121,21 @@
 | **NON-EFFECTS** | No billing single-rail arm; no HM/DIMO flag arm; no data migration |
 | **EVIDENCE** | VO-EVID-2B-004 (`V2B_PR4_MANUAL_REGISTRATION_REMOVAL_2026-11-24.md`) |
 | **VALIDATION** | Manual registration HTTP + unit specs; VO-5B PG-03 regression |
-| **OPEN GAPS** | OWN-3…6; production flag/cutover attestation (V2B-PR6+) |
+| **OPEN GAPS** | OWN-3…6; production flag/cutover attestation (V2B-PR7+) |
+
+---
+
+## VO-DEC-2B-003
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED (repository) |
+| **BEFORE** | V2B plan assumed legacy `VehiclesService.create` billing hook would be suppressed behind `BILLING_SINGLE_RAIL` |
+| **WHY** | VO-DEC-2B-002 retired manual registration; PR5 certified outbox-only registration billing |
+| **CHANGE** | Registration billing authority is **`VehicleRegistryLifecycleOutboxProcessor` only**; single-rail flag **not armable** and **not required** for registration; PR6 delivers evidence/characterization not a new transition flag |
+| **ALTERNATIVES REJECTED** | Arm `BILLING_SINGLE_RAIL` in production without OWN-5; reintroduce manual create billing hook for transition |
+| **EXPECTED EFFECT** | No dual registration billing; unchanged non-registration quantity APIs |
+| **NON-EFFECTS** | No flag arm; no Stripe/provider mutation; no harness removal without OWN-5 |
+| **EVIDENCE** | VO-EVID-2B-006 (`V2B_PR6_SINGLE_BILLING_AUTHORITY_2026-11-24.md`) |
+| **VALIDATION** | `v2b-pr6-single-billing-authority.characterization.spec.ts`; PG-05 reuse on main |
+| **OPEN GAPS** | OWN-3…6; optional dead-code removal (V2B-PR10) |

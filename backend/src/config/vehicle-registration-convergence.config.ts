@@ -23,9 +23,9 @@ export interface VehicleRegistrationConvergenceConfig {
   billingSingleRailEnabled: boolean;
 }
 
-/** V2B-PR1/PR4: billing single-rail cannot be armed until provider-only activation parity is certified. */
+/** V2B-PR6: no production manual-create billing hook remains after V2B-PR4; arming this flag would not change registration billing behavior. */
 export const VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_NOT_ARMABLE_PR1 =
-  'VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL is not armable in V2B-PR1 (provider-only registration; manual create retired)';
+  'VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL is not armable after V2B-PR4 (manual registration retired; registration billing is outbox-only)';
 
 export function validateVehicleRegistrationConvergenceConfig(
   config: VehicleRegistrationConvergenceConfig,
