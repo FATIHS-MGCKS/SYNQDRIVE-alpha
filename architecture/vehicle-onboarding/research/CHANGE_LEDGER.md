@@ -99,6 +99,7 @@
 | 2026-11-24 | **V2B-PR8** — Owner decision package OWN-3…6; PR9 cutover contract; legacy fleet inventory spec; VO-EVID-2B-008; **no** runtime/flag arm | Draft PR [#2523](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2523) |
 | 2026-11-24 | **V2B-PR8 closeout** — Unambiguous soak contract (14d AND 200 attempts); PR9 dependency order; routing rollback contract; PostgreSQL evidence 60/60 discrete matrices | same PR #2523 |
 | 2026-11-24 | **V2B-PR8 owner attestation** — OWN-3…6 OWNER_APPROVED (options A / corrected OWN-5 / 6-A); VO-EVID-2B-009; **no** deploy/flags/prod access | PR #2523 |
+| 2026-11-24 | **V2B-PR8 direct cutover** — OWN-5 SUPERSEDED; OWN-5B `DIRECT_CONTROLLED_PRODUCTION_CUTOVER_WITHOUT_SHADOW_SOAK`; PR9A–C; VO-EVID-2B-010 | PR #2523 |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

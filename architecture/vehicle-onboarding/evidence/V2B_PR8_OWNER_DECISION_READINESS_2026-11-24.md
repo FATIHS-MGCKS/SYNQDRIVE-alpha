@@ -110,53 +110,25 @@ Authoritative **runtime** ownership as of main @ PR7 (documentation contract —
 
 ---
 
-## Step 5 — OWN-5 cutover policy (OWNER_APPROVED — corrected cutover contract)
+## Step 5 — OWN-5 cutover policy
+
+**Active policy (2026-11-24 strategy revision):** [V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md](./V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md) — `VO-DEC-OWN-5B` — **direct controlled production cutover without shadow soak**.
+
+**Superseded policy:** `VO-DEC-OWN-5` shadow/staging observation track from [attestation](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md) — **SUPERSEDED**; historical text retained in git history only; **not** a release gate.
 
 **Flag semantics (repository truth):**
 
-| Env var | Default | Armable? | Role |
-|---------|---------|----------|------|
-| `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` | **OFF** | Staging/disposable only until export gate | Fire-and-forget readiness observation on legacy HM register |
-| `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` | **OFF** | **OWNER_GATED** (PR9) | Route HM register → canonical VO stack |
-| `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` | **OFF** | **NOT_ARMABLE** (startup fatal) | **REDUNDANT** post PR6 |
+| Env var | Default | Cutover role |
+|---------|---------|--------------|
+| `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` | **OFF** | **OWNER_GATED** — target ON after explicit deploy/activation authorization (PR9B/C) |
+| `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` | **OFF** | **Not required** for cutover; may remain OFF in production |
+| `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` | **OFF** | **NOT_ARMABLE** / **REDUNDANT** |
 
-**Engineering merge readiness:** **YES** (PR1–PR7 on main).  
-**Staging observation readiness:** **CONDITIONAL** — requires multi-replica metrics export (not in PR7).  
-**Production observation readiness:** **NO_GO** (`PROCESS_LOCAL` metrics).  
-**HM canonical cutover readiness:** **NO_GO** until OWN-3/4/5/6 + PR9.
+**Engineering merge readiness:** **YES** (PR1–PR7 on `ff90ff14`).  
+**Accepted PostgreSQL certification:** PG03 18/18, PG05 12/12, PR7 30/30, **total 60/60**; PR7 workflows 24/24 — engineering contracts, **not** production environment attestation.  
+**HM canonical cutover readiness:** **NO_GO** until PR9A–C release gates + owner authorization — **no** calendar soak required.
 
-**Engineering capabilities required before certified soak (not satisfied @ PR8):**
-
-- Multi-replica observation aggregation (Prometheus/OpenTelemetry — bounded labels; no VIN labels).
-- Bounded reason-code observability and `evaluationCompleteness` distribution.
-- Snapshot consistency certification (PR7 RR + fingerprint gates) sustained in staging.
-
-**Staging shadow soak contract (OWNER_APPROVED @ 2026-11-24; execution not complete):**
-
-All conditions below must be satisfied **together** (no OR / no “whichever is later”):
-
-| Requirement | Contract |
-|-------------|----------|
-| Calendar window | **Minimum 14 calendar days** of staging observation (continuous window; gaps require restart) |
-| Eligible attempts | **Minimum 200 eligible observation attempts** in that window |
-| Conjunction | **Both** calendar and attempt minimums must pass |
-| Controlled scenarios | Staging test orgs and operator-run scenarios **may** contribute; must be labeled in reporting |
-| Synthetic vs organic | **Must** be reported separately in soak evidence |
-| Deduplication | Repeated **identical** evaluations (same org + vehicle/case fingerprint within dedupe window) **must not** count toward the 200 attempt minimum |
-| Scenario diversity | **Minimum 5** distinct scenario classes (e.g. ICE pass, BEV doc path, hybrid, org-suspended admission block, stale HM mirror) with ≥ **10** attempts each |
-| Denominators | Every success-rate threshold names its denominator explicitly (see table below) |
-| Prediction vs activation | **Historical snapshot predictions** (shadow readiness + billing **predictive** fields) are **not** actual activation outcomes; canonical activation soak is a **separate** certification phase |
-
-**Proposed success thresholds (denominators explicit):**
-
-| Metric | Denominator | Success | Abort |
-|--------|-------------|---------|-------|
-| Observation errors | Eligible attempts (post-dedupe) | (`NOT_EVALUABLE` ∪ hard errors) / eligible < **2%** | ≥ **5%** over any rolling 24h |
-| Mapped divergences | Evaluations with `divergenceLegacyOnly=true` | ≥ **95%** map to documented rule ids (OWN-3) | Unmapped > **10%** of divergence denominator |
-| Billing prediction | Shadow evaluations with predictive billing field | Informational; **no** billing writes | Does not gate soak alone |
-| Canonical staging activations (post-shadow phase) | Distinct `COMPLETED` HM canonical cases on staging | 0 duplicate `vehicle.id`; exactly **1** `VEHICLE_ACTIVATED` outbox per case | Duplicate outbox or billing quantity |
-
-**Canonical staging activation certification (separate phase, post shadow soak):** engineering PR delivers disposable/staging proof; operational **flag-arm attestation** is a separate PR9 ops record — not merged with engineering soak evidence.
+**Direct production release gates (summary):** verify release/production SHA; CI/build; migrations; read-only inventory; registration/billing invariants; dual-replica config; routing rollback; owner deploy authorization; controlled cutover; targeted prod smoke. Detail: direct cutover evidence doc.
 
 ### Rollback contract (routing rollback — not data rollback)
 
@@ -202,31 +174,26 @@ Disabling `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` is **routing rollback
 
 ---
 
-## Step 7 — PR9 cutover contract (ordered prerequisites)
+## Step 7 — PR9 cutover contract (revised — direct production path)
 
-| Gate | Status @ PR8 |
-|------|----------------|
-| **ENGINEERING_MERGE_READINESS** | **MET** — PR1–PR7 on main |
-| **STAGING_OBSERVATION_READINESS** | **NOT MET** — multi-replica metrics + certified soak |
-| **PRODUCTION_OBSERVATION_READINESS** | **NOT MET** |
-| **HM_CANONICAL_CUTOVER_READINESS** | **NOT MET** |
+| Gate | Status |
+|------|--------|
+| **ENGINEERING_MERGE_READINESS** | **MET** — PR1–PR7 on main; PG 60/60 |
+| **STAGING_OBSERVATION_READINESS** | **NOT_APPLICABLE** (shadow soak superseded) |
+| **PRODUCTION_RELEASE_READINESS** | **NOT MET** — PR9A–C gates open |
+| **HM_CANONICAL_CUTOVER_READINESS** | **NOT MET** until PR9B authorization + PR9C execution |
 
-**Dependency order (mandatory — multi-replica aggregation precedes certified soak):**
+**PR9 phases (replaces shadow-infrastructure roadmap):**
 
-| Order | Prerequisite | Type |
-|-------|--------------|------|
-| 1 | Owner policy decisions recorded (OWN-3, OWN-4, OWN-5, OWN-6) | **Owner / governance** — **MET (2026-11-24 attestation)**; does **not** complete downstream ops gates |
-| 2 | Multi-replica metrics aggregation **implemented** and deployed to staging | **Engineering PR** |
-| 3 | Staging deployment + monitoring validation (export paths, dashboards, alert smoke) | **Engineering + ops** |
-| 4 | Read-only legacy fleet inventory executed (OWN-6 spec) OR documented owner waive | **Ops / owner** |
-| 5 | Staging shadow soak + certification against § Step 5 contract | **Ops evidence** |
-| 6 | Canonical staging activation certification (distinct from shadow predictions) | **Engineering + ops** |
-| 7 | Rollback drill (routing rollback contract) on staging | **Ops** |
-| 8 | **Explicit production cutover authorization** + flag-arm attestation artifact | **Owner ops — PR9** |
+| Phase | Title |
+|-------|--------|
+| **PR9A** | Final production readiness + read-only legacy fleet inventory |
+| **PR9B** | Explicit owner release authorization (deploy + production activation) |
+| **PR9C** | Direct production cutover + targeted smoke tests |
 
-Engineering merge PRs (e.g. metrics export, staging config) are **separate** from production **flag-arm attestations**. PR9 is the operational attestation track; it does not substitute for engineering delivery at steps 2–3.
+**PR10:** After successful cutover — evaluate/remove obsolete legacy and shadow **helpers** where safe; **preserve** routing rollback capability. Not required for billing single-rail (VO-DEC-2B-003).
 
-**PR10:** Optional inert-helper cleanup — **not** a prerequisite for single billing authority (VO-DEC-2B-003).
+**Superseded PR9 prerequisites (historical):** multi-replica shadow metrics, staging shadow soak, canary, calendar soak — see `VO-DEC-OWN-5` **SUPERSEDED**.
 
 ---
 
@@ -236,19 +203,20 @@ Engineering merge PRs (e.g. metrics export, staging config) are **separate** fro
 |-------------|--------|
 | OWN-3 (`VO-DEC-OWN-3`) | **OWNER_APPROVED** (OWN-3-A) @ 2026-11-24 |
 | OWN-4 (`VO-DEC-OWN-4`) | **OWNER_APPROVED** (OWN-4-A) @ 2026-11-24 |
-| OWN-5 (`VO-DEC-OWN-5`) | **OWNER_APPROVED** (corrected cutover policy) @ 2026-11-24 |
+| OWN-5 shadow track (`VO-DEC-OWN-5`) | **SUPERSEDED** @ 2026-11-24 strategy revision |
+| OWN-5 direct cutover (`VO-DEC-OWN-5B`) | **OWNER_APPROVED** — direct production path |
 | OWN-6 (`VO-DEC-OWN-6`) | **OWNER_APPROVED** (OWN-6-A) @ 2026-11-24 |
 | VO-DEC-2B-004 | **VALIDATED (repository)** after PR7 merge |
 
 **Attestation:** [V2B_PR8_OWNER_ATTESTATION_2026-11-24.md](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md) — **no** production activation, deploy, or feature-flag authorization.
 
-**Owner decisions pending:** **NONE** for OWN-3…6 policy options listed in attestation; **OWN-3-B/C, OWN-4-B, OWN-6-B** remain unselected; **production cutover** authorization **pending** (PR9).
+**Owner decisions pending:** **Production activation/deploy** authorization (PR9B); **OWN-3-B/C, OWN-4-B, OWN-6-B** remain unselected.
 
 **Flags armed:** **NONE**.  
-**Production readiness:** **NO_GO**.
+**Production readiness:** **NO_GO** until PR9A–C.
 
 ---
 
-## Step 9 — PR9 engineering handoff
+## Step 9 — PR9 handoff (supersedes shadow metrics engineering track)
 
-Next engineering deliverable (separate PR from #2523): **multi-replica HM readiness observation metrics aggregation and certification** — see attestation § PR9 engineering handoff.
+Next operational track: **PR9A → PR9B → PR9C** per [direct cutover policy](./V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md). **No** new shadow infrastructure workstream.

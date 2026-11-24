@@ -13,7 +13,8 @@
 | VO-DEC-2B-004 | V2B-PR7 HM readiness observation (no billing shadow) | VALIDATED (repository) | VO-EVID-2B-007 |
 | VO-DEC-OWN-3 | HM_ONLY readiness waiver policy (cutover) | OWNER_APPROVED | VO-EVID-2B-009 |
 | VO-DEC-OWN-4 | Registration billing retroactive policy | OWNER_APPROVED | VO-EVID-2B-009 |
-| VO-DEC-OWN-5 | HM canonical + shadow soak cutover | OWNER_APPROVED | VO-EVID-2B-009 |
+| VO-DEC-OWN-5 | HM canonical shadow/staging soak cutover (2026-11-24 attestation) | SUPERSEDED | VO-EVID-2B-009 |
+| VO-DEC-OWN-5B | Direct controlled production cutover (no shadow soak) | OWNER_APPROVED | VO-EVID-2B-010 |
 | VO-DEC-OWN-6 | Legacy fleet read-only inventory / repair | OWNER_APPROVED | VO-EVID-2B-009 |
 
 ---
@@ -195,13 +196,26 @@
 
 | Field | Value |
 |-------|-------|
+| **STATUS** | SUPERSEDED |
+| **SUPERSEDED_BY** | VO-DEC-OWN-5B @ 2026-11-24 |
+| **OWNER_DECISION_DATE** | 2026-11-24 |
+| **HISTORICAL** | Shadow soak (14d AND 200 attempts), staging observation, multi-replica shadow metrics — **no longer required** for cutover |
+| **EVIDENCE** | VO-EVID-2B-009 (preserved verbatim attestation) |
+
+---
+
+## VO-DEC-OWN-5B
+
+| Field | Value |
+|-------|-------|
 | **STATUS** | OWNER_APPROVED |
 | **OWNER_DECISION_DATE** | 2026-11-24 |
-| **APPROVED_OPTION** | APPROVED_CORRECTED_CUTOVER_POLICY (PR8 § Step 5 contract) |
-| **CHANGE** | 14d AND 200 attempts; scenario diversity; dedupe; metrics before soak; success/abort thresholds; canonical activation cert; rollback drill; routing ≠ data rollback; separate production authorization required |
-| **EVIDENCE** | VO-EVID-2B-009 |
-| **OPEN GAPS** | Metrics export, soak execution, rollback drill, production cutover attestation — **NOT COMPLETE** |
-| **NON-EFFECTS** | **FLAGS_ARMED: NO**; deploy **NO**; production observation **NO_GO** |
+| **APPROVED_POLICY** | `DIRECT_CONTROLLED_PRODUCTION_CUTOVER_WITHOUT_SHADOW_SOAK` |
+| **CHANGE** | Ten direct production release gates; no calendar soak; shadow flag not required; HM canonical flag owner-gated ON after PR9B authorization |
+| **ENGINEERING_EVIDENCE** | PG03 18/18, PG05 12/12, PR7 30/30, total PG 60/60, PR7 workflows 24/24 — repository certification, not production attestation |
+| **EVIDENCE** | VO-EVID-2B-010 |
+| **OPEN GAPS** | PR9A–C execution; production activation authorization **NOT GRANTED** in PR #2523 |
+| **NON-EFFECTS** | **FLAGS_ARMED: NO**; **DEPLOYED: NO** |
 
 ---
 

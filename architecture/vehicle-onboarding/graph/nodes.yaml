@@ -421,16 +421,36 @@ nodes:
     evidence:
       - VO-EVID-2B-009
 
+  - id: VO-EVID-2B-010
+    type: evidence
+    title: V2B-PR8 direct production cutover policy
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: OWN-5B; no shadow soak; PR9A-C; PG 60/60 engineering evidence.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md
+
   - id: VO-DEC-OWN-5
     type: decision
-    title: OWN-5 cutover soak and flag arm order
-    epistemic_status: CONFIRMED
-    decision_status: OWNER_APPROVED
-    summary: OWNER_APPROVED cutover contract; ops gates open; flag arm still PR9.
+    title: OWN-5 shadow/staging soak cutover (historical)
+    epistemic_status: HISTORICAL
+    decision_status: SUPERSEDED
+    summary: Superseded by VO-DEC-OWN-5B; attestation VO-EVID-2B-009 preserved.
     source_paths:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
       - VO-EVID-2B-009
+
+  - id: VO-DEC-OWN-5B
+    type: decision
+    title: OWN-5B direct controlled production cutover
+    epistemic_status: CONFIRMED
+    decision_status: OWNER_APPROVED
+    summary: No shadow/canary/staging observation required; PR9A-C release gates.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-010
 
   - id: VO-DEC-OWN-6
     type: decision

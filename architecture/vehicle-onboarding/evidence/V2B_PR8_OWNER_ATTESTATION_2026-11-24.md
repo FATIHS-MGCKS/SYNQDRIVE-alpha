@@ -93,3 +93,11 @@
 **This attestation does not authorize implementation work inside PR #2523** (documentation-only PR).
 
 **Downstream ops (after engineering):** staging soak per approved OWN-5 contract → canonical staging activation cert → rollback drill → **separate** production cutover attestation (PR9 ops).
+
+---
+
+## Amendment (2026-11-24) — OWN-5 strategy revision
+
+**Supersedes for cutover gating only:** OWN-5 shadow/staging observation requirements in this attestation remain **historical**; active cutover policy is **`DIRECT_CONTROLLED_PRODUCTION_CUTOVER_WITHOUT_SHADOW_SOAK`** — see [V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md](./V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md) (`VO-DEC-OWN-5B`, VO-EVID-2B-010).
+
+**Unchanged by amendment:** verbatim attestation above; OWN-3, OWN-4, OWN-6 approvals; **no** production activation, deploy, or flag arm in PR #2523.
