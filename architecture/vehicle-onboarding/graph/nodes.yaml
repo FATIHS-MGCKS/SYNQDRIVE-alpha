@@ -373,13 +373,66 @@ nodes:
   - id: VO-DEC-2B-004
     type: decision
     title: V2B-PR7 HM readiness observation contract
-    epistemic_status: INFERRED
-    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
     summary: Shadow compare measures readiness divergence only; no billing shadow; flag default OFF.
     source_paths:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
       - VO-EVID-2B-007
+
+  - id: VO-EVID-2B-008
+    type: evidence
+    title: V2B-PR8 owner decision readiness package
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: OWN-3…6 decision matrices; PR9 cutover gates; legacy fleet inventory spec; no flag arm.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md
+
+  - id: VO-DEC-OWN-3
+    type: decision
+    title: OWN-3 readiness waiver policy
+    epistemic_status: CONFIRMED
+    decision_status: PENDING_OWNER_APPROVAL
+    summary: PENDING_OWNER_APPROVAL; recommended strict readiness without undocumented waivers.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-008
+
+  - id: VO-DEC-OWN-4
+    type: decision
+    title: OWN-4 no retroactive registration billing
+    epistemic_status: CONFIRMED
+    decision_status: PENDING_OWNER_APPROVAL
+    summary: PENDING_OWNER_APPROVAL; recommended NO_AUTOMATIC_RETROACTIVE_BILLING.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-008
+
+  - id: VO-DEC-OWN-5
+    type: decision
+    title: OWN-5 cutover soak and flag arm order
+    epistemic_status: CONFIRMED
+    decision_status: PENDING_OWNER_APPROVAL
+    summary: PENDING_OWNER_APPROVAL; volume-aware soak; HM canonical flag owner-gated in PR9.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-008
+
+  - id: VO-DEC-OWN-6
+    type: decision
+    title: OWN-6 legacy fleet inventory specification
+    epistemic_status: CONFIRMED
+    decision_status: PENDING_OWNER_APPROVAL
+    summary: PENDING_OWNER_APPROVAL; read-only cohort spec; no automated repair in V2B.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-008
 
   - id: VO-PERSIST-CASE-001
     type: persist

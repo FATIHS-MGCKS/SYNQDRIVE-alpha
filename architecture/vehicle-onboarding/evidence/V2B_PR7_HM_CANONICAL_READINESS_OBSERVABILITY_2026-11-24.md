@@ -1,7 +1,8 @@
 # V2B-PR7 — HM canonical readiness observation (non-mutating)
 
 **Operation:** `SYNQDRIVE_VEHICLES_V2B_PR7_HM_CANONICAL_READINESS_OBSERVABILITY`  
-**Base:** `origin/main` @ `fc801dcf4138965242525bce1604769b2f1a86ca` (PR #2521 merge)  
+**Lifecycle:** **MERGED** — PR [#2522](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2522) @ `ff90ff14a6db64bc27d284beface47dc90a018d2`  
+**Base (development):** `origin/main` @ `fc801dcf4138965242525bce1604769b2f1a86ca` (PR #2521 merge)  
 **Reconciles:** VO-DEC-2B-002 (manual channel retired), VO-DEC-2B-003 (outbox-only registration billing)  
 **Flags:** `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` default **OFF**; canonical HM + billing single-rail remain **NOT_ARMABLE**  
 **Explicit non-goal:** No redundant dual-billing shadow — billing field is **predictive read-only** only.
@@ -11,7 +12,7 @@
 | Check | Result |
 |-------|--------|
 | PR #2521 merge on `main` | **VERIFIED** — `fc801dcf` |
-| PR #2518 | **OPEN** docs-only provenance; **do not merge** |
+| PR #2518 | **CLOSED** without merge (docs superseded on main) |
 | PG-03 / PG-05 | **Reused** via existing VO5B CI gates; PR7 adds PG gate `V2B_HM_CANONICAL_READINESS_OBSERVATION_PG` |
 | VO-DEC-2B-002 | Manual registration retired; legacy HM path still exists until canonical flag arm |
 | VO-DEC-2B-003 | Registration billing outbox-only; observation does not touch billing tables |

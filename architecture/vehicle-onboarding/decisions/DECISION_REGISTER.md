@@ -9,7 +9,12 @@
 | VO-DEC-2-002 | VO-2.1 persistence integrity and migration proof | PROPOSED | VO-EVID-2-002 |
 | VO-DEC-2B-001 | V2B canonical registration convergence (HM/manual → activation rail) | PROPOSED | VO-EVID-2B-001 |
 | VO-DEC-2B-002 | V2B-PR4 manual registration removal (DIMO/HM-only channels) | VALIDATED (repository) | VO-EVID-2B-004 |
-| VO-DEC-2B-004 | V2B-PR7 HM readiness observation (no billing shadow) | PROPOSED (repository) | VO-EVID-2B-007 |
+| VO-DEC-2B-003 | V2B-PR6 single registration billing authority | VALIDATED (repository) | VO-EVID-2B-006 |
+| VO-DEC-2B-004 | V2B-PR7 HM readiness observation (no billing shadow) | VALIDATED (repository) | VO-EVID-2B-007 |
+| VO-DEC-OWN-3 | HM_ONLY readiness waiver policy (cutover) | PENDING_OWNER_APPROVAL | VO-EVID-2B-008 |
+| VO-DEC-OWN-4 | Registration billing retroactive policy | PENDING_OWNER_APPROVAL | VO-EVID-2B-008 |
+| VO-DEC-OWN-5 | HM canonical + shadow soak cutover | PENDING_OWNER_APPROVAL | VO-EVID-2B-008 |
+| VO-DEC-OWN-6 | Legacy fleet read-only inventory / repair | PENDING_OWNER_APPROVAL | VO-EVID-2B-008 |
 
 ---
 
@@ -147,7 +152,7 @@
 
 | Field | Value |
 |-------|-------|
-| **STATUS** | PROPOSED (repository) |
+| **STATUS** | VALIDATED (repository) |
 | **BEFORE** | Convergence plan PR7 described generic “shadow compare + ops metrics” without billing-shadow exclusion |
 | **WHY** | VO-DEC-2B-003 established single registration billing authority; PR7 must not introduce redundant dual-billing shadow |
 | **CHANGE** | `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` (default OFF) triggers **read-only** legacy vs canonical readiness observation; billing field is predictive only |
@@ -157,3 +162,47 @@
 | **EVIDENCE** | VO-EVID-2B-007 (`V2B_PR7_HM_CANONICAL_READINESS_OBSERVABILITY_2026-11-24.md`) |
 | **VALIDATION** | `v2b-hm-canonical-readiness-observation.postgres.integration.spec.ts`; unit specs |
 | **OPEN GAPS** | OWN-3…6 owner attestation; HM canonical flag arm (V2B-PR9) |
+
+---
+
+## VO-DEC-OWN-3
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PENDING_OWNER_APPROVAL |
+| **RECOMMENDATION** | OWN-3-A — preserve mandatory readiness; tire/brake **DEFERRED** only per existing profiles; **no** undocumented waivers |
+| **EVIDENCE** | VO-EVID-2B-008 (`V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md` § Step 3) |
+| **NON-EFFECTS** | No profile or runtime change until owner disposition + engineering follow-up |
+
+---
+
+## VO-DEC-OWN-4
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PENDING_OWNER_APPROVAL |
+| **RECOMMENDATION** | OWN-4-A — `NO_AUTOMATIC_RETROACTIVE_BILLING`; no registration quantity backfill in V2B |
+| **EVIDENCE** | VO-EVID-2B-008 § Step 4 |
+| **NON-EFFECTS** | No billing events; no Stripe mutations |
+
+---
+
+## VO-DEC-OWN-5
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PENDING_OWNER_APPROVAL |
+| **RECOMMENDATION** | Volume-aware soak + multi-replica observability before `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` arm (PR9) |
+| **EVIDENCE** | VO-EVID-2B-008 § Step 5 |
+| **NON-EFFECTS** | **FLAGS_ARMED: NO**; production observation **NO_GO** |
+
+---
+
+## VO-DEC-OWN-6
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PENDING_OWNER_APPROVAL |
+| **RECOMMENDATION** | OWN-6-A — approve read-only inventory spec; **no** automated repair migration in V2B |
+| **EVIDENCE** | VO-EVID-2B-008 § Step 6 |
+| **NON-EFFECTS** | No production data access in PR8; operator execution deferred |

@@ -48,6 +48,7 @@ epistemic_status_values:
 
 decision_status_values:
   - PROPOSED
+  - PENDING_OWNER_APPROVAL
   - EXPERIMENTAL
   - VALIDATED
   - PRODUCTION_VALIDATED

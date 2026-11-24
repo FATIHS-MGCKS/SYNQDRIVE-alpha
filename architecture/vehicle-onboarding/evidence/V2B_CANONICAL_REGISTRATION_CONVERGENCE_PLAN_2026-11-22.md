@@ -242,10 +242,10 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 |----|----------|
 | OWN-1 | **SUPERSEDED_BY_OWNER_DECISION** — manual create removed; option M-A not implemented. |
 | OWN-2 | **NOT_APPLICABLE_AFTER_REMOVAL** — new manual vehicles cannot be created. |
-| OWN-3 | Approve HM_ONLY readiness profile waivers (baseline strictness). |
-| OWN-4 | Approve **no retroactive billing** for legacy fleet (explicit). |
-| OWN-5 | Approve flag names, soak duration, and production arm order (HM → billing; manual channel removed). |
-| OWN-6 | Approve optional **registry repair** migration (off by default) for HM-only legacy rows. |
+| OWN-3 | **PENDING_OWNER_APPROVAL** — see [V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md](./V2B_PR8_OWNER_DECISION_READINESS_2026-11-24.md) (recommended: strict readiness; DEFERRED tires/brakes only). |
+| OWN-4 | **PENDING_OWNER_APPROVAL** — recommended `NO_AUTOMATIC_RETROACTIVE_BILLING`. |
+| OWN-5 | **PENDING_OWNER_APPROVAL** — volume-aware soak + multi-replica observability; PR9 flag arm. |
+| OWN-6 | **PENDING_OWNER_APPROVAL** — read-only legacy fleet inventory spec; optional repair is separate project. |
 
 ## 10. Risks and mitigations
 
@@ -272,6 +272,6 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 | Stage | Status |
 |-------|--------|
 | Design contract (this document) | **PROPOSED** (§1B normative for post-PR4 facts) |
-| Implementation | **IN PROGRESS** (V2B-PR1–PR6 merged or open; cutover flags not armed) |
+| Implementation | **IN PROGRESS** (V2B-PR1–PR7 **merged** @ `ff90ff14`; V2B-PR8 owner package **DRAFT**; cutover flags not armed) |
 | Cutover | **FORBIDDEN** until owner approval |
 | Production validation | **NOT CLAIMED** |

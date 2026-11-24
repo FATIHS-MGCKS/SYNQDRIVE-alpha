@@ -95,7 +95,8 @@
 | 2026-10-14 | **VO-SIG-01 P2 post-B1 sync** — Merged `main` @ B1 doc closure (`be379a35`); reconciled `CURRENT_STATE` + `CHANGE_LEDGER` (B1 production closure + P2 implementation narrative); no DI/VSI rollback | Merged PR #2023 |
 | 2026-11-24 | **V2B-PR6** — Single registration billing authority reconciliation post manual registration retirement; authority matrix; VO-DEC-2B-003; characterization spec; NOT_ARMABLE message clarification; no runtime flag arm | Draft PR [#2521](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2521) |
 | 2026-11-24 | **V2B-PR6 closeout** — Harness isolation tests; rg-backed billing caller discovery; VO graph validator path repair; graph nodes VO-DEC-2B-003/VO-EVID-2B-006; convergence plan §1B normative reconciliation | PR #2521 |
-| 2026-11-24 | **V2B-PR7** — Non-mutating HM legacy/canonical readiness observation; shadow compare flag default OFF; PG PR7 gate; no dual-billing shadow | Draft PR (branch `cursor/vehicles-v2b-pr7-hm-canonical-readiness-observability-44c2`) |
+| 2026-11-24 | **V2B-PR7** — Non-mutating HM legacy/canonical readiness observation; shadow compare flag default OFF; PG PR7 30/30; no dual-billing shadow | Merged PR [#2522](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2522) @ `ff90ff14a` |
+| 2026-11-24 | **V2B-PR8** — Owner decision package OWN-3…6; PR9 cutover contract; legacy fleet inventory spec; VO-EVID-2B-008; **no** runtime/flag arm | Draft PR (branch `cursor/v2b-pr8-architecture-owner-decision-readiness-44c2`) |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
