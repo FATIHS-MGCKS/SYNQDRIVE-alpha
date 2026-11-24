@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api } from '../../../lib/api';
 import type { AdminBillingCreditNoteRowDto } from '../../types/admin-billing.types';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
@@ -6,6 +7,7 @@ import { formatDateDe, formatMoneyCents, parsePaginated } from './admin-billing.
 import { isSafeExternalUrl } from './master-invoices.utils';
 
 export function BillingCreditNotesTab() {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<AdminBillingCreditNoteRowDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,12 @@ export function BillingCreditNotesTab() {
 
   return (
     <div className="space-y-4" data-testid="master-credit-notes-tab">
+      <p
+        className="text-xs rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-muted-foreground"
+        role="status"
+      >
+        {t('master.creditManagement.list.designNotice')}
+      </p>
       {rows.length === 0 ? (
         <EmptyState compact title="Keine Gutschriften vorhanden." />
       ) : (

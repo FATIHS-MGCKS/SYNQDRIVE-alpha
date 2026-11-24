@@ -41,12 +41,15 @@ import {
 interface BillingPricingTabProps {
   refreshToken?: number;
   activeSubTab?: string | null;
+  /** Deep-link from Product Management (`masterBillingProductKey`). */
+  focusProductKey?: string | null;
   onSubTabChange?: (tab: MasterBillingPricingTab) => void;
 }
 
 export function BillingPricingTab({
   refreshToken = 0,
   activeSubTab,
+  focusProductKey,
   onSubTabChange,
 }: BillingPricingTabProps) {
   const pricingTab = parseMasterBillingSubTab(
@@ -176,6 +179,18 @@ export function BillingPricingTab({
   useEffect(() => {
     void reloadAll();
   }, [reloadAll, refreshToken]);
+
+  useEffect(() => {
+    if (!focusProductKey || pricebooks.length === 0) return;
+    const match = pricebooks.find((book) => book.productKey === focusProductKey);
+    if (match) setSelectedBookId(match.id);
+  }, [focusProductKey, pricebooks]);
+
+  useEffect(() => {
+    if (!focusProductKey || pricebooks.length === 0) return;
+    const match = pricebooks.find((book) => book.productKey === focusProductKey);
+    if (match) setSelectedBookId(match.id);
+  }, [focusProductKey, pricebooks]);
 
   useEffect(() => {
     if (selectedBookId) void loadDetail(selectedBookId);

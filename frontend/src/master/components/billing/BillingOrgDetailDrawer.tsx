@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { Button } from '../../../components/ui/button';
 import {
@@ -32,7 +32,8 @@ import { DiscountKind } from '../../../lib/billing-domain';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   summarizeMasterDiscountPayload,
-  validateMasterAddDiscountInput,
+  validateMasterAddDiscountForm,
+  type MasterAddDiscountPayload,
   type MasterSubscriptionDiscountType,
 } from './master-discount.contract';
 
@@ -69,9 +70,24 @@ export function BillingOrgDetailDrawer({
   const [discountReason, setDiscountReason] = useState('');
   const [discountPreviewSummary, setDiscountPreviewSummary] = useState<string | null>(null);
   const [discountInputError, setDiscountInputError] = useState<string | null>(null);
+  const [pendingDiscountPayload, setPendingDiscountPayload] = useState<MasterAddDiscountPayload | null>(null);
+  const [endDiscountId, setEndDiscountId] = useState('');
   const [pendingAction, setPendingAction] = useState<PendingCriticalAction>(null);
 
   const contract = useMasterOrgContract(row, open, onContractUpdated);
+
+  useEffect(() => {
+    setDiscountPreviewSummary(null);
+    setPendingDiscountPayload(null);
+    setDiscountInputError(null);
+  }, [
+    discountType,
+    discountPercent,
+    discountFixedAmount,
+    discountValidFrom,
+    discountValidTo,
+    discountReason,
+  ]);
 
   const domainStatus =
     contract.contractState?.contract?.domainStatus ??
@@ -179,45 +195,71 @@ export function BillingOrgDetailDrawer({
     });
   };
 
-  const buildDiscountInput = () => {
-    const validFrom =
-      discountValidFrom.trim() !== ''
-        ? new Date(discountValidFrom).toISOString()
-        : new Date().toISOString();
-    const validTo =
-      discountValidTo.trim() !== '' ? new Date(discountValidTo).toISOString() : undefined;
-    return {
-      discountType,
-      percent: discountType === DiscountKind.PERCENTAGE ? Number(discountPercent) : undefined,
-      fixedAmount:
-        discountType === DiscountKind.FIXED_AMOUNT ? Number(discountFixedAmount) : undefined,
-      currency: 'EUR' as const,
-      validFrom,
-      validTo,
-      reason: discountReason,
-    };
+  const buildDiscountForm = () => ({
+    discountType,
+    percentInput: discountPercent,
+    fixedAmountInput: discountFixedAmount,
+    currency: 'EUR' as const,
+    validFromLocal: discountValidFrom,
+    validToLocal: discountValidTo,
+    reason: discountReason,
+  });
+
+  const mapDiscountError = (code: string) => {
+    const key = `master.productCommercial.discount.error.${code}` as const;
+    const translated = t(key as 'master.productCommercial.discount.validationError');
+    if (code === 'MISSING_REASON') return t('master.productCommercial.discount.error.MISSING_REASON');
+    if (code === 'INVALID_VALID_FROM') return t('master.productCommercial.discount.error.INVALID_VALID_FROM');
+    if (code === 'INVALID_VALID_TO') return t('master.productCommercial.discount.error.INVALID_VALID_TO');
+    if (code === 'VALID_TO_BEFORE_VALID_FROM') {
+      return t('master.productCommercial.discount.error.VALID_TO_BEFORE_VALID_FROM');
+    }
+    if (code === 'INVALID_PERCENT') return t('master.productCommercial.discount.error.INVALID_PERCENT');
+    if (code === 'INVALID_PERCENT_BPS') return t('master.productCommercial.discount.error.INVALID_PERCENT_BPS');
+    if (code === 'INVALID_FIXED_AMOUNT_CENTS') {
+      return t('master.productCommercial.discount.error.INVALID_FIXED_AMOUNT_CENTS');
+    }
+    return translated !== key ? translated : t('master.productCommercial.discount.validationError');
   };
 
   const handlePreviewDiscount = () => {
-    const validated = validateMasterAddDiscountInput(buildDiscountInput());
+    const validated = validateMasterAddDiscountForm(buildDiscountForm());
     if (!validated.ok) {
-      setDiscountInputError(t('master.productCommercial.discount.validationError'));
+      setDiscountInputError(mapDiscountError(validated.error));
       setDiscountPreviewSummary(null);
+      setPendingDiscountPayload(null);
       return;
     }
     setDiscountInputError(null);
     setDiscountPreviewSummary(summarizeMasterDiscountPayload(validated.payload));
+    setPendingDiscountPayload(null);
   };
 
-  const handleAddDiscount = async () => {
-    const validated = validateMasterAddDiscountInput(buildDiscountInput());
+  const handleRequestApplyDiscount = () => {
+    const validated = validateMasterAddDiscountForm(buildDiscountForm());
     if (!validated.ok) {
-      setDiscountInputError(t('master.productCommercial.discount.validationError'));
+      setDiscountInputError(mapDiscountError(validated.error));
       return;
     }
     setDiscountInputError(null);
-    await contract.runMutation('add-discount', validated.payload);
-    setDiscountPreviewSummary(null);
+    setDiscountPreviewSummary(summarizeMasterDiscountPayload(validated.payload));
+    setPendingDiscountPayload(validated.payload);
+  };
+
+  const handleConfirmApplyDiscount = async () => {
+    if (!pendingDiscountPayload) return;
+    const ok = await contract.runMutation('add-discount', { ...pendingDiscountPayload });
+    if (ok) {
+      setPendingDiscountPayload(null);
+      setDiscountPreviewSummary(null);
+    }
+  };
+
+  const handleEndDiscount = async () => {
+    const id = endDiscountId.trim();
+    if (!id) return;
+    await contract.runMutation('end-discount', {}, { discountId: id });
+    setEndDiscountId('');
   };
 
   const confirmCriticalAction = async () => {
@@ -504,15 +546,41 @@ export function BillingOrgDetailDrawer({
                 ) : null}
                 {discountPreviewSummary ? (
                   <p className="text-[11px] rounded-lg bg-muted/30 px-3 py-2 text-muted-foreground">
-                    {t('master.productCommercial.discount.summary')}: {discountPreviewSummary}
+                    {t('master.productCommercial.discount.descriptiveOnly')}: {discountPreviewSummary}
                   </p>
                 ) : null}
+                <p className="text-[10px] text-muted-foreground">
+                  {t('master.productCommercial.discount.previewServerGap')}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" size="sm" variant="outline" onClick={handlePreviewDiscount}>
                     {t('master.productCommercial.discount.preview')}
                   </Button>
-                  <Button type="button" size="sm" onClick={() => void handleAddDiscount()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={contract.actionLoading}
+                    onClick={handleRequestApplyDiscount}
+                  >
                     {t('master.productCommercial.discount.apply')}
+                  </Button>
+                </div>
+                <div className="pt-2 border-t border-border/40 space-y-2">
+                  <p className="text-[11px] font-semibold">{t('master.productCommercial.discount.endTitle')}</p>
+                  <input
+                    className={inputClass}
+                    placeholder={t('master.productCommercial.discount.endIdPlaceholder')}
+                    value={endDiscountId}
+                    onChange={(e) => setEndDiscountId(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!endDiscountId.trim() || contract.actionLoading}
+                    onClick={() => void handleEndDiscount()}
+                  >
+                    {t('master.productCommercial.discount.endAction')}
                   </Button>
                 </div>
               </div>
@@ -542,6 +610,29 @@ export function BillingOrgDetailDrawer({
           ) : null}
         </div>
       </DetailDrawer>
+
+      <AlertDialog
+        open={pendingDiscountPayload != null}
+        onOpenChange={(next) => !next && setPendingDiscountPayload(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('master.productCommercial.discount.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('master.productCommercial.discount.confirmBody')}{' '}
+              {pendingDiscountPayload
+                ? summarizeMasterDiscountPayload(pendingDiscountPayload)
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('master.productCommercial.discount.confirmCancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleConfirmApplyDiscount()}>
+              {t('master.productCommercial.discount.confirmApply')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingAction != null} onOpenChange={(next) => !next && setPendingAction(null)}>
         <AlertDialogContent>

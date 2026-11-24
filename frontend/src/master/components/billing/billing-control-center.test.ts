@@ -25,6 +25,7 @@ vi.mock('../../../lib/api', async (importOriginal) => {
         organizations: vi.fn(),
         pricebooks: vi.fn(),
         adminInvoices: vi.fn(),
+        adminCreditNotes: vi.fn(),
         adminPaymentMethods: vi.fn(),
         adminStripeStatus: vi.fn(),
         adminWebhookEvents: vi.fn(),
@@ -92,6 +93,7 @@ describe('Master billing navigation', () => {
     vi.mocked(api.billing.organizations).mockResolvedValue([]);
     vi.mocked(api.billing.pricebooks).mockResolvedValue([]);
     vi.mocked(api.billing.adminInvoices).mockResolvedValue({ data: [], total: 0, page: 1, limit: 50 });
+    vi.mocked(api.billing.adminCreditNotes).mockResolvedValue({ data: [], total: 0, page: 1, limit: 50 });
     vi.mocked(api.billing.adminPaymentMethods).mockResolvedValue([]);
     vi.mocked(api.billing.adminStripeStatus).mockResolvedValue({
       integrationStatus: 'CONNECTED',
