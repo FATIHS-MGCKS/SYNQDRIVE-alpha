@@ -93,7 +93,8 @@
 | 2026-10-14 | **VO-SIG-01 P2 final safety** — Removed pool-unsafe session advisory locks (source-claim xact lock + resume checkpoints); payload fingerprint idempotent retry without mutation; `UNSUPPORTED_MASTER_REGISTRATION_FIELDS`; tire post-activation failure surface on `RegisterFromDimoResult`; 17-case PostgreSQL matrix | Merged PR #2023; production @ `f5bb7bb0` |
 | 2026-10-14 | **VO-SIG-01 P2 two-defect closure** — Payload fingerprint merged into activation TX (`readinessSnapshotJson` on case COMPLETED); `MASTER_DIMO_REGISTRATION_FINGERPRINT_MISSING` fail-closed; `idempotentReplay` skips duplicate tire enrichment; Master UI warning for tire partial success (9-locale keys); +2 PostgreSQL proofs | Merged PR #2023; production @ `f5bb7bb0` |
 | 2026-10-14 | **VO-SIG-01 P2 post-B1 sync** — Merged `main` @ B1 doc closure (`be379a35`); reconciled `CURRENT_STATE` + `CHANGE_LEDGER` (B1 production closure + P2 implementation narrative); no DI/VSI rollback | Merged PR #2023 |
-| 2026-11-24 | **V2B-PR6** — Single registration billing authority reconciliation post manual registration retirement; authority matrix; VO-DEC-2B-003; characterization spec; NOT_ARMABLE message clarification; no runtime flag arm | Draft PR |
+| 2026-11-24 | **V2B-PR6** — Single registration billing authority reconciliation post manual registration retirement; authority matrix; VO-DEC-2B-003; characterization spec; NOT_ARMABLE message clarification; no runtime flag arm | Draft PR [#2521](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2521) |
+| 2026-11-24 | **V2B-PR6 closeout** — Harness isolation tests; rg-backed billing caller discovery; VO graph validator path repair; graph nodes VO-DEC-2B-003/VO-EVID-2B-006; convergence plan §1B normative reconciliation | PR #2521 |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

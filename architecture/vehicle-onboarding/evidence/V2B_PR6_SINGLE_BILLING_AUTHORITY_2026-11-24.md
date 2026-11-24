@@ -3,7 +3,8 @@
 **Operation:** `SYNQDRIVE_VEHICLES_V2B_PR6_SINGLE_BILLING_AUTHORITY`  
 **Base:** `origin/main` @ `e9d19857e6c2c978ff72fc323895e77c89166bb0` (includes [#2520](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2520) V2B-PR5 merge)  
 **Prerequisite:** VO-DEC-2B-002 manual registration retirement; V2B-PR5 PG-05 certification  
-**Flags:** None armed; `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` remains **NOT_ARMABLE**
+**Flags:** None armed; `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` remains **NOT_ARMABLE**  
+**Closeout:** `SYNQDRIVE_VEHICLES_V2B_PR6_AUTHORITY_FINAL_CLOSEOUT` — PR [#2521](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2521)
 
 ## Phase 0 baseline
 
@@ -20,7 +21,7 @@
 |--------------------|------------|-------|-------|
 | `BillingQuantityVehicleIntegration.onVehicleProvisioned` | `VehicleRegistryLifecycleOutboxProcessor` on `VEHICLE_ACTIVATED` | **A** | Canonical registration billing rail |
 | `VehiclesService.create` → (none) | HTTP retired | **E** | Throws `MANUAL_VEHICLE_REGISTRATION_RETIRED`; no billing |
-| `createVehicleRowForIntegrationHarness` + optional `onVehicleProvisioned` | Test/E2E harness only | **D** | Production blocked unless `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1`; not a registration channel |
+| `createVehicleRowForIntegrationHarness` + optional `onVehicleProvisioned` | Test/E2E harness only | **D** | **Default:** production `NODE_ENV` → 409 `VEHICLE_ROW_INTEGRATION_HARNESS_FORBIDDEN`. **Override:** `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1` (explicit env; not in deploy scripts / `.env.example`) |
 | `shouldSuppressLegacyVehicleCreateBillingHook` | Routing helper | **E** | Always `false`; no production create hook to suppress post-PR4 |
 | `billingSingleRailEnabled` / env flag | Startup validation | **E** (for registration) | Fatal if `true`; no arm path; redundant for registration billing |
 | `HighMobilityRegistrationService` legacy (flag OFF) | HM register HTTP | **B** (register) / **no billing** | Vehicle row only; PG-05-C |
@@ -39,8 +40,63 @@
 2. **Canonical + legacy activation billing same event?** **NO** for new provider activations — single outbox idempotency namespace; harness may simulate legacy hook in tests only.
 3. **Single-rail flag necessary?** **REDUNDANT for registration** after VO-DEC-2B-002; env remains fail-closed until OWN-5 documents removal vs retention.
 4. **Obsolete routing helpers retired?** **Safe to document as inert**; physical delete deferred (OWN-5 / PR10) — no production behavior change in PR6.
-5. **Harness reachable from production HTTP/deploy?** **NO** — not wired to controllers; deploy must not set harness env in production.
-6. **Harness weakens provider-only invariant?** **NO** for HTTP registration; isolated test seam only.
+5. **Harness reachable from production HTTP/deploy?** **NO** — no controller/service import outside `backend/src/**/testing/**` and test specs; **no** deploy script references `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS`.
+6. **Harness weakens provider-only invariant?** **NO** for HTTP registration; isolated test seam only (override exists for break-glass/E2E only — not unconditional fail-closed).
+
+## F1 — Integration harness inventory (reproducible)
+
+### Discovery commands (from repository root)
+
+```bash
+rg -l -F 'createVehicleRowForIntegrationHarness' --glob '**/*' --glob '!**/node_modules/**'
+rg -l -F 'ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS' --glob '**/*' --glob '!**/node_modules/**'
+rg -l -F 'vehicle-row-integration.harness' --glob 'backend/src/**/*.ts'
+```
+
+### Call sites (`createVehicleRowForIntegrationHarness`)
+
+| File | Reachability |
+|------|----------------|
+| `backend/src/modules/vehicles/testing/vehicle-row-integration.harness.ts` | Definition |
+| `backend/src/modules/vehicle-onboarding/v2b-provider-billing-outbox-parity.postgres.integration.spec.ts` | PG test (gated) |
+| `backend/src/modules/organizations/testing/org-e2e-activation-p5b1-pg.harness.ts` | E2E/PG harness |
+| `backend/src/modules/vehicle-onboarding/characterization/v2a-registration-billing-safety.characterization.spec.ts` | Jest |
+| `backend/src/modules/vehicles/vehicles.service.create-billing-convergence.spec.ts` | Jest |
+| `backend/src/modules/vehicles/vehicles.service.manual-registration-retired.spec.ts` | Jest |
+| `backend/src/modules/vehicles/vehicles.service.ts` | **Comment reference only** (no `import` of harness) |
+
+**Nest module wiring:** not imported from any `*.module.ts`.
+
+### Override semantics
+
+| Condition | Behavior |
+|-----------|----------|
+| `NODE_ENV !== 'production'` | Harness may run (tests, local PG) |
+| `NODE_ENV === 'production'` and **no** `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1` | **409** `VEHICLE_ROW_INTEGRATION_HARNESS_FORBIDDEN` before DB write |
+| `NODE_ENV === 'production'` and `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1` | Harness executes — **explicit break-glass**; not configured in repository deploy paths |
+
+**Executable tests:** `vehicle-row-integration.harness.spec.ts`, `v2b-pr6-production-billing-callers.characterization.spec.ts`.
+
+## F4 — Registration billing caller discovery (reproducible)
+
+```bash
+rg -l 'onVehicleProvisioned\\(' backend/src --glob '!**/*.spec.ts' --glob '!**/*.integration.spec.ts'
+```
+
+**Expected production-runtime `.onVehicleProvisioned(` callers (2026-11-24):**
+
+1. `backend/src/modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.processor.ts` — **canonical registration billing**
+2. `backend/src/modules/vehicles/testing/vehicle-row-integration.harness.ts` — **harness optional hook** (not HTTP registration)
+
+**Registration entrypoints → billing writer trace:**
+
+| Entry | Activation | Billing writer |
+|-------|------------|----------------|
+| Master DIMO register / VO-SIG P2 | `VehicleOnboardingActivationService` → `VEHICLE_ACTIVATED` outbox | Outbox processor |
+| HM canonical (flag ON) | Same | Outbox processor |
+| HM legacy (flag OFF) | Inline vehicle TX | **None** |
+| Manual HTTP create | Retired 409 | **None** |
+| Integration harness | Direct `prisma.vehicle.create` | Optional hook in harness only |
 
 ## Revised PR6 / PR7 / PR10 contract
 
@@ -54,10 +110,17 @@
 
 | Gate | Result |
 |------|--------|
-| `v2b-pr6-single-billing-authority.characterization.spec.ts` | New — production path contracts |
+| `v2b-pr6-single-billing-authority.characterization.spec.ts` | Production path contracts |
+| `v2b-pr6-production-billing-callers.characterization.spec.ts` | rg-backed caller inventory |
+| `vehicle-row-integration.harness.spec.ts` | Production default deny + override |
 | `v2b-provider-billing-parity.characterization.spec.ts` | Updated narrative post-PR4 |
-| PG-05 / PG-03 | **Reuse merged** PR5 PostgreSQL suite (not re-run locally without Docker PG) |
+| `architecture/vehicle-onboarding/validate-graph.sh` | **EXECUTED PASS** (graph includes VO-DEC-2B-003 / VO-EVID-2B-006) |
+| PG-05 / PG-03 | **CI on PR branch** (see closeout report) |
 | VO-5B AB1 postgres suite | Unchanged; registry bridge still authoritative |
+
+## F2 — Graph validator root cause
+
+Top-level `architecture/vehicle-onboarding/validate-graph.sh` resolved `ROOT` to **parent of repository** (`../../..` from authority dir) and invoked **dimo-integration** copy of `validate-graph.mjs`. **Fix:** delegate to `scripts/validate-graph.sh` / `scripts/validate-graph.mjs` (vehicle-onboarding graph). Validator **must be executed** — not assumed from central registry pass.
 
 ## Owner decisions (unchanged — not inferred)
 

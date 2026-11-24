@@ -34,11 +34,14 @@ describe('V2B-PR6 single registration billing authority (characterization)', () 
     expect(hmLegacySrc).not.toContain('recordVehicleLicenseAdded');
   });
 
-  it('integration harness billing hook is test-only and production fail-closed', () => {
+  it('integration harness uses production default deny with explicit ALLOW override', () => {
     const harnessSrc = readModuleSource('modules/vehicles/testing/vehicle-row-integration.harness.ts');
     expect(harnessSrc).toContain('ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS');
     expect(harnessSrc).toContain("NODE_ENV === 'production'");
     expect(harnessSrc).toContain('VEHICLE_ROW_INTEGRATION_HARNESS_FORBIDDEN');
+    expect(harnessSrc).toMatch(
+      /NODE_ENV === 'production'[\s\S]*ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS !== '1'/,
+    );
   });
 
   it('billing single-rail flag remains not armable after manual registration retirement', () => {

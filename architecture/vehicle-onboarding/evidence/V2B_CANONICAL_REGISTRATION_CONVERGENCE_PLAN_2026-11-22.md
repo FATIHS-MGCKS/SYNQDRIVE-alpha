@@ -3,7 +3,8 @@
 **Operation:** `SYNQDRIVE_VEHICLES_V2B_CANONICAL_REGISTRATION_CONVERGENCE_PLAN`  
 **Base:** `origin/main` @ `ff962e50acdf75219e36bf8ba62e364c0165df5f`  
 **Prerequisite evidence:** [V2A_REGISTRATION_BILLING_SAFETY_2026-11-22.md](./V2A_REGISTRATION_BILLING_SAFETY_2026-11-22.md) (draft PR #2497)  
-**Mode:** Implementation design and contract — **no** runtime cutover, **no** flag activation, **no** live provider mutations.
+**Mode:** Implementation design and contract — **no** runtime cutover, **no** flag activation, **no** live provider mutations.  
+**Normative reconciliation:** V2B-PR6 closeout @ `VO-DEC-2B-003` — see **§1B** for current architecture; §2–§4 and §7 retain **historical** pre-PR4 design text.
 
 ## 1. Purpose
 
@@ -26,7 +27,25 @@ Define a **minimal, reversible** path to converge **all vehicle registration ent
 | 5 | Billing quantity effects only via `VehicleRegistryLifecycleOutboxProcessor` (no duplicate legacy hook). |
 | 6 | **No** batch backfill of outbox/billing for pre-V2B vehicles without explicit owner migration program. |
 
-## 2. Current-state architecture (verified)
+## 1B. Normative architecture (current — post V2B-PR4 / PR5 / PR6)
+
+**Authoritative as of main @ V2B-PR6; supersedes normative claims in §2–§4 where they conflict.**
+
+| Topic | Current normative truth | Evidence |
+|-------|-------------------------|----------|
+| New vehicle registration | **DIMO or High Mobility only**; manual HTTP/UI **retired** | VO-DEC-2B-002, V2B-PR4 |
+| Registration billing | **Single consumer:** `VehicleRegistryLifecycleOutboxProcessor` → `onVehicleProvisioned` on `VEHICLE_ACTIVATED` | VO-DEC-2B-003, PG-05, V2B-PR6 |
+| Legacy `VehiclesService.create` billing hook | **Removed** — `create` fail-closes with `MANUAL_VEHICLE_REGISTRATION_RETIRED` | V2B-PR4 |
+| `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` | **NOT_ARMABLE**; **not required** to enforce registration billing authority | V2B-PR6 |
+| HM_ONLY canonical | Behind `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` (default OFF) | V2B-PR2/PR3 |
+| HM_ONLY legacy (flag OFF) | Inline vehicle row; **no** outbox/billing (gap preserved) | PG-05-C |
+| Integration harness | `createVehicleRowForIntegrationHarness` — **not** a registration channel; production **default deny** with **explicit** `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1` override | V2B-PR4/PR6 |
+| Manual canonical (M-A/B/C) | **Not implemented** — options in §3.3 are historical | OWN-1 SUPERSEDED |
+| Rollback to manual create + legacy hook | **Not applicable** for new registrations | OWN-2 NOT_APPLICABLE |
+
+**PR6 / PR10 transition (reconciled):** PR6 certifies existing single authority; PR10 is optional **inert-helper cleanup** after OWN-5 — not a registration billing cutover.
+
+## 2. Current-state architecture (verified) — HISTORICAL (pre-V2B-PR4 baseline)
 
 ```mermaid
 flowchart TB
@@ -108,7 +127,7 @@ interface VehicleRegistrationConvergencePort {
 
 **Failure / recovery:** Idempotent resume via `tryResumeMasterDimoRegistration` pattern — add **HM_ONLY resume** keyed by `hmVehicleId` + org.
 
-### 3.3 Manual create convergence design
+### 3.3 Manual create convergence design — HISTORICAL (manual channel retired VO-DEC-2B-002)
 
 **Preserve UX:** Keep `POST /vehicles` (or equivalent) for org operators.
 
@@ -122,7 +141,7 @@ interface VehicleRegistrationConvergencePort {
 
 **No-provider / no telemetry:** `sourceMode: MANUAL`, `provider: MANUAL` — readiness profile must allow **missing DIMO/HM** (existing `MANUAL` rules in `readiness-rule-engine.ts`). Connectivity `DISCONNECTED` is valid; billing may still skip per billable policy (owner confirm).
 
-### 3.4 Single billing rail
+### 3.4 Single billing rail — HISTORICAL (superseded by VO-DEC-2B-003; no production create hook remains)
 
 **Phase-out contract for `VehiclesService.create` hook:**
 
@@ -158,7 +177,7 @@ All default **`false`** in code and `.env.example` until owner arms per environm
 | `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` | Suppress `VehiclesService.create` billing hook |
 | `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` | Run canonical path in shadow log-only alongside legacy (HM/manual) — **no user-visible duplication** |
 
-**Rollback:** Disable flags → immediate revert to legacy HM/manual + legacy billing hook (DIMO unchanged). No schema rollback required for T0–T2 (outbox rows already written remain valid).
+**Rollback (historical note):** Pre-PR4, disabling flags reverted legacy HM/manual paths. **Current:** manual create is **retired**; rollback does **not** restore manual registration or a production create billing hook (OWN-1/OWN-2).
 
 ## 5. Security gates (must pass before each cutover flag)
 
@@ -178,7 +197,7 @@ All default **`false`** in code and `.env.example` until owner arms per environm
 | PG-02 | `vo5b-ab1-registry-billing-activate.postgres` | existing | Billing idempotency key on ACTIVATED |
 | PG-03 | **NEW** `v2b-hm-only-canonical-convergence.postgres` | `V2B_HM_ONLY_CANONICAL_PG=1` | HM_ONLY → case → activate → 1 outbox → 1 billing event |
 | PG-04 | ~~`v2b-manual-canonical-convergence.postgres`~~ | — | **CANCELLED** — manual registration retired (V2B-PR4); use HTTP 409 retirement specs |
-| PG-05 | `v2b-provider-billing-outbox-parity.postgres` | `V2B_PROVIDER_BILLING_PARITY_PG=1` | DIMO/HM canonical outbox+billing parity; HM legacy flag-OFF baseline; single-rail arm deferred (V2B-PR6) |
+| PG-05 | `v2b-provider-billing-outbox-parity.postgres` | `V2B_PROVIDER_BILLING_PARITY_PG=1` | DIMO/HM canonical outbox+billing parity; HM legacy flag-OFF baseline; **V2B-PR6** certifies single registration billing authority |
 | PG-06 | `vo4-activation-races.postgres` | existing | Concurrent activate same case |
 | PG-07 | `vo5a-offboarding` + org ARCHIVED | org offboarding PG gates | Reject registration |
 | PG-08 | `high-mobility-vehicle-register.http-security` | unit/HTTP | Tenant OFFBOARDED policy |
@@ -195,7 +214,7 @@ CI: wire PG-03–05 into VO PostgreSQL workflow when files land (same pattern as
 | Readiness mutation | Advisory lock per case | Retry safe |
 | **Activation** | **Single TX:** vehicle, links, registry lifecycle, outbox insert, consent/baseline | Full rollback; case not COMPLETED |
 | Outbox process | Separate worker TX | Retry with outbox status; idempotent billing |
-| Legacy hook (pre-T2) | Post-commit async | Log warn only — **remove in T2** |
+| Legacy hook (pre-T2) | Post-commit async | **HISTORICAL** — public create hook removed V2B-PR4; PR10 optional inert-helper cleanup |
 
 HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 
@@ -241,8 +260,8 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 
 ## 11. Acceptance criteria (V2B complete)
 
-1. With all convergence flags **on** in disposable PG: HM_ONLY, manual (no telemetry), and DIMO each produce **exactly one** `VEHICLE_ACTIVATED` and **at most one** billing quantity add per activation.
-2. Legacy hook produces **zero** billing events when `BILLING_SINGLE_RAIL` on.
+1. With HM canonical flag **on** in disposable PG: HM_ONLY and DIMO each produce **exactly one** `VEHICLE_ACTIVATED` and **at most one** billing quantity add per activation. **Manual registration excluded** (retired).
+2. **No** reachable production registration path invokes a parallel legacy create `onVehicleProvisioned` hook (**VO-DEC-2B-003**). `BILLING_SINGLE_RAIL` arming is **not** a registration prerequisite.
 3. Cross-org, duplicate VIN, duplicate provider, OFFBOARDED/ARCHIVED, and provider-unavailable cases **fail closed** with existing error contracts.
 4. DIMO `MasterDimoCanonicalRegistrationService` diff is **delegation-only** to convergence (no semantic change to P2 flow).
 5. Flags **off** restore pre-V2B behavior (rollback verified in CI).
@@ -252,7 +271,7 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 
 | Stage | Status |
 |-------|--------|
-| Design contract (this document) | **PROPOSED** |
-| Implementation | **NOT STARTED** |
+| Design contract (this document) | **PROPOSED** (§1B normative for post-PR4 facts) |
+| Implementation | **IN PROGRESS** (V2B-PR1–PR6 merged or open; cutover flags not armed) |
 | Cutover | **FORBIDDEN** until owner approval |
 | Production validation | **NOT CLAIMED** |

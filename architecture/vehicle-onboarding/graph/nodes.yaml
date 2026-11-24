@@ -341,6 +341,26 @@ nodes:
     evidence:
       - VO-EVID-2B-004
 
+  - id: VO-EVID-2B-006
+    type: evidence
+    title: V2B-PR6 single registration billing authority
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Outbox-only registration billing; harness isolation; single-rail flag redundant for registration.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_PR6_SINGLE_BILLING_AUTHORITY_2026-11-24.md
+
+  - id: VO-DEC-2B-003
+    type: decision
+    title: V2B-PR6 single registration billing authority
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: No production manual-create billing hook; registration billing via registry outbox processor only.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-006
+
   - id: VO-PERSIST-CASE-001
     type: persist
     title: OnboardingCase (target)
