@@ -100,6 +100,7 @@
 | 2026-11-24 | **V2B-PR8 closeout** — Unambiguous soak contract (14d AND 200 attempts); PR9 dependency order; routing rollback contract; PostgreSQL evidence 60/60 discrete matrices | same PR #2523 |
 | 2026-11-24 | **V2B-PR8 owner attestation** — OWN-3…6 OWNER_APPROVED (options A / corrected OWN-5 / 6-A); VO-EVID-2B-009; **no** deploy/flags/prod access | PR #2523 |
 | 2026-11-24 | **V2B-PR8 direct cutover** — OWN-5 SUPERSEDED; OWN-5B `DIRECT_CONTROLLED_PRODUCTION_CUTOVER_WITHOUT_SHADOW_SOAK`; PR9A–C; VO-EVID-2B-010 | PR #2523 |
+| 2026-11-24 | **V2B-PR9A** — Direct production readiness; legacy fleet SQL; cutover/smoke/rollback runbooks; VO-EVID-2B-011 | PR branch |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
