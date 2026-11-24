@@ -21,7 +21,7 @@ Define a **minimal, reversible** path to converge **all vehicle registration ent
 |---|--------|
 | 1 | DIMO continues canonical activation (case → readiness → activation TX → outbox). |
 | 2 | HM_ONLY converges to the same activation/outbox rail (no parallel inline `vehicle.create` long term). |
-| 3 | Manual fleet vehicle creation **remains** (including non-telematics vehicles). |
+| 3 | **SUPERSEDED (V2B-PR4):** Manual fleet vehicle creation **retired** — new vehicles only via DIMO or High Mobility. |
 | 4 | Every **new** activation emits exactly one durable `VEHICLE_ACTIVATED` outbox row per onboarding case. |
 | 5 | Billing quantity effects only via `VehicleRegistryLifecycleOutboxProcessor` (no duplicate legacy hook). |
 | 6 | **No** batch backfill of outbox/billing for pre-V2B vehicles without explicit owner migration program. |
@@ -207,8 +207,8 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 | **V2B-PR1** | Convergence port + flags (wired default off) | No behavior | off |
 | **V2B-PR2** | HM_ONLY canonical implementation + unit tests | Behind `HM_ONLY_CANONICAL` | off |
 | **V2B-PR3** | HM_ONLY PG harness PG-03 + security regressions | Tests | — |
-| **V2B-PR4** | Manual canonical (option M-A) + HTTP idempotency | Behind `MANUAL_CANONICAL` | off |
-| **V2B-PR5** | Manual PG-04/05 + no-telemetry case | Tests | — |
+| **V2B-PR4** | **Manual registration removal** — DIMO/HM-only channel restriction | HTTP/UI lockdown; no flag arm | — |
+| **V2B-PR5** | Provider-only billing/outbox parity + registration admission tests | Tests | — |
 | **V2B-PR6** | Single billing rail suppress legacy hook | Behind `BILLING_SINGLE_RAIL` | off |
 | **V2B-PR7** | Shadow compare + ops metrics | Shadow only | off |
 | **V2B-PR8** | Docs + authority + decision register | Docs | — |
@@ -221,8 +221,8 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 
 | ID | Decision |
 |----|----------|
-| OWN-1 | Confirm manual create **option M-A** (onboarding orchestration) vs M-B/C. |
-| OWN-2 | Confirm billing for **non-connected manual** vehicles (skip vs assign billable). |
+| OWN-1 | **SUPERSEDED_BY_OWNER_DECISION** — manual create removed; option M-A not implemented. |
+| OWN-2 | **NOT_APPLICABLE_AFTER_REMOVAL** — new manual vehicles cannot be created. |
 | OWN-3 | Approve HM_ONLY readiness profile waivers (baseline strictness). |
 | OWN-4 | Approve **no retroactive billing** for legacy fleet (explicit). |
 | OWN-5 | Approve flag names, soak duration, and production arm order (HM → manual → billing). |

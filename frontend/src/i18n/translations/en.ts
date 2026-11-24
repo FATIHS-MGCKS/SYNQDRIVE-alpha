@@ -3411,6 +3411,8 @@ export const en = {
   'master.cv.addVehicle.success': 'Vehicle registered successfully',
   'master.cv.addVehicle.errorGeneric': 'Registration failed',
   'master.cv.addVehicle.errorDuplicateVin': 'A vehicle with this VIN already exists in the organization',
+  'master.cv.addVehicle.manualRetired':
+    'Manual vehicle registration is no longer available. Register new vehicles through DIMO or High Mobility.',
   'master.cv.addVehicle.dimoNotFound': 'DIMO vehicle could not be loaded',
   'master.cv.addVehicle.dimoLoadFailed': 'Failed to load DIMO vehicles',
   'master.cv.addVehicle.demoUnavailableTitle': 'Demo vehicles',

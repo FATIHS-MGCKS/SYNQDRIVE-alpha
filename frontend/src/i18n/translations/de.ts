@@ -3522,6 +3522,8 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.addVehicle.success': 'Fahrzeug erfolgreich registriert',
   'master.cv.addVehicle.errorGeneric': 'Registrierung fehlgeschlagen',
   'master.cv.addVehicle.errorDuplicateVin': 'Ein Fahrzeug mit dieser VIN existiert bereits in der Organisation',
+  'master.cv.addVehicle.manualRetired':
+    'Manuelle Fahrzeugregistrierung ist nicht mehr verfuegbar. Neue Fahrzeuge nur ueber DIMO oder High Mobility registrieren.',
   'master.cv.addVehicle.dimoNotFound': 'DIMO-Fahrzeug konnte nicht geladen werden',
   'master.cv.addVehicle.dimoLoadFailed': 'DIMO-Fahrzeuge konnten nicht geladen werden',
   'master.cv.addVehicle.demoUnavailableTitle': 'Demo-Fahrzeuge',

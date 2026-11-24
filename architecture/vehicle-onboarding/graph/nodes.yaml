@@ -124,7 +124,7 @@ nodes:
     type: gap
     title: Split registration paths
     epistemic_status: CONFIRMED
-    summary: DIMO, HM_ONLY, manual create without unified contract.
+    summary: Manual create retired (V2B-PR4); DIMO/HM canonical convergence ongoing; legacy manual fleet rows remain.
     source_paths:
       - architecture/vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md
 
@@ -320,6 +320,26 @@ nodes:
       - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
     evidence:
       - VO-EVID-2B-001
+
+  - id: VO-EVID-2B-004
+    type: evidence
+    title: V2B-PR4 manual registration removal
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Retire manual HTTP/UI registration; DIMO and High Mobility only for new vehicles.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_PR4_MANUAL_REGISTRATION_REMOVAL_2026-11-24.md
+
+  - id: VO-DEC-2B-002
+    type: decision
+    title: V2B-PR4 manual registration removal
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Owner MANUAL_REGISTRATION_REMOVED; fail-closed API; preserve existing manual fleet rows.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-004
 
   - id: VO-PERSIST-CASE-001
     type: persist

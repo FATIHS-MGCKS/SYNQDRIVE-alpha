@@ -7,7 +7,7 @@ export function isHmOnlyCanonicalRoutingEnabled(
 }
 
 /**
- * V2B-PR1: always false — billing single-rail is not armable; manual create keeps legacy hook.
+ * V2B-PR1: always false — billing single-rail is not armable. V2B-PR4 retired public manual create (harness-only row insert).
  * V2B-PR6+ may gate on config after manual canonical activation ships.
  */
 export function shouldSuppressLegacyVehicleCreateBillingHook(

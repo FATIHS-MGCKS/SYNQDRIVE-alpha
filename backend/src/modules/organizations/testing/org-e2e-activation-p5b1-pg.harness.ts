@@ -178,7 +178,7 @@ export async function createFleetVehicle(
   actorUserId: string,
   suffix: string,
 ) {
-  return vehicles.create(
+  return vehicles.createVehicleRowForIntegrationHarness(
     orgId,
     {
       vin: `VIN${suffix}${randomUUID().replace(/-/g, '').slice(0, 12)}`,

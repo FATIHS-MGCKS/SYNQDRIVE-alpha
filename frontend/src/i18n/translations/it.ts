@@ -170,6 +170,8 @@ export const it = {
   'master.cv.addVehicle.success': 'Veicolo registrato',
   'master.cv.addVehicle.errorGeneric': 'Registrazione non riuscita',
   'master.cv.addVehicle.errorDuplicateVin': 'Esiste già un veicolo con questo VIN nell organizzazione',
+  'master.cv.addVehicle.manualRetired':
+    'La registrazione manuale dei veicoli non e piu disponibile. Registra i nuovi veicoli tramite DIMO o High Mobility.',
   'master.cv.addVehicle.dimoNotFound': 'Veicolo DIMO non trovato',
   'master.cv.addVehicle.dimoLoadFailed': 'Caricamento veicoli DIMO non riuscito',
   'master.cv.addVehicle.demoUnavailableTitle': 'Veicoli demo',

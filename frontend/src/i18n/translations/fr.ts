@@ -551,6 +551,8 @@ export const fr = {
   'master.cv.addVehicle.success': 'Vehicule enregistre',
   'master.cv.addVehicle.errorGeneric': 'Echec de l enregistrement',
   'master.cv.addVehicle.errorDuplicateVin': 'Un vehicule avec ce VIN existe deja dans l organisation',
+  'master.cv.addVehicle.manualRetired':
+    "L'enregistrement manuel des vehicules n'est plus disponible. Enregistrez les nouveaux vehicules via DIMO ou High Mobility.",
   'master.cv.addVehicle.dimoNotFound': 'Vehicule DIMO introuvable',
   'master.cv.addVehicle.dimoLoadFailed': 'Echec du chargement DIMO',
   'master.cv.addVehicle.demoUnavailableTitle': 'Vehicules demo',

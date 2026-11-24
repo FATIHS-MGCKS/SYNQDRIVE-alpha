@@ -278,14 +278,6 @@ export function ConnectedVehiclesHub({
     { id: 'import', label: t('master.cv.hub.tab.import') },
   ] as const;
 
-  const openManualRegistration = useCallback(() => {
-    setRegistrationDimo(null);
-    setRegistrationPrefillOrgId(null);
-    setEditExistingVehicle(null);
-    setEditBaselineVehicle(null);
-    setRegistrationOpen(true);
-  }, []);
-
   const flushPendingSpecsEdit = useCallback(() => {
     const pending = pendingSpecsEditRef.current;
     if (!pending) return;
@@ -426,11 +418,13 @@ export function ConnectedVehiclesHub({
         openVehicle(result.vehicleId);
       } catch (e) {
         const message =
-          e instanceof Error && e.message === 'VEHICLE_VIN_ALREADY_EXISTS'
-            ? t('master.cv.addVehicle.errorDuplicateVin')
-            : e instanceof Error
-              ? e.message
-              : t('master.cv.addVehicle.errorGeneric');
+          e instanceof Error && e.message === 'MANUAL_REGISTRATION_RETIRED'
+            ? t('master.cv.addVehicle.manualRetired')
+            : e instanceof Error && e.message === 'VEHICLE_VIN_ALREADY_EXISTS'
+              ? t('master.cv.addVehicle.errorDuplicateVin')
+              : e instanceof Error
+                ? e.message
+                : t('master.cv.addVehicle.errorGeneric');
         toast.error(message);
         throw e;
       }
@@ -444,12 +438,7 @@ export function ConnectedVehiclesHub({
         title={t('master.cv.hub.title')}
         description={t('master.cv.hub.description')}
         actions={
-          <ConnectedVehicleAddMenu
-            onAction={(action) => {
-              if (action === 'import_dimo') navigateSection('import');
-              else openManualRegistration();
-            }}
-          />
+          <ConnectedVehicleAddMenu onImportDimo={() => navigateSection('import')} />
         }
         tabs={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
         activeTabId={section}
@@ -536,7 +525,7 @@ export function ConnectedVehiclesHub({
         existingVehicle={editExistingVehicle ?? undefined}
         organizations={organizations}
         initialOrganizationId={registrationPrefillOrgId}
-        manualCreateOnly={!registrationDimo && !editExistingVehicle}
+        manualCreateOnly={false}
         onRegister={(rv) => handlePersistRegistration(rv)}
         onUpdate={editExistingVehicle ? (rv) => handleUpdateRegisteredVehicle(rv) : undefined}
       />
