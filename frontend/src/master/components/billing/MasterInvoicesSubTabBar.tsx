@@ -1,4 +1,10 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { MASTER_BILLING_INVOICES_TABS, type MasterBillingInvoicesTab } from './master-billing-navigation';
+
+const INVOICES_TAB_I18N_KEY: Record<MasterBillingInvoicesTab, 'master.billing.invoices.tab.invoices' | 'master.billing.invoices.tab.creditNotes'> = {
+  invoices: 'master.billing.invoices.tab.invoices',
+  'credit-notes': 'master.billing.invoices.tab.creditNotes',
+};
 
 interface MasterInvoicesSubTabBarProps {
   activeTab: MasterBillingInvoicesTab;
@@ -6,8 +12,9 @@ interface MasterInvoicesSubTabBarProps {
 }
 
 export function MasterInvoicesSubTabBar({ activeTab, onTabChange }: MasterInvoicesSubTabBarProps) {
+  const { t } = useLanguage();
   return (
-    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Rechnungen Bereiche">
+    <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('master.billing.invoices.subTabListAria')}>
       {MASTER_BILLING_INVOICES_TABS.map((tab) => (
         <button
           key={tab.id}
@@ -21,7 +28,7 @@ export function MasterInvoicesSubTabBar({ activeTab, onTabChange }: MasterInvoic
           }`}
           onClick={() => onTabChange(tab.id)}
         >
-          {tab.label}
+          {t(INVOICES_TAB_I18N_KEY[tab.id])}
         </button>
       ))}
     </div>

@@ -14,9 +14,9 @@ export type MasterBillingLegacySection =
 
 export type MasterBillingInvoicesTab = 'invoices' | 'credit-notes';
 
-export const MASTER_BILLING_INVOICES_TABS: Array<{ id: MasterBillingInvoicesTab; label: string }> = [
-  { id: 'invoices', label: 'Rechnungen' },
-  { id: 'credit-notes', label: 'Gutschriften' },
+export const MASTER_BILLING_INVOICES_TABS: Array<{ id: MasterBillingInvoicesTab }> = [
+  { id: 'invoices' },
+  { id: 'credit-notes' },
 ];
 
 export const MASTER_BILLING_PRICING_PRODUCT_PARAM = 'masterBillingProductKey';
