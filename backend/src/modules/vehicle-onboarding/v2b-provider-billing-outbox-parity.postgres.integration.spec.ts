@@ -7,7 +7,10 @@ import {
   FuelType,
   PrismaClient,
   VehicleRegistryLifecycle,
+  VehicleRegistryLifecycleOutboxStatus,
 } from '@prisma/client';
+import { BillingQuantityService } from '@modules/billing/billing-quantity.service';
+import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { ConflictException } from '@nestjs/common';
@@ -81,6 +84,31 @@ function hmDto(hmId: string, orgId: string): RegisterHmOnlyVehicleDto {
     await prisma.$disconnect();
   });
 
+  async function assertAuthoritativePlusOneQuantity(
+    orgId: string,
+    vehicleId: string,
+    billingKey: string,
+    expectedOccurredAt: Date,
+  ) {
+    const events = await prisma.billingQuantityEvent.findMany({
+      where: {
+        organizationId: orgId,
+        vehicleId,
+        eventType: BillingQuantityEventType.VEHICLE_CONNECTED,
+      },
+    });
+    expect(events).toHaveLength(1);
+    const row = events[0]!;
+    expect(row.organizationId).toBe(orgId);
+    expect(row.vehicleId).toBe(vehicleId);
+    expect(row.idempotencyKey).toBe(billingKey);
+    expect(row.quantityAfter - row.quantityBefore).toBe(1);
+    expect(row.delta).toBe(1);
+    expect(row.effectiveAt.toISOString()).toBe(expectedOccurredAt.toISOString());
+    expect(billingKey).toMatch(/^vehicle-registry:.+:billing-activate:v1$/);
+    return row;
+  }
+
   async function assertSingleBillableActivation(
     orgId: string,
     vehicleId: string,
@@ -90,19 +118,21 @@ function hmDto(hmId: string, orgId: string): RegisterHmOnlyVehicleDto {
       where: { idempotencyKey: activationOutboxIdempotencyKey(caseId), vehicleId },
     });
     expect(outbox.eventType).toBe('VEHICLE_ACTIVATED');
+    expect(outbox.organizationId).toBe(orgId);
+    expect(
+      await prisma.vehicleRegistryLifecycleOutbox.count({
+        where: { vehicleId, eventType: 'VEHICLE_ACTIVATED' },
+      }),
+    ).toBe(1);
     const processor = registryBillingProcessor(prisma);
     await processor.processRow(outbox.id);
     await processor.processRow(outbox.id);
     const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.eventId);
-    const events = await prisma.billingQuantityEvent.findMany({
-      where: {
-        organizationId: orgId,
-        vehicleId,
-        eventType: BillingQuantityEventType.VEHICLE_CONNECTED,
-      },
+    await assertAuthoritativePlusOneQuantity(orgId, vehicleId, billingKey, outbox.occurredAt);
+    const published = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
+      where: { id: outbox.id },
     });
-    expect(events).toHaveLength(1);
-    expect(events[0]?.idempotencyKey).toBe(billingKey);
+    expect(published.status).toBe(VehicleRegistryLifecycleOutboxStatus.PUBLISHED);
     return { outbox, billingKey };
   }
 
@@ -147,7 +177,7 @@ function hmDto(hmId: string, orgId: string): RegisterHmOnlyVehicleDto {
     expect(billingKey).toMatch(/^vehicle-registry:.+:billing-activate:v1$/);
   });
 
-  it('PG-05-C HM legacy (canonical flag OFF): vehicle persisted, zero outbox and billing', async () => {
+  it('PG-05-C HM legacy (canonical flag OFF): EXPECTED_LEGACY_GAP_PRESERVED — vehicle only, zero outbox/billing', async () => {
     const orgId = await createRentalOrg(prisma);
     await ensureBasePlan(prisma, orgId, 0);
     const { hmId } = await createApprovedHmMirror(prisma, orgId);
@@ -267,6 +297,99 @@ function hmDto(hmId: string, orgId: string): RegisterHmOnlyVehicleDto {
   it('PG-05-I manual public registration remains unavailable (retirement contract)', () => {
     const err = legacyManualVehicleRegistrationDisabledException();
     expect(err.getResponse()).toMatchObject({ code: 'MANUAL_VEHICLE_REGISTRATION_RETIRED' });
+  });
+
+  it('PG-05-K DIMO canonical: durable billing before publish recovers via outbox retry', async () => {
+    const orgId = await createRentalOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 0);
+    const dimoId = randomUUID();
+    await insertDimoMirrorForPostgresTests(prisma, {
+      id: dimoId,
+      externalId: `ext-${dimoId.slice(0, 8)}`,
+      vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+      rawJson: TESLA_RAW,
+    });
+    const { vehicle } = await dimoHarness.masterRegistration.register({
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      actorUserId: null,
+    });
+    const caseRow = await prisma.vehicleOnboardingCase.findFirstOrThrow({
+      where: { vehicleId: vehicle.id, status: 'COMPLETED' },
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { idempotencyKey: activationOutboxIdempotencyKey(caseRow.id), vehicleId: vehicle.id },
+    });
+    expect(outbox.status).toBe(VehicleRegistryLifecycleOutboxStatus.PENDING);
+    const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.eventId);
+    const quantity = new BillingQuantityService(prisma as never);
+    await quantity.recordVehicleLicenseAdded({
+      organizationId: orgId,
+      subscriptionId: baseItem.subscriptionId,
+      subscriptionItemId: baseItem.id,
+      vehicleId: vehicle.id,
+      effectiveAt: outbox.occurredAt,
+      idempotencyKey: billingKey,
+      retroactiveAuthorized: true,
+    });
+    const provisionSpy = jest.spyOn(
+      BillingQuantityVehicleIntegration.prototype,
+      'onVehicleProvisioned',
+    );
+    const processor = registryBillingProcessor(prisma);
+    const outcome = await processor.processRow(outbox.id);
+    expect(outcome).toBe('published');
+    expect(provisionSpy).toHaveBeenCalledTimes(1);
+    provisionSpy.mockRestore();
+    await assertAuthoritativePlusOneQuantity(orgId, vehicle.id, billingKey, outbox.occurredAt);
+    const published = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
+      where: { id: outbox.id },
+    });
+    expect(published.status).toBe(VehicleRegistryLifecycleOutboxStatus.PUBLISHED);
+  });
+
+  it('PG-05-L HM canonical: pre-billing validation failure retries to single quantity event', async () => {
+    const orgId = await createRentalOrg(prisma);
+    await ensureBasePlan(prisma, orgId, 0);
+    const { hmId } = await createApprovedHmMirror(prisma, orgId);
+    const result = await hmHarness.hmOnlyCanonical.register({
+      dto: hmDto(hmId, orgId),
+      access: { tenantOrganizationId: orgId, isMasterAdmin: false, actorUserId: null },
+    });
+    const caseRow = await prisma.vehicleOnboardingCase.findFirstOrThrow({
+      where: { vehicleId: result.synqdriveVehicleId, status: 'COMPLETED' },
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { idempotencyKey: activationOutboxIdempotencyKey(caseRow.id) },
+    });
+    const processor = registryBillingProcessor(prisma);
+    await prisma.vehicle.update({
+      where: { id: result.synqdriveVehicleId },
+      data: { registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('retry');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: { organizationId: orgId, vehicleId: result.synqdriveVehicleId },
+      }),
+    ).toBe(0);
+    await prisma.vehicle.update({
+      where: { id: result.synqdriveVehicleId },
+      data: { registryLifecycle: VehicleRegistryLifecycle.ACTIVE },
+    });
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: { nextRetryAt: null },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    const billingKey = buildRegistryActivateBillingIdempotencyKey(outbox.eventId);
+    await assertAuthoritativePlusOneQuantity(
+      orgId,
+      result.synqdriveVehicleId,
+      billingKey,
+      outbox.occurredAt,
+    );
   });
 
   it('PG-05-J DIMO idempotent retry preserves single outbox before billing', async () => {
