@@ -9,6 +9,7 @@
 | VO-DEC-2-002 | VO-2.1 persistence integrity and migration proof | PROPOSED | VO-EVID-2-002 |
 | VO-DEC-2B-001 | V2B canonical registration convergence (HM/manual → activation rail) | PROPOSED | VO-EVID-2B-001 |
 | VO-DEC-2B-002 | V2B-PR4 manual registration removal (DIMO/HM-only channels) | VALIDATED (repository) | VO-EVID-2B-004 |
+| VO-DEC-2B-004 | V2B-PR7 HM readiness observation (no billing shadow) | PROPOSED (repository) | VO-EVID-2B-007 |
 
 ---
 
@@ -139,3 +140,20 @@
 | **EVIDENCE** | VO-EVID-2B-006 (`V2B_PR6_SINGLE_BILLING_AUTHORITY_2026-11-24.md`) |
 | **VALIDATION** | `v2b-pr6-single-billing-authority.characterization.spec.ts`; PG-05 reuse on main |
 | **OPEN GAPS** | OWN-3…6; optional dead-code removal (V2B-PR10) |
+
+---
+
+## VO-DEC-2B-004
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED (repository) |
+| **BEFORE** | Convergence plan PR7 described generic “shadow compare + ops metrics” without billing-shadow exclusion |
+| **WHY** | VO-DEC-2B-003 established single registration billing authority; PR7 must not introduce redundant dual-billing shadow |
+| **CHANGE** | `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` (default OFF) triggers **read-only** legacy vs canonical readiness observation; billing field is predictive only |
+| **ALTERNATIVES REJECTED** | Parallel shadow billing quantity writer; running full canonical registration for metrics only |
+| **EXPECTED EFFECT** | Divergence metrics for OWN-5 without mutating registration outcomes when flag OFF |
+| **NON-EFFECTS** | No production flag arm; no Stripe/provider calls; no case/vehicle/outbox writes in observation |
+| **EVIDENCE** | VO-EVID-2B-007 (`V2B_PR7_HM_CANONICAL_READINESS_OBSERVABILITY_2026-11-24.md`) |
+| **VALIDATION** | `v2b-hm-canonical-readiness-observation.postgres.integration.spec.ts`; unit specs |
+| **OPEN GAPS** | OWN-3…6 owner attestation; HM canonical flag arm (V2B-PR9) |

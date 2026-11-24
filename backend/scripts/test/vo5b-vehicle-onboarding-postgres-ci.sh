@@ -14,6 +14,7 @@ export VO5C_D4_D5_PG=1
 export VO49_SOURCE_ADOPTION_PG=1
 export V2B_HM_ONLY_CANONICAL_PG=1
 export V2B_PROVIDER_BILLING_PARITY_PG=1
+export V2B_HM_CANONICAL_READINESS_OBSERVATION_PG=1
 
 parse_database_url() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -62,3 +63,4 @@ npm run test:vehicle-onboarding:vo5c-d4-d5:postgres
 npm run test:vehicle-onboarding:vo49:postgres
 npm run test:vehicle-onboarding:v2b-hm-only-pg03:postgres
 npm run test:vehicle-onboarding:v2b-provider-billing-parity:postgres
+npm run test:vehicle-onboarding:v2b-hm-readiness-observation:postgres

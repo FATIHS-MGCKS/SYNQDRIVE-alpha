@@ -15,11 +15,13 @@ import {
   type HmOnlyCanonicalOrchestrationResult,
   hmOnlyCanonicalRegistrationIdempotencyKey,
 } from './hm-only-canonical-registration.types';
+import { evaluateHmOnlyCanonicalResumeAdmissionVerdict } from './hm-only-canonical-provider-admission.authority';
 
 export type HmOnlyCanonicalResumeOutcome =
   | { kind: 'NOT_RESUMABLE' }
   | { kind: 'IDEMPOTENT_SUCCESS'; result: HmOnlyCanonicalOrchestrationResult };
 
+/** Runtime canonical activation gate — error contract frozen against `origin/main`. */
 export async function assertHmOnlyCanonicalProviderRecord(
   prisma: PrismaService,
   input: HmOnlyCanonicalOrchestrationInput,
@@ -74,7 +76,7 @@ export async function assertHmOnlyCanonicalProviderRecord(
     }));
   if (
     existingVehicle &&
-  (existingVehicle.registryLifecycle === VehicleRegistryLifecycle.OFFBOARDED ||
+    (existingVehicle.registryLifecycle === VehicleRegistryLifecycle.OFFBOARDED ||
       existingVehicle.registryLifecycle === VehicleRegistryLifecycle.ARCHIVED)
   ) {
     throw new VehicleOnboardingError(
@@ -170,24 +172,19 @@ export async function tryResumeHmOnlyCanonicalRegistration(
     );
   }
 
-  const completedCase = await prisma.vehicleOnboardingCase.findFirst({
-    where: {
-      organizationId: input.dto.organizationId,
-      idempotencyKey,
-      status: 'COMPLETED',
-      vehicleId: vehicle.id,
-    },
-    select: { id: true },
+  const resumeVerdict = await evaluateHmOnlyCanonicalResumeAdmissionVerdict(prisma, {
+    dto: input.dto,
+    hmRecord: hm as import('@prisma/client').HighMobilityVehicle,
   });
 
-  if (completedCase) {
+  if (resumeVerdict.verdict === 'CANONICAL_IDEMPOTENT_REPLAY') {
     return {
       kind: 'IDEMPOTENT_SUCCESS',
       result: buildHmOnlySuccessResult(vehicle.id, input.dto.hmVehicleId, vehicle.vin ?? hm.vin),
     };
   }
 
-  if (hm.registrationState === 'REGISTERED' && hm.synqdriveVehicleId) {
+  if (resumeVerdict.verdict === 'CANONICAL_LEGACY_RECONCILIATION_REQUIRED') {
     throw new VehicleOnboardingError(
       'HM_LEGACY_REGISTRATION_BLOCKING_CANONICAL',
       'HM vehicle was registered outside canonical onboarding; explicit reconciliation required before canonical replay',

@@ -12,13 +12,19 @@ import { ConfigService } from '@nestjs/config';
 import type { VehicleRegistrationConvergenceConfig } from '@config/vehicle-registration-convergence.config';
 import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.port';
 import type { VehicleRegistrationConvergencePort } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.port';
-import { isHmOnlyCanonicalRoutingEnabled } from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
+import {
+  isHmOnlyCanonicalRoutingEnabled,
+  isHmOnlyShadowCompareEnabled,
+} from '@modules/vehicle-onboarding/convergence/vehicle-registration-convergence.routing';
+import { HmOnlyCanonicalReadinessObservationService } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observation.service';
+import { sanitizeObservationErrorCode } from '@modules/vehicle-onboarding/hm-only-canonical/hm-only-canonical-readiness-observability';
 import {
   assertHighMobilityRecordTenantAccess,
   assertHighMobilityTenantOperationalOrganization,
   highMobilityRecordOrgWhere,
 } from './high-mobility-tenant-access.policy';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { HighMobilityVehicle } from '@prisma/client';
 import type {
   RegisterHmOnlyVehicleDto,
   HmOnlyRegistrationResultDto,
@@ -45,10 +51,12 @@ export class HighMobilityRegistrationService {
     @Optional()
     @Inject(VEHICLE_REGISTRATION_CONVERGENCE_PORT)
     private readonly convergencePort?: VehicleRegistrationConvergencePort,
+    @Optional()
+    private readonly hmReadinessObservation?: HmOnlyCanonicalReadinessObservationService,
   ) {}
 
   private defaultConvergenceConfig(): VehicleRegistrationConvergenceConfig {
-    return { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false };
+    return { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false, shadowCompareEnabled: false };
   }
 
   private resolveConvergenceConfig(): VehicleRegistrationConvergenceConfig {
@@ -114,6 +122,10 @@ export class HighMobilityRegistrationService {
       organizationId,
       access.isMasterAdmin,
     );
+
+    if (isHmOnlyShadowCompareEnabled(convergenceConfig)) {
+      this.fireHmOnlyShadowReadinessObservation(dto, access, hmRecord);
+    }
 
     // Prevent duplicate VIN registration within this org
     const existingVehicle = await this.prisma.vehicle.findFirst({
@@ -260,6 +272,36 @@ export class HighMobilityRegistrationService {
       registrationState: row.registrationState,
       organizationId: row.organizationId,
     }));
+  }
+
+  private fireHmOnlyShadowReadinessObservation(
+    dto: RegisterHmOnlyVehicleDto,
+    access: {
+      tenantOrganizationId: string;
+      isMasterAdmin: boolean;
+      actorUserId: string | null;
+    },
+    hmRecord: HighMobilityVehicle,
+  ): void {
+    const observation = this.hmReadinessObservation;
+    if (!observation) {
+      return;
+    }
+    void observation
+      .observeHmOnlyRegistrationAttempt({
+        dto,
+        access,
+        shadowFrozenHmRecord: { ...hmRecord },
+      })
+      .catch((error) => {
+        const code = sanitizeObservationErrorCode(error);
+        this.logger.warn({
+          msg: 'hm_only_shadow_readiness_observation_failed',
+          hmVehicleId: dto.hmVehicleId,
+          organizationId: access.tenantOrganizationId,
+          observationErrorCode: code,
+        });
+      });
   }
 
   private normalizeFuelType(fuel?: string): string {

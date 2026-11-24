@@ -361,6 +361,26 @@ nodes:
     evidence:
       - VO-EVID-2B-006
 
+  - id: VO-EVID-2B-007
+    type: evidence
+    title: V2B-PR7 HM canonical readiness observation
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Non-mutating legacy vs canonical readiness compare; bounded observability; default-OFF shadow flag.
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/V2B_PR7_HM_CANONICAL_READINESS_OBSERVABILITY_2026-11-24.md
+
+  - id: VO-DEC-2B-004
+    type: decision
+    title: V2B-PR7 HM readiness observation contract
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Shadow compare measures readiness divergence only; no billing shadow; flag default OFF.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2B-007
+
   - id: VO-PERSIST-CASE-001
     type: persist
     title: OnboardingCase (target)

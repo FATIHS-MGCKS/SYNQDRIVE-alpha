@@ -8,12 +8,14 @@ describe('V2B provider billing parity characterization', () => {
       shouldSuppressLegacyVehicleCreateBillingHook({
         hmOnlyCanonicalEnabled: true,
         billingSingleRailEnabled: false,
+        shadowCompareEnabled: false,
       }),
     ).toBe(false);
     expect(
       shouldSuppressLegacyVehicleCreateBillingHook({
         hmOnlyCanonicalEnabled: false,
         billingSingleRailEnabled: false,
+        shadowCompareEnabled: false,
       }),
     ).toBe(false);
   });

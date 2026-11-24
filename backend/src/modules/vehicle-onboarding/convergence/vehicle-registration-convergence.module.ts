@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { VehicleOnboardingActivationRailModule } from '../vehicle-onboarding-activation-rail.module';
 import { HmOnlyCanonicalRegistrationService } from '../hm-only-canonical/hm-only-canonical-registration.service';
+import { HmOnlyCanonicalReadinessObservationService } from '../hm-only-canonical/hm-only-canonical-readiness-observation.service';
 import { VehicleRegistrationConvergenceService } from './vehicle-registration-convergence.service';
 import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from './vehicle-registration-convergence.port';
 
@@ -11,12 +12,17 @@ import { VEHICLE_REGISTRATION_CONVERGENCE_PORT } from './vehicle-registration-co
   imports: [VehicleOnboardingActivationRailModule],
   providers: [
     HmOnlyCanonicalRegistrationService,
+    HmOnlyCanonicalReadinessObservationService,
     VehicleRegistrationConvergenceService,
     {
       provide: VEHICLE_REGISTRATION_CONVERGENCE_PORT,
       useExisting: VehicleRegistrationConvergenceService,
     },
   ],
-  exports: [VEHICLE_REGISTRATION_CONVERGENCE_PORT, VehicleRegistrationConvergenceService],
+  exports: [
+    VEHICLE_REGISTRATION_CONVERGENCE_PORT,
+    VehicleRegistrationConvergenceService,
+    HmOnlyCanonicalReadinessObservationService,
+  ],
 })
 export class VehicleRegistrationConvergenceModule {}

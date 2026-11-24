@@ -229,7 +229,7 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 | **V2B-PR4** | **Manual registration removal** — DIMO/HM-only channel restriction | HTTP/UI lockdown; no flag arm | — |
 | **V2B-PR5** | Provider-only billing/outbox parity + registration admission tests | Tests | — |
 | **V2B-PR6** | Single registration billing authority (reconciled post-PR4) | Evidence + characterization; **no** new armable transition | — |
-| **V2B-PR7** | Shadow compare + ops metrics | Shadow only | off |
+| **V2B-PR7** | HM readiness observation (legacy vs canonical; bounded metrics) — **no billing shadow** | `VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE` | off |
 | **V2B-PR8** | Docs + authority + decision register | Docs | — |
 | **V2B-PR9** | Owner flag arm attestation (separate ops PR) | **Production** | owner-only |
 | **V2B-PR10** | Remove inert legacy helpers + harness cleanup (post OWN-5) | Delete dead routing / optional harness tighten | owner-only |

@@ -56,7 +56,7 @@ function hmLegacyService(prisma: PrismaClient) {
   const config = {
     get: (key: string) =>
       key === 'vehicleRegistrationConvergence'
-        ? { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false }
+        ? { hmOnlyCanonicalEnabled: false, billingSingleRailEnabled: false, shadowCompareEnabled: false }
         : undefined,
   } as unknown as ConfigService;
   return new HighMobilityRegistrationService(prisma as never, config);

@@ -4,6 +4,8 @@ export const VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED_ENV =
   'VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED';
 export const VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_ENV =
   'VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL';
+export const VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE_ENV =
+  'VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE';
 
 const STRICT_TRUE = new Set(['true', '1', 'yes', 'on']);
 const STRICT_FALSE = new Set(['false', '0', 'no', 'off']);
@@ -21,6 +23,7 @@ function parseStrictBooleanEnv(value: string | undefined, defaultValue: boolean)
 export interface VehicleRegistrationConvergenceConfig {
   hmOnlyCanonicalEnabled: boolean;
   billingSingleRailEnabled: boolean;
+  shadowCompareEnabled: boolean;
 }
 
 /** V2B-PR6: no production manual-create billing hook remains after V2B-PR4; arming this flag would not change registration billing behavior. */
@@ -45,6 +48,10 @@ export function loadVehicleRegistrationConvergenceConfigFromEnv(
     ),
     billingSingleRailEnabled: parseStrictBooleanEnv(
       env[VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL_ENV],
+      false,
+    ),
+    shadowCompareEnabled: parseStrictBooleanEnv(
+      env[VEHICLE_REGISTRATION_CONVERGENCE_SHADOW_COMPARE_ENV],
       false,
     ),
   };
