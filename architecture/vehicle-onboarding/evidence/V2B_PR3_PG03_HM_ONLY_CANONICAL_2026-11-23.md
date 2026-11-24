@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED (repository); CI-gated via `V2B_HM_ONLY_CANONICAL_PG=1` on disposable PostgreSQL (VO-5B workflow gate).
 
-**PR:** [#2515](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2515) (draft) @ `f5df3dd245fea7c67f6115fe88dcd2db785c4b46`
+**PR:** [#2515](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2515) (draft) @ `060d60efab23ead504050f3ca1010911c5b9725d` (manifest regen for Production DB guard)
 
 **Prerequisite:** V2B-PR2 merged ([#2510](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2510) @ `4fb755fed6b664b16b85be005a98557a91a9e8f5`).
 
@@ -25,13 +25,26 @@
   - **D1:** billing idempotency key used `outbox.id` instead of `outbox.eventId`
   - **J2:** fake `actorUserId` FK violation on battery reference audit rows
 
-## Closeout @ next HEAD
+## Closeout @ `796a6474c`
 
 - Integer-only year validation (no `Math.trunc`)
 - **PG-03-P** legacy `HM_LEGACY_REGISTRATION_BLOCKING_CANONICAL` on PostgreSQL
 - Connection identity assertions aligned to contract
 - `actorUserId: null` in PG tenant access (matches VO postgres harness)
 - D1 uses `eventId` + `VEHICLE_CONNECTED` count
+- **18** PG integration cases (A–P incl. D1/D2, J/J2, O, N)
+
+## CI @ `796a6474c` / `060d60ef`
+
+| Gate | SHA | Result |
+|------|-----|--------|
+| VO-5B PostgreSQL (`v2b-hm-only-pg03`) | `796a6474` → `060d60ef` | **PASS** (18/18 on disposable PG) |
+| Production DB guard bundle | `796a6474` | FAIL (stale manifest after `package.json` pin) |
+| Production DB guard bundle | `060d60ef` | **PASS** (`update-production-database-guard-bundle-manifest.sh`) |
+| Vehicle Detail — Backend unit tests | `060d60ef` | FAIL — hosted runner lost communication (~51m; step stuck `in_progress`; no Jest failure in stored logs) |
+| Trip FSM — Backend R12 hardening unit | `060d60ef` | FAIL — same infrastructure class (~46m) |
+
+**Merge readiness:** **NO_GO** — OWN-1..OWN-6 and production flag remain owner-gated; unrelated workflow reds at `060d60ef` treated as **infra flake** (diff vs green `796a6474` is manifest-only; VO-5B green on same SHA). Re-run Vehicle Detail + Trip FSM unit jobs (or empty CI retrigger) before claiming full-matrix green.
 
 ## Repair (same PR #2515)
 
