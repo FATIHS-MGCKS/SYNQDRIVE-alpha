@@ -12,6 +12,57 @@ describe('master-discount.contract', () => {
     expect(parsePercentInput('12,5')).toBe(12.5);
   });
 
+  it('rejects partially parsed numbers such as 10abc', () => {
+    expect(parsePercentInput('10abc')).toBeNull();
+    expect(parsePercentInput('12.5.1')).toBeNull();
+  });
+
+  it('rejects non-finite decimal strings', () => {
+    expect(parsePercentInput('Infinity')).toBeNull();
+    expect(parsePercentInput('NaN')).toBeNull();
+  });
+
+  it('enforces percent boundaries', () => {
+    expect(
+      validateMasterAddDiscountForm({
+        discountType: DiscountKind.PERCENTAGE,
+        percentInput: '0',
+        reason: 'Boundary test',
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateMasterAddDiscountForm({
+        discountType: DiscountKind.PERCENTAGE,
+        percentInput: '100.01',
+        reason: 'Boundary test',
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateMasterAddDiscountForm({
+        discountType: DiscountKind.PERCENTAGE,
+        percentInput: '-5',
+        reason: 'Boundary test',
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('rejects invalid fixed-amount suffixes and negative values', () => {
+    expect(
+      validateMasterAddDiscountForm({
+        discountType: DiscountKind.FIXED_AMOUNT,
+        fixedAmountInput: '25,00eur',
+        reason: 'Invalid suffix',
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateMasterAddDiscountForm({
+        discountType: DiscountKind.FIXED_AMOUNT,
+        fixedAmountInput: '-1',
+        reason: 'Negative amount',
+      }).ok,
+    ).toBe(false);
+  });
+
   it('rejects non-canonical discount types', () => {
     const result = validateMasterAddDiscountForm({
       discountType: 'PERCENT' as typeof DiscountKind.PERCENTAGE,

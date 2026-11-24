@@ -43,12 +43,25 @@ export function percentToBps(percent: number): number {
   return Math.round(percent * 100);
 }
 
+const STRICT_DECIMAL_PATTERN = /^\d+(?:[.,]\d+)?$/;
+
+export function isStrictDecimalInput(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.length > 0 && STRICT_DECIMAL_PATTERN.test(trimmed);
+}
+
 export function parsePercentInput(value: string): number | null {
+  if (!isStrictDecimalInput(value)) return null;
   const normalized = value.trim().replace(',', '.');
-  if (!normalized) return null;
   const parsed = Number.parseFloat(normalized);
   if (!Number.isFinite(parsed)) return null;
   return parsed;
+}
+
+export function parseFixedAmountInput(value: string): number | null {
+  if (!isStrictDecimalInput(value)) return null;
+  const cents = parseEuroInput(value.trim().replace(',', '.'));
+  return cents;
 }
 
 export function parseDateTimeLocalInput(value: string | undefined): string | null {
@@ -113,7 +126,7 @@ export function validateMasterAddDiscountForm(
   }
 
   if (input.discountType === DiscountKind.FIXED_AMOUNT) {
-    const cents = parseEuroInput(input.fixedAmountInput ?? '');
+    const cents = parseFixedAmountInput(input.fixedAmountInput ?? '');
     if (cents == null || cents < MIN_FIXED_CENTS) {
       return { ok: false, error: 'INVALID_FIXED_AMOUNT_CENTS' };
     }
