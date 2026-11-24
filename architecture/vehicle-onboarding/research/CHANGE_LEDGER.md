@@ -3,6 +3,8 @@
 | Date | Change | Authority impact |
 |------|--------|------------------|
 | 2026-11-24 | **V2B-PR4 manual registration removal** — retire `POST /organizations/:orgId/vehicles`; Master manual create UI; OWN-1 superseded; OWN-2 N/A | `V2B_PR4_MANUAL_REGISTRATION_REMOVAL_2026-11-24.md` |
+| 2026-11-24 | **V2B-PR5 provider billing/outbox parity** — PG-05 PostgreSQL matrix; HM legacy vs canonical billing behavior documented | `V2B_PR5_PROVIDER_BILLING_OUTBOX_PARITY_2026-11-24.md` |
+| 2026-11-24 | **V2B-PR5 closeout** — PG-05-K/L crash-recovery + authoritative quantity delta; main reconciled @ `a7ac2867`; #2518 disposition | `V2B_PR5_PROVIDER_BILLING_OUTBOX_PARITY_2026-11-24.md` |
 | 2026-11-23 | **V2B-PR2 evidence contract** — async document substantiation for high-trust HV sources; reject serviceEventId on HM ingress | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md` |
 | 2026-11-23 | **V2B-PR2 final hardening** — governed HV evidence (no forged sources); capture identity fuel; actor from JWT; canonical vs legacy resume; main merge | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md` |
 | 2026-11-23 | **V2B-PR2 recovery hardening** — remove synthetic HV battery defaults; capture-only identity path; PG-03 labelled NOT_E2E; new draft PR on vehicles branch (PR #2509 identity mismatch) | `V2B_PR2_HM_ONLY_CANONICAL_2026-11-23.md` |

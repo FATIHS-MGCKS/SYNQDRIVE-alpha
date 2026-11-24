@@ -147,8 +147,7 @@ export class HighMobilityRegistrationService {
             fuelType: fuelTypeEnum,
             vehicleType: vehicleType as any ?? 'SEDAN',
             status: 'AVAILABLE',
-            // Mark as no hardware connected
-            dimoConnectionStatus: 'DISCONNECTED',
+            registryLifecycle: 'ACTIVE',
             healthStatus: 'GOOD',
           } as any,
         });

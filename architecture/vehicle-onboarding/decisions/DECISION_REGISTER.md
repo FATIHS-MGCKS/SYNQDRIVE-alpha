@@ -121,4 +121,4 @@
 | **NON-EFFECTS** | No billing single-rail arm; no HM/DIMO flag arm; no data migration |
 | **EVIDENCE** | VO-EVID-2B-004 (`V2B_PR4_MANUAL_REGISTRATION_REMOVAL_2026-11-24.md`) |
 | **VALIDATION** | Manual registration HTTP + unit specs; VO-5B PG-03 regression |
-| **OPEN GAPS** | V2B-PR5 provider billing parity tests |
+| **OPEN GAPS** | OWN-3…6; production flag/cutover attestation (V2B-PR6+) |

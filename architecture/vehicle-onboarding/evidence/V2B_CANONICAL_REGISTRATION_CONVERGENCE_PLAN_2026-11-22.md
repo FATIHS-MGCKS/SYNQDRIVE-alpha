@@ -178,7 +178,7 @@ All default **`false`** in code and `.env.example` until owner arms per environm
 | PG-02 | `vo5b-ab1-registry-billing-activate.postgres` | existing | Billing idempotency key on ACTIVATED |
 | PG-03 | **NEW** `v2b-hm-only-canonical-convergence.postgres` | `V2B_HM_ONLY_CANONICAL_PG=1` | HM_ONLY → case → activate → 1 outbox → 1 billing event |
 | PG-04 | ~~`v2b-manual-canonical-convergence.postgres`~~ | — | **CANCELLED** — manual registration retired (V2B-PR4); use HTTP 409 retirement specs |
-| PG-05 | **NEW** `v2b-billing-no-double-rail.postgres` | `V2B_BILLING_SINGLE_RAIL_PG=1` | Legacy hook off → single ledger row |
+| PG-05 | `v2b-provider-billing-outbox-parity.postgres` | `V2B_PROVIDER_BILLING_PARITY_PG=1` | DIMO/HM canonical outbox+billing parity; HM legacy flag-OFF baseline; single-rail arm deferred (V2B-PR6) |
 | PG-06 | `vo4-activation-races.postgres` | existing | Concurrent activate same case |
 | PG-07 | `vo5a-offboarding` + org ARCHIVED | org offboarding PG gates | Reject registration |
 | PG-08 | `high-mobility-vehicle-register.http-security` | unit/HTTP | Tenant OFFBOARDED policy |

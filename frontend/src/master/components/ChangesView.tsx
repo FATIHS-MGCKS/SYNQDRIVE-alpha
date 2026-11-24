@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'v2b-pr5-provider-billing-outbox-parity-2026-11-24',
+    version: '4.9.5041',
+    title: 'V2B-PR5 — provider billing / outbox parity certification (DIMO vs HM canonical)',
+    summary: [
+      'PG-05 PostgreSQL suite certifies one VEHICLE_ACTIVATED outbox and one billable quantity event per canonical activation (DIMO and HM_ONLY harness).',
+      'HM legacy path (canonical flag OFF) documented: vehicle row without outbox or billing until owner arms canonical routing.',
+      'No flag activation; billing single-rail remains not armable.',
+    ],
+    reason: 'V2B convergence requires provider-only activation parity before cutover decisions.',
+    previousBehavior: 'Billing parity evidence was split across PG-03 and VO-SIG P2 without a unified provider matrix.',
+    details:
+      'architecture/vehicle-onboarding/evidence/V2B_PR5_PROVIDER_BILLING_OUTBOX_PARITY_2026-11-24.md; v2b-provider-billing-outbox-parity.postgres.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-11-24T08:00:00.000Z',
+  },
+  {
     id: 'v2b-pr4-manual-registration-removal-2026-11-24',
     version: '4.9.5040',
     title: 'V2B-PR4 — manual vehicle registration retired (DIMO / High Mobility only)',
