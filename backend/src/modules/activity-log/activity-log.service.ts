@@ -8,6 +8,7 @@ import {
 } from '@shared/utils/pagination';
 import { normalizeActivityLogForExport } from './audit-envelope.util';
 import { MASTER_ADMIN_AUDIT_DOMAIN } from './master-admin-audit.contract';
+import { activityLogTenantScopeExcludesMasterAdmin } from './activity-log-tenant-scope.util';
 
 const ACTION_DISPLAY: Record<string, string> = {
   CREATE: 'Created',
@@ -87,7 +88,7 @@ export class ActivityLogService {
     },
   ) {
     const { skip, take } = parsePagination(params);
-    const where = this.buildAuditWhere(params);
+    const where = this.buildMasterAdminAuditWhere(params);
 
     const [data, total] = await Promise.all([
       this.prisma.activityLog.findMany({
@@ -139,7 +140,29 @@ export class ActivityLogService {
     };
   }
 
-  private buildAuditWhere(
+  async findByOrganization(
+    orgId: string,
+    params?: PaginationParams & { entity?: string; action?: string },
+  ) {
+    const { skip, take } = parsePagination(params ?? {});
+    const where = this.buildTenantAuditWhere(orgId, params);
+
+    const [data, total] = await Promise.all([
+      this.prisma.activityLog.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true, organization: true },
+      }),
+      this.prisma.activityLog.count({ where }),
+    ]);
+
+    const mapped = data.map((entry) => this.mapAuditListRow(entry));
+    return buildPaginatedResult(mapped, total, params ?? {});
+  }
+
+  private buildMasterAdminAuditWhere(
     params: PaginationParams & {
       entity?: string;
       action?: string;
@@ -157,7 +180,15 @@ export class ActivityLogService {
 
     if (params.entity) where.entity = params.entity as ActivityEntity;
     if (params.action) where.action = params.action as ActivityAction;
-    if (params.organizationId) where.organizationId = params.organizationId;
+    if (params.organizationId) {
+      and.push({
+        OR: [
+          { organizationId: params.organizationId },
+          { metaJson: { path: ['targetOrganizationId'], equals: params.organizationId } },
+          { metaJson: { path: ['tenant', 'organizationId'], equals: params.organizationId } },
+        ],
+      });
+    }
     if (params.actorUserId) where.userId = params.actorUserId;
 
     if (params.from || params.to) {
@@ -197,6 +228,22 @@ export class ActivityLogService {
       where.AND = and;
     }
 
+    return where;
+  }
+
+  private buildTenantAuditWhere(
+    orgId: string,
+    params?: PaginationParams & { entity?: string; action?: string },
+  ): Prisma.ActivityLogWhereInput {
+    const where: Prisma.ActivityLogWhereInput = { organizationId: orgId };
+    const and: Prisma.ActivityLogWhereInput[] = [
+      activityLogTenantScopeExcludesMasterAdmin(),
+    ];
+
+    if (params?.entity) where.entity = params.entity as ActivityEntity;
+    if (params?.action) where.action = params.action as ActivityAction;
+
+    where.AND = and;
     return where;
   }
 
@@ -250,13 +297,6 @@ export class ActivityLogService {
     const actor = row.actor.name || row.actor.email || 'System';
     const target = row.target.entityType + (row.target.entityId ? ` ${row.target.entityId.slice(0, 8)}` : '');
     return `${actor} — ${row.action} — ${target}`;
-  }
-
-  async findByOrganization(
-    orgId: string,
-    params?: PaginationParams & { entity?: string; action?: string },
-  ) {
-    return this.findAll({ ...params, organizationId: orgId });
   }
 
   async getRecentActivity(limit: number = 20) {

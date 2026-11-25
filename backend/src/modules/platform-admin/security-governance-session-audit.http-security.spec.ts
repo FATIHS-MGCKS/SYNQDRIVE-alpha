@@ -13,6 +13,10 @@ import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { SecurityGovernanceController } from './security-governance.controller';
 import { SecurityGovernanceService } from './security-governance.service';
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
+import { SecurityGovernancePlatformPermissionAuditService } from './security-governance-platform-permission-audit.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
+import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
+import { PrismaService } from '@shared/database/prisma.service';
 import { IamMfaService } from '@modules/iam-mfa/iam-mfa.service';
 import { createMasterAdminAuthGuard } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 
@@ -27,7 +31,9 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
 
   const refreshTokens = {
     revokeSessionById: jest.fn(),
+    revokeSessionByIdInTransaction: jest.fn(),
     revokeAllActiveForUser: jest.fn(),
+    revokeAllActiveForUserInTransaction: jest.fn(),
     findSessionOrganizationId: jest.fn(),
   };
 
@@ -44,16 +50,44 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     refreshTokens.findSessionOrganizationId.mockResolvedValue('org-target');
-    refreshTokens.revokeSessionById.mockResolvedValue(true);
-    refreshTokens.revokeAllActiveForUser.mockResolvedValue(2);
+    refreshTokens.revokeSessionByIdInTransaction.mockResolvedValue(true);
+    refreshTokens.revokeAllActiveForUserInTransaction.mockResolvedValue(2);
   });
+
+  const auditDelivery = {
+    persistAuthoritativeAuditIntent: jest.fn(async (record: unknown) => {
+      await masterAdminAudit.record(record as never);
+      return 'outbox-test-id';
+    }),
+    attemptImmediateDelivery: jest.fn(async () => 'DELIVERED'),
+    commitAuditIntent: jest.fn(async (record: unknown) => {
+      await masterAdminAudit.record(record as never);
+      return 'DELIVERED';
+    }),
+  };
+
+  const prismaMock: { $transaction: jest.Mock } = {
+    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn(prismaMock as unknown),
+    ),
+  };
 
   async function createApp() {
     const moduleRef = await Test.createTestingModule({
       controllers: [SecurityGovernanceController],
       providers: [
+        SecurityGovernancePlatformPermissionAuditService,
         SecurityGovernanceSessionAuditService,
+        {
+          provide: PlatformPermissionService,
+          useValue: {
+            grantMasterBillingWithMandatoryAudit: jest.fn(),
+            revokeMasterBillingWithMandatoryAudit: jest.fn(),
+          },
+        },
+        { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
         { provide: MasterAdminAuditService, useValue: masterAdminAudit },
+        { provide: PrismaService, useValue: prismaMock },
         { provide: RefreshTokenService, useValue: refreshTokens },
         { provide: SecurityGovernanceService, useValue: governance },
         { provide: IamMfaService, useValue: { resetUserMfa: jest.fn() } },
@@ -90,7 +124,11 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
         .set('Authorization', 'Bearer master-token')
         .expect(200);
       expect(res.body).toEqual({ revoked: true });
-      expect(refreshTokens.revokeSessionById).toHaveBeenCalledWith(targetUserId, sessionId);
+      expect(refreshTokens.revokeSessionByIdInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        targetUserId,
+        sessionId,
+      );
       expect(refreshTokens.findSessionOrganizationId).toHaveBeenCalledWith(
         targetUserId,
         sessionId,
@@ -108,14 +146,9 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
     }
   });
 
-  it('revokes session before org lookup and succeeds when org lookup fails', async () => {
-    const callOrder: string[] = [];
-    refreshTokens.revokeSessionById.mockImplementation(async () => {
-      callOrder.push('revoke');
-      return true;
-    });
+  it('atomic revoke succeeds when org lookup fails (platform audit context)', async () => {
+    refreshTokens.revokeSessionByIdInTransaction.mockResolvedValue(true);
     refreshTokens.findSessionOrganizationId.mockImplementation(async () => {
-      callOrder.push('findOrg');
       throw new Error('db_read_failed');
     });
     const app = await createApp();
@@ -125,7 +158,6 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
         .set('Authorization', 'Bearer master-token')
         .expect(200);
       expect(res.body).toEqual({ revoked: true });
-      expect(callOrder).toEqual(['revoke', 'findOrg']);
       expect(masterAdminAudit.record).toHaveBeenCalledTimes(1);
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -140,7 +172,7 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
   });
 
   it('records NO_OP outcome when session revoke finds no row', async () => {
-    refreshTokens.revokeSessionById.mockResolvedValue(false);
+    refreshTokens.revokeSessionByIdInTransaction.mockResolvedValue(false);
     const app = await createApp();
     try {
       const res = await request(app.getHttpServer())
@@ -167,7 +199,10 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
         .set('Authorization', 'Bearer master-token')
         .expect(200);
       expect(res.body).toEqual({ revoked: true });
-      expect(refreshTokens.revokeAllActiveForUser).toHaveBeenCalledWith(targetUserId);
+      expect(refreshTokens.revokeAllActiveForUserInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        targetUserId,
+      );
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({
           auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
@@ -186,7 +221,7 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
         .post(`/api/v1/admin/security/users/${targetUserId}/sessions/${sessionId}/revoke`)
         .set('Authorization', 'Bearer member-token')
         .expect(403);
-      expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+      expect(refreshTokens.revokeSessionByIdInTransaction).not.toHaveBeenCalled();
       expect(masterAdminAudit.record).toHaveBeenCalledTimes(1);
       expect(masterAdminAudit.record).toHaveBeenCalledWith(
         expect.objectContaining({

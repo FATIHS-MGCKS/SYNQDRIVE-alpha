@@ -57,6 +57,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **EXPECTED** | HTTP security suite passes in CI |
 | **ACTUAL** | 5/5 tests fail at module compile (USR_P0 run) |
 | **EVIDENCE** | Jest output 2026-11-25 |
+| **REMEDIATION_STATUS** | **REMEDIATED (USR-P1A)** — harness providers restored; 5/5 pass; real-guard suite added |
 | **IMPACT** | Regression signal loss for session revocation audit wiring |
 | **RECOMMENDED_FIX** | Register mock provider in test module (mirror `security-governance-platform-permission.http-security.spec.ts`) |
 | **REGRESSION_TEST** | Suite green |
@@ -146,7 +147,9 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **CLASS** | CONFIRMED_SECURITY_GAP (accountability) |
 | **SOURCE** | `security-governance-session-audit.service.ts` |
 | **DETAIL** | [USR_P0_AUDIT_DURABILITY.md](USR_P0_AUDIT_DURABILITY.md) |
-| **REMEDIATION_STATUS** | **REMEDIATION_REQUIRED** — owner policy **USR-OWN-04** approved; **NOT IMPLEMENTED** |
+| **REMEDIATION_STATUS** | **REMEDIATED (USR-P1A closeout)** — platform `master_admin_audit_outbox` + awaited `commitAuditIntent` + atomic ledger idempotency (PG01–PG13) |
+| **EVIDENCE** | [USR_P1A_AUDIT_ACCOUNTABILITY_EVIDENCE.md](USR_P1A_AUDIT_ACCOUNTABILITY_EVIDENCE.md) |
+| **RESIDUAL** | Revocation + audit intent are sequential transactions (not one DB txn); process crash between them is reduced but not mathematically zero |
 
 ---
 
