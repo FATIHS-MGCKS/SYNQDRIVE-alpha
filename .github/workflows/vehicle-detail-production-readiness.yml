@@ -99,6 +99,7 @@ jobs:
     name: Backend unit tests
     needs: install-lockfile
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
