@@ -10,14 +10,23 @@ import {
  * Persists a master-admin audit row directly to activity_log (throws on failure).
  * Used for mandatory transactional audit and durable privileged delivery recovery.
  */
+export type MasterAdminAuditPersistOptions = {
+  idempotencyKey: string;
+  occurredAt: Date;
+};
+
 export async function persistMasterAdminAuditActivityLog(
   tx: Prisma.TransactionClient,
   input: MasterAdminAuditRecordInput,
-): Promise<void> {
+  options?: Partial<MasterAdminAuditPersistOptions>,
+): Promise<string> {
   const action = resolveMasterAdminActivityAction(input.auditAction, input.metadata);
   const level = input.level ?? defaultMasterAdminAuditLevel(input.auditAction);
+  const occurredAt = options?.occurredAt ?? new Date();
+  const idempotencyKey =
+    options?.idempotencyKey ?? `inline:${input.correlationId}:${input.auditAction}`;
 
-  await tx.activityLog.create({
+  const log = await tx.activityLog.create({
     data: {
       organizationId: input.targetOrganizationId ?? null,
       userId: input.actorUserId ?? null,
@@ -30,6 +39,7 @@ export async function persistMasterAdminAuditActivityLog(
       userAgent: input.userAgent ?? null,
       level,
       ipAddress: input.ipAddress ?? null,
+      createdAt: occurredAt,
       metaJson: buildAuditEnvelope({
         auditDomain: MASTER_ADMIN_AUDIT_DOMAIN,
         auditAction: input.auditAction,
@@ -54,11 +64,14 @@ export async function persistMasterAdminAuditActivityLog(
           permissionGranted: input.permissionGranted ?? true,
           httpMethod: input.httpMethod ?? null,
           httpStatus: input.httpStatus ?? null,
+          auditDeliveryIdempotencyKey: idempotencyKey,
+          originalOccurredAt: occurredAt.toISOString(),
           ...(input.metadata ?? {}),
         },
       }) as object,
     },
   });
+  return log.id;
 }
 
 function resolveMasterAdminActivityAction(

@@ -8,8 +8,9 @@ export const MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE = 'MASTER_ADMIN_AUDIT_DELIVERY
 
 export type MasterAdminAuditDeliveryOptions = {
   idempotencyKey: string;
-  /** When known, enables durable IAM audit outbox recovery (org-scoped). */
-  recoveryOrganizationId?: string | null;
+  /** Known session/org context for ORGANIZATION_CONTEXT scope only — never fabricated. */
+  organizationContextId?: string | null;
+  occurredAt?: Date;
 };
 
 export function buildMasterAdminSessionRevocationAuditIdempotencyKey(input: {
@@ -28,13 +29,4 @@ export function buildMasterAdminSessionRevocationAuditIdempotencyKey(input: {
     sessionPart,
     input.outcome,
   ].join(':');
-}
-
-export function sanitizeMasterAdminAuditEnvelopeForStorage(
-  input: MasterAdminAuditRecordInput,
-): MasterAdminAuditRecordInput {
-  return {
-    ...input,
-    metadata: input.metadata ? { ...input.metadata } : undefined,
-  };
 }

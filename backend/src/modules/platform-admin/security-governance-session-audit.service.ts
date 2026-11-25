@@ -31,15 +31,17 @@ export type SessionRevocationAuditRequest = {
 export class SecurityGovernanceSessionAuditService {
   constructor(private readonly auditDelivery: MasterAdminAuditDeliveryService) {}
 
-  recordSingleSessionRevocation(input: {
+  async recordSingleSessionRevocation(input: {
     req: SessionRevocationAuditRequest;
     targetUserId: string;
     sessionId: string;
     outcome: 'SUCCESS' | 'NO_OP';
     targetOrganizationId?: string | null;
-  }): void {
+    occurredAt?: Date;
+  }): Promise<void> {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
+    const occurredAt = input.occurredAt ?? new Date();
     const description =
       input.outcome === 'SUCCESS'
         ? `Master admin revoked session for user ${input.targetUserId}`
@@ -74,7 +76,7 @@ export class SecurityGovernanceSessionAuditService {
       },
     };
 
-    this.auditDelivery.scheduleDelivery(record, {
+    await this.auditDelivery.commitAuditIntent(record, {
       idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey({
         correlationId,
         auditAction,
@@ -82,18 +84,21 @@ export class SecurityGovernanceSessionAuditService {
         sessionId: input.sessionId,
         outcome: input.outcome,
       }),
-      recoveryOrganizationId: input.targetOrganizationId ?? null,
+      organizationContextId: input.targetOrganizationId ?? null,
+      occurredAt,
     });
   }
 
-  recordRevokeAllSessions(input: {
+  async recordRevokeAllSessions(input: {
     req: SessionRevocationAuditRequest;
     targetUserId: string;
     revokedSessionCount: number;
     targetOrganizationId?: string | null;
-  }): void {
+    occurredAt?: Date;
+  }): Promise<void> {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
+    const occurredAt = input.occurredAt ?? new Date();
     const auditAction = MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL;
 
     const record = {
@@ -121,17 +126,19 @@ export class SecurityGovernanceSessionAuditService {
         outcome: 'SUCCESS',
         targetUserId: input.targetUserId,
         revokedSessionCount: input.revokedSessionCount,
+        auditScope: 'PLATFORM',
       },
     };
 
-    this.auditDelivery.scheduleDelivery(record, {
+    await this.auditDelivery.commitAuditIntent(record, {
       idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey({
         correlationId,
         auditAction,
         targetUserId: input.targetUserId,
         outcome: 'SUCCESS',
       }),
-      recoveryOrganizationId: input.targetOrganizationId ?? null,
+      organizationContextId: null,
+      occurredAt,
     });
   }
 }

@@ -2,7 +2,7 @@ import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
 
 describe('SecurityGovernanceSessionAuditService', () => {
-  const auditDelivery = { scheduleDelivery: jest.fn() };
+  const auditDelivery = { commitAuditIntent: jest.fn().mockResolvedValue('DELIVERED') };
   let service: SecurityGovernanceSessionAuditService;
 
   beforeEach(() => {
@@ -19,8 +19,8 @@ describe('SecurityGovernanceSessionAuditService', () => {
     requestId: 'corr-1',
   };
 
-  it('records single session revocation with outcome metadata', () => {
-    service.recordSingleSessionRevocation({
+  it('records single session revocation with outcome metadata', async () => {
+    await service.recordSingleSessionRevocation({
       req,
       targetUserId: 'target-user',
       sessionId: 'sess-1',
@@ -28,7 +28,7 @@ describe('SecurityGovernanceSessionAuditService', () => {
       targetOrganizationId: 'org-1',
     });
 
-    expect(auditDelivery.scheduleDelivery).toHaveBeenCalledWith(
+    expect(auditDelivery.commitAuditIntent).toHaveBeenCalledWith(
       expect.objectContaining({
         auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
         actorUserId: 'actor-1',
@@ -43,14 +43,14 @@ describe('SecurityGovernanceSessionAuditService', () => {
         }),
       }),
       expect.objectContaining({
-        recoveryOrganizationId: 'org-1',
+        organizationContextId: 'org-1',
         idempotencyKey: expect.stringContaining('ma-session-audit:corr-1'),
       }),
     );
   });
 
-  it('records revoke-all with session count', () => {
-    service.recordRevokeAllSessions({
+  it('records revoke-all with session count', async () => {
+    await service.recordRevokeAllSessions({
       req: {
         ...req,
         originalUrl: '/api/v1/admin/security/users/target-user/sessions/revoke-all',
@@ -59,7 +59,7 @@ describe('SecurityGovernanceSessionAuditService', () => {
       revokedSessionCount: 3,
     });
 
-    expect(auditDelivery.scheduleDelivery).toHaveBeenCalledWith(
+    expect(auditDelivery.commitAuditIntent).toHaveBeenCalledWith(
       expect.objectContaining({
         auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
         metadata: expect.objectContaining({

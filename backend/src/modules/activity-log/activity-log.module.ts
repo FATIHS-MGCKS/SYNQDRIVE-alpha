@@ -1,4 +1,4 @@
-import { Global, Module, forwardRef } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ActivityLogController } from './activity-log.controller';
 import { ActivityLogService } from './activity-log.service';
 import { ActivityLogExportService } from './activity-log-export.service';
@@ -8,7 +8,8 @@ import { MasterAdminAuditDeliveryService } from './master-admin-audit-delivery.s
 import { MasterCatalogAdminAuditService } from './master-catalog-admin-audit.service';
 import { MasterVoiceProvisioningAdminAuditService } from './master-voice-provisioning-admin-audit.service';
 import { PrismaModule } from '@shared/database/prisma.module';
-import { UsersModule } from '@modules/users/users.module';
+import { MasterAdminAuditOutboxRepository } from './master-admin-audit-outbox.repository';
+import { MasterAdminAuditOutboxProcessorService } from './master-admin-audit-outbox.processor';
 
 /**
  * @Global() ensures AuditService is injectable across all feature modules
@@ -17,7 +18,7 @@ import { UsersModule } from '@modules/users/users.module';
  */
 @Global()
 @Module({
-  imports: [PrismaModule, forwardRef(() => UsersModule)],
+  imports: [PrismaModule],
   controllers: [ActivityLogController],
   providers: [
     ActivityLogService,
@@ -25,6 +26,8 @@ import { UsersModule } from '@modules/users/users.module';
     AuditService,
     MasterAdminAuditService,
     MasterAdminAuditDeliveryService,
+    MasterAdminAuditOutboxRepository,
+    MasterAdminAuditOutboxProcessorService,
     MasterCatalogAdminAuditService,
     MasterVoiceProvisioningAdminAuditService,
   ],
@@ -34,6 +37,8 @@ import { UsersModule } from '@modules/users/users.module';
     AuditService,
     MasterAdminAuditService,
     MasterAdminAuditDeliveryService,
+    MasterAdminAuditOutboxRepository,
+    MasterAdminAuditOutboxProcessorService,
     MasterCatalogAdminAuditService,
     MasterVoiceProvisioningAdminAuditService,
   ],

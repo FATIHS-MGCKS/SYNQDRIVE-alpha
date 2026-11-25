@@ -147,9 +147,9 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **CLASS** | CONFIRMED_SECURITY_GAP (accountability) |
 | **SOURCE** | `security-governance-session-audit.service.ts` |
 | **DETAIL** | [USR_P0_AUDIT_DURABILITY.md](USR_P0_AUDIT_DURABILITY.md) |
-| **REMEDIATION_STATUS** | **REMEDIATED (USR-P1A)** — `MasterAdminAuditDeliveryService` (primary persist + IAM outbox recovery when org known + diagnostic on failure); **no silent `.catch(() => undefined)`** |
+| **REMEDIATION_STATUS** | **REMEDIATED (USR-P1A closeout)** — platform `master_admin_audit_outbox` + awaited `commitAuditIntent` + atomic ledger idempotency (PG01–PG13) |
 | **EVIDENCE** | [USR_P1A_AUDIT_ACCOUNTABILITY_EVIDENCE.md](USR_P1A_AUDIT_ACCOUNTABILITY_EVIDENCE.md) |
-| **RESIDUAL** | Outbox recovery requires real `organizationId` (no fabricated org); platform-global revokes without org rely on diagnostic activity log + metrics — not full IAM outbox |
+| **RESIDUAL** | Revocation + audit intent are sequential transactions (not one DB txn); process crash between them is reduced but not mathematically zero |
 
 ---
 

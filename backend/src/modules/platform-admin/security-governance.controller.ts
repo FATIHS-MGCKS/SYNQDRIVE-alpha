@@ -92,7 +92,7 @@ export class SecurityGovernanceController {
     } catch {
       targetOrganizationId = null;
     }
-    this.sessionAudit.recordSingleSessionRevocation({
+    await this.sessionAudit.recordSingleSessionRevocation({
       req,
       targetUserId: userId,
       sessionId,
@@ -109,7 +109,7 @@ export class SecurityGovernanceController {
   @HttpCode(HttpStatus.OK)
   async revokeAllSessions(@Param('userId') userId: string, @Req() req: AuthedRequest) {
     const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUser(userId);
-    this.sessionAudit.recordRevokeAllSessions({
+    await this.sessionAudit.recordRevokeAllSessions({
       req,
       targetUserId: userId,
       revokedSessionCount,

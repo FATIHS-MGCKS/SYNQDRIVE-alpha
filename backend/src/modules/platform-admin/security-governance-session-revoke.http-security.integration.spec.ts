@@ -54,8 +54,9 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
   };
 
   const auditDelivery = {
-    scheduleDelivery: jest.fn((record: unknown) => {
-      void masterAdminAudit.record(record as never);
+    commitAuditIntent: jest.fn(async (record: unknown) => {
+      await masterAdminAudit.record(record as never);
+      return 'DELIVERED';
     }),
   };
 
@@ -179,8 +180,55 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
       }
     });
 
+    it('rejects step-up token when action binding does not match REVOKE_OTHER_USER_SESSIONS', async () => {
+      const validateGrant = jest.fn(
+        async (_userId: string, token: string, action: string) =>
+          token === 'step-up-token-valid' && action === STEP_UP_ACTION.MASTER_USER_MANAGEMENT,
+      );
+      const moduleRef = await Test.createTestingModule({
+        controllers: [SecurityGovernanceController],
+        providers: [
+          ...sharedProviders,
+          { provide: APP_GUARD, useValue: createMasterAdminAuthGuard() },
+          Reflector,
+          MasterAdminMfaGuard,
+          StepUpGuard,
+          {
+            provide: PrismaService,
+            useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) } },
+          },
+          { provide: IamMfaStepUpService, useValue: { validateGrant } },
+        ],
+      })
+        .overrideGuard(RolesGuard)
+        .useValue({
+          canActivate: (ctx: {
+            switchToHttp: () => { getRequest: () => { user?: { platformRole?: string } } };
+          }) => ctx.switchToHttp().getRequest().user?.platformRole === UserPlatformRole.MASTER_ADMIN,
+        })
+        .compile();
+      const app = moduleRef.createNestApplication();
+      await app.init();
+      try {
+        const res = await request(app.getHttpServer())
+          .post(revokeOnePath)
+          .set('Authorization', 'Bearer master-token')
+          .set('x-step-up-token', 'step-up-token-valid')
+          .expect(403);
+        expect([MFA_ERROR.STEP_UP_REQUIRED, MFA_ERROR.STEP_UP_EXPIRED]).toContain(res.body.code);
+        expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+      } finally {
+        await app.close();
+      }
+    });
+
     it('revokes session when valid step-up token is presented', async () => {
-      const validateGrant = jest.fn().mockResolvedValue(true);
+      const validateGrant = jest.fn(
+        async (_userId: string, token: string, action: string) =>
+          token === 'step-up-token-valid' &&
+          (action === STEP_UP_ACTION.MASTER_USER_MANAGEMENT ||
+            action === STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS),
+      );
       const moduleRef = await Test.createTestingModule({
         controllers: [SecurityGovernanceController],
         providers: [
@@ -216,7 +264,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
         expectStepUpValidation(validateGrant, STEP_UP_ACTION.MASTER_USER_MANAGEMENT);
         expectStepUpValidation(validateGrant, STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS);
         expect(refreshTokens.revokeSessionById).toHaveBeenCalledWith(targetUserId, sessionId);
-        expect(auditDelivery.scheduleDelivery).toHaveBeenCalled();
+        expect(auditDelivery.commitAuditIntent).toHaveBeenCalled();
       } finally {
         await app.close();
       }

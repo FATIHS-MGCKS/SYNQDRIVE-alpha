@@ -52,8 +52,9 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
   });
 
   const auditDelivery = {
-    scheduleDelivery: jest.fn((record: unknown) => {
-      void masterAdminAudit.record(record as never);
+    commitAuditIntent: jest.fn(async (record: unknown) => {
+      await masterAdminAudit.record(record as never);
+      return 'DELIVERED';
     }),
   };
 

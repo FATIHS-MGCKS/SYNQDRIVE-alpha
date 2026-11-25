@@ -79,7 +79,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
     recordMfaStepUp: jest.fn().mockResolvedValue(undefined),
   };
 
-  const auditDelivery = { scheduleDelivery: jest.fn() };
+  const auditDelivery = { commitAuditIntent: jest.fn().mockResolvedValue('DELIVERED') };
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -1,24 +1,25 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { IamAuditOutboxStatus, Prisma } from '@prisma/client';
+import { MasterAdminAuditScope } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { IamAuditOutboxRepository } from '@modules/users/iam-audit-outbox.repository';
-import { IAM_AUDIT_OUTBOX } from '@modules/users/iam-audit.constants';
-import { scanIamAuditPayloadForSecrets } from '@modules/users/iam-audit-sanitize.util';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import {
   MasterAdminAuditAction,
   type MasterAdminAuditRecordInput,
 } from './master-admin-audit.contract';
-import { persistMasterAdminAuditActivityLog } from './master-admin-audit-persistence.util';
 import {
-  MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE,
   type MasterAdminAuditDeliveryOptions,
-  sanitizeMasterAdminAuditEnvelopeForStorage,
 } from './master-admin-audit-delivery.contract';
+import { MasterAdminAuditOutboxRepository } from './master-admin-audit-outbox.repository';
+import { MasterAdminAuditOutboxProcessorService } from './master-admin-audit-outbox.processor';
+import {
+  classifyMasterAdminAuditDeliveryError,
+  sanitizeMasterAdminAuditRecordInput,
+} from './master-admin-audit-privacy.util';
+import { persistMasterAdminAuditActivityLog } from './master-admin-audit-persistence.util';
 
 export type MasterAdminAuditDeliveryOutcome =
   | 'DELIVERED'
-  | 'ENQUEUED_FOR_RECOVERY'
+  | 'INTENT_PERSISTED'
   | 'FAILURE_RECORDED'
   | 'FAILED';
 
@@ -28,138 +29,92 @@ export class MasterAdminAuditDeliveryService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly iamAuditOutbox: IamAuditOutboxRepository,
+    private readonly outboxRepo: MasterAdminAuditOutboxRepository,
+    private readonly outboxProcessor: MasterAdminAuditOutboxProcessorService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
 
   /**
-   * Delivers semantic master-admin audit without throwing (security mutations must not depend on audit).
+   * Persists durable platform-scoped audit intent, then attempts immediate delivery.
+   * Never throws — security mutations must not depend on audit success.
    */
-  scheduleDelivery(
-    input: MasterAdminAuditRecordInput,
-    options: MasterAdminAuditDeliveryOptions,
-  ): void {
-    void this.deliver(input, options).catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `master_admin_audit_delivery_unhandled auditAction=${input.auditAction} idempotencyKey=${options.idempotencyKey} error=${message}`,
-      );
-      this.iamMetrics?.recordAuditOutboxFailed(MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE);
-    });
-  }
-
-  async deliver(
+  async commitAuditIntent(
     input: MasterAdminAuditRecordInput,
     options: MasterAdminAuditDeliveryOptions,
   ): Promise<MasterAdminAuditDeliveryOutcome> {
-    const envelope = sanitizeMasterAdminAuditEnvelopeForStorage(input);
-    const secretViolations = scanIamAuditPayloadForSecrets(envelope);
-    if (secretViolations.length > 0) {
+    const occurredAt = options.occurredAt ?? new Date();
+    let envelope: MasterAdminAuditRecordInput;
+    try {
+      envelope = sanitizeMasterAdminAuditRecordInput(input);
+    } catch (err) {
+      const code = classifyMasterAdminAuditDeliveryError(err);
       this.logger.error(
-        `master_admin_audit_delivery_rejected_sensitive idempotencyKey=${options.idempotencyKey} fields=${secretViolations.join(',')}`,
+        `master_admin_audit_rejected idempotencyKey=${options.idempotencyKey} code=${code}`,
       );
+      this.iamMetrics?.recordAuditOutboxFailed('MASTER_ADMIN_AUDIT_DELIVERY');
       return 'FAILED';
     }
 
+    const organizationContextId = options.organizationContextId?.trim() || null;
+    const auditScope = organizationContextId
+      ? MasterAdminAuditScope.ORGANIZATION_CONTEXT
+      : MasterAdminAuditScope.PLATFORM;
+
+    let outboxId: string;
     try {
-      await this.prisma.$transaction((tx) => persistMasterAdminAuditActivityLog(tx, envelope));
-      return 'DELIVERED';
-    } catch (primaryErr) {
-      const primaryMessage = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-      this.logger.warn(
-        `master_admin_audit_primary_failed idempotencyKey=${options.idempotencyKey} auditAction=${envelope.auditAction} error=${primaryMessage}`,
+      const row = await this.prisma.$transaction((tx) =>
+        this.outboxRepo.enqueueInTransaction(tx, {
+          idempotencyKey: options.idempotencyKey,
+          envelope,
+          occurredAt,
+          auditScope,
+          organizationContextId,
+        }),
       );
-      this.iamMetrics?.recordAuditOutboxFailed(MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE);
-
-      const recoveryOrgId = options.recoveryOrganizationId?.trim();
-      if (recoveryOrgId) {
-        try {
-          await this.enqueueIamOutboxRecovery(envelope, options.idempotencyKey, recoveryOrgId);
-          return 'ENQUEUED_FOR_RECOVERY';
-        } catch (enqueueErr) {
-          const enqueueMessage =
-            enqueueErr instanceof Error ? enqueueErr.message : String(enqueueErr);
-          this.logger.error(
-            `master_admin_audit_outbox_enqueue_failed idempotencyKey=${options.idempotencyKey} organizationId=${recoveryOrgId} error=${enqueueMessage}`,
-          );
-        }
-      }
-
+      outboxId = row.id;
+    } catch (enqueueErr) {
+      const code = classifyMasterAdminAuditDeliveryError(enqueueErr);
+      this.logger.error(
+        `master_admin_audit_intent_failed idempotencyKey=${options.idempotencyKey} code=${code}`,
+      );
+      this.iamMetrics?.recordAuditOutboxFailed('MASTER_ADMIN_AUDIT_DELIVERY');
       try {
-        await this.recordDeliveryFailureDiagnostic(envelope, options.idempotencyKey, primaryMessage);
-        return 'FAILURE_RECORDED';
-      } catch (diagErr) {
-        const diagMessage = diagErr instanceof Error ? diagErr.message : String(diagErr);
-        this.logger.error(
-          `master_admin_audit_failure_record_failed idempotencyKey=${options.idempotencyKey} error=${diagMessage}`,
+        await this.recordDeliveryFailureDiagnostic(
+          envelope,
+          options.idempotencyKey,
+          code,
+          occurredAt,
         );
+        return 'FAILURE_RECORDED';
+      } catch {
         return 'FAILED';
       }
     }
-  }
 
-  async deliverFromOutboxPayload(payload: Record<string, unknown>): Promise<void> {
-    const raw = payload.masterAdminAuditEnvelope;
-    if (!raw || typeof raw !== 'object') {
-      throw new Error('Missing masterAdminAuditEnvelope in outbox payload');
+    try {
+      const result = await this.outboxProcessor.deliverAtomic(
+        envelope,
+        options.idempotencyKey,
+        occurredAt,
+        outboxId,
+      );
+      return result === 'delivered' ? 'DELIVERED' : 'INTENT_PERSISTED';
+    } catch (deliveryErr) {
+      const code = classifyMasterAdminAuditDeliveryError(deliveryErr);
+      this.logger.warn(
+        `master_admin_audit_delivery_deferred idempotencyKey=${options.idempotencyKey} code=${code}`,
+      );
+      this.iamMetrics?.recordAuditOutboxFailed('MASTER_ADMIN_AUDIT_DELIVERY');
+      return 'INTENT_PERSISTED';
     }
-    const envelope = raw as MasterAdminAuditRecordInput;
-    const secretViolations = scanIamAuditPayloadForSecrets(envelope);
-    if (secretViolations.length > 0) {
-      throw new Error(`Audit envelope contains sensitive fields: ${secretViolations.join(', ')}`);
-    }
-    await this.prisma.$transaction((tx) => persistMasterAdminAuditActivityLog(tx, envelope));
-  }
-
-  private async enqueueIamOutboxRecovery(
-    envelope: MasterAdminAuditRecordInput,
-    idempotencyKey: string,
-    organizationId: string,
-  ): Promise<void> {
-    const existing = await this.iamAuditOutbox.findByIdempotencyKey(idempotencyKey);
-    if (existing) {
-      return;
-    }
-
-    await this.prisma.$transaction((tx) =>
-      tx.iamAuditOutbox.create({
-        data: {
-          organizationId,
-          idempotencyKey,
-          eventType: MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE,
-          actorUserId: envelope.actorUserId ?? null,
-          subjectUserId:
-            typeof envelope.metadata?.targetUserId === 'string'
-              ? envelope.metadata.targetUserId
-              : null,
-          occurredAt: new Date(),
-          payloadVersion: IAM_AUDIT_OUTBOX.payloadVersion,
-          reason: null,
-          payload: {
-            description: envelope.description,
-            route: envelope.route ?? null,
-            ipAddress: envelope.ipAddress ?? null,
-            userAgent: envelope.userAgent ?? null,
-            level: envelope.level ?? null,
-            masterAdminAuditEnvelope: envelope,
-            metadata: {
-              auditAction: envelope.auditAction,
-              correlationId: envelope.correlationId,
-            },
-          } as unknown as Prisma.InputJsonValue,
-          status: IamAuditOutboxStatus.PENDING,
-          nextRetryAt: new Date(),
-        },
-      }),
-    );
   }
 
   private async recordDeliveryFailureDiagnostic(
     envelope: MasterAdminAuditRecordInput,
     idempotencyKey: string,
-    errorMessage: string,
+    errorCode: string,
+    occurredAt: Date,
   ): Promise<void> {
-    const diagnosticIdempotencyKey = `${idempotencyKey}:delivery-failure`;
     const failureInput: MasterAdminAuditRecordInput = {
       auditAction: MasterAdminAuditAction.MASTER_PRIVILEGED_AUDIT_DELIVERY_FAILED,
       actorUserId: envelope.actorUserId,
@@ -179,7 +134,7 @@ export class MasterAdminAuditDeliveryService {
       metadata: {
         intendedAuditAction: envelope.auditAction,
         idempotencyKey,
-        deliveryError: errorMessage.slice(0, 500),
+        deliveryErrorCode: errorCode,
         targetUserId: envelope.metadata?.targetUserId ?? null,
         sessionId: envelope.metadata?.sessionId ?? null,
         operation: envelope.metadata?.operation ?? null,
@@ -188,7 +143,10 @@ export class MasterAdminAuditDeliveryService {
     };
 
     await this.prisma.$transaction((tx) =>
-      persistMasterAdminAuditActivityLog(tx, failureInput),
+      persistMasterAdminAuditActivityLog(tx, failureInput, {
+        idempotencyKey: `${idempotencyKey}:delivery-failure`,
+        occurredAt,
+      }),
     );
   }
 }
