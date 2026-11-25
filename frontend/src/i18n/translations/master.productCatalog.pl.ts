@@ -44,4 +44,10 @@ export const masterProductCatalogPl = {
   'master.productCatalog.status.impactError': 'Nie udało się załadować podglądu wpływu.',
   'master.productCatalog.status.value.ACTIVE': 'Aktywny',
   'master.productCatalog.status.value.DISABLED': 'Wyłączony',
+  'master.productCatalog.status.impactLoading': 'Ładowanie podglądu wpływu…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Nie udało się odświeżyć statusu katalogu po konflikcie.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Przejrzyj odświeżony podgląd i potwierdź gotowość.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'Przejrzałem odświeżony podgląd',
 };

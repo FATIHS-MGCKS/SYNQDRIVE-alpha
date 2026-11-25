@@ -269,14 +269,6 @@ export class ProductsService {
       );
     }
 
-    if (product.catalogStatus === input.patch.catalogStatus) {
-      return {
-        product: await this.findCatalogProductBySlug(input.productSlug),
-        impact: await this.getProductCatalogStatusImpact(input.productSlug, input.patch.catalogStatus),
-        noop: true as const,
-      };
-    }
-
     assertPlatformProductCatalogStatusTransition({
       productSlug: input.productSlug,
       from: product.catalogStatus,
@@ -287,6 +279,7 @@ export class ProductsService {
     const after = { catalogStatus: input.patch.catalogStatus };
 
     let impactAtCommit: ProductCatalogStatusImpactSnapshot | null = null;
+    let isNoopUnderLock = false;
 
     await this.prisma.$transaction(async (tx) => {
       const locked = await lockProductCatalogRowBySlug(tx, input.productSlug);
@@ -299,6 +292,13 @@ export class ProductsService {
         );
       }
       if (locked.catalogStatus === input.patch.catalogStatus) {
+        impactAtCommit = await buildProductCatalogStatusImpactSnapshot(tx, {
+          productId: locked.id,
+          productSlug: input.productSlug,
+          currentCatalogStatus: locked.catalogStatus,
+          requestedTargetCatalogStatus: input.patch.catalogStatus,
+        });
+        isNoopUnderLock = true;
         return;
       }
 
@@ -348,6 +348,16 @@ export class ProductsService {
         }),
       );
     });
+
+    if (isNoopUnderLock) {
+      return {
+        product: await this.findCatalogProductBySlug(input.productSlug),
+        impact:
+          impactAtCommit ??
+          (await this.getProductCatalogStatusImpact(input.productSlug, input.patch.catalogStatus)),
+        noop: true as const,
+      };
+    }
 
     const impact =
       impactAtCommit ??

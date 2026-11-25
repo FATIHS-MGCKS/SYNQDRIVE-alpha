@@ -44,4 +44,10 @@ export const masterProductCatalogFr = {
   'master.productCatalog.status.impactError': "Impossible de charger l'aperçu d'impact.",
   'master.productCatalog.status.value.ACTIVE': 'Actif',
   'master.productCatalog.status.value.DISABLED': 'Désactivé',
+  'master.productCatalog.status.impactLoading': 'Chargement de l’aperçu…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Impossible d’actualiser le statut catalogue après un conflit.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Vérifiez l’aperçu actualisé, puis confirmez que vous êtes prêt.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'J’ai vérifié l’aperçu actualisé',
 };

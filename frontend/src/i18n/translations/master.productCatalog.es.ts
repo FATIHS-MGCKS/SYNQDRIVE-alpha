@@ -44,4 +44,10 @@ export const masterProductCatalogEs = {
   'master.productCatalog.status.impactError': 'No se pudo cargar la vista previa de impacto.',
   'master.productCatalog.status.value.ACTIVE': 'Activo',
   'master.productCatalog.status.value.DISABLED': 'Desactivado',
+  'master.productCatalog.status.impactLoading': 'Cargando vista previa…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'No se pudo actualizar el estado del catálogo tras un conflicto.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Revise la vista previa actualizada y confirme que está listo.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'He revisado la vista previa actualizada',
 };

@@ -44,4 +44,10 @@ export const masterProductCatalogIt = {
   'master.productCatalog.status.impactError': 'Impossibile caricare l’anteprima impatto.',
   'master.productCatalog.status.value.ACTIVE': 'Attivo',
   'master.productCatalog.status.value.DISABLED': 'Disattivato',
+  'master.productCatalog.status.impactLoading': 'Caricamento anteprima impatto…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Impossibile aggiornare lo stato catalogo dopo un conflitto.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Rivedi l’anteprima aggiornata e conferma di essere pronto.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'Ho rivisto l’anteprima aggiornata',
 };

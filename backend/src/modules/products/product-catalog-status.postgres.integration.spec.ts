@@ -19,7 +19,17 @@ import {
 import { ProductsService } from './products.service';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { AuditService } from '@modules/activity-log/audit.service';
-import { ProductCatalogAdmissionDeniedError } from './product-catalog-admission.authority';
+import {
+  ProductCatalogAdmissionDeniedError,
+  lockProductCatalogRowBySlug,
+} from './product-catalog-admission.authority';
+import {
+  buildProductCatalogStatusAuditInput,
+  persistProductCatalogStatusMandatoryAuditTx,
+} from './product-catalog-status-mandatory-audit.util';
+import { buildProductCatalogStatusImpactSnapshot } from './product-catalog-status-impact.util';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { EntitlementsQueryService } from './entitlements/entitlements-query.service';
 import { VehicleProductGrantService } from './vehicle-product-grants/vehicle-product-grant.service';
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 import { OrgProductPlan } from '@prisma/client';
@@ -37,6 +47,16 @@ function assertDisposableDatabaseUrl(): void {
   }
 }
 
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: string): Promise<number> {
   return prisma.activityLog.count({
     where: {
@@ -49,7 +69,10 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
 (LIVE ? describe : describe.skip)('Product catalog status lifecycle — postgres (P2B)', () => {
   const prisma = new PrismaClient();
   let products: ProductsService;
+  let productsPeer: ProductsService;
+  let entitlements: EntitlementsQueryService;
   let grants: VehicleProductGrantService;
+  let prismaPeer: PrismaClient;
   const seededMasterIds: string[] = [];
   const cleanupOrgIds: string[] = [];
   const catalogRestores: Array<{ slug: ProductSlug; catalogStatus: ProductCatalogStatus }> = [];
@@ -59,10 +82,14 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
     const audit = new AuditService(prisma as never);
     const masterAdminAudit = new MasterAdminAuditService(audit);
     products = new ProductsService(prisma as never, masterAdminAudit);
+    prismaPeer = new PrismaClient();
+    productsPeer = new ProductsService(prismaPeer as never, masterAdminAudit);
+    entitlements = new EntitlementsQueryService(prisma as never);
     grants = new VehicleProductGrantService(prisma as never, masterAdminAudit);
   });
 
   afterAll(async () => {
+    await prismaPeer.$disconnect().catch(() => undefined);
     for (const orgId of cleanupOrgIds) {
       await prisma.organizationProduct.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
       await prisma.vehicleProductGrant.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
@@ -396,30 +423,188 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
     expect(impact.previewMayBeStaleBeforeWrite).toBe(true);
   });
 
-  it('serializes concurrent status disable with admission under products-row lock', async () => {
-    const slug = ProductSlug.VYMOD;
-    await ensureActive(slug);
-    const orgId = await seedOrganization();
-    const adminId = await seedMasterAdmin();
+  describe('catalog status vs admission concurrency (P2B)', () => {
+    const CONCURRENCY_SLUG = ProductSlug.VYMOD;
 
-    const disableDone = products.updateProductCatalogStatusForMasterAdmin({
-      productSlug: slug,
-      patch: {
-        catalogStatus: ProductCatalogStatus.DISABLED,
-        ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
-        changeReason: 'race disable',
-      },
-      actorUserId: adminId,
-      audit: { correlationId: `p2b-race-disable-${Date.now()}` },
+    async function snapshotCatalog(slug: ProductSlug): Promise<ProductCatalogStatus> {
+      const row = await prisma.product.findUniqueOrThrow({ where: { slug } });
+      return row.catalogStatus;
+    }
+
+    it('A: disable holds FOR UPDATE first; admission waits then is denied', async () => {
+      const orgId = await seedOrganization();
+      const adminId = await seedMasterAdmin();
+      const productRow = await prisma.product.findUniqueOrThrow({ where: { slug: CONCURRENCY_SLUG } });
+      await ensureActive(CONCURRENCY_SLUG);
+
+      const disableLocked = createDeferred();
+      const admissionContending = createDeferred();
+
+      const disableCorrelationId = `p2b-race-disable-${Date.now()}`;
+
+      const disableTx = prismaPeer.$transaction(
+        async (tx) => {
+          const locked = await lockProductCatalogRowBySlug(tx, CONCURRENCY_SLUG);
+          expect(locked?.catalogStatus).toBe(ProductCatalogStatus.ACTIVE);
+          disableLocked.resolve();
+          await admissionContending.promise;
+          const updated = await tx.product.updateMany({
+            where: {
+              id: locked!.id,
+              slug: CONCURRENCY_SLUG,
+              catalogStatus: ProductCatalogStatus.ACTIVE,
+            },
+            data: { catalogStatus: ProductCatalogStatus.DISABLED },
+          });
+          expect(updated.count).toBe(1);
+          const impactSnapshot = await buildProductCatalogStatusImpactSnapshot(tx, {
+            productId: locked!.id,
+            productSlug: CONCURRENCY_SLUG,
+            currentCatalogStatus: ProductCatalogStatus.ACTIVE,
+            requestedTargetCatalogStatus: ProductCatalogStatus.DISABLED,
+          });
+          await persistProductCatalogStatusMandatoryAuditTx(
+            tx,
+            buildProductCatalogStatusAuditInput({
+              actorUserId: adminId,
+              productId: locked!.id,
+              productSlug: CONCURRENCY_SLUG,
+              correlationId: disableCorrelationId,
+              mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+              changeReason: 'P2B concurrency disable-first',
+              before: { catalogStatus: ProductCatalogStatus.ACTIVE },
+              after: { catalogStatus: ProductCatalogStatus.DISABLED },
+              impactSnapshot,
+            }),
+          );
+        },
+        { timeout: 120_000 },
+      );
+
+      await disableLocked.promise;
+
+      const assignPromise = products.assignProductForMasterAdmin({
+        orgId,
+        productSlug: CONCURRENCY_SLUG,
+        actorUserId: adminId,
+      });
+
+      let assignFinishedEarly = false;
+      void assignPromise.finally(() => {
+        assignFinishedEarly = true;
+      });
+      for (let spin = 0; spin < 40 && !assignFinishedEarly; spin += 1) {
+        await new Promise((r) => setImmediate(r));
+      }
+      expect(assignFinishedEarly).toBe(false);
+
+      admissionContending.resolve();
+      await disableTx;
+
+      await expect(assignPromise).rejects.toBeInstanceOf(ProductCatalogAdmissionDeniedError);
+      expect(
+        await prisma.organizationProduct.count({
+          where: { organizationId: orgId, productId: productRow.id },
+        }),
+      ).toBe(0);
+      expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
+
+      await ensureActive(CONCURRENCY_SLUG);
     });
 
-    await expect(products.assignProduct(orgId, slug)).rejects.toBeDefined();
+    it('B: admission commits while ACTIVE; later DISABLE preserves org product', async () => {
+      const orgId = await seedOrganization();
+      const adminId = await seedMasterAdmin();
+      await ensureActive(CONCURRENCY_SLUG);
 
-    const result = await disableDone;
-    expect(result.product.catalogStatus).toBe(ProductCatalogStatus.DISABLED);
+      const admitted = await products.assignProductForMasterAdmin({
+        orgId,
+        productSlug: CONCURRENCY_SLUG,
+        actorUserId: adminId,
+      });
+      expect(admitted.status).toBe(OrgProductStatus.ACTIVE);
 
-    await expect(products.assignProduct(orgId, slug)).rejects.toBeInstanceOf(
-      ProductCatalogAdmissionDeniedError,
-    );
+      await productsPeer.updateProductCatalogStatusForMasterAdmin({
+        productSlug: CONCURRENCY_SLUG,
+        patch: {
+          catalogStatus: ProductCatalogStatus.DISABLED,
+          ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
+          changeReason: 'P2B concurrency admission-first',
+        },
+        actorUserId: adminId,
+        audit: { correlationId: `p2b-race-adm-${Date.now()}` },
+      });
+
+      const row = await prisma.organizationProduct.findFirstOrThrow({
+        where: { organizationId: orgId, product: { slug: CONCURRENCY_SLUG } },
+      });
+      expect(row.status).toBe(OrgProductStatus.ACTIVE);
+      expect(row.id).toBe(admitted.id);
+      expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
+
+      const entitlement = await entitlements.getForOrganizationProduct(orgId, CONCURRENCY_SLUG);
+      expect(entitlement.capabilities.canAccessProductUi).toBe(true);
+
+      await ensureActive(CONCURRENCY_SLUG);
+    });
+
+    it('C: concurrent status transition rejects stale CAS with no audit', async () => {
+      const slug = ProductSlug.FLEET;
+      await ensureActive(slug);
+      const adminId = await seedMasterAdmin();
+      const staleCorrelation = `p2b-stale-concurrent-${Date.now()}`;
+      const freshCorrelation = `p2b-fresh-concurrent-${Date.now()}`;
+
+      const first = products.updateProductCatalogStatusForMasterAdmin({
+        productSlug: slug,
+        patch: {
+          catalogStatus: ProductCatalogStatus.DISABLED,
+          ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
+          changeReason: 'first writer',
+        },
+        actorUserId: adminId,
+        audit: { correlationId: freshCorrelation },
+      });
+
+      await expect(
+        productsPeer.updateProductCatalogStatusForMasterAdmin({
+          productSlug: slug,
+          patch: {
+            catalogStatus: ProductCatalogStatus.DISABLED,
+            ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
+            changeReason: 'stale concurrent writer',
+          },
+          actorUserId: adminId,
+          audit: { correlationId: staleCorrelation },
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      await first;
+      expect(await countAuditByCorrelationId(prisma, staleCorrelation)).toBe(0);
+      expect(await countAuditByCorrelationId(prisma, freshCorrelation)).toBe(1);
+
+      await ensureActive(slug);
+    });
+  });
+
+  it('noop under row lock returns without audit when catalog already at target', async () => {
+    const slug = ProductSlug.RENTAL;
+    await ensureActive(slug);
+    const adminId = await seedMasterAdmin();
+    const correlationId = `p2b-noop-lock-${Date.now()}`;
+
+    const result = await products.updateProductCatalogStatusForMasterAdmin({
+      productSlug: slug,
+      patch: {
+        catalogStatus: ProductCatalogStatus.ACTIVE,
+        ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
+        changeReason: 'noop under lock',
+      },
+      actorUserId: adminId,
+      audit: { correlationId },
+    });
+
+    expect(result.noop).toBe(true);
+    expect(await countAuditByCorrelationId(prisma, correlationId)).toBe(0);
   });
 });

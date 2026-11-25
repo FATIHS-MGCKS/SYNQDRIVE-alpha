@@ -44,4 +44,10 @@ export const masterProductCatalogNl = {
   'master.productCatalog.status.impactError': 'Impactvoorbeeld kon niet worden geladen.',
   'master.productCatalog.status.value.ACTIVE': 'Actief',
   'master.productCatalog.status.value.DISABLED': 'Uitgeschakeld',
+  'master.productCatalog.status.impactLoading': 'Impactvoorbeeld laden…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Catalogusstatus kon na een conflict niet worden vernieuwd.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Bekijk het vernieuwde voorbeeld en bevestig dat u klaar bent.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'Ik heb het vernieuwde voorbeeld bekeken',
 };

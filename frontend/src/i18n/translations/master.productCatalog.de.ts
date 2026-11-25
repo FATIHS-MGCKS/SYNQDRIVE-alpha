@@ -44,4 +44,10 @@ export const masterProductCatalogDe = {
   'master.productCatalog.status.impactError': 'Auswirkungsvorschau konnte nicht geladen werden.',
   'master.productCatalog.status.value.ACTIVE': 'Aktiv',
   'master.productCatalog.status.value.DISABLED': 'Deaktiviert',
+  'master.productCatalog.status.impactLoading': 'Auswirkungsvorschau wird geladen…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Katalogstatus konnte nach einem Konflikt nicht aktualisiert werden. Verbindung prüfen und erneut versuchen.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Bitte die aktualisierte Vorschau prüfen und bestätigen, dass Sie bereit sind.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'Aktualisierte Vorschau geprüft',
 };

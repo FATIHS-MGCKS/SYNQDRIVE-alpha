@@ -38,46 +38,78 @@ export function ProductCatalogStatusChangeDialog({
   onApplied,
 }: ProductCatalogStatusChangeDialogProps) {
   const { t } = useLanguage();
-  const targetStatus = oppositeCatalogStatus(row.catalogStatus);
+  const [authoritativeRow, setAuthoritativeRow] = useState(row);
+  const targetStatus = oppositeCatalogStatus(authoritativeRow.catalogStatus);
   const [impact, setImpact] = useState<ImpactPreview | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
   const [impactError, setImpactError] = useState<string | null>(null);
   const [changeReason, setChangeReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [mfaOpen, setMfaOpen] = useState(false);
+  const [needsFreshConfirmAfterConflict, setNeedsFreshConfirmAfterConflict] = useState(false);
   const pendingRef = useRef<ProductCatalogStatusPatchPending | null>(null);
+  const submitInFlightRef = useRef(false);
+
+  useEffect(() => {
+    setAuthoritativeRow(row);
+  }, [row]);
 
   const loadImpact = useCallback(async () => {
+    setImpact(null);
+    setImpactLoading(true);
     setImpactError(null);
     try {
       const data = (await api.products.getCatalogStatusImpact(
-        row.slug,
-        targetStatus,
+        authoritativeRow.slug,
+        oppositeCatalogStatus(authoritativeRow.catalogStatus),
       )) as ImpactPreview;
       setImpact(data);
+      return true;
     } catch (e) {
       setImpact(null);
       setImpactError(e instanceof Error ? e.message : t('master.productCatalog.status.impactError'));
+      return false;
+    } finally {
+      setImpactLoading(false);
     }
-  }, [row.slug, targetStatus, t]);
+  }, [authoritativeRow.catalogStatus, authoritativeRow.slug, t]);
+
+  const refreshAuthoritativeRow = useCallback(async (): Promise<AdminCatalogProductRow | null> => {
+    try {
+      const fresh = (await api.products.getCatalogProduct(authoritativeRow.slug)) as AdminCatalogProductRow;
+      setAuthoritativeRow(fresh);
+      return fresh;
+    } catch {
+      return null;
+    }
+  }, [authoritativeRow.slug]);
 
   useEffect(() => {
     if (open) {
       setChangeReason('');
       setSaveError(null);
       setSaveSuccess(false);
+      setNeedsFreshConfirmAfterConflict(false);
       void loadImpact();
+    } else {
+      setImpact(null);
+      setImpactError(null);
     }
   }, [open, loadImpact]);
 
   const runPatch = useCallback(
     async (body: ProductCatalogStatusPatchPending['body'], isRetry?: boolean) => {
+      if (submitInFlightRef.current) {
+        return;
+      }
+      submitInFlightRef.current = true;
       setSaving(true);
       setSaveError(null);
       setSaveSuccess(false);
       try {
-        const res = await api.products.patchCatalogStatusResult(row.slug, body);
+        const res = await api.products.patchCatalogStatusResult(authoritativeRow.slug, body);
         const ok = await applyMasterProductApiResult(
           res.status,
           res.errorMessage,
@@ -85,6 +117,7 @@ export function ProductCatalogStatusChangeDialog({
             if (res.ok && res.data?.product) {
               onApplied(res.data.product as AdminCatalogProductRow);
               setSaveSuccess(true);
+              setNeedsFreshConfirmAfterConflict(false);
             }
           },
           (msg) => setSaveError(msg),
@@ -92,36 +125,57 @@ export function ProductCatalogStatusChangeDialog({
         if (!ok) {
           if (shouldRetainProductCatalogStatusPending(res.status, res.errorMessage ?? '')) {
             if (!isRetry) {
-              pendingRef.current = { productSlug: row.slug, body };
+              pendingRef.current = { productSlug: authoritativeRow.slug, body };
             }
             setMfaOpen(true);
             return;
           }
           if (isProductCatalogStatusConflict(res.status, res.errorMessage ?? '')) {
-            await loadImpact();
-            setSaveError(t('master.productCatalog.status.conflictRetry'));
+            const fresh = await refreshAuthoritativeRow();
+            if (!fresh) {
+              setSaveError(t('master.productCatalog.status.conflictRefreshFailed'));
+            } else {
+              const impactOk = await loadImpact();
+              if (impactOk) {
+                setSaveError(t('master.productCatalog.status.conflictRetry'));
+                setNeedsFreshConfirmAfterConflict(true);
+              } else {
+                setSaveError(t('master.productCatalog.status.conflictRefreshFailed'));
+              }
+            }
           }
         } else {
           pendingRef.current = null;
         }
       } finally {
         setSaving(false);
+        submitInFlightRef.current = false;
       }
     },
-    [loadImpact, onApplied, row.slug, t],
+    [authoritativeRow.slug, loadImpact, onApplied, refreshAuthoritativeRow, t],
   );
 
   const handleConfirm = () => {
+    if (needsFreshConfirmAfterConflict) {
+      setSaveError(t('master.productCatalog.status.refreshPreviewRequired'));
+      return;
+    }
     const reason = changeReason.trim();
     if (!reason) {
       setSaveError(t('master.productCatalog.status.reasonRequired'));
       return;
     }
+    const nextTarget = oppositeCatalogStatus(authoritativeRow.catalogStatus);
     void runPatch({
-      catalogStatus: targetStatus,
-      ifCurrentCatalogStatus: row.catalogStatus as 'ACTIVE' | 'DISABLED',
+      catalogStatus: nextTarget,
+      ifCurrentCatalogStatus: authoritativeRow.catalogStatus as 'ACTIVE' | 'DISABLED',
       changeReason: reason,
     });
+  };
+
+  const handleAcknowledgeRefreshedPreview = () => {
+    setNeedsFreshConfirmAfterConflict(false);
+    setSaveError(null);
   };
 
   const handleMfaSuccess = async () => {
@@ -130,14 +184,28 @@ export function ProductCatalogStatusChangeDialog({
       setMfaOpen(false);
       return;
     }
-    await runPatch(pending.body, true);
+    await runPatch(
+      {
+        ...pending.body,
+        ifCurrentCatalogStatus: authoritativeRow.catalogStatus as 'ACTIVE' | 'DISABLED',
+      },
+      true,
+    );
     setMfaOpen(false);
   };
 
   if (!open) return null;
 
+  const confirmDisabled =
+    saving ||
+    impactLoading ||
+    !!impactError ||
+    !impact ||
+    needsFreshConfirmAfterConflict ||
+    submitInFlightRef.current;
+
   return (
-  <>
+    <>
       <div
         className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
         role="dialog"
@@ -150,7 +218,7 @@ export function ProductCatalogStatusChangeDialog({
             <div>
               <h3 id="catalog-status-change-title" className="font-semibold">
                 {t('master.productCatalog.status.dialogTitle', {
-                  slug: row.slug,
+                  slug: authoritativeRow.slug,
                   target: targetStatus,
                 })}
               </h3>
@@ -160,13 +228,17 @@ export function ProductCatalogStatusChangeDialog({
             </div>
           </div>
 
+          {impactLoading && (
+            <p className="text-sm text-muted-foreground">{t('master.productCatalog.status.impactLoading')}</p>
+          )}
+
           {impactError && (
             <p className="text-sm text-destructive" role="alert">
               {impactError}
             </p>
           )}
 
-          {impact && (
+          {impact && !impactLoading && (
             <dl className="text-sm space-y-1 border border-border rounded-lg p-3 bg-muted/30">
               <div className="flex justify-between gap-2">
                 <dt className="text-muted-foreground">{t('master.productCatalog.status.current')}</dt>
@@ -213,11 +285,17 @@ export function ProductCatalogStatusChangeDialog({
             <p className="text-sm text-[color:var(--status-ok)]">{t('master.productCatalog.status.success')}</p>
           )}
 
+          {needsFreshConfirmAfterConflict && (
+            <Button type="button" variant="secondary" size="sm" onClick={handleAcknowledgeRefreshedPreview}>
+              {t('master.productCatalog.status.acknowledgeRefreshedPreview')}
+            </Button>
+          )}
+
           <div className="flex flex-wrap gap-2 justify-end pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               {t('master.productCatalog.editor.cancel')}
             </Button>
-            <Button type="button" onClick={handleConfirm} disabled={saving || !impact}>
+            <Button type="button" onClick={handleConfirm} disabled={confirmDisabled}>
               {t('master.productCatalog.status.confirm')}
             </Button>
           </div>

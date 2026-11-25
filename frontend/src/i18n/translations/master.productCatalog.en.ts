@@ -44,4 +44,10 @@ export const masterProductCatalogEn = {
   'master.productCatalog.status.impactError': 'Impact preview could not be loaded.',
   'master.productCatalog.status.value.ACTIVE': 'Active',
   'master.productCatalog.status.value.DISABLED': 'Disabled',
+  'master.productCatalog.status.impactLoading': 'Loading impact preview…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Could not refresh catalog status after a conflict. Check your connection and try again.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Review the refreshed impact preview, then confirm you are ready to apply.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'I reviewed the refreshed preview',
 };

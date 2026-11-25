@@ -44,4 +44,10 @@ export const masterProductCatalogTr = {
   'master.productCatalog.status.impactError': 'Etki önizlemesi yüklenemedi.',
   'master.productCatalog.status.value.ACTIVE': 'Aktif',
   'master.productCatalog.status.value.DISABLED': 'Devre dışı',
+  'master.productCatalog.status.impactLoading': 'Etki önizlemesi yükleniyor…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Çakışmadan sonra katalog durumu yenilenemedi.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Yenilenen önizlemeyi inceleyin ve hazır olduğunuzu onaylayın.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'Yenilenen önizlemeyi inceledim',
 };

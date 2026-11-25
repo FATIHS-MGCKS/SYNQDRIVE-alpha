@@ -44,4 +44,10 @@ export const masterProductCatalogCs = {
   'master.productCatalog.status.impactError': 'Nepodařilo se načíst náhled dopadu.',
   'master.productCatalog.status.value.ACTIVE': 'Aktivní',
   'master.productCatalog.status.value.DISABLED': 'Deaktivováno',
+  'master.productCatalog.status.impactLoading': 'Načítání náhledu dopadu…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'Stav katalogu po konfliktu nelze obnovit.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Zkontrolujte obnovený náhled a potvrďte připravenost.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'Obnovený náhled jsem zkontroloval',
 };
