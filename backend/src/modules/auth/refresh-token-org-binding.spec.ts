@@ -172,7 +172,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
     await expect(service.rotate(rawToken, {})).rejects.toThrow(
       /no longer active/i,
     );
-    expect(prisma.refreshToken.update).toHaveBeenCalledWith(
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ revocationReason: expect.any(String) }),
       }),

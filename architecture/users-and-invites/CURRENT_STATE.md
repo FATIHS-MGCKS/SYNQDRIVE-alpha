@@ -70,7 +70,7 @@ USR-P1A: security-governance-session-audit.http-security.spec 5/5 pass
 USR-P1A: security-governance-session-revoke.http-security.integration.spec 7/7 pass
 USR-P1A: master-admin-audit-delivery.service.spec 3/3 pass
 USR-P1A PG (optional USR_P1A_SESSION_AUDIT_PG=1): master-admin-audit-delivery.postgres.integration.spec
-USR-P2: user-access-authority.service.spec; usr-p2-access-revocation.http-security.integration.spec; usr-p2-access-revocation.postgres.integration.spec (opt-in USR_P2_ACCESS_REVOCATION_PG=1)
+USR-P2: user-access-authority.service.spec; usr-p2-access-revocation.http-security.integration.spec; usr-p2-access-revocation.postgres.integration.spec (opt-in USR_P2_ACCESS_REVOCATION_PG=1); usr-p2-session-concurrency.postgres.integration.spec (opt-in USR_P2_SESSION_CONCURRENCY_PG=1); refresh-token-session-concurrency.ts advisory fencing
 ```
 
 ## Promotion status

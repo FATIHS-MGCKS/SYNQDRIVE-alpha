@@ -87,6 +87,7 @@ describe('AccountService', () => {
   const refreshTokens = {
     listSessionsForUser: jest.fn().mockResolvedValue([]),
     resolveCurrentSessionId: jest.fn().mockReturnValue(null),
+    resolveActiveHeadSessionIdForFamily: jest.fn().mockReturnValue(null),
     revokeOtherSessionsForUser: jest.fn().mockResolvedValue({ revoked: 2, keptSessionId: 's1' }),
     revokeSessionById: jest.fn().mockResolvedValue(true),
   } as unknown as RefreshTokenService;
@@ -308,9 +309,9 @@ describe('AccountService', () => {
   });
 
   it('revokeOtherSessions only affects own user context', async () => {
-    const result = await service.revokeOtherSessions(userId, orgId, 's1', {});
+    const result = await service.revokeOtherSessions(userId, orgId, 'family-1', {});
 
-    expect(refreshTokens.revokeOtherSessionsForUser).toHaveBeenCalledWith(userId, 's1');
+    expect(refreshTokens.revokeOtherSessionsForUser).toHaveBeenCalledWith(userId, 'family-1');
     expect(result.revoked).toBe(2);
   });
 

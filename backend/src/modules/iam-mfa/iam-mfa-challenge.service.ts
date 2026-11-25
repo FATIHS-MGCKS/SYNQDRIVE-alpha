@@ -12,7 +12,7 @@ import { decryptMfaSecret } from './iam-mfa-crypto.util';
 import { MFA_ERROR } from './iam-mfa.policy';
 import { IamMfaStepUpService } from './iam-mfa-step-up.service';
 import type { MfaChallengeResult } from './iam-mfa.types';
-import { AuthMethod } from '@shared/auth/auth-session-claims.types';
+import { AuthMethod, type AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
 
 export type MfaSessionBinding = {
   tokenFamily: string;
@@ -238,6 +238,103 @@ export class IamMfaChallengeService {
       authMethods: claims.authMethods as AuthMethod[],
       mfaAuthenticatedAt: claims.mfaAuthenticatedAt!,
     };
+  }
+
+  /** Pre-auth MFA login: verify TOTP only (no access JWT reissue). */
+  async verifyLoginMfaTotp(userId: string, code: string): Promise<{ claims: AuthSessionClaims }> {
+    const factor = await this.prisma.userMfaFactor.findUnique({
+      where: {
+        userId_factorType: { userId, factorType: MfaFactorType.TOTP },
+      },
+    });
+    if (!factor?.enabledAt || !factor.encryptedSecret) {
+      throw new BadRequestException({
+        code: MFA_ERROR.NOT_ENROLLED,
+        message: 'MFA is not enrolled',
+      });
+    }
+
+    const secret = decryptMfaSecret(factor.encryptedSecret);
+    const normalized = code.replace(/\s+/g, '').trim();
+    if (!authenticator.check(normalized, secret)) {
+      throw new UnauthorizedException({
+        code: MFA_ERROR.INVALID_CODE,
+        message: 'Invalid MFA code',
+      });
+    }
+
+    const step = BigInt(Math.floor(Date.now() / 1000 / 30));
+    if (factor.lastTotpStep != null && factor.lastTotpStep === step) {
+      throw new UnauthorizedException({
+        code: MFA_ERROR.REPLAY,
+        message: 'MFA code replay detected',
+      });
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Account is inactive');
+    }
+
+    await this.prisma.userMfaFactor.update({
+      where: { id: factor.id },
+      data: { lastTotpStep: step, lastUsedAt: new Date() },
+    });
+
+    const claims = this.stepUp.buildClaimsAfterChallenge({
+      authMethods: ['pwd', 'totp'],
+      securityVersion: user.securityVersion,
+    });
+
+    return { claims };
+  }
+
+  /** Pre-auth MFA login: verify recovery code only (no access JWT reissue). */
+  async verifyLoginMfaRecoveryCode(
+    userId: string,
+    recoveryCode: string,
+  ): Promise<{ claims: AuthSessionClaims }> {
+    const codes = await this.prisma.userMfaRecoveryCode.findMany({
+      where: { userId, usedAt: null },
+    });
+    if (codes.length === 0) {
+      throw new BadRequestException({
+        code: MFA_ERROR.NOT_ENROLLED,
+        message: 'No recovery codes available',
+      });
+    }
+
+    const normalized = recoveryCode.trim().toUpperCase();
+    let matchedId: string | null = null;
+    for (const row of codes) {
+      if (await bcrypt.compare(normalized, row.codeHash)) {
+        matchedId = row.id;
+        break;
+      }
+    }
+    if (!matchedId) {
+      throw new UnauthorizedException({
+        code: MFA_ERROR.INVALID_CODE,
+        message: 'Invalid recovery code',
+      });
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Account is inactive');
+    }
+
+    await this.prisma.userMfaRecoveryCode.update({
+      where: { id: matchedId },
+      data: { usedAt: new Date() },
+    });
+
+    const claims = this.stepUp.buildClaimsAfterChallenge({
+      authMethods: ['pwd', 'recovery'],
+      securityVersion: user.securityVersion,
+    });
+
+    return { claims };
   }
 
   private async loadAuthoritativeMembership(

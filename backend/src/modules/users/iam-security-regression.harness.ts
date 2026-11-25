@@ -292,6 +292,7 @@ export function createRefreshTokenHarness() {
   const prisma: {
     $transaction: jest.Mock;
     $queryRaw: jest.Mock;
+    $executeRaw: jest.Mock;
     user: { findUnique: jest.Mock };
     refreshToken: {
       findUnique: jest.Mock;
@@ -308,6 +309,7 @@ export function createRefreshTokenHarness() {
   } = {
     $transaction: jest.fn(),
     $queryRaw: jest.fn().mockResolvedValue([]),
+    $executeRaw: jest.fn().mockResolvedValue(undefined),
     user: {
       findUnique: jest.fn(async (args: { where: { id: string } }) => {
         const row = registeredUsers.get(args.where.id);

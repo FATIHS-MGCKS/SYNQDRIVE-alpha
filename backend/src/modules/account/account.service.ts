@@ -55,7 +55,11 @@ export class AccountService {
     private readonly passwordPolicy: PasswordPolicyService,
   ) {}
 
-  async getMe(userId: string, jwtOrgId: string | null): Promise<AccountMeDto> {
+  async getMe(
+    userId: string,
+    jwtOrgId: string | null,
+    tokenFamily?: string | null,
+  ): Promise<AccountMeDto> {
     const { user, membership } = await this.loadUserContext(userId, jwtOrgId);
     const orgId = membership.organizationId;
 
@@ -68,7 +72,9 @@ export class AccountService {
       this.refreshTokens.listSessionsForUser(userId),
     ]);
 
-    const currentSessionId = this.refreshTokens.resolveCurrentSessionId(sessions);
+    const currentSessionId =
+      this.refreshTokens.resolveActiveHeadSessionIdForFamily(sessions, tokenFamily) ??
+      this.refreshTokens.resolveCurrentSessionId(sessions);
     const notifications = this.mapNotifications(notificationRows);
 
     return this.buildViewModel(
@@ -309,10 +315,16 @@ export class AccountService {
     return { message: 'Password updated successfully' };
   }
 
-  async listSessions(userId: string, jwtOrgId: string | null): Promise<AccountSessionDto[]> {
+  async listSessions(
+    userId: string,
+    jwtOrgId: string | null,
+    tokenFamily?: string | null,
+  ): Promise<AccountSessionDto[]> {
     await this.loadUserContext(userId, jwtOrgId);
     const tokens = await this.refreshTokens.listSessionsForUser(userId);
-    const currentId = this.refreshTokens.resolveCurrentSessionId(tokens);
+    const currentId =
+      this.refreshTokens.resolveActiveHeadSessionIdForFamily(tokens, tokenFamily) ??
+      this.refreshTokens.resolveCurrentSessionId(tokens);
 
     return tokens.map((t) => {
       const parsed = this.parseUserAgent(t.userAgent);
@@ -336,11 +348,11 @@ export class AccountService {
   async revokeOtherSessions(
     userId: string,
     jwtOrgId: string | null,
-    keepSessionId?: string,
+    keepTokenFamily: string | null,
     auditCtx?: { ip?: string; userAgent?: string; route?: string },
   ) {
     await this.loadUserContext(userId, jwtOrgId);
-    const result = await this.refreshTokens.revokeOtherSessionsForUser(userId, keepSessionId);
+    const result = await this.refreshTokens.revokeOtherSessionsForUser(userId, keepTokenFamily);
 
     void this.audit.record({
       actorUserId: userId,
@@ -361,12 +373,15 @@ export class AccountService {
     userId: string,
     jwtOrgId: string | null,
     sessionId: string,
+    tokenFamily: string | null,
     auditCtx?: { ip?: string; userAgent?: string; route?: string },
   ) {
     await this.loadUserContext(userId, jwtOrgId);
 
     const tokens = await this.refreshTokens.listSessionsForUser(userId);
-    const currentId = this.refreshTokens.resolveCurrentSessionId(tokens);
+    const currentId =
+      this.refreshTokens.resolveActiveHeadSessionIdForFamily(tokens, tokenFamily) ??
+      this.refreshTokens.resolveCurrentSessionId(tokens);
     if (sessionId === currentId) {
       throw new BadRequestException(
         'Cannot revoke the current session from this endpoint — use logout instead',

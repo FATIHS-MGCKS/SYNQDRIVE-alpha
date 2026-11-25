@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserPlatformRole } from '@prisma/client';
+import { SessionAssuranceLevel, UserPlatformRole } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
@@ -74,14 +74,6 @@ export class AuthMfaLoginService {
     const userId = this.verifyMfaPendingToken(input.mfaPendingToken);
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        memberships: {
-          where: { status: 'ACTIVE' },
-          include: { organization: true },
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-        },
-      },
     });
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('Account is inactive');
@@ -98,19 +90,10 @@ export class AuthMfaLoginService {
       });
     }
 
-    const challengeResult = input.recoveryCode
-      ? await this.challenge.challengeWithRecoveryCode({
-          userId: user.id,
-          recoveryCode: input.recoveryCode,
-          allowUnboundReissue: true,
-        })
-      : await this.challenge.challengeWithTotp({
-          userId: user.id,
-          code: input.code ?? '',
-          allowUnboundReissue: true,
-        });
+    const { claims } = input.recoveryCode
+      ? await this.challenge.verifyLoginMfaRecoveryCode(user.id, input.recoveryCode)
+      : await this.challenge.verifyLoginMfaTotp(user.id, input.code ?? '');
 
-    const membership = user.memberships[0] ?? null;
     const tokens = await this.refreshTokens.issueTokenPair(
       {
         id: user.id,
@@ -120,21 +103,14 @@ export class AuthMfaLoginService {
         sessionVersion: user.sessionVersion,
         securityVersion: user.securityVersion,
       },
-      membership
-        ? {
-            role: membership.role,
-            organizationId: membership.organizationId,
-            organizationName: membership.organization?.companyName ?? null,
-            organizationLogoUrl: membership.organization?.logoUrl ?? null,
-            permissions: membership.permissions,
-            membershipId: membership.id,
-            membershipVersion: membership.membershipVersion,
-            organizationRoleId: membership.organizationRoleId,
-          }
-        : null,
+      null,
       {
         userAgent: input.userAgent,
         ipAddress: input.ipAddress,
+      },
+      {
+        assuranceLevel: SessionAssuranceLevel.MFA,
+        sessionClaims: claims,
       },
     );
 
@@ -142,18 +118,17 @@ export class AuthMfaLoginService {
 
     return {
       ...tokens,
-      accessToken: challengeResult.accessToken ?? tokens.accessToken,
-      assuranceLevel: challengeResult.assuranceLevel,
+      assuranceLevel: claims.assuranceLevel,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         platformRole: user.platformRole,
         platformPermissions: platformPermissionsList,
-        membershipRole: membership?.role ?? null,
-        organizationId: membership?.organizationId ?? null,
-        organizationName: membership?.organization?.companyName ?? null,
-        permissions: membership?.permissions ?? null,
+        membershipRole: null,
+        organizationId: null,
+        organizationName: null,
+        permissions: null,
       },
     };
   }
