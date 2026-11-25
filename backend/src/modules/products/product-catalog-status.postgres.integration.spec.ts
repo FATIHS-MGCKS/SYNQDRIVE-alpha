@@ -525,6 +525,9 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
 
         const assignOutcome = await assignSettlement;
         expect(assignOutcome.status).toBe('rejected');
+        if (assignOutcome.status !== 'rejected') {
+          throw new Error('expected admission assignment to reject');
+        }
         expect(assignOutcome.reason).toBeInstanceOf(ProductCatalogAdmissionDeniedError);
 
         expect(
