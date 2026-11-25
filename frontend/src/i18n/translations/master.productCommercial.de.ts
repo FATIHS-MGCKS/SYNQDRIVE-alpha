@@ -15,7 +15,7 @@ export const masterProductCommercialDe = {
   'master.productCommercial.scope.title': 'Commercial-Umfang (A–D)',
   'master.productCommercial.scope.metadata': 'A — Produktmetadaten',
   'master.productCommercial.scope.metadataBody':
-    'Nur-Lesen-Katalog. Kein PATCH für Katalog-Metadaten — nur Zuweisung und Vehicle-Access-Mode.',
+    'Anzeigename und Beschreibung per PATCH /admin/products/:slug (MFA, Concurrency, Pflicht-Audit). Slug und Katalogstatus in P1 nur Lesen.',
   'master.productCommercial.scope.pricebooks': 'B — Pricebooks & Versionen',
   'master.productCommercial.scope.pricebooksBody':
     'Entwürfe und Veröffentlichung in Master Billing → Tarife (kanonische Preislogik).',

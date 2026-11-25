@@ -61,9 +61,13 @@ export function classifyMasterProductApiError(status: number, message: string): 
     return message || 'Organisation, Produkt oder Fahrzeug nicht gefunden.';
   }
   if (status === 409) {
-    return message.includes('vehicleAccessMode')
-      ? 'Zugriffsmodus wurde zwischenzeitlich geändert. Daten werden aktualisiert — bitte erneut versuchen.'
-      : message || 'Konflikt — bitte aktualisieren und erneut versuchen.';
+    if (message.includes('vehicleAccessMode')) {
+      return 'Zugriffsmodus wurde zwischenzeitlich geändert. Daten werden aktualisiert — bitte erneut versuchen.';
+    }
+    if (message.includes('metadata') || message.includes('concurrently')) {
+      return 'Produktmetadaten wurden zwischenzeitlich geändert. Daten werden aktualisiert — bitte erneut versuchen.';
+    }
+    return message || 'Konflikt — bitte aktualisieren und erneut versuchen.';
   }
   return message || `Anfrage fehlgeschlagen (HTTP ${status}).`;
 }

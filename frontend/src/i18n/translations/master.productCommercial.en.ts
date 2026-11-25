@@ -15,7 +15,7 @@ export const masterProductCommercialEn = {
   'master.productCommercial.scope.title': 'Commercial scope (A–D)',
   'master.productCommercial.scope.metadata': 'A — Product metadata',
   'master.productCommercial.scope.metadataBody':
-    'Read-only platform catalog. No PATCH API for catalog metadata — assignment and vehicle-access mode only.',
+    'Display name and description are editable via PATCH /admin/products/:slug (MFA, concurrency, mandatory audit). Slug and catalog status remain read-only in P1.',
   'master.productCommercial.scope.pricebooks': 'B — Pricebooks & versions',
   'master.productCommercial.scope.pricebooksBody':
     'Editable drafts and publication in Master Billing → Tariffs (canonical price engine).',

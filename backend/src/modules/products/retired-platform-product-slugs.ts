@@ -28,6 +28,15 @@ export function assertPlatformProductGrantWritable(productSlug: ProductSlug | st
   assertNotRetiredPlatformProduct(productSlug, 'granted or reactivated');
 }
 
+export function assertPlatformProductMetadataEditable(productSlug: ProductSlug | string): void {
+  const normalized = normalizeProductSlug(productSlug);
+  if (RETIRED_PLATFORM_PRODUCT_SLUGS.has(normalized)) {
+    throw new BadRequestException(
+      `Product "${normalized}" is retired and cannot have catalog metadata edited`,
+    );
+  }
+}
+
 /**
  * Legacy TAXI org assignments may remain at SELECTED_VEHICLES or ORGANIZATION_WIDE.
  * Narrowing ORGANIZATION_WIDE → SELECTED_VEHICLES is allowed; broadening is not.

@@ -19,6 +19,7 @@ import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-m
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { parseVehicleAccessModeParam } from './parse-vehicle-access-mode';
 import { parseProductSlugParam } from './vehicle-product-grants/parse-product-slug';
+import { parseProductMetadataPatchBody } from './parse-product-metadata-patch';
 type MasterAdminRequest = {
   user?: { id: string };
   ip?: string;
@@ -46,6 +47,37 @@ export class ProductsController {
   @Get('org/:orgId')
   async findOrgProducts(@Param('orgId') orgId: string) {
     return this.productsService.findOrgProducts(orgId);
+  }
+
+  @Get(':productSlug')
+  async findCatalogProduct(@Param('productSlug') productSlugParam: string) {
+    const productSlug = parseProductSlugParam(productSlugParam);
+    return this.productsService.findCatalogProductBySlug(productSlug);
+  }
+
+  @Patch(':productSlug')
+  async patchCatalogMetadata(
+    @Param('productSlug') productSlugParam: string,
+    @Body() body: unknown,
+    @Req() req: MasterAdminRequest,
+  ) {
+    const actorId = req.user?.id;
+    if (!actorId) {
+      throw new UnauthorizedException();
+    }
+    const productSlug = parseProductSlugParam(productSlugParam);
+    const patch = parseProductMetadataPatchBody(body);
+    return this.productsService.updateProductMetadataForMasterAdmin({
+      productSlug,
+      patch,
+      actorUserId: actorId,
+      audit: {
+        correlationId: randomUUID(),
+        route: req.route?.path,
+        ipAddress: req.ip,
+        userAgent: req.headers?.['user-agent'],
+      },
+    });
   }
 
   @Post('assign')

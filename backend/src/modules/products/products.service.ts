@@ -17,8 +17,15 @@ import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audi
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 import {
   assertPlatformProductAssignable,
+  assertPlatformProductMetadataEditable,
   assertRetiredPlatformVehicleAccessModeMutation,
 } from './retired-platform-product-slugs';
+import type { ParsedProductMetadataPatch } from './parse-product-metadata-patch';
+import {
+  buildProductMetadataAuditInput,
+  persistProductMetadataMandatoryAuditTx,
+} from './product-metadata-mandatory-audit.util';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Active',
@@ -85,6 +92,119 @@ export class ProductsService {
       plan: PLAN_LABELS[op.plan] ?? op.plan,
       vehicleAccessMode: op.vehicleAccessMode,
     }));
+  }
+
+  private storageDescription(description: string | null): string | null {
+    return description;
+  }
+
+  private descriptionsEqual(a: string | null, b: string | null): boolean {
+    return (a ?? null) === (b ?? null);
+  }
+
+  async findCatalogProductBySlug(productSlug: ProductSlug) {
+    const product = await this.prisma.product.findUnique({
+      where: { slug: productSlug },
+      include: {
+        organizationProducts: {
+          where: { status: { in: ['ACTIVE', 'TRIAL'] } },
+          select: { id: true },
+        },
+      },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${productSlug}" not found`);
+    }
+    return {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description ?? '',
+      catalogStatus: product.catalogStatus,
+      organizationsCount: product.organizationProducts.length,
+    };
+  }
+
+  async updateProductMetadataForMasterAdmin(input: {
+    productSlug: ProductSlug;
+    patch: ParsedProductMetadataPatch;
+    actorUserId: string;
+    audit: MasterAdminAuditContext;
+  }) {
+    assertPlatformProductMetadataEditable(input.productSlug);
+
+    const product = await this.prisma.product.findUnique({
+      where: { slug: input.productSlug },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+    }
+
+    const currentName = product.name;
+    const currentDescription = this.storageDescription(product.description);
+
+    if (
+      currentName !== input.patch.ifCurrentName ||
+      !this.descriptionsEqual(currentDescription, input.patch.ifCurrentDescription)
+    ) {
+      throw new ConflictException(
+        'Product metadata changed concurrently; reload and retry with current name and description',
+      );
+    }
+
+    const targetDescription = this.storageDescription(input.patch.description);
+    const willMutate =
+      currentName !== input.patch.name ||
+      !this.descriptionsEqual(currentDescription, targetDescription);
+
+    if (!willMutate) {
+      return this.findCatalogProductBySlug(input.productSlug);
+    }
+
+    const before = { name: currentName, description: currentDescription };
+    const after = { name: input.patch.name, description: targetDescription };
+
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.product.updateMany({
+        where: {
+          id: product.id,
+          slug: input.productSlug,
+          name: input.patch.ifCurrentName,
+          description:
+            input.patch.ifCurrentDescription === null
+              ? { equals: null }
+              : input.patch.ifCurrentDescription,
+        },
+        data: {
+          name: input.patch.name,
+          description: targetDescription,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          'Product metadata changed concurrently; reload and retry with current name and description',
+        );
+      }
+
+      await persistProductMetadataMandatoryAuditTx(
+        tx,
+        buildProductMetadataAuditInput({
+          actorUserId: input.actorUserId,
+          productId: product.id,
+          productSlug: input.productSlug,
+          correlationId: input.audit.correlationId,
+          route: input.audit.route,
+          ipAddress: input.audit.ipAddress,
+          userAgent: input.audit.userAgent,
+          mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+          before,
+          after,
+        }),
+      );
+    });
+
+    return this.findCatalogProductBySlug(input.productSlug);
   }
 
   async getProductStats() {
