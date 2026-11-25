@@ -62,9 +62,9 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
         data: { name: restore.name, description: restore.description },
       });
     }
+    // activity_logs is append-only in migrated DBs; disposable CI drops the whole database.
     if (seededMasterIds.length > 0) {
-      await prisma.activityLog.deleteMany({ where: { userId: { in: seededMasterIds } } });
-      await prisma.user.deleteMany({ where: { id: { in: seededMasterIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: seededMasterIds } } }).catch(() => undefined);
     }
     await prisma.$disconnect();
   });
