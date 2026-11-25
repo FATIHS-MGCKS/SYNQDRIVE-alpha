@@ -13,6 +13,9 @@ import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { SecurityGovernanceController } from './security-governance.controller';
 import { SecurityGovernanceService } from './security-governance.service';
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
+import { SecurityGovernancePlatformPermissionAuditService } from './security-governance-platform-permission-audit.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
+import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 import { IamMfaService } from '@modules/iam-mfa/iam-mfa.service';
 import { createMasterAdminAuthGuard } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 
@@ -48,11 +51,26 @@ describe('SecurityGovernance session revocation audit — HTTP', () => {
     refreshTokens.revokeAllActiveForUser.mockResolvedValue(2);
   });
 
+  const auditDelivery = {
+    scheduleDelivery: jest.fn((record: unknown) => {
+      void masterAdminAudit.record(record as never);
+    }),
+  };
+
   async function createApp() {
     const moduleRef = await Test.createTestingModule({
       controllers: [SecurityGovernanceController],
       providers: [
+        SecurityGovernancePlatformPermissionAuditService,
         SecurityGovernanceSessionAuditService,
+        {
+          provide: PlatformPermissionService,
+          useValue: {
+            grantMasterBillingWithMandatoryAudit: jest.fn(),
+            revokeMasterBillingWithMandatoryAudit: jest.fn(),
+          },
+        },
+        { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
         { provide: MasterAdminAuditService, useValue: masterAdminAudit },
         { provide: RefreshTokenService, useValue: refreshTokens },
         { provide: SecurityGovernanceService, useValue: governance },

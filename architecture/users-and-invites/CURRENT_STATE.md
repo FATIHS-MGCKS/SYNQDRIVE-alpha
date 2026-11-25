@@ -1,6 +1,6 @@
-# Users & Invites — current state (USR_P0 seal)
+# Users & Invites — current state (USR_P0 seal + USR-P1A delta)
 
-**Epistemic baseline:** Repository @ `a5664ac105cc43ee4cd12da22bb4cffc1ffb50f6` (audited `origin/main`). Production runtime **NOT_VERIFIED**.
+**Epistemic baseline:** Repository @ `origin/main` post PR #2530 (`270a0b4c2`). Production runtime **NOT_VERIFIED**.
 
 **Owner policies (2026-11-25):** USR-OWN-01–04 **OWNER_APPROVED** — documented in [USR_P0_OWNER_ATTESTATION_2026-11-25.md](evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md). **Not implemented** in repository by this attestation; **no** deploy/flag/prod authorization.
 
@@ -15,7 +15,8 @@
 | MFA / sessions | **IMPLEMENTED** (repo) — revoke + reset with audit hooks | controller + `RefreshTokenService` |
 | Platform user create via MA hub | **MISSING_CAPABILITY** | No POST create on governance API |
 | i18n (Security & Access) | **GAP** — hardcoded DE strings | USR-P0-F-002 |
-| Session-audit HTTP security tests | **BROKEN HARNESS** | USR-P0-F-003 |
+| Session-audit HTTP security tests | **IMPLEMENTED + TESTED (repo)** — harness + real-guard HTTP specs | USR-P1A closes F-003 |
+| Session audit accountability (R-002) | **IMPLEMENTED (repo)** — `MasterAdminAuditDeliveryService` | USR-P1A / USR-OWN-04 |
 | Audit on billing grant/revoke | **IMPLEMENTED** — mandatory audit service | `grantMasterBillingWithMandatoryAudit` |
 | Production IAM posture | **UNKNOWN** | PRODUCTION_AUDIT_STATUS=NOT_EXECUTED |
 
@@ -56,17 +57,19 @@ Transition implementation: `backend/src/modules/users/*`, organization onboardin
 | P2 | 6+ (F-001, F-002, F-004, F-006, R-002, R-013, …) |
 
 **P0 seal:** [USR_P0_FINAL_EVIDENCE_SEAL.md](evidence/USR_P0_FINAL_EVIDENCE_SEAL.md) — **not** a claim of zero security gaps.
-| P3 | 2 (F-003, R-005 doc fixed) |
+| P3 | 1 (R-005 doc fixed) |
 
-**Audit coverage gaps closed:** R-003, R-004, R-007. **Security gaps:** R-002 accountability, R-008 stale JWT.
+**Audit coverage gaps closed:** R-003, R-004, R-007, **R-002 (USR-P1A)**, **F-003 (USR-P1A)**. **Security gaps:** R-008 stale JWT (P1).
 
 Full register: [evidence/USR_P0_FINDINGS_REGISTER.md](evidence/USR_P0_FINDINGS_REGISTER.md).
 
 ## Test evidence (USR_P0 run)
 
 ```text
-backend jest (filtered IAM): 9 passed suites / 1 failed — security-governance-session-audit.http-security.spec (5 failures)
-frontend vitest security-access-url: 5/5 pass
+USR-P1A: security-governance-session-audit.http-security.spec 5/5 pass
+USR-P1A: security-governance-session-revoke.http-security.integration.spec 7/7 pass
+USR-P1A: master-admin-audit-delivery.service.spec 3/3 pass
+USR-P1A PG (optional USR_P1A_SESSION_AUDIT_PG=1): master-admin-audit-delivery.postgres.integration.spec
 ```
 
 ## Promotion status

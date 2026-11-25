@@ -2,12 +2,12 @@ import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
 
 describe('SecurityGovernanceSessionAuditService', () => {
-  const masterAdminAudit = { record: jest.fn().mockResolvedValue(undefined) };
+  const auditDelivery = { scheduleDelivery: jest.fn() };
   let service: SecurityGovernanceSessionAuditService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new SecurityGovernanceSessionAuditService(masterAdminAudit as never);
+    service = new SecurityGovernanceSessionAuditService(auditDelivery as never);
   });
 
   const req = {
@@ -28,7 +28,7 @@ describe('SecurityGovernanceSessionAuditService', () => {
       targetOrganizationId: 'org-1',
     });
 
-    expect(masterAdminAudit.record).toHaveBeenCalledWith(
+    expect(auditDelivery.scheduleDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
         actorUserId: 'actor-1',
@@ -41,6 +41,10 @@ describe('SecurityGovernanceSessionAuditService', () => {
           outcome: 'SUCCESS',
           sessionId: 'sess-1',
         }),
+      }),
+      expect.objectContaining({
+        recoveryOrganizationId: 'org-1',
+        idempotencyKey: expect.stringContaining('ma-session-audit:corr-1'),
       }),
     );
   });
@@ -55,13 +59,18 @@ describe('SecurityGovernanceSessionAuditService', () => {
       revokedSessionCount: 3,
     });
 
-    expect(masterAdminAudit.record).toHaveBeenCalledWith(
+    expect(auditDelivery.scheduleDelivery).toHaveBeenCalledWith(
       expect.objectContaining({
         auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
         metadata: expect.objectContaining({
           operation: 'REVOKE_ALL',
           revokedSessionCount: 3,
         }),
+      }),
+      expect.objectContaining({
+        idempotencyKey: expect.stringContaining(
+          MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
+        ),
       }),
     );
   });

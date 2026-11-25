@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
+import {
+  buildMasterAdminSessionRevocationAuditIdempotencyKey,
+} from '@modules/activity-log/master-admin-audit-delivery.contract';
+import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 import {
   buildPrivilegedRouteLabel,
   resolveCorrelationId,
@@ -26,7 +29,7 @@ export type SessionRevocationAuditRequest = {
 
 @Injectable()
 export class SecurityGovernanceSessionAuditService {
-  constructor(private readonly masterAdminAudit: MasterAdminAuditService) {}
+  constructor(private readonly auditDelivery: MasterAdminAuditDeliveryService) {}
 
   recordSingleSessionRevocation(input: {
     req: SessionRevocationAuditRequest;
@@ -42,35 +45,45 @@ export class SecurityGovernanceSessionAuditService {
         ? `Master admin revoked session for user ${input.targetUserId}`
         : `Master admin session revoke no-op (session not found) for user ${input.targetUserId}`;
 
-    void this.masterAdminAudit
-      .record({
-        auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
-        actorUserId: input.req.user?.id,
-        actorPlatformRole: input.req.user?.platformRole ?? 'MASTER_ADMIN',
-        actorPermissions: input.req.user?.platformPermissions ?? [],
-        targetOrganizationId: input.targetOrganizationId ?? null,
-        entityId: input.sessionId,
-        description,
+    const auditAction = MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED;
+    const record = {
+      auditAction,
+      actorUserId: input.req.user?.id,
+      actorPlatformRole: input.req.user?.platformRole ?? 'MASTER_ADMIN',
+      actorPermissions: input.req.user?.platformPermissions ?? [],
+      targetOrganizationId: input.targetOrganizationId ?? null,
+      entityId: input.sessionId,
+      description,
+      correlationId,
+      route: buildPrivilegedRouteLabel(input.req as never),
+      httpMethod: input.req.method ?? 'POST',
+      httpStatus: 200,
+      ipAddress: input.req.ip ?? input.req.connection?.remoteAddress,
+      userAgent: input.req.headers?.['user-agent'] as string | undefined,
+      mfaStepUpAction: mfa.mfaStepUpAction ?? STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS,
+      mfaAssuranceLevel: mfa.mfaAssuranceLevel,
+      mfaStepUpUsed: mfa.mfaStepUpUsed,
+      permissionGranted: true,
+      after: null,
+      metadata: {
+        domain: 'master_user_session',
+        operation: 'REVOKE_ONE',
+        outcome: input.outcome,
+        targetUserId: input.targetUserId,
+        sessionId: input.sessionId,
+      },
+    };
+
+    this.auditDelivery.scheduleDelivery(record, {
+      idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey({
         correlationId,
-        route: buildPrivilegedRouteLabel(input.req as never),
-        httpMethod: input.req.method ?? 'POST',
-        httpStatus: 200,
-        ipAddress: input.req.ip ?? input.req.connection?.remoteAddress,
-        userAgent: input.req.headers?.['user-agent'] as string | undefined,
-        mfaStepUpAction: mfa.mfaStepUpAction ?? STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS,
-        mfaAssuranceLevel: mfa.mfaAssuranceLevel,
-        mfaStepUpUsed: mfa.mfaStepUpUsed,
-        permissionGranted: true,
-        after: null,
-        metadata: {
-          domain: 'master_user_session',
-          operation: 'REVOKE_ONE',
-          outcome: input.outcome,
-          targetUserId: input.targetUserId,
-          sessionId: input.sessionId,
-        },
-      })
-      .catch(() => undefined);
+        auditAction,
+        targetUserId: input.targetUserId,
+        sessionId: input.sessionId,
+        outcome: input.outcome,
+      }),
+      recoveryOrganizationId: input.targetOrganizationId ?? null,
+    });
   }
 
   recordRevokeAllSessions(input: {
@@ -81,35 +94,44 @@ export class SecurityGovernanceSessionAuditService {
   }): void {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
+    const auditAction = MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL;
 
-    void this.masterAdminAudit
-      .record({
-        auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
-        actorUserId: input.req.user?.id,
-        actorPlatformRole: input.req.user?.platformRole ?? 'MASTER_ADMIN',
-        actorPermissions: input.req.user?.platformPermissions ?? [],
-        targetOrganizationId: input.targetOrganizationId ?? null,
-        entityId: input.targetUserId,
-        description: `Master admin revoked all sessions for user ${input.targetUserId}`,
+    const record = {
+      auditAction,
+      actorUserId: input.req.user?.id,
+      actorPlatformRole: input.req.user?.platformRole ?? 'MASTER_ADMIN',
+      actorPermissions: input.req.user?.platformPermissions ?? [],
+      targetOrganizationId: input.targetOrganizationId ?? null,
+      entityId: input.targetUserId,
+      description: `Master admin revoked all sessions for user ${input.targetUserId}`,
+      correlationId,
+      route: buildPrivilegedRouteLabel(input.req as never),
+      httpMethod: input.req.method ?? 'POST',
+      httpStatus: 200,
+      ipAddress: input.req.ip ?? input.req.connection?.remoteAddress,
+      userAgent: input.req.headers?.['user-agent'] as string | undefined,
+      mfaStepUpAction: mfa.mfaStepUpAction ?? STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS,
+      mfaAssuranceLevel: mfa.mfaAssuranceLevel,
+      mfaStepUpUsed: mfa.mfaStepUpUsed,
+      permissionGranted: true,
+      after: null,
+      metadata: {
+        domain: 'master_user_session',
+        operation: 'REVOKE_ALL',
+        outcome: 'SUCCESS',
+        targetUserId: input.targetUserId,
+        revokedSessionCount: input.revokedSessionCount,
+      },
+    };
+
+    this.auditDelivery.scheduleDelivery(record, {
+      idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey({
         correlationId,
-        route: buildPrivilegedRouteLabel(input.req as never),
-        httpMethod: input.req.method ?? 'POST',
-        httpStatus: 200,
-        ipAddress: input.req.ip ?? input.req.connection?.remoteAddress,
-        userAgent: input.req.headers?.['user-agent'] as string | undefined,
-        mfaStepUpAction: mfa.mfaStepUpAction ?? STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS,
-        mfaAssuranceLevel: mfa.mfaAssuranceLevel,
-        mfaStepUpUsed: mfa.mfaStepUpUsed,
-        permissionGranted: true,
-        after: null,
-        metadata: {
-          domain: 'master_user_session',
-          operation: 'REVOKE_ALL',
-          outcome: 'SUCCESS',
-          targetUserId: input.targetUserId,
-          revokedSessionCount: input.revokedSessionCount,
-        },
-      })
-      .catch(() => undefined);
+        auditAction,
+        targetUserId: input.targetUserId,
+        outcome: 'SUCCESS',
+      }),
+      recoveryOrganizationId: input.targetOrganizationId ?? null,
+    });
   }
 }

@@ -7,6 +7,8 @@ import { IAM_AUDIT_OUTBOX } from './iam-audit.constants';
 import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import { scanIamAuditPayloadForSecrets } from './iam-audit-sanitize.util';
+import { MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE } from '@modules/activity-log/master-admin-audit-delivery.contract';
+import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 
 @Injectable()
 export class IamAuditOutboxProcessorService {
@@ -18,6 +20,7 @@ export class IamAuditOutboxProcessorService {
     private readonly userAudit: UserAccessAuditService,
     private readonly metrics: IamAuditOutboxMetricsService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
+    @Optional() private readonly masterAdminAuditDelivery?: MasterAdminAuditDeliveryService,
   ) {}
 
   async processOutboxId(
@@ -45,6 +48,16 @@ export class IamAuditOutboxProcessorService {
       });
       if (secretViolations.length > 0) {
         throw new Error(`Audit payload contains sensitive fields: ${secretViolations.join(', ')}`);
+      }
+
+      if (
+        claimed.eventType === MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE &&
+        this.masterAdminAuditDelivery
+      ) {
+        await this.masterAdminAuditDelivery.deliverFromOutboxPayload(payload);
+        await this.outboxRepo.markProcessed(claimed.id);
+        this.metrics.record('processed', claimed.eventType);
+        return 'processed';
       }
 
       await this.userAudit.record({
