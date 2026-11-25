@@ -79,9 +79,7 @@ describe('SecurityGovernanceSessionAuditService', () => {
         }),
       }),
       expect.objectContaining({
-        idempotencyKey: expect.stringContaining(
-          MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
-        ),
+        idempotencyKey: expect.stringMatching(/^ma-session-audit:op:[0-9a-f-]{36}$/),
       }),
     );
   });

@@ -15,7 +15,10 @@ import { MasterAdminAuditDeliveryService } from './master-admin-audit-delivery.s
 import { MasterAdminAuditOutboxRepository } from './master-admin-audit-outbox.repository';
 import { MasterAdminAuditOutboxProcessorService } from './master-admin-audit-outbox.processor';
 import { MasterAdminAuditOutboxSchedulerService } from './master-admin-audit-outbox.scheduler.service';
-import { buildMasterAdminSessionRevocationAuditIdempotencyKey } from './master-admin-audit-delivery.contract';
+import {
+  buildMasterAdminSessionRevocationAuditIdempotencyKey,
+  generateMasterAdminSecurityOperationId,
+} from './master-admin-audit-delivery.contract';
 import { assertMasterAdminAuditDisposablePostgresPreflight } from './testing/master-admin-audit-disposable-postgres-preflight';
 import { MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE } from './master-admin-audit-delivery.contract';
 import { MASTER_ADMIN_AUDIT_DOMAIN } from './master-admin-audit.contract';
@@ -577,5 +580,201 @@ const run = process.env[OPT_IN] === '1';
       (log?.metaJson as { targetOrganizationId?: string })?.targetOrganizationId,
     ).toBe(org.id);
     record('PG13', 'PASS');
+  });
+
+  it('PGA distinct revoke-all operations produce separate semantic audits', async () => {
+    const actor1 = await createActor();
+    const actor2 = await createActor();
+    const target = await createActor();
+    await createSession(target.id, null);
+    await createSession(target.id, null);
+    const first = await sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+      req: reqStub(actor1.id),
+      targetUserId: target.id,
+    });
+    expect(first.revokedSessionCount).toBe(2);
+    await createSession(target.id, null);
+    const second = await sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+      req: reqStub(actor2.id),
+      targetUserId: target.id,
+    });
+    expect(second.revokedSessionCount).toBe(1);
+    const outboxes = await prisma.masterAdminAuditOutbox.findMany({
+      where: {
+        subjectUserId: target.id,
+        auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
+      },
+      orderBy: { occurredAt: 'asc' },
+    });
+    expect(outboxes).toHaveLength(2);
+    expect(outboxes[0]!.idempotencyKey).not.toBe(outboxes[1]!.idempotencyKey);
+    const count0 = (
+      outboxes[0]!.payload as { masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> } }
+    ).masterAdminAuditEnvelope?.metadata?.revokedSessionCount;
+    const count1 = (
+      outboxes[1]!.payload as { masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> } }
+    ).masterAdminAuditEnvelope?.metadata?.revokedSessionCount;
+    expect(count0).toBe(2);
+    expect(count1).toBe(1);
+    for (const key of outboxes.map((o) => o.idempotencyKey)) {
+      const logs = await prisma.activityLog.count({
+        where: { metaJson: { path: ['auditDeliveryIdempotencyKey'], equals: key } },
+      });
+      expect(logs).toBe(1);
+    }
+    record('PGA', 'PASS');
+  });
+
+  it('PGB repeated delivery of one operation yields one semantic audit row', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id, null);
+    await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    const outbox = await prisma.masterAdminAuditOutbox.findFirst({
+      where: { subjectUserId: target.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(outbox).toBeTruthy();
+    if (outbox!.status === MasterAdminAuditOutboxStatus.PROCESSED) {
+      expect(await processor.processOutboxId(outbox!.id)).toBe('duplicate');
+    } else {
+      const first = await processor.processOutboxId(outbox!.id);
+      const second = await processor.processOutboxId(outbox!.id);
+      expect(first).toBe('processed');
+      expect(second).toBe('duplicate');
+    }
+    const logs = await prisma.activityLog.count({
+      where: {
+        metaJson: { path: ['auditDeliveryIdempotencyKey'], equals: outbox!.idempotencyKey },
+      },
+    });
+    expect(logs).toBe(1);
+    record('PGB', 'PASS');
+  });
+
+  it('PGC concurrent enqueue for same operation identity is conflict-safe', async () => {
+    const actor = await createActor();
+    const operationId = generateMasterAdminSecurityOperationId();
+    const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
+    const envelope = pgEnvelope({
+      correlationId: randomUUID(),
+      actorUserId: actor.id,
+      targetUserId: randomUUID(),
+      sessionId: randomUUID(),
+    });
+    const outboxRepo = new MasterAdminAuditOutboxRepository(prisma as never);
+    await prisma.$transaction(async (tx) => {
+      const [rowA, rowB] = await Promise.all([
+        outboxRepo.enqueueInTransaction(tx, {
+          idempotencyKey,
+          envelope,
+          occurredAt: new Date(),
+          auditScope: MasterAdminAuditScope.PLATFORM,
+        }),
+        outboxRepo.enqueueInTransaction(tx, {
+          idempotencyKey,
+          envelope,
+          occurredAt: new Date(),
+          auditScope: MasterAdminAuditScope.PLATFORM,
+        }),
+      ]);
+      expect(rowA.id).toBe(rowB.id);
+    });
+    const rows = await prisma.masterAdminAuditOutbox.count({ where: { idempotencyKey } });
+    expect(rows).toBe(1);
+    record('PGC', 'PASS');
+  });
+
+  it('PGD ambiguous txn failure reconciles from current operation outbox only', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id, null);
+    const txnSpy = jest
+      .spyOn(prisma, '$transaction')
+      .mockRejectedValueOnce(new Error('PGD_ambiguous_commit'));
+    const { revoked } = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    txnSpy.mockRestore();
+    expect(revoked).toBe(true);
+    const outbox = await prisma.masterAdminAuditOutbox.findFirst({
+      where: { subjectUserId: target.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(outbox?.idempotencyKey).toMatch(/^ma-session-audit:op:/);
+    const meta = (
+      outbox!.payload as { masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> } }
+    ).masterAdminAuditEnvelope?.metadata;
+    expect(meta?.securityOperationId).toBeTruthy();
+    expect(meta?.outcome).toBe('SUCCESS');
+    expect(outbox?.idempotencyKey).toBe(
+      buildMasterAdminSessionRevocationAuditIdempotencyKey(String(meta?.securityOperationId)),
+    );
+    record('PGD', 'PASS');
+  });
+
+  it('PGE no-op on already revoked session without fabricated success', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id, null);
+    const first = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    expect(first.revoked).toBe(true);
+    const second = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    expect(second.revoked).toBe(false);
+    const noopOutbox = await prisma.masterAdminAuditOutbox.findFirst({
+      where: {
+        subjectUserId: target.id,
+        auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const noopMeta = (
+      noopOutbox?.payload as { masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> } }
+    ).masterAdminAuditEnvelope?.metadata;
+    expect(noopMeta?.outcome).toBe('NO_OP');
+    record('PGE', 'PASS');
+  });
+
+  it('PGF revoke-all count excludes historically revoked sessions', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const historical = await createSession(target.id, null);
+    await prisma.refreshToken.update({
+      where: { id: historical.id },
+      data: { revokedAt: new Date('2020-01-01T00:00:00.000Z') },
+    });
+    await createSession(target.id, null);
+    await createSession(target.id, null);
+    const { revokedSessionCount } = await sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+    });
+    expect(revokedSessionCount).toBe(2);
+    const outbox = await prisma.masterAdminAuditOutbox.findFirst({
+      where: {
+        auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
+        subjectUserId: target.id,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const meta = (
+      outbox?.payload as { masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> } }
+    ).masterAdminAuditEnvelope?.metadata;
+    expect(meta?.revokedSessionCount).toBe(2);
+    record('PGF', 'PASS');
   });
 });

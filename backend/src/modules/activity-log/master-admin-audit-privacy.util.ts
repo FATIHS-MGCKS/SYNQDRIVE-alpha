@@ -40,6 +40,7 @@ const ALLOWED_METADATA_KEYS = new Set([
   'originalOccurredAt',
   'auditScope',
   'organizationContextId',
+  'securityOperationId',
 ]);
 
 const FORBIDDEN_VALUE_PATTERNS = [

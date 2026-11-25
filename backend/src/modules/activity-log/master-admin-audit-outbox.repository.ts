@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
   MasterAdminAuditOutboxStatus,
@@ -22,6 +23,9 @@ export interface EnqueueMasterAdminAuditOutboxInput {
 export class MasterAdminAuditOutboxRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * INSERT … ON CONFLICT DO NOTHING — safe under concurrent enqueue (no post-P2002 reads).
+   */
   async enqueueInTransaction(
     tx: Prisma.TransactionClient,
     input: EnqueueMasterAdminAuditOutboxInput,
@@ -34,41 +38,66 @@ export class MasterAdminAuditOutboxRepository {
       return existing;
     }
 
-    try {
-      return await tx.masterAdminAuditOutbox.create({
-        data: {
-          idempotencyKey: input.idempotencyKey,
-          auditScope: input.auditScope,
-          organizationContextId: input.organizationContextId?.trim() || null,
-          actorUserId: envelope.actorUserId ?? null,
-          subjectUserId:
-            typeof envelope.metadata?.targetUserId === 'string'
-              ? envelope.metadata.targetUserId
-              : null,
-          auditAction: envelope.auditAction,
-          occurredAt: input.occurredAt,
-          payloadVersion: MASTER_ADMIN_AUDIT_OUTBOX.payloadVersion,
-          payload: {
-            masterAdminAuditEnvelope: envelope,
-          } as unknown as Prisma.InputJsonValue,
-          status: MasterAdminAuditOutboxStatus.PENDING,
-          nextRetryAt: new Date(),
-        },
-      });
-    } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        const existingRow = await tx.masterAdminAuditOutbox.findUnique({
-          where: { idempotencyKey: input.idempotencyKey },
-        });
-        if (existingRow) {
-          return existingRow;
-        }
-      }
-      throw err;
+    const id = randomUUID();
+    const eventId = randomUUID();
+    const subjectUserId =
+      typeof envelope.metadata?.targetUserId === 'string' ? envelope.metadata.targetUserId : null;
+    const organizationContextId = input.organizationContextId?.trim() || null;
+    const payloadJson = JSON.stringify({ masterAdminAuditEnvelope: envelope });
+    const nextRetryAt = new Date();
+
+    const inserted = await tx.$queryRaw<Array<{ id: string }>>`
+      INSERT INTO master_admin_audit_outbox (
+        id,
+        event_id,
+        idempotency_key,
+        audit_scope,
+        organization_context_id,
+        actor_user_id,
+        subject_user_id,
+        audit_action,
+        occurred_at,
+        payload_version,
+        payload,
+        processing_status,
+        attempts,
+        next_retry_at,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        ${id},
+        ${eventId},
+        ${input.idempotencyKey},
+        ${input.auditScope}::"MasterAdminAuditScope",
+        ${organizationContextId},
+        ${envelope.actorUserId ?? null},
+        ${subjectUserId},
+        ${envelope.auditAction},
+        ${input.occurredAt},
+        ${MASTER_ADMIN_AUDIT_OUTBOX.payloadVersion},
+        ${payloadJson}::jsonb,
+        ${MasterAdminAuditOutboxStatus.PENDING}::"MasterAdminAuditOutboxStatus",
+        0,
+        ${nextRetryAt},
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING id
+    `;
+
+    if (inserted.length > 0) {
+      return tx.masterAdminAuditOutbox.findUniqueOrThrow({ where: { id: inserted[0]!.id } });
     }
+
+    const conflictRow = await tx.masterAdminAuditOutbox.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+    });
+    if (!conflictRow) {
+      throw new Error('master_admin_audit_outbox_enqueue_conflict_missing_row');
+    }
+    return conflictRow;
   }
 
   findByIdempotencyKey(idempotencyKey: string) {

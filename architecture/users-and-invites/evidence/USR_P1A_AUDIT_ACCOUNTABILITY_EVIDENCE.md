@@ -45,7 +45,9 @@ Migration `20261125103000_master_admin_audit_outbox` — validated on disposable
 | Stale `PROCESSING` recovery CAS (`status=PROCESSING` + `updatedAt < staleBefore`) | **YES** — `recoverStaleProcessing` |
 | Immediate delivery uses persisted outbox payload + `occurredAt` | **YES** — `attemptImmediateDelivery(outboxId)` |
 | Concurrent enqueue via unique `idempotencyKey` (P2002 → existing row) | **YES** — `enqueueInTransaction` |
-| Idempotency excludes caller `correlationId` | **YES** — `buildMasterAdminSessionRevocationAuditIdempotencyKey` |
+| Per-operation server identity (`securityOperationId` → `ma-session-audit:op:<uuid>`) | **YES** — distinct revoke-all admissions; correlation IDs trace-only |
+| Concurrent enqueue ON CONFLICT (no aborted-tx P2002 read) | **YES** — `enqueueInTransaction` raw insert |
+| Regression PGA–PGF (disposable PG) | **19/19 PASS** incl. PG01–PG13 |
 | Ambiguous combined-txn commit fallback (no double revoke / duplicate audit) | **YES** — `fallbackSingleSessionRevocation` + revoke-all catch |
 | Master Admin vs tenant query scope | **YES** — `buildMasterAdminAuditWhere` / `buildTenantAuditWhere` + export split |
 | Legacy tenant rows (`meta_json` null) visible to org reads | **YES** — `activityLogTenantScopeExcludesMasterAdmin` |
