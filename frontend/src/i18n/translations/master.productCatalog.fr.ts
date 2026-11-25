@@ -16,6 +16,8 @@ export const masterProductCatalogFr = {
     'Sélectionnez d’abord une organisation sur cette page, puis ouvrez les attributions.',
   'master.productCatalog.editor.conflictRetry':
     'Le produit a été modifié entre-temps. Vos saisies restent dans le formulaire — vérifiez et enregistrez à nouveau.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Impossible d’actualiser le produit après un conflit. Vérifiez la connexion et réessayez.',
   'master.productCatalog.editor.viewOrgs': 'Produits tarifaires plateforme',
   'master.productCatalog.editor.editMetadata': 'Modifier les métadonnées',
   'master.productCatalog.editor.validationName': 'Le nom ne doit pas être vide.',

@@ -16,6 +16,8 @@ export const masterProductCatalogEs = {
     'Seleccione primero una organización en esta página y luego abra las asignaciones de producto.',
   'master.productCatalog.editor.conflictRetry':
     'Otra persona cambió este producto. Sus ediciones siguen en el formulario — revise y guarde de nuevo.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'No se pudieron actualizar los datos del producto tras un conflicto. Compruebe la conexión e inténtelo de nuevo.',
   'master.productCatalog.editor.viewOrgs': 'Productos tarifarios de la plataforma',
   'master.productCatalog.editor.editMetadata': 'Editar metadatos',
   'master.productCatalog.editor.validationName': 'El nombre no puede estar vacío.',

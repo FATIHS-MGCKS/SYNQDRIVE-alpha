@@ -16,6 +16,8 @@ export const masterProductCatalogTr = {
     'Önce bu sayfada bir kuruluş seçin, ardından ürün atamalarını açın.',
   'master.productCatalog.editor.conflictRetry':
     'Ürün bu arada değiştirildi. Girdileriniz formda kaldı — kontrol edip yeniden kaydedin.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Çakışmadan sonra ürün verileri yenilenemedi. Bağlantıyı kontrol edip tekrar deneyin.',
   'master.productCatalog.editor.viewOrgs': 'Platform tarife ürünleri',
   'master.productCatalog.editor.editMetadata': 'Meta veriyi düzenle',
   'master.productCatalog.editor.validationName': 'Ad boş olamaz.',

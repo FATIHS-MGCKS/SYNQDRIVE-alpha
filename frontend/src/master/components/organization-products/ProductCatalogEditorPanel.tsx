@@ -75,8 +75,8 @@ export function ProductCatalogEditorPanel({
   );
 
   const loadProduct = useCallback(
-    async (options?: { preserveUserEdits?: boolean }) => {
-      if (!productSlug) return;
+    async (options?: { preserveUserEdits?: boolean }): Promise<boolean> => {
+      if (!productSlug) return false;
       if (!options?.preserveUserEdits) {
         setLoading(true);
         setLoadError(null);
@@ -92,11 +92,14 @@ export function ProductCatalogEditorPanel({
         }
         setBaselineName(data.name);
         setBaselineDescription(desc);
+        return true;
       } catch (e) {
-        if (!options?.preserveUserEdits) {
-          setLoadError(e instanceof Error ? e.message : t('master.productCatalog.editor.loadError'));
-          setRow(null);
+        if (options?.preserveUserEdits) {
+          throw e;
         }
+        setLoadError(e instanceof Error ? e.message : t('master.productCatalog.editor.loadError'));
+        setRow(null);
+        return false;
       } finally {
         if (!options?.preserveUserEdits) {
           setLoading(false);
@@ -110,11 +113,19 @@ export function ProductCatalogEditorPanel({
     void loadProduct();
   }, [loadProduct]);
 
+  const confirmDiscardUnsaved = useCallback((): boolean => {
+    if (!dirty) return true;
+    return window.confirm(t('master.productCatalog.editor.unsavedWarning'));
+  }, [dirty, t]);
+
   const tryClose = () => {
-    if (dirty && !window.confirm(t('master.productCatalog.editor.unsavedWarning'))) {
-      return;
-    }
+    if (!confirmDiscardUnsaved()) return;
     onClose();
+  };
+
+  const navigateAfterUnsavedCheck = (action: () => void) => {
+    if (!confirmDiscardUnsaved()) return;
+    action();
   };
 
   const runPatch = useCallback(
@@ -151,8 +162,16 @@ export function ProductCatalogEditorPanel({
             return;
           }
           if (isProductMetadataConflict(res.status, res.errorMessage ?? '')) {
-            await loadProduct({ preserveUserEdits: true });
-            setSaveError(t('master.productCatalog.editor.conflictRetry'));
+            try {
+              const refreshed = await loadProduct({ preserveUserEdits: true });
+              if (refreshed) {
+                setSaveError(t('master.productCatalog.editor.conflictRetry'));
+              } else {
+                setSaveError(t('master.productCatalog.editor.conflictRefreshFailed'));
+              }
+            } catch {
+              setSaveError(t('master.productCatalog.editor.conflictRefreshFailed'));
+            }
           }
         } else {
           pendingRef.current = null;
@@ -270,7 +289,9 @@ export function ProductCatalogEditorPanel({
                 variant="secondary"
                 className="justify-between"
                 onClick={() =>
-                  onOpenBilling({ section: 'pricing', subTab: 'versions', pricingProductKey: productSlug })
+                  navigateAfterUnsavedCheck(() =>
+                    onOpenBilling({ section: 'pricing', subTab: 'versions', pricingProductKey: productSlug }),
+                  )
                 }
               >
                 {t('master.productCatalog.editor.openTariffs')}
@@ -285,10 +306,11 @@ export function ProductCatalogEditorPanel({
                   !selectedOrgId ? t('master.productCatalog.editor.orgAssignmentsDisabledHint') : undefined
                 }
                 onClick={() => {
-                  if (selectedOrgId && onOpenOrgProducts) {
+                  if (!selectedOrgId || !onOpenOrgProducts) return;
+                  navigateAfterUnsavedCheck(() => {
                     onOpenOrgProducts(selectedOrgId);
                     onClose();
-                  }
+                  });
                 }}
               >
                 {t('master.productCatalog.editor.openOrgAssignments')}

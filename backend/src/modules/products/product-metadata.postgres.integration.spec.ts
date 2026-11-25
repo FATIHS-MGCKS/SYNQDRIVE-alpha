@@ -2,11 +2,12 @@
  * Product metadata PATCH — Postgres integration (disposable DB).
  *
  * PRODUCT_METADATA_PATCH_POSTGRES_INTEGRATION=1
- * DATABASE_URL=postgresql://...@127.0.0.1:5432/synqdrive_product_metadata_p1
+ * DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_product_metadata_p1
  */
 import { ConflictException } from '@nestjs/common';
 import {
   ActivityEntity,
+  Prisma,
   PrismaClient,
   ProductSlug,
   UserPlatformRole,
@@ -29,9 +30,23 @@ function assertDisposableDatabaseUrl(): void {
   }
 }
 
+async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: string): Promise<number> {
+  return prisma.activityLog.count({
+    where: {
+      entity: ActivityEntity.ADMIN_OPERATION,
+      metaJson: {
+        path: ['correlationId'],
+        equals: correlationId,
+      },
+    },
+  });
+}
+
 (LIVE ? describe : describe.skip)('Product metadata PATCH — postgres', () => {
   const prisma = new PrismaClient();
   let products: ProductsService;
+  const seededMasterIds: string[] = [];
+  const productRestores: Array<{ slug: ProductSlug; name: string; description: string | null }> = [];
 
   beforeAll(() => {
     assertDisposableDatabaseUrl();
@@ -41,6 +56,16 @@ function assertDisposableDatabaseUrl(): void {
   });
 
   afterAll(async () => {
+    for (const restore of productRestores) {
+      await prisma.product.update({
+        where: { slug: restore.slug },
+        data: { name: restore.name, description: restore.description },
+      });
+    }
+    if (seededMasterIds.length > 0) {
+      await prisma.activityLog.deleteMany({ where: { userId: { in: seededMasterIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: seededMasterIds } } });
+    }
     await prisma.$disconnect();
   });
 
@@ -59,14 +84,21 @@ function assertDisposableDatabaseUrl(): void {
         NOW()
       )
     `;
+    seededMasterIds.push(id);
     return id;
   }
 
-  it('CAS: rejects stale ifCurrentName', async () => {
-    const masterId = await seedMasterAdmin();
-    const rental = await prisma.product.findUniqueOrThrow({ where: { slug: ProductSlug.RENTAL } });
+  function snapshotProduct(slug: ProductSlug) {
+    return prisma.product.findUniqueOrThrow({ where: { slug } });
+  }
+
+  it('CAS: rejects stale ifCurrentName without mutating product', async () => {
+    await seedMasterAdmin();
+    const rental = await snapshotProduct(ProductSlug.RENTAL);
     const beforeName = rental.name;
-  await expect(
+    const correlationId = `cas-name-${Date.now()}`;
+
+    await expect(
       products.updateProductMetadataForMasterAdmin({
         productSlug: ProductSlug.RENTAL,
         patch: {
@@ -75,18 +107,48 @@ function assertDisposableDatabaseUrl(): void {
           ifCurrentName: 'definitely-stale-name',
           ifCurrentDescription: rental.description,
         },
-        actorUserId: masterId,
-        audit: { correlationId: `cas-name-${Date.now()}` },
+        actorUserId: seededMasterIds.at(-1)!,
+        audit: { correlationId },
       }),
     ).rejects.toBeInstanceOf(ConflictException);
-    const after = await prisma.product.findUniqueOrThrow({ where: { slug: ProductSlug.RENTAL } });
+
+    const after = await snapshotProduct(ProductSlug.RENTAL);
     expect(after.name).toBe(beforeName);
+    expect(await countAuditByCorrelationId(prisma, correlationId)).toBe(0);
   });
 
-  it('mandatory audit: mutation rolls back when audit user FK fails', async () => {
-    const rental = await prisma.product.findUniqueOrThrow({ where: { slug: ProductSlug.FLEET } });
-    const beforeName = rental.name;
+  it('CAS: rejects stale nullable ifCurrentDescription', async () => {
+    const masterId = await seedMasterAdmin();
+    const fleet = await snapshotProduct(ProductSlug.FLEET);
+    const correlationId = `cas-desc-${Date.now()}`;
+
+    await expect(
+      products.updateProductMetadataForMasterAdmin({
+        productSlug: ProductSlug.FLEET,
+        patch: {
+          name: fleet.name,
+          description: 'nullable cas probe',
+          ifCurrentName: fleet.name,
+          ifCurrentDescription: 'stale-non-null-description',
+        },
+        actorUserId: masterId,
+        audit: { correlationId },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const after = await snapshotProduct(ProductSlug.FLEET);
+    expect(after.description).toEqual(fleet.description);
+    expect(await countAuditByCorrelationId(prisma, correlationId)).toBe(0);
+  });
+
+  it('mandatory audit: mutation rolls back when audit user FK fails; no audit row', async () => {
+    const fleet = await snapshotProduct(ProductSlug.FLEET);
+    const beforeName = fleet.name;
     const bogusActor = '00000000-0000-4000-8000-000000009999';
+    const correlationId = `audit-fail-${Date.now()}`;
+
+    expect(await countAuditByCorrelationId(prisma, correlationId)).toBe(0);
+
     await expect(
       products.updateProductMetadataForMasterAdmin({
         productSlug: ProductSlug.FLEET,
@@ -97,27 +159,21 @@ function assertDisposableDatabaseUrl(): void {
           ifCurrentDescription: null,
         },
         actorUserId: bogusActor,
-        audit: { correlationId: `audit-fail-${Date.now()}` },
+        audit: { correlationId },
       }),
     ).rejects.toBeTruthy();
 
-    const after = await prisma.product.findUniqueOrThrow({ where: { slug: ProductSlug.FLEET } });
+    const after = await snapshotProduct(ProductSlug.FLEET);
     expect(after.name).toBe(beforeName);
-
-    const auditCount = await prisma.activityLog.count({
-      where: {
-        entity: ActivityEntity.ADMIN_OPERATION,
-        description: { contains: 'FLEET' },
-      },
-    });
-    expect(auditCount).toBeGreaterThanOrEqual(0);
+    expect(await countAuditByCorrelationId(prisma, correlationId)).toBe(0);
   });
 
-  it('success: persists name, nullable description, and activityLog', async () => {
+  it('success: persists metadata and writes one audit row for correlationId', async () => {
     const masterId = await seedMasterAdmin();
-    const vymod = await prisma.product.findUniqueOrThrow({ where: { slug: ProductSlug.VYMOD } });
+    const vymod = await snapshotProduct(ProductSlug.VYMOD);
+    productRestores.push({ slug: ProductSlug.VYMOD, name: vymod.name, description: vymod.description });
     const correlationId = `ok-${Date.now()}`;
-    const nextName = `VYMOD P1 ${Date.now()}`;
+    const nextName = `VYMOD P1 PG ${Date.now()}`;
 
     await products.updateProductMetadataForMasterAdmin({
       productSlug: ProductSlug.VYMOD,
@@ -131,14 +187,25 @@ function assertDisposableDatabaseUrl(): void {
       audit: { correlationId },
     });
 
-    const updated = await prisma.product.findUniqueOrThrow({ where: { slug: ProductSlug.VYMOD } });
+    const updated = await snapshotProduct(ProductSlug.VYMOD);
     expect(updated.name).toBe(nextName);
     expect(updated.description).toBe('P1 postgres integration');
 
+    const auditMatches = await countAuditByCorrelationId(prisma, correlationId);
+    expect(auditMatches).toBe(1);
+
     const auditRow = await prisma.activityLog.findFirst({
-      where: { userId: masterId, entity: ActivityEntity.ADMIN_OPERATION },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        userId: masterId,
+        entity: ActivityEntity.ADMIN_OPERATION,
+        entityId: vymod.id,
+        metaJson: {
+          path: ['correlationId'],
+          equals: correlationId,
+        } as Prisma.JsonFilter,
+      },
     });
     expect(auditRow).not.toBeNull();
+    expect(auditRow!.description).toContain('VYMOD');
   });
 });

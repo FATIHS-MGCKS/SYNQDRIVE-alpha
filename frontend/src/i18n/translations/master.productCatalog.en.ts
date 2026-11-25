@@ -16,6 +16,8 @@ export const masterProductCatalogEn = {
     'Select an organization on this page first, then open product assignments.',
   'master.productCatalog.editor.conflictRetry':
     'Someone else changed this product. Your edits are still in the form — review and save again.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Could not refresh product data after a conflict. Check your connection and try again.',
   'master.productCatalog.editor.viewOrgs': 'Platform tariff products',
   'master.productCatalog.editor.editMetadata': 'Edit metadata',
   'master.productCatalog.editor.validationName': 'Name must not be empty.',

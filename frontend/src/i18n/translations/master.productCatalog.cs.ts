@@ -16,6 +16,8 @@ export const masterProductCatalogCs = {
     'Nejprve na této stránce vyberte organizaci, poté otevřete přiřazení produktů.',
   'master.productCatalog.editor.conflictRetry':
     'Produkt byl mezitím změněn. Vaše úpravy zůstávají ve formuláři — zkontrolujte a uložte znovu.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Po konfliktu nelze obnovit data produktu. Zkontrolujte připojení a zkuste to znovu.',
   'master.productCatalog.editor.viewOrgs': 'Produkty tarifů platformy',
   'master.productCatalog.editor.editMetadata': 'Upravit metadata',
   'master.productCatalog.editor.validationName': 'Název nesmí být prázdný.',

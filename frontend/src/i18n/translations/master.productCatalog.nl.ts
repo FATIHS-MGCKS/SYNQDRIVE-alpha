@@ -16,6 +16,8 @@ export const masterProductCatalogNl = {
     'Selecteer eerst een organisatie op deze pagina en open daarna de producttoewijzingen.',
   'master.productCatalog.editor.conflictRetry':
     'Iemand anders heeft dit product gewijzigd. Uw invoer blijft in het formulier — controleer en sla opnieuw op.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Productgegevens konden na een conflict niet worden ververst. Controleer de verbinding en probeer opnieuw.',
   'master.productCatalog.editor.viewOrgs': 'Platformtariefproducten',
   'master.productCatalog.editor.editMetadata': 'Metadata bewerken',
   'master.productCatalog.editor.validationName': 'Naam mag niet leeg zijn.',

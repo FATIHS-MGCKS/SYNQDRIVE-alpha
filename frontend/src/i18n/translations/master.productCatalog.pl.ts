@@ -16,6 +16,8 @@ export const masterProductCatalogPl = {
     'Najpierw wybierz organizację na tej stronie, potem otwórz przypisania produktów.',
   'master.productCatalog.editor.conflictRetry':
     'Ktoś inny zmienił ten produkt. Twoje wpisy pozostają w formularzu — sprawdź i zapisz ponownie.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Nie można odświeżyć danych produktu po konflikcie. Sprawdź połączenie i spróbuj ponownie.',
   'master.productCatalog.editor.viewOrgs': 'Produkty taryfowe platformy',
   'master.productCatalog.editor.editMetadata': 'Edytuj metadane',
   'master.productCatalog.editor.validationName': 'Nazwa nie może być pusta.',
