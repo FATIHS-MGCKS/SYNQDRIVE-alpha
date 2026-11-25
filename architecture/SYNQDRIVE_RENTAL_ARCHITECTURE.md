@@ -99,7 +99,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Technical Observations | Operator technical observation records feeding notifications and workflow triggers. | `NOT_STARTED` | N/A — inventory only | — |
 | Tires Health | Tire wear modeling (V2, frozen), lifecycle, measurements/ground truth, health alerts, tire trip-usage ledger, rental-health tire policy input, and future DS4 Motion Engine driving-load integration (shadow only). | `AUDIT_IN_PROGRESS` | Bootstrap V0.1 · Tire Intelligence P1 (2026-10-24) · owner decisions PROPOSED · Production VERIFIED_READ_ONLY @ `c169ddfab` · not promoted | [`architecture/tires/`](tires/) |
 | Trip Detection & Lifecycle | Live trip FSM, start/end detection, Qualified Stop V1, R9 wake ingress, reconciliation, route artifacts. | `AUTHORITY_ACTIVE` | Phase 0–5 complete · Gate A 2026-09-26 · Production VERIFIED_READ_ONLY @ `2b54a357…` | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
-| Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
+| Users & Invites | Org user management, custom roles, invites, Master Admin Security & Access governance, and IAM audit outbox scheduling. | `AUDIT_IN_PROGRESS` | USR_P0 full discovery audit @ `a5664ac10` (2026-11-25) · Production baseline **NOT_STARTED** | [`architecture/users-and-invites/`](users-and-invites/) |
 | Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Phase 1–3 complete (2026-09-11): repo audit, Production LTE_R1 forensics, reconciliation/decisions/backlog · promotion deferred | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
 | Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicle Onboarding / Vehicle Registry | Governed path from provider discovery to canonical tenant `Vehicle`; identity, provider mappings, org/station baseline, onboarding readiness (VO-1 target). | `AUDIT_IN_PROGRESS` | VO-1 target architecture (2026-09-30) · VO-0B seal · VO-0A evidence | [`architecture/vehicle-onboarding/`](vehicle-onboarding/) |
@@ -344,6 +344,20 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Phase **0–3** complete; Phase **4** graph validators active; Phase **5** promotion gate satisfied (authority coverage). Remaining **product debt**: partial locales, 1,658 enforce-clean findings (current scan), Master surface migration, no per-locale Production UX probe. |
 | **Mandatory entry documents** | [README.md](internationalization/README.md) · [AUDIT_MANIFEST.md](internationalization/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](internationalization/CURRENT_STATE.md) · [AGENT_CONTRACT.md](internationalization/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](internationalization/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](internationalization/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](internationalization/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](internationalization/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/internationalization/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` · `cd frontend && npm run i18n:check:ci && npm run i18n:pr-gate:test` |
+
+---
+
+### Users & Invites
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — USR_P0 bootstrap (from `NOT_STARTED`, 2026-11-25) |
+| **Scope** | Master Admin Security & Access (`/admin/security`), org-scoped users/invites/roles, platform permissions (e.g. master billing delegate), membership lifecycle including REMOVED isolation, cross-links to auth/MFA/sessions and activity audit. **Does not** own organization offboarding archival or product entitlements catalog. |
+| **Authority directory** | [`architecture/users-and-invites/`](users-and-invites/) |
+| **Authority-native status** | USR_P0 repository audit **COMPLETE** · Production read-only **NOT_EXECUTED** |
+| **Production baseline** | **NOT_STARTED** |
+| **Mandatory entry documents (partial)** | [README.md](users-and-invites/README.md) · [AUDIT_MANIFEST.md](users-and-invites/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](users-and-invites/CURRENT_STATE.md) · [governance/AUTHORITY_BOUNDARIES.md](users-and-invites/governance/AUTHORITY_BOUNDARIES.md) · [evidence/EVIDENCE_INDEX.md](users-and-invites/evidence/EVIDENCE_INDEX.md) · [evidence/USR_P0_FINDINGS_REGISTER.md](users-and-invites/evidence/USR_P0_FINDINGS_REGISTER.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `cd backend && npm test -- --testPathPatterns='users.controller.security|iam-removed-membership|master-admin-mfa'` |
 
 ---
 
