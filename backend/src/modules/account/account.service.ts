@@ -285,7 +285,7 @@ export class AccountService {
         where: { id: userId },
         data: { passwordHash: hash, mustChangePassword: false },
       });
-      const enqueued = await this.sessionPolicy.enqueueInTransaction(tx, {
+      const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',
         userId,
         organizationId: jwtOrgId,

@@ -94,6 +94,9 @@ describe('AccountService', () => {
 
   const sessionPolicy = {
     enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
+    enqueueInTransactionWithAuthoritativeInvalidation: jest
+      .fn()
+      .mockResolvedValue({ intentIds: ['intent-1'], scopes: [], revokedTokenCount: 1 }),
     processIntents: jest.fn().mockResolvedValue([]),
   } as unknown as IamSessionPolicyService;
 
@@ -286,7 +289,7 @@ describe('AccountService', () => {
     );
 
     expect(result.message).toContain('success');
-    expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
+    expect(sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ eventType: 'PASSWORD_CHANGED', userId }),
     );

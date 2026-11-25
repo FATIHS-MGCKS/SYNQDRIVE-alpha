@@ -37,6 +37,7 @@ describe('PasswordResetService (Prompt 6)', () => {
   let mail: { sendPasswordReset: jest.Mock; sendPasswordResetCompleted: jest.Mock };
   let sessionPolicy: {
     enqueueInTransaction: jest.Mock;
+    enqueueInTransactionWithAuthoritativeInvalidation: jest.Mock;
     processIntents: jest.Mock;
   };
   let userAudit: { record: jest.Mock };
@@ -66,6 +67,9 @@ describe('PasswordResetService (Prompt 6)', () => {
     };
     sessionPolicy = {
       enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
+      enqueueInTransactionWithAuthoritativeInvalidation: jest
+        .fn()
+        .mockResolvedValue({ intentIds: ['intent-1'], scopes: [], revokedTokenCount: 1 }),
       processIntents: jest.fn().mockResolvedValue([]),
     };
     userAudit = { record: jest.fn().mockResolvedValue(undefined) };

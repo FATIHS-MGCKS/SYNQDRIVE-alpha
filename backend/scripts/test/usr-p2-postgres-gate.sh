@@ -77,6 +77,10 @@ log 'USR-P2 security reset PostgreSQL'
 export USR_P2_SECURITY_RESET_PG=1
 run_jest usr-p2-security-reset.postgres.integration.spec.ts
 
+log 'USR-P2 GATE-1 security mutation atomicity PostgreSQL'
+export USR_P2_GATE1_PG=1
+run_jest usr-p2-gate1-security-mutation.postgres.integration.spec.ts
+
 log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1
 run_jest usr-p1a-session-audit-certification.postgres.integration.spec.ts

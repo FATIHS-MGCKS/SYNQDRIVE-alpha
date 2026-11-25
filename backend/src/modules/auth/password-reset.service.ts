@@ -187,7 +187,7 @@ export class PasswordResetService {
         data: { usedAt: new Date() },
       });
 
-      const enqueued = await this.sessionPolicy.enqueueInTransaction(tx, {
+      const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',
         userId: record.userId,
         organizationId: record.organizationId,

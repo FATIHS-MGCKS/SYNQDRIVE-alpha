@@ -330,7 +330,7 @@ export class RoleAssignmentDriftReconciliationService {
         },
       });
 
-      const enqueue = await this.sessionPolicy.enqueueInTransaction(tx, {
+      const enqueue = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PERMISSION_REVOKED',
         userId: membership.userId,
         organizationId: input.organizationId,

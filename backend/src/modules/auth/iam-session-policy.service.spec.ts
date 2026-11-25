@@ -160,6 +160,31 @@ describe('IamSessionPolicyService', () => {
     expect(refreshTokens.revokeAllActiveForUser).not.toHaveBeenCalled();
   });
 
+  it('executeIntent does not re-revoke when authoritativeAppliedInCommit', async () => {
+    prisma.iamSessionRevocationIntent.findUnique.mockResolvedValue({
+      id: 'intent-auth',
+      eventType: 'PASSWORD_CHANGED',
+      scope: IamSessionRevocationScope.USER_ALL_SESSIONS,
+      userId: 'user-1',
+      organizationId: null,
+      membershipId: null,
+      refreshTokenId: null,
+      tokenFamily: null,
+      actorUserId: 'user-1',
+      status: IamSessionRevocationStatus.PENDING,
+      revokedTokenCount: 2,
+      metadata: { authoritativeAppliedInCommit: true },
+    });
+    prisma.iamSessionRevocationIntent.updateMany.mockResolvedValue({ count: 1 });
+    prisma.iamSessionRevocationIntent.update.mockResolvedValue({});
+
+    const result = await service.executeIntent('intent-auth');
+
+    expect(refreshTokens.revokeAllActiveForUser).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(result.revokedTokenCount).toBe(2);
+  });
+
   it('executeIntent is idempotent when already completed', async () => {
     prisma.iamSessionRevocationIntent.findUnique.mockResolvedValue({
       id: 'intent-done',

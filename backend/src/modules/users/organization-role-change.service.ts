@@ -330,21 +330,22 @@ export class OrganizationRoleChangeService {
         });
 
         for (const eventType of impact.sessionInvalidationTriggers) {
-          const { intentIds: created } = await this.sessionPolicy.enqueueInTransaction(tx, {
-            eventType: eventType as IamSessionInvalidationTrigger,
-            userId: updated.userId,
-            organizationId: orgId,
-            membershipId: updated.id,
-            actorUserId,
-            mutationVersion: updated.membershipVersion,
-            idempotencyKey: `${input.idempotencyKey}:${updated.id}:${eventType}`,
-            metadata: {
-              roleId,
-              roleVersionId: newVersion.id,
-              roleVersionNumber: newVersion.version,
-              reason: input.reason,
-            },
-          });
+          const { intentIds: created } =
+            await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+              eventType: eventType as IamSessionInvalidationTrigger,
+              userId: updated.userId,
+              organizationId: orgId,
+              membershipId: updated.id,
+              actorUserId,
+              mutationVersion: updated.membershipVersion,
+              idempotencyKey: `${input.idempotencyKey}:${updated.id}:${eventType}`,
+              metadata: {
+                roleId,
+                roleVersionId: newVersion.id,
+                roleVersionNumber: newVersion.version,
+                reason: input.reason,
+              },
+            });
           intentIds.push(...created);
         }
       }

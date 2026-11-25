@@ -139,15 +139,23 @@ function assertDisposableDb(): void {
     `.then((rows) => Number(rows[0]?.count ?? 0n));
   }
 
-  it('RACE01 concurrent revoke-all vs rotate leaves no active head', async () => {
+  it('RACE01 concurrent revoke-all vs rotate denies post-revocation successor JWT', async () => {
     const { userId, email, membership } = await seedUserWithOrg();
     const issued = await issueBound(userId, email, membership);
-    const results = await Promise.allSettled([
+  let successor: { accessToken: string; refreshToken: string } | undefined;
+    await Promise.allSettled([
       refreshA.revokeAllActiveForUser(userId),
-      refreshB.rotate(issued.refreshToken),
+      refreshB.rotate(issued.refreshToken).then((r) => {
+        successor = r;
+        return r;
+      }),
     ]);
-    expect(results[1].status).not.toBe('fulfilled');
     expect(await activeHeadCount(userId)).toBe(0);
+    if (successor) {
+      const decoded = jwt.verify(successor.accessToken, JWT_SECRET) as jwt.JwtPayload;
+      await expect(authorityA.validateAccessJwt(decoded as never)).rejects.toThrow();
+      await expect(refreshA.rotate(successor.refreshToken)).rejects.toThrow(/no longer valid/i);
+    }
   });
 
   it('RACE02 revoke-all before rotate blocks successor issuance', async () => {
@@ -236,16 +244,13 @@ function assertDisposableDb(): void {
     await expect(authorityA.validateAccessJwt(decoded as never)).rejects.toThrow();
   });
 
-  it('RACE07 reuse detection invalidates family after rotation', async () => {
+  it('RACE07 reuse detection invalidates entire family under IAM policy', async () => {
     const { userId, email, membership } = await seedUserWithOrg();
     const issued = await issueBound(userId, email, membership);
     const rotated = await refreshA.rotate(issued.refreshToken);
     await expect(refreshB.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
-    const head = await activeHeadCount(userId);
-    expect(head).toBeLessThanOrEqual(1);
-    if (head === 1) {
-      await expect(refreshA.rotate(rotated.refreshToken)).resolves.toBeTruthy();
-    }
+    expect(await activeHeadCount(userId)).toBe(0);
+    await expect(refreshA.rotate(rotated.refreshToken)).rejects.toThrow(/no longer valid/i);
   });
 
   it('RACE09 unrelated family remains active when one family is revoked', async () => {
@@ -313,20 +318,88 @@ function assertDisposableDb(): void {
   it('RACE08 password-change policy concurrent with refresh invalidates tokens', async () => {
     const { userId, email, membership } = await seedUserWithOrg();
     const issued = await issueBound(userId, email, membership);
+    const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
     await Promise.allSettled([
       sessionPolicyA.recordAndExecute({ eventType: 'PASSWORD_CHANGED', userId }),
       refreshB.rotate(issued.refreshToken),
     ]);
-    expect(await activeHeadCount(userId)).toBe(0);
+    await expect(authorityA.validateAccessJwt(decoded as never)).rejects.toThrow();
+    await expect(refreshA.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
   });
 
-  it('ORG_OFFBOARDING_RACE org-wide revocation blocks concurrent refresh', async () => {
+  it('ORG_OFFBOARDING_RACE organization-wide revoke vs concurrent refresh', async () => {
     const { userId, email, membership } = await seedUserWithOrg();
     const issued = await issueBound(userId, email, membership);
+    let rotated: { accessToken: string; refreshToken: string } | undefined;
     await Promise.allSettled([
-      refreshA.revokeForOrganizationMembership(userId, membership.organizationId),
-      refreshB.rotate(issued.refreshToken),
+      refreshA.revokeAllActiveForOrganization(membership.organizationId),
+      refreshB.rotate(issued.refreshToken).then((r) => {
+        rotated = r;
+        return r;
+      }),
     ]);
+    expect(await activeHeadCount(userId)).toBe(0);
+    if (rotated) {
+      const decoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
+      await expect(authorityA.validateAccessJwt(decoded as never)).rejects.toThrow();
+    }
+  });
+
+  it('RACE02 deterministic barrier: revoke-all before rotate', async () => {
+    const raceId = `race02-${randomUUID()}`;
+    await prismaA.$executeRaw`
+      CREATE TABLE IF NOT EXISTS usr_p2_race_barrier (
+        race_id text PRIMARY KEY,
+        phase int NOT NULL DEFAULT 0
+      )
+    `;
+    const { userId, email, membership } = await seedUserWithOrg();
+    const issued = await issueBound(userId, email, membership);
+    const barrierA = (async () => {
+      await prismaA.$executeRaw`
+        INSERT INTO usr_p2_race_barrier (race_id, phase) VALUES (${raceId}, 1)
+        ON CONFLICT (race_id) DO UPDATE SET phase = 1
+      `;
+      let waited = 0;
+      while (waited < 120) {
+        const rows = await prismaA.$queryRaw<Array<{ phase: number }>>`
+          SELECT phase FROM usr_p2_race_barrier WHERE race_id = ${raceId}
+        `;
+        if (rows[0]?.phase >= 2) break;
+        await new Promise((r) => setTimeout(r, 25));
+        waited += 1;
+      }
+      await refreshA.revokeAllActiveForUser(userId);
+      await prismaA.$executeRaw`
+        UPDATE usr_p2_race_barrier SET phase = 3 WHERE race_id = ${raceId}
+      `;
+    })();
+    const barrierB = (async () => {
+      let waited = 0;
+      while (waited < 120) {
+        const rows = await prismaB.$queryRaw<Array<{ phase: number }>>`
+          SELECT phase FROM usr_p2_race_barrier WHERE race_id = ${raceId}
+        `;
+        if (rows[0]?.phase === 1) break;
+        await new Promise((r) => setTimeout(r, 25));
+        waited += 1;
+      }
+      await prismaB.$executeRaw`
+        UPDATE usr_p2_race_barrier SET phase = 2 WHERE race_id = ${raceId}
+      `;
+      let phase = 0;
+      while (phase < 3 && waited < 240) {
+        const rows = await prismaB.$queryRaw<Array<{ phase: number }>>`
+          SELECT phase FROM usr_p2_race_barrier WHERE race_id = ${raceId}
+        `;
+        phase = rows[0]?.phase ?? 0;
+        if (phase >= 3) break;
+        await new Promise((r) => setTimeout(r, 25));
+        waited += 1;
+      }
+      await expect(refreshB.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+    })();
+    await Promise.all([barrierA, barrierB]);
     expect(await activeHeadCount(userId)).toBe(0);
   });
 });

@@ -60,7 +60,7 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
     return (await harness.service.issueTokenPair(user, null)).accessToken;
   }
 
-  it('HTTP01 valid current session allowed', async () => {
+  it('SEMANTIC_REQ_01 valid current session allowed (HTTP01)', async () => {
     const token = await issueFor({
       id: 'http01-user',
       email: 'http01@test.example',
@@ -72,7 +72,7 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
       .expect(200);
   });
 
-  it('HTTP02 stale sessionVersion denied', async () => {
+  it('SEMANTIC_REQ_12 stale sessionVersion denied maps stale privilege (HTTP02)', async () => {
     const user = {
       id: 'http02-user',
       email: 'http02@test.example',
@@ -129,7 +129,7 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
       .expect(401);
   });
 
-  it('HTTP05 inactive user denied', async () => {
+  it('SEMANTIC_REQ_02 suspended/inactive account denied (HTTP05)', async () => {
     const user = {
       id: 'http05-user',
       email: 'http05@test.example',
@@ -147,7 +147,7 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
       });
   });
 
-  it('HTTP06 unknown user denied', async () => {
+  it('SEMANTIC_REQ_03 deleted/unknown account denied (HTTP06)', async () => {
     const token = jwt.sign(
       {
         sub: 'ghost-user',

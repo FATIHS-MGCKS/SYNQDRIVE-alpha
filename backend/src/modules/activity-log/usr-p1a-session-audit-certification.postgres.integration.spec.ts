@@ -785,15 +785,23 @@ const run = process.env[OPT_IN] === '1';
     const actor = await createActor();
     const target = await createActor();
     const session = await createSession(target.id, null);
-    const findSpy = jest
-      .spyOn(prisma.masterAdminAuditOutbox, 'findUnique')
-      .mockRejectedValueOnce(new Error('P1A_A_outbox_read_fault'));
+    const intentSpy = jest
+      .spyOn(delivery, 'persistAuthoritativeAuditIntent')
+      .mockRejectedValueOnce(new Error('P1A_A_intent_fault'));
+    let outboxReadAttempts = 0;
+    const findSpy = jest.spyOn(prisma.masterAdminAuditOutbox, 'findUnique');
+    (findSpy as jest.Mock).mockImplementationOnce(() => {
+      outboxReadAttempts += 1;
+      return Promise.reject(new Error('P1A_A_outbox_read_fault'));
+    });
     const { revoked } = await sessionAudit.revokeTargetSessionWithAtomicAudit({
       req: reqStub(actor.id),
       targetUserId: target.id,
       sessionId: session.id,
     });
+    intentSpy.mockRestore();
     findSpy.mockRestore();
+    expect(outboxReadAttempts).toBeGreaterThanOrEqual(1);
     expect(revoked).toBe(true);
     const token = await prisma.refreshToken.findUnique({ where: { id: session.id } });
     expect(token?.revokedAt).not.toBeNull();

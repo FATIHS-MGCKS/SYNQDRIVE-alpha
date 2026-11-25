@@ -13,6 +13,10 @@ import {
   type SessionInvalidationScope,
 } from '@modules/users/policies/iam-session-invalidation.policy';
 import { UserAccessAuditService, UserAccessAuditAction } from '@modules/users/user-access-audit.service';
+import {
+  acquireSessionWriteLocks,
+  acquireUserSessionWriteLock,
+} from './refresh-token-session-concurrency';
 
 export interface IamSessionRevocationIntentInput {
   eventType: IamSessionInvalidationTrigger;
@@ -126,6 +130,53 @@ export class IamSessionPolicyService {
     return { intentIds, scopes };
   }
 
+  /**
+   * Enqueue intent and apply authoritative session invalidation in the same DB transaction
+   * as the IAM mutation (USR-OWN-02 / GATE-1). Post-commit `processIntents` finalizes audit
+   * state without re-applying revocation when `authoritativeAppliedInCommit` is set.
+   */
+  async enqueueInTransactionWithAuthoritativeInvalidation(
+    tx: TxClient,
+    input: IamSessionRevocationIntentInput,
+  ): Promise<{
+    intentIds: string[];
+    scopes: SessionInvalidationScope[];
+    revokedTokenCount: number;
+  }> {
+    const { intentIds, scopes } = await this.enqueueInTransaction(tx, input);
+    const revokedTokenCount = await this.applyAuthoritativeScopesInTransaction(tx, scopes, {
+      userId: input.userId,
+      organizationId: input.organizationId ?? null,
+      membershipId: input.membershipId ?? null,
+      refreshTokenId: input.refreshTokenId ?? null,
+      tokenFamily: input.tokenFamily ?? null,
+    });
+
+    for (const intentId of intentIds) {
+      const existing = await tx.iamSessionRevocationIntent.findUnique({
+        where: { id: intentId },
+        select: { metadata: true },
+      });
+      const prior =
+        existing?.metadata && typeof existing.metadata === 'object' && !Array.isArray(existing.metadata)
+          ? (existing.metadata as Record<string, unknown>)
+          : {};
+      await tx.iamSessionRevocationIntent.update({
+        where: { id: intentId },
+        data: {
+          revokedTokenCount,
+          metadata: {
+            ...prior,
+            ...(input.metadata ?? {}),
+            authoritativeAppliedInCommit: true,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    return { intentIds, scopes, revokedTokenCount };
+  }
+
   /** Process intents created in a transaction (call after commit). */
   async processIntents(intentIds: string[]): Promise<IamSessionRevocationResult[]> {
     const results: IamSessionRevocationResult[] = [];
@@ -142,7 +193,7 @@ export class IamSessionPolicyService {
     input: IamSessionRevocationIntentInput,
   ): Promise<IamSessionRevocationResult> {
     const { intentIds } = await this.prisma.$transaction(async (tx) =>
-      this.enqueueInTransaction(tx, input),
+      this.enqueueInTransactionWithAuthoritativeInvalidation(tx, input),
     );
     const results = await this.processIntents(intentIds);
     return results[results.length - 1]!;
@@ -191,16 +242,21 @@ export class IamSessionPolicyService {
     }
 
     try {
-      const revokedTokenCount = await this.applyRevocationScope(
-        intent.scope as SessionInvalidationScope,
-        {
-          userId: intent.userId,
-          organizationId: intent.organizationId,
-          membershipId: intent.membershipId,
-          refreshTokenId: intent.refreshTokenId,
-          tokenFamily: intent.tokenFamily,
-        },
-      );
+      const metadata =
+        intent.metadata && typeof intent.metadata === 'object' && !Array.isArray(intent.metadata)
+          ? (intent.metadata as Record<string, unknown>)
+          : null;
+      const ctx = {
+        userId: intent.userId,
+        organizationId: intent.organizationId,
+        membershipId: intent.membershipId,
+        refreshTokenId: intent.refreshTokenId,
+        tokenFamily: intent.tokenFamily,
+      };
+      const revokedTokenCount =
+        metadata?.authoritativeAppliedInCommit === true
+          ? intent.revokedTokenCount
+          : await this.applyRevocationScope(intent.scope as SessionInvalidationScope, ctx);
 
       await this.prisma.iamSessionRevocationIntent.update({
         where: { id: intentId },
@@ -250,6 +306,141 @@ export class IamSessionPolicyService {
         },
       });
       throw error;
+    }
+  }
+
+  private async applyAuthoritativeScopesInTransaction(
+    tx: TxClient,
+    scopes: SessionInvalidationScope[],
+    ctx: {
+      userId: string;
+      organizationId: string | null;
+      membershipId: string | null;
+      refreshTokenId: string | null;
+      tokenFamily: string | null;
+    },
+  ): Promise<number> {
+    let total = 0;
+    for (const scope of scopes) {
+      total += await this.applyRevocationScopeInTransaction(tx, scope, ctx);
+    }
+    return total;
+  }
+
+  private async applyRevocationScopeInTransaction(
+    tx: TxClient,
+    scope: SessionInvalidationScope,
+    ctx: {
+      userId: string;
+      organizationId: string | null;
+      membershipId: string | null;
+      refreshTokenId: string | null;
+      tokenFamily: string | null;
+    },
+  ): Promise<number> {
+    const now = new Date();
+    switch (scope) {
+      case 'NO_IMMEDIATE_REVOCATION':
+        return 0;
+      case 'CURRENT_SESSION':
+        if (!ctx.refreshTokenId) return 0;
+        return (await this.refreshTokens.revokeSessionByIdInTransaction(
+          tx,
+          ctx.userId,
+          ctx.refreshTokenId,
+        ))
+          ? 1
+          : 0;
+      case 'USER_ALL_SESSIONS':
+        await acquireUserSessionWriteLock(tx, ctx.userId);
+        await tx.$executeRaw`
+          UPDATE users SET session_version = session_version + 1, updated_at = NOW()
+          WHERE id = ${ctx.userId}
+        `;
+        return (
+          await tx.refreshToken.updateMany({
+            where: {
+              userId: ctx.userId,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: {
+              revokedAt: now,
+              revocationReason: 'USER_ALL_SESSIONS_REVOKED',
+            },
+          })
+        ).count;
+      case 'ORGANIZATION_MEMBERSHIP_SESSIONS':
+        if (ctx.membershipId) {
+          await tx.$executeRaw`
+            UPDATE organization_memberships
+            SET membership_version = membership_version + 1, updated_at = NOW()
+            WHERE id = ${ctx.membershipId}
+          `;
+        }
+        if (!ctx.organizationId) return 0;
+        await acquireSessionWriteLocks(tx, {
+          userId: ctx.userId,
+          organizationId: ctx.organizationId,
+        });
+        return (
+          await tx.refreshToken.updateMany({
+            where: {
+              userId: ctx.userId,
+              organizationId: ctx.organizationId,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: {
+              revokedAt: now,
+              revocationReason: 'ORG_MEMBERSHIP_SESSIONS_REVOKED',
+            },
+          })
+        ).count;
+      case 'TOKEN_FAMILY': {
+        if (!ctx.tokenFamily) return 0;
+        const anchor = await tx.refreshToken.findFirst({
+          where: { family: ctx.tokenFamily },
+          select: { userId: true, organizationId: true },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (!anchor) return 0;
+        await acquireSessionWriteLocks(tx, {
+          userId: anchor.userId,
+          organizationId: anchor.organizationId,
+        });
+        return (
+          await tx.refreshToken.updateMany({
+            where: { family: ctx.tokenFamily, revokedAt: null },
+            data: {
+              revokedAt: now,
+              revocationReason: 'TOKEN_FAMILY_REVOKED',
+            },
+          })
+        ).count;
+      }
+      case 'PRIVILEGED_SESSIONS':
+        await acquireUserSessionWriteLock(tx, ctx.userId);
+        await tx.$executeRaw`
+          UPDATE users SET session_version = session_version + 1, updated_at = NOW()
+          WHERE id = ${ctx.userId}
+        `;
+        return (
+          await tx.refreshToken.updateMany({
+            where: {
+              userId: ctx.userId,
+              privilegedSession: true,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: {
+              revokedAt: now,
+              revocationReason: 'PRIVILEGED_SESSIONS_REVOKED',
+            },
+          })
+        ).count;
+      default:
+        return 0;
     }
   }
 
