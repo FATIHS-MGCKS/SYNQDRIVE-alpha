@@ -44,6 +44,7 @@ function assertDisposableDatabaseUrl(): void {
   let entitlements: EntitlementsQueryService;
 
   const cleanupOrgIds: string[] = [];
+  const seededMasterIds: string[] = [];
   const catalogRestores: Array<{ slug: ProductSlug; catalogStatus: ProductCatalogStatus }> = [];
 
   beforeAll(() => {
@@ -67,6 +68,9 @@ function assertDisposableDatabaseUrl(): void {
         .update({ where: { slug: restore.slug }, data: { catalogStatus: restore.catalogStatus } })
         .catch(() => undefined);
     }
+    if (seededMasterIds.length > 0) {
+      await prisma.user.deleteMany({ where: { id: { in: seededMasterIds } } }).catch(() => undefined);
+    }
     await prisma.$disconnect();
   });
 
@@ -82,16 +86,21 @@ function assertDisposableDatabaseUrl(): void {
   }
 
   async function seedMasterAdmin(): Promise<string> {
-    const id = `p2a-admin-${Date.now()}`;
-    await prisma.user.create({
-      data: {
-        id,
-        email: `${id}@test.example`,
-        name: 'P2A Master',
-        status: UserStatus.ACTIVE,
-        platformRole: UserPlatformRole.MASTER_ADMIN,
-      },
-    });
+    const suffix = Date.now();
+    const id = `p2a-admin-${suffix}`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${id},
+        ${`p2a-${suffix}@test.example`},
+        'P2A Master',
+        ${UserStatus.ACTIVE}::"UserStatus",
+        ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole",
+        NOW(),
+        NOW()
+      )
+    `;
+    seededMasterIds.push(id);
     return id;
   }
 
