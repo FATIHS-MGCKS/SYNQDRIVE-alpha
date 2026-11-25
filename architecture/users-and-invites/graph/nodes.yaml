@@ -38,6 +38,7 @@ nodes:
     summary: Fire-and-forget master admin audit on session revoke.
     source_paths:
       - backend/src/modules/platform-admin/security-governance-session-audit.service.ts
+      - backend/src/modules/activity-log/master-admin-audit-delivery.service.ts
 
   - id: USR-DATA-USER-001
     type: data
