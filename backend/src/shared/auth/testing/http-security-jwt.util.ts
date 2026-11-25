@@ -1,5 +1,10 @@
+import { Provider } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
-import { UserPlatformRole, UserStatus } from '@prisma/client';
+import { RefreshTokenScope, UserPlatformRole, UserStatus } from '@prisma/client';
+import { AuthGuard } from '@shared/auth/auth.guard';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
+import { PrismaService } from '@shared/database/prisma.service';
 
 /** Stable family for lightweight HTTP security specs (not production). */
 export const HTTP_SECURITY_TEST_TOKEN_FAMILY = 'http-security-test-family';
@@ -47,7 +52,14 @@ export function attachHttpSecurityAuthorityPrismaMocks(prisma: {
 }): void {
   const knownUsers = new Map<
     string,
-    { platformRole: UserPlatformRole | string; sessionVersion: number; securityVersion: number }
+    {
+      platformRole: UserPlatformRole | string;
+      sessionVersion: number;
+      securityVersion: number;
+      organizationId?: string | null;
+      membershipId?: string | null;
+      scope?: RefreshTokenScope;
+    }
   >();
 
   prisma.user = {
@@ -78,7 +90,14 @@ export function attachHttpSecurityAuthorityPrismaMocks(prisma: {
 
   prisma.refreshToken = {
     findFirst: jest.fn(
-      async (query: { where: { userId?: string; family?: string; revokedAt?: null } }) => {
+      async (query: {
+        where: {
+          userId?: string;
+          family?: string;
+          revokedAt?: null;
+          replacedBy?: null;
+        };
+      }) => {
         const w = query.where;
         if (
           w.userId &&
@@ -86,7 +105,16 @@ export function attachHttpSecurityAuthorityPrismaMocks(prisma: {
           Object.prototype.hasOwnProperty.call(w, 'revokedAt') &&
           w.revokedAt === null
         ) {
-          return { id: 'rt-http-security' };
+          const row = knownUsers.get(w.userId);
+          return {
+            id: 'rt-http-security',
+            family: HTTP_SECURITY_TEST_TOKEN_FAMILY,
+            scope: row?.scope ?? RefreshTokenScope.LEGACY_UNSCOPED,
+            organizationId: row?.organizationId ?? null,
+            membershipId: row?.membershipId ?? null,
+            sessionVersion: row?.sessionVersion ?? 0,
+            membershipVersion: null,
+          };
         }
         return null;
       },
@@ -95,12 +123,44 @@ export function attachHttpSecurityAuthorityPrismaMocks(prisma: {
 
   (prisma as { registerHttpSecurityUser?: (id: string, row?: Partial<typeof knownUsers extends Map<string, infer V> ? V : never>) => void }).registerHttpSecurityUser = (
     id: string,
-    row?: { platformRole?: UserPlatformRole | string; sessionVersion?: number; securityVersion?: number },
+    row?: {
+      platformRole?: UserPlatformRole | string;
+      sessionVersion?: number;
+      securityVersion?: number;
+      organizationId?: string | null;
+      membershipId?: string | null;
+      scope?: RefreshTokenScope;
+    },
   ) => {
+    const scope =
+      row?.organizationId || row?.membershipId
+        ? RefreshTokenScope.ORG_MEMBERSHIP_BOUND
+        : RefreshTokenScope.LEGACY_UNSCOPED;
     knownUsers.set(id, {
       platformRole: row?.platformRole ?? UserPlatformRole.USER,
       sessionVersion: row?.sessionVersion ?? 0,
       securityVersion: row?.securityVersion ?? 0,
+      organizationId: row?.organizationId ?? null,
+      membershipId: row?.membershipId ?? null,
+      scope: row?.scope ?? scope,
     });
   };
+}
+
+/**
+ * Nest providers for HTTP specs that register real AuthGuard + UserAccessAuthorityService.
+ * Call `attachHttpSecurityAuthorityPrismaMocks(prisma)` on the same prisma mock first.
+ */
+export function authGuardHttpSecurityProviders(
+  prisma: object,
+  platformPermissions: {
+    resolveJwtPermissions: jest.Mock;
+  } = { resolveJwtPermissions: jest.fn().mockResolvedValue([]) },
+): Provider[] {
+  return [
+    AuthGuard,
+    UserAccessAuthorityService,
+    { provide: PrismaService, useValue: prisma },
+    { provide: PlatformPermissionService, useValue: platformPermissions },
+  ];
 }

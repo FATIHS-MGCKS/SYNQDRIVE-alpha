@@ -21,6 +21,37 @@ function sha256(raw: string): string {
   return crypto.createHash('sha256').update(raw).digest('hex');
 }
 
+function wireTransactionalRotate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  prisma: any,
+  stored: Record<string, unknown> & { user: Record<string, unknown> },
+) {
+  prisma.$queryRaw.mockResolvedValue([
+    {
+      id: stored.id,
+      user_id: stored.userId,
+      family: stored.family,
+      scope: stored.scope,
+      organization_id: stored.organizationId,
+      membership_id: stored.membershipId,
+      session_version: stored.sessionVersion,
+      membership_version: stored.membershipVersion,
+      permission_version: stored.permissionVersion,
+      role_version: stored.roleVersion,
+      assurance_level: stored.assuranceLevel,
+      authenticated_at: stored.authenticatedAt,
+      created_at: stored.createdAt,
+      revoked_at: stored.revokedAt,
+      replaced_by: stored.replacedBy,
+      expires_at: stored.expiresAt,
+    },
+  ]);
+  prisma.user.findUnique.mockResolvedValue({
+    ...stored.user,
+    securityVersion: 0,
+  });
+}
+
 function membershipRow(overrides: Record<string, unknown> = {}) {
   return {
     id: IAM_REGRESSION_IDS.membershipA,
@@ -82,7 +113,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
   it('single org: refresh preserves organization binding on rotation', async () => {
     const { prisma, service } = createRefreshTokenHarness();
     const row = membershipRow();
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([row]);
     prisma.refreshToken.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -115,7 +146,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
       role: MembershipRole.ORG_ADMIN,
       createdAt: new Date('2026-06-01'),
     });
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(rowA);
     prisma.organizationMembership.findMany.mockResolvedValue([rowA, rowB]);
     prisma.refreshToken.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -134,7 +165,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
   it('suspended membership: denies refresh and revokes session', async () => {
     const { prisma, service, sessionPolicy } = createRefreshTokenHarness();
     const row = membershipRow({ status: MembershipStatus.SUSPENDED });
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([]);
 
@@ -154,7 +185,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
   it('removed membership: denies refresh, revokes session, audits', async () => {
     const { prisma, service, sessionPolicy } = createRefreshTokenHarness();
     const row = membershipRow({ status: MembershipStatus.REMOVED });
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([]);
 
@@ -169,7 +200,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
   it('membership version changed: denies refresh', async () => {
     const { prisma, service } = createRefreshTokenHarness();
     const row = membershipRow({ membershipVersion: 3 });
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([row]);
 
@@ -182,7 +213,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
       role: MembershipRole.ORG_ADMIN,
       organizationRoleId: 'custom-role',
     });
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([row]);
 
@@ -191,7 +222,8 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
 
   it('legacy unscoped session rejected without grace', async () => {
     const { prisma, service } = createRefreshTokenHarness();
-    prisma.refreshToken.findUnique.mockResolvedValue(
+    wireTransactionalRotate(
+      prisma,
       baseStored({
         scope: RefreshTokenScope.LEGACY_UNSCOPED,
         organizationId: null,
@@ -213,7 +245,8 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
       return fallback;
     });
     const row = membershipRow();
-    prisma.refreshToken.findUnique.mockResolvedValue(
+    wireTransactionalRotate(
+      prisma,
       baseStored({
         scope: RefreshTokenScope.LEGACY_UNSCOPED,
         organizationId: null,
@@ -241,7 +274,8 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
 
   it('token reuse detection revokes family via session policy', async () => {
     const { prisma, service, sessionPolicy } = createRefreshTokenHarness();
-    prisma.refreshToken.findUnique.mockResolvedValue(
+    wireTransactionalRotate(
+      prisma,
       baseStored({
         revokedAt: new Date(),
         replacedBy: 'rt-successor',
@@ -260,7 +294,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
   it('cross-tenant binding rejected when membership org differs', async () => {
     const { prisma, service } = createRefreshTokenHarness();
     const row = membershipRow({ organizationId: IAM_REGRESSION_IDS.orgB });
-    prisma.refreshToken.findUnique.mockResolvedValue(baseStored());
+    wireTransactionalRotate(prisma, baseStored());
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([row]);
 
@@ -271,9 +305,7 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
     const { prisma, service } = createRefreshTokenHarness();
     const authenticatedAt = new Date('2026-07-01T10:00:00.000Z');
     const row = membershipRow();
-    prisma.refreshToken.findUnique.mockResolvedValue(
-      baseStored({ authenticatedAt }),
-    );
+    wireTransactionalRotate(prisma, baseStored({ authenticatedAt }));
     prisma.organizationMembership.findFirst.mockResolvedValue(row);
     prisma.organizationMembership.findMany.mockResolvedValue([row]);
     prisma.refreshToken.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -294,9 +326,10 @@ describe('RefreshTokenService org-bound sessions (Prompt 7)', () => {
         }),
       }),
     );
-    expect(prisma.refreshToken.update).toHaveBeenCalledWith(
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ lastUsedAt: expect.any(Date) }),
+        where: expect.objectContaining({ revokedAt: null }),
+        data: expect.objectContaining({ lastUsedAt: expect.any(Date), replacedBy: 'rt-rotated' }),
       }),
     );
   });

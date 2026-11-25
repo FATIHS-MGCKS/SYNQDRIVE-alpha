@@ -14,6 +14,12 @@ import { IamMfaStepUpService } from './iam-mfa-step-up.service';
 import type { MfaChallengeResult } from './iam-mfa.types';
 import { AuthMethod } from '@shared/auth/auth-session-claims.types';
 
+export type MfaSessionBinding = {
+  tokenFamily: string;
+  membershipId?: string | null;
+  organizationId?: string | null;
+};
+
 @Injectable()
 export class IamMfaChallengeService {
   constructor(
@@ -29,6 +35,9 @@ export class IamMfaChallengeService {
       authenticatedAt?: string;
       securityVersion?: number;
     };
+    sessionBinding?: MfaSessionBinding;
+    /** Pre-auth login MFA may reissue an intermediate token without session family binding. */
+    allowUnboundReissue?: boolean;
     idempotencyKey?: string;
   }): Promise<MfaChallengeResult> {
     const factor = await this.prisma.userMfaFactor.findUnique({
@@ -63,13 +72,6 @@ export class IamMfaChallengeService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
-      include: {
-        memberships: {
-          where: { status: 'ACTIVE' },
-          include: { organization: true },
-          take: 1,
-        },
-      },
     });
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -80,16 +82,29 @@ export class IamMfaChallengeService {
       data: { lastTotpStep: step, lastUsedAt: new Date() },
     });
 
-    const membership = user.memberships[0] ?? null;
+    const membership = await this.loadAuthoritativeMembership(input.userId, input.sessionBinding);
+    await this.assertSessionBindingActive(input.userId, input.sessionBinding);
+
     const claims = this.stepUp.buildClaimsAfterChallenge({
       existingAuthenticatedAt: input.existingClaims?.authenticatedAt,
       authMethods: ['pwd', 'totp'],
       securityVersion: input.existingClaims?.securityVersion ?? user.securityVersion,
     });
 
-    const tokenFamily = await this.refreshTokens.resolveLatestActiveTokenFamily(input.userId);
+    const tokenFamily = input.sessionBinding?.tokenFamily ?? null;
+    if (!tokenFamily && !input.allowUnboundReissue) {
+      throw new UnauthorizedException('MFA session binding required');
+    }
+
     const tokenResult = await this.refreshTokens.reissueAccessToken(
-      user,
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        platformRole: user.platformRole,
+        sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
+      },
       membership
         ? {
             role: membership.role,
@@ -129,6 +144,8 @@ export class IamMfaChallengeService {
       authenticatedAt?: string;
       securityVersion?: number;
     };
+    sessionBinding?: MfaSessionBinding;
+    allowUnboundReissue?: boolean;
     idempotencyKey?: string;
   }): Promise<MfaChallengeResult> {
     const codes = await this.prisma.userMfaRecoveryCode.findMany({
@@ -158,13 +175,6 @@ export class IamMfaChallengeService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
-      include: {
-        memberships: {
-          where: { status: 'ACTIVE' },
-          include: { organization: true },
-          take: 1,
-        },
-      },
     });
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -175,16 +185,29 @@ export class IamMfaChallengeService {
       data: { usedAt: new Date() },
     });
 
-    const membership = user.memberships[0] ?? null;
+    const membership = await this.loadAuthoritativeMembership(input.userId, input.sessionBinding);
+    await this.assertSessionBindingActive(input.userId, input.sessionBinding);
+
     const claims = this.stepUp.buildClaimsAfterChallenge({
       existingAuthenticatedAt: input.existingClaims?.authenticatedAt,
       authMethods: ['pwd', 'recovery'],
       securityVersion: input.existingClaims?.securityVersion ?? user.securityVersion,
     });
 
-    const tokenFamily = await this.refreshTokens.resolveLatestActiveTokenFamily(input.userId);
+    const tokenFamily = input.sessionBinding?.tokenFamily ?? null;
+    if (!tokenFamily && !input.allowUnboundReissue) {
+      throw new UnauthorizedException('MFA session binding required');
+    }
+
     const tokenResult = await this.refreshTokens.reissueAccessToken(
-      user,
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        platformRole: user.platformRole,
+        sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
+      },
       membership
         ? {
             role: membership.role,
@@ -215,5 +238,65 @@ export class IamMfaChallengeService {
       authMethods: claims.authMethods as AuthMethod[],
       mfaAuthenticatedAt: claims.mfaAuthenticatedAt!,
     };
+  }
+
+  private async loadAuthoritativeMembership(
+    userId: string,
+    binding?: MfaSessionBinding,
+  ) {
+    if (!binding?.membershipId && !binding?.organizationId) {
+      return null;
+    }
+    if (binding.membershipId) {
+      return this.prisma.organizationMembership.findFirst({
+        where: { id: binding.membershipId, userId, status: 'ACTIVE' },
+        include: { organization: true },
+      });
+    }
+    if (binding.organizationId) {
+      return this.prisma.organizationMembership.findFirst({
+        where: {
+          userId,
+          organizationId: binding.organizationId,
+          status: 'ACTIVE',
+        },
+        include: { organization: true },
+      });
+    }
+    return null;
+  }
+
+  private async assertSessionBindingActive(
+    userId: string,
+    binding?: MfaSessionBinding,
+  ): Promise<void> {
+    if (!binding?.tokenFamily) return;
+    const active = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId,
+        family: binding.tokenFamily,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        replacedBy: null,
+      },
+      select: { id: true, membershipId: true, organizationId: true },
+    });
+    if (!active) {
+      throw new UnauthorizedException('Session is no longer valid');
+    }
+    if (
+      binding.membershipId &&
+      active.membershipId &&
+      binding.membershipId !== active.membershipId
+    ) {
+      throw new UnauthorizedException('MFA session scope mismatch');
+    }
+    if (
+      binding.organizationId &&
+      active.organizationId &&
+      binding.organizationId !== active.organizationId
+    ) {
+      throw new UnauthorizedException('MFA session scope mismatch');
+    }
   }
 }

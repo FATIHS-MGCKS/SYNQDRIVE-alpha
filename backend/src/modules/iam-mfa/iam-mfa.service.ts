@@ -108,11 +108,27 @@ export class IamMfaService {
     idempotencyKey?: string;
   }): Promise<MfaChallengeResult> {
     const user = await this.prisma.user.findUnique({ where: { id: input.userId } });
-    const existingClaims = input.accessToken
-      ? sessionClaimsFromJwt(
-          this.refreshTokens.decodeAccessToken(input.accessToken) as Record<string, unknown>,
-        )
+    const decodedAccess = input.accessToken
+      ? this.refreshTokens.decodeAccessToken(input.accessToken)
+      : null;
+    const existingClaims = decodedAccess
+      ? sessionClaimsFromJwt(decodedAccess as Record<string, unknown>)
       : buildPasswordOnlyClaims(user?.securityVersion ?? 0);
+
+    const sessionBinding =
+      decodedAccess && typeof decodedAccess.tokenFamily === 'string'
+        ? {
+            tokenFamily: decodedAccess.tokenFamily,
+            membershipId:
+              typeof decodedAccess.membershipId === 'string'
+                ? decodedAccess.membershipId
+                : null,
+            organizationId:
+              typeof decodedAccess.organizationId === 'string'
+                ? decodedAccess.organizationId
+                : null,
+          }
+        : undefined;
 
     if (input.recoveryCode) {
       return this.challengeService.challengeWithRecoveryCode({
@@ -122,6 +138,7 @@ export class IamMfaService {
           authenticatedAt: existingClaims.authenticatedAt,
           securityVersion: existingClaims.securityVersion,
         },
+        sessionBinding,
         idempotencyKey: input.idempotencyKey,
       });
     }
@@ -135,6 +152,7 @@ export class IamMfaService {
         authenticatedAt: existingClaims.authenticatedAt,
         securityVersion: existingClaims.securityVersion,
       },
+      sessionBinding,
       idempotencyKey: input.idempotencyKey,
     });
   }

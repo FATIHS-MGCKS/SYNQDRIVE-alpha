@@ -102,10 +102,12 @@ export class AuthMfaLoginService {
       ? await this.challenge.challengeWithRecoveryCode({
           userId: user.id,
           recoveryCode: input.recoveryCode,
+          allowUnboundReissue: true,
         })
       : await this.challenge.challengeWithTotp({
           userId: user.id,
           code: input.code ?? '',
+          allowUnboundReissue: true,
         });
 
     const membership = user.memberships[0] ?? null;
@@ -115,7 +117,8 @@ export class AuthMfaLoginService {
         email: user.email,
         name: user.name,
         platformRole: user.platformRole,
-        sessionVersion: user.securityVersion,
+        sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
       },
       membership
         ? {

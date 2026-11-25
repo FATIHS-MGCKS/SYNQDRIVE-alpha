@@ -156,24 +156,16 @@ function assertDisposableDb(): void {
       null,
     );
     const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
-    try {
-      await prisma.$executeRaw`
-        UPDATE users
-        SET platform_role = ${UserPlatformRole.USER}::"UserPlatformRole",
-            session_version = session_version + 1,
-            updated_at = NOW()
-        WHERE id = ${user.id}::uuid
-      `;
-      await expect(authority.validateAccessJwt(decoded as never)).rejects.toMatchObject({
-        response: { code: ACCESS_AUTHORITY_FAILURE_CODES.SESSION_VERSION_MISMATCH },
-      });
-    } catch (err) {
-      const message = (err as Error).message ?? '';
-      if (/first_name|does not exist|column/i.test(message)) {
-        return;
-      }
-      throw err;
-    }
+    await prisma.$executeRaw`
+      UPDATE users
+      SET platform_role = ${UserPlatformRole.USER}::"UserPlatformRole",
+          session_version = session_version + 1,
+          updated_at = NOW()
+      WHERE id = ${user.id}::uuid
+    `;
+    await expect(authority.validateAccessJwt(decoded as never)).rejects.toMatchObject({
+      response: { code: ACCESS_AUTHORITY_FAILURE_CODES.SESSION_VERSION_MISMATCH },
+    });
   });
 
   it('PG20 legitimate refresh rotation remains usable', async () => {
@@ -188,18 +180,13 @@ function assertDisposableDb(): void {
       },
       null,
     );
-    try {
-      const rotated = await refreshTokens.rotate(first.refreshToken);
-      const decoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
-      const ctx = await authority.validateAccessJwt(decoded as never);
-      expect(ctx.tokenFamily).toBeTruthy();
-    } catch (err) {
-      const message = (err as Error).message ?? '';
-      if (/first_name|does not exist/i.test(message)) {
-        // Disposable DB schema behind application migrations — rotation covered by unit/org-binding specs locally.
-        return;
-      }
-      throw err;
-    }
+    const rotated = await refreshTokens.rotate(first.refreshToken);
+    const decoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    const ctx = await authority.validateAccessJwt(decoded as never);
+    expect(ctx.tokenFamily).toBeTruthy();
+    const priorDecoded = jwt.verify(first.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    await expect(authority.validateAccessJwt(priorDecoded as never)).rejects.toMatchObject({
+      response: { code: ACCESS_AUTHORITY_FAILURE_CODES.SESSION_REVOKED },
+    });
   });
 });

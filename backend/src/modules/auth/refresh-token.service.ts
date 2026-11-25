@@ -166,143 +166,199 @@ export class RefreshTokenService {
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
     const tokenHash = await this.hashToken(rawToken);
 
-    const stored = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
-      include: { user: true },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<
+        Array<{
+          id: string;
+          user_id: string;
+          family: string;
+          scope: RefreshTokenScope;
+          organization_id: string | null;
+          membership_id: string | null;
+          session_version: number | null;
+          membership_version: number | null;
+          permission_version: number | null;
+          role_version: number | null;
+          assurance_level: SessionAssuranceLevel | null;
+          authenticated_at: Date | null;
+          created_at: Date;
+          revoked_at: Date | null;
+          replaced_by: string | null;
+          expires_at: Date;
+        }>
+      >`
+        SELECT id, user_id, family, scope, organization_id, membership_id,
+               session_version, membership_version, permission_version, role_version,
+               assurance_level, authenticated_at, created_at, revoked_at, replaced_by, expires_at
+        FROM refresh_tokens
+        WHERE token_hash = ${tokenHash}
+        FOR UPDATE
+      `;
 
-    if (!stored) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+      const row = locked[0];
+      if (!row) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
 
-    if (stored.revokedAt || stored.expiresAt < new Date()) {
-      if (stored.replacedBy) {
-        this.logger.warn(
-          `Refresh token reuse detected for user ${stored.userId}, family ${stored.family}. Revoking entire family.`,
-        );
-        this.iamMetrics?.recordSessionReuseDetected();
-        await this.sessionPolicy.recordAndExecute({
-          eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
-          userId: stored.userId,
+      if (row.revoked_at || row.expires_at < new Date()) {
+        if (row.replaced_by) {
+          this.logger.warn(
+            `Refresh token reuse detected for user ${row.user_id}, family ${row.family}. Revoking entire family.`,
+          );
+          this.iamMetrics?.recordSessionReuseDetected();
+          await this.sessionPolicy.recordAndExecute({
+            eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
+            userId: row.user_id,
+            organizationId: row.organization_id,
+            membershipId: row.membership_id,
+            tokenFamily: row.family,
+            refreshTokenId: row.id,
+            highRiskReuse: true,
+          });
+        }
+        throw new UnauthorizedException('Refresh token is no longer valid');
+      }
+
+      const user = await tx.user.findUnique({ where: { id: row.user_id } });
+      if (!user || user.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Account is inactive');
+      }
+
+      const stored = {
+        id: row.id,
+        userId: row.user_id,
+        family: row.family,
+        scope: row.scope,
+        organizationId: row.organization_id,
+        membershipId: row.membership_id,
+        sessionVersion: row.session_version,
+        membershipVersion: row.membership_version,
+        permissionVersion: row.permission_version,
+        roleVersion: row.role_version,
+        assuranceLevel: row.assurance_level,
+        authenticatedAt: row.authenticated_at,
+        createdAt: row.created_at,
+      };
+
+      const activeMemberships = await this.loadActiveMemberships(user.id);
+      const boundMembership = stored.membershipId
+        ? await this.loadMembershipForUser(stored.membershipId, user.id)
+        : null;
+
+      const binding = resolveRefreshBinding(
+        {
+          scope: stored.scope as 'ORG_MEMBERSHIP_BOUND' | 'LEGACY_UNSCOPED',
           organizationId: stored.organizationId,
           membershipId: stored.membershipId,
-          tokenFamily: stored.family,
-          refreshTokenId: stored.id,
-          highRiskReuse: true,
-        });
-      }
-      throw new UnauthorizedException('Refresh token is no longer valid');
-    }
-
-    const user = stored.user;
-    if (!user || user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('Account is inactive');
-    }
-
-    const activeMemberships = await this.loadActiveMemberships(user.id);
-    const boundMembership = stored.membershipId
-      ? await this.loadMembershipForUser(stored.membershipId, user.id)
-      : null;
-
-    const binding = resolveRefreshBinding(
-      {
-        scope: stored.scope as 'ORG_MEMBERSHIP_BOUND' | 'LEGACY_UNSCOPED',
-        organizationId: stored.organizationId,
-        membershipId: stored.membershipId,
-        sessionVersion: stored.sessionVersion,
-        membershipVersion: stored.membershipVersion,
-        permissionVersion: stored.permissionVersion,
-        roleVersion: stored.roleVersion,
-        userId: stored.userId,
-      },
-      boundMembership,
-      activeMemberships,
-      {
-        lastSelectedOrganizationId: user.lastSelectedOrganizationId,
-        graceEnabled: this.isLegacyGraceEnabled(),
-        orgBoundEnforced: this.isOrgBoundEnforced(),
-      },
-    );
-
-    if (!binding.ok) {
-      await this.revokeStoredToken(stored.id, binding.auditEvent ?? binding.code);
-      if (
-        binding.code === 'MEMBERSHIP_INACTIVE' ||
-        binding.code === 'MEMBERSHIP_REMOVED'
-      ) {
-        void this.sessionPolicy.recordAndExecute({
-          eventType:
-            binding.code === 'MEMBERSHIP_REMOVED'
-              ? 'MEMBERSHIP_REMOVED'
-              : 'MEMBERSHIP_SUSPENDED',
+          sessionVersion: stored.sessionVersion,
+          membershipVersion: stored.membershipVersion,
+          permissionVersion: stored.permissionVersion,
+          roleVersion: stored.roleVersion,
           userId: stored.userId,
-          organizationId: stored.organizationId,
-          membershipId: stored.membershipId,
-          refreshTokenId: stored.id,
-          tokenFamily: stored.family,
-        });
-      }
-      throw new UnauthorizedException(binding.message);
-    }
-
-    const membership = binding.membership;
-    await this.assertOrganizationSessionIssuanceForOrganizationId(
-      membership?.organizationId ?? stored.organizationId,
-    );
-    const membershipContext = membership
-      ? this.toMembershipContext(membership)
-      : null;
-
-    const versionCheck = validateVersionSnapshots(
-      stored,
-      buildVersionSnapshot({
-        sessionVersion: user.sessionVersion,
-        membership: membership,
-      }),
-    );
-    if (!('ok' in versionCheck && versionCheck.ok)) {
-      await this.revokeStoredToken(
-        stored.id,
-        versionCheck.auditEvent ?? 'VERSION_MISMATCH',
+        },
+        boundMembership,
+        activeMemberships,
+        {
+          lastSelectedOrganizationId: user.lastSelectedOrganizationId,
+          graceEnabled: this.isLegacyGraceEnabled(),
+          orgBoundEnforced: this.isOrgBoundEnforced(),
+        },
       );
-      throw new UnauthorizedException(versionCheck.message);
-    }
 
-    const authenticatedAt = stored.authenticatedAt ?? stored.createdAt;
-    const newPair = await this.issueTokenPairWithFamily(
-      {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        platformRole: user.platformRole,
-        sessionVersion: user.sessionVersion,
-      },
-      membershipContext,
-      stored.family,
-      context,
-      {
-        scope: binding.scope,
-        authenticatedAt,
-        assuranceLevel: stored.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
-      },
-    );
+      if (!binding.ok) {
+        await tx.refreshToken.update({
+          where: { id: stored.id },
+          data: {
+            revokedAt: new Date(),
+            revocationReason: binding.auditEvent ?? binding.code,
+          },
+        });
+        if (
+          binding.code === 'MEMBERSHIP_INACTIVE' ||
+          binding.code === 'MEMBERSHIP_REMOVED'
+        ) {
+          void this.sessionPolicy.recordAndExecute({
+            eventType:
+              binding.code === 'MEMBERSHIP_REMOVED'
+                ? 'MEMBERSHIP_REMOVED'
+                : 'MEMBERSHIP_SUSPENDED',
+            userId: stored.userId,
+            organizationId: stored.organizationId,
+            membershipId: stored.membershipId,
+            refreshTokenId: stored.id,
+            tokenFamily: stored.family,
+          });
+        }
+        throw new UnauthorizedException(binding.message);
+      }
 
-    this.iamMetrics?.recordSessionCreated('refresh');
+      const membership = binding.membership;
+      await this.assertOrganizationSessionIssuanceForOrganizationId(
+        membership?.organizationId ?? stored.organizationId,
+      );
+      const membershipContext = membership
+        ? this.toMembershipContext(membership)
+        : null;
 
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: {
-        revokedAt: new Date(),
-        replacedBy: newPair.refreshTokenId,
-        lastUsedAt: new Date(),
-      },
+      const versionCheck = validateVersionSnapshots(
+        stored,
+        buildVersionSnapshot({
+          sessionVersion: user.sessionVersion,
+          membership: membership,
+        }),
+      );
+      if (!('ok' in versionCheck && versionCheck.ok)) {
+        await tx.refreshToken.update({
+          where: { id: stored.id },
+          data: {
+            revokedAt: new Date(),
+            revocationReason: versionCheck.auditEvent ?? 'VERSION_MISMATCH',
+          },
+        });
+        throw new UnauthorizedException(versionCheck.message);
+      }
+
+      const authenticatedAt = stored.authenticatedAt ?? stored.createdAt;
+      const newPair = await this.issueTokenPairWithFamilyTx(
+        tx,
+        {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          platformRole: user.platformRole,
+          sessionVersion: user.sessionVersion,
+          securityVersion: user.securityVersion,
+        },
+        membershipContext,
+        stored.family,
+        context,
+        {
+          scope: binding.scope,
+          authenticatedAt,
+          assuranceLevel: stored.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
+        },
+      );
+
+      const revoked = await tx.refreshToken.updateMany({
+        where: { id: stored.id, revokedAt: null },
+        data: {
+          revokedAt: new Date(),
+          replacedBy: newPair.refreshTokenId,
+          lastUsedAt: new Date(),
+        },
+      });
+      if (revoked.count !== 1) {
+        throw new UnauthorizedException('Refresh token is no longer valid');
+      }
+
+      this.iamMetrics?.recordSessionCreated('refresh');
+
+      return {
+        accessToken: newPair.accessToken,
+        refreshToken: newPair.rawRefreshToken,
+        expiresIn: this.jwtExpiresIn,
+      };
     });
-
-    return {
-      accessToken: newPair.accessToken,
-      refreshToken: newPair.rawRefreshToken,
-      expiresIn: this.jwtExpiresIn,
-    };
   }
 
   async revoke(rawToken: string, revocationReason?: string): Promise<void> {
@@ -441,8 +497,18 @@ export class RefreshTokenService {
   }
 
   async revokeSessionById(userId: string, sessionId: string): Promise<boolean> {
+    const target = await this.prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+      select: { family: true },
+    });
+    if (!target?.family) return false;
     const result = await this.prisma.refreshToken.updateMany({
-      where: { id: sessionId, userId, revokedAt: null },
+      where: {
+        userId,
+        family: target.family,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       data: {
         revokedAt: new Date(),
         revocationReason: 'SESSION_REVOKED_BY_ID',
@@ -456,8 +522,18 @@ export class RefreshTokenService {
     userId: string,
     sessionId: string,
   ): Promise<boolean> {
+    const target = await tx.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+      select: { family: true },
+    });
+    if (!target?.family) return false;
     const result = await tx.refreshToken.updateMany({
-      where: { id: sessionId, userId, revokedAt: null },
+      where: {
+        userId,
+        family: target.family,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       data: {
         revokedAt: new Date(),
         revocationReason: 'SESSION_REVOKED_BY_ID',
@@ -513,7 +589,55 @@ export class RefreshTokenService {
     return { revoked: result.count, keptSessionId: keepId };
   }
 
+  private async issueTokenPairWithFamilyTx(
+    tx: Prisma.TransactionClient,
+    user: RefreshTokenUserContext | null,
+    membership: RefreshTokenMembershipContext | null,
+    family: string,
+    context: { userAgent?: string; ipAddress?: string },
+    options: {
+      scope: RefreshTokenScope;
+      authenticatedAt: Date;
+      assuranceLevel: SessionAssuranceLevel;
+    },
+    userIdOverride?: string,
+  ): Promise<{ accessToken: string; rawRefreshToken: string; refreshTokenId: string }> {
+    return this.issueTokenPairWithFamilyInternal(
+      tx,
+      user,
+      membership,
+      family,
+      context,
+      options,
+      userIdOverride,
+    );
+  }
+
   private async issueTokenPairWithFamily(
+    user: RefreshTokenUserContext | null,
+    membership: RefreshTokenMembershipContext | null,
+    family: string,
+    context: { userAgent?: string; ipAddress?: string },
+    options: {
+      scope: RefreshTokenScope;
+      authenticatedAt: Date;
+      assuranceLevel: SessionAssuranceLevel;
+    },
+    userIdOverride?: string,
+  ): Promise<{ accessToken: string; rawRefreshToken: string; refreshTokenId: string }> {
+    return this.issueTokenPairWithFamilyInternal(
+      this.prisma,
+      user,
+      membership,
+      family,
+      context,
+      options,
+      userIdOverride,
+    );
+  }
+
+  private async issueTokenPairWithFamilyInternal(
+    client: Prisma.TransactionClient | PrismaService,
     user: RefreshTokenUserContext | null,
     membership: RefreshTokenMembershipContext | null,
     family: string,
@@ -545,7 +669,7 @@ export class RefreshTokenService {
         : null,
     });
 
-    const record = await this.prisma.refreshToken.create({
+    const record = await client.refreshToken.create({
       data: {
         userId,
         tokenHash,
@@ -667,8 +791,7 @@ export class RefreshTokenService {
     platformPermissions: string[] = [],
     tokenFamily?: string | null,
   ): string {
-    const securityVersion =
-      sessionClaims?.securityVersion ?? user.securityVersion ?? user.sessionVersion ?? 0;
+    const securityVersion = sessionClaims?.securityVersion ?? user.securityVersion ?? 0;
     const claims = sessionClaims ?? buildPasswordOnlyClaims(securityVersion);
     const payload = {
       sub: user.id,

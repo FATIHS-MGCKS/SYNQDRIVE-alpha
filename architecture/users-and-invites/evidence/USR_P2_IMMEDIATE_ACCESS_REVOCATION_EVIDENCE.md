@@ -9,13 +9,16 @@
 | Control | Mechanism |
 |---------|-----------|
 | Canonical session identity | Refresh token **`family`** embedded as JWT `tokenFamily` (stable across rotation) |
+| Family scope binding | Active head row (`replacedBy` null) + JWT/org/membership must match refresh authority |
 | Request-time authority | `UserAccessAuthorityService` invoked from `AuthGuard` after crypto verify |
-| Session revocation | Active refresh row required for `tokenFamily` |
-| Version invalidation | `sessionVersion`, `securityVersion`, `membershipVersion` compared to DB |
+| Session revocation | Family-wide revoke by session id; atomic rotate under `FOR UPDATE` |
+| Version invalidation | Separate `sessionVersion` / `securityVersion`; no session→security fallback at issuance |
 | Platform privileges | `platformRole` + `platformPermissions` resolved from DB per request |
+| MFA reissue | Bound to decoded access JWT `tokenFamily` + membership scope (not latest/first membership) |
 | Legacy JWTs (no `tokenFamily`) | **401** `SESSION_BINDING_REQUIRED` — refresh/login rebind required (no permanent bypass) |
-| Fail closed | DB/authority errors → `AUTHORITY_UNAVAILABLE` |
-| P1A intersection | Outbox read errors in session-revoke fallback no longer block revocation |
+| Fail closed | DB/authority errors → `AUTHORITY_UNAVAILABLE`; lifecycle errors not swallowed |
+| P1A intersection | Outbox read errors in session-revoke fallback do not block revocation |
+| Auth harness | `authGuardHttpSecurityProviders` + bound JWT util for real-`AuthGuard` HTTP specs |
 
 ## Legacy / rolling deploy
 

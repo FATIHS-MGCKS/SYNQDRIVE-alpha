@@ -9,9 +9,10 @@ import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
 import { MasterAdminMfaGuard } from './master-admin-mfa.guard';
 import { MasterBillingDelegateMfaGuard } from './master-billing-delegate-mfa.guard';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
+import { PlatformPermissionsModule } from '@modules/users/platform-permissions/platform-permissions.module';
 
 @Module({
-  imports: [PrismaModule, forwardRef(() => IamMfaModule)],
+  imports: [PrismaModule, PlatformPermissionsModule, forwardRef(() => IamMfaModule)],
   providers: [
     UserAccessAuthorityService,
     AuthGuard,

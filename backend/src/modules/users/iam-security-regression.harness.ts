@@ -1,4 +1,4 @@
-import { MembershipRole, MembershipStatus, UserStatus } from '@prisma/client';
+import { MembershipRole, MembershipStatus, RefreshTokenScope, UserStatus } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
 import type { UserAccessAuditService } from './user-access-audit.service';
 import { UsersService } from './users.service';
@@ -289,7 +289,25 @@ export function createRefreshTokenHarness() {
     }
   >();
 
-  const prisma = {
+  const prisma: {
+    $transaction: jest.Mock;
+    $queryRaw: jest.Mock;
+    user: { findUnique: jest.Mock };
+    refreshToken: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+    };
+    organization: { findUnique: jest.Mock };
+    organizationMembership: {
+      findMany: jest.Mock;
+      findFirst: jest.Mock;
+    };
+  } = {
+    $transaction: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([]),
     user: {
       findUnique: jest.fn(async (args: { where: { id: string } }) => {
         const row = registeredUsers.get(args.where.id);
@@ -310,7 +328,7 @@ export function createRefreshTokenHarness() {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
-      updateMany: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     organization: {
       findUnique: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
@@ -320,11 +338,21 @@ export function createRefreshTokenHarness() {
       findFirst: jest.fn().mockResolvedValue(null),
     },
   };
+  prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
+    fn(prisma),
+  );
 
   const activeRefreshFamilies = new Set<string>();
 
   prisma.refreshToken.findFirst.mockImplementation(
-    async (query: { where: { userId?: string; family?: string; revokedAt?: null } }) => {
+    async (query: {
+      where: {
+        userId?: string;
+        family?: string;
+        revokedAt?: null;
+        replacedBy?: null;
+      };
+    }) => {
       const w = query.where;
       if (
         w.userId &&
@@ -333,7 +361,15 @@ export function createRefreshTokenHarness() {
         w.revokedAt === null &&
         activeRefreshFamilies.has(`${w.userId}:${w.family}`)
       ) {
-        return { id: `rt-${w.family.slice(0, 8)}` };
+        return {
+          id: `rt-${w.family.slice(0, 8)}`,
+          family: w.family,
+          scope: RefreshTokenScope.LEGACY_UNSCOPED,
+          organizationId: null,
+          membershipId: null,
+          sessionVersion: 0,
+          membershipVersion: null,
+        };
       }
       return null;
     },

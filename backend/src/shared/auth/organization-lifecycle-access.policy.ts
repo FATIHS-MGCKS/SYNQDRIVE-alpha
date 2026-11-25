@@ -31,9 +31,17 @@ export function organizationLifecycleDeniedException(
 export function assertOrganizationAllowsTenantSurface(
   status: OrganizationStatus | null | undefined,
   surface: OrganizationAccessSurface,
+  options?: { platformRole?: string },
 ): void {
   if (status == null) {
     throw new NotFoundException('Organization not found');
+  }
+
+  if (
+    options?.platformRole === 'MASTER_ADMIN' &&
+    surface === 'PLATFORM_MASTER_ADMIN'
+  ) {
+    return;
   }
 
   if (status === OrganizationStatus.ACTIVE) {
