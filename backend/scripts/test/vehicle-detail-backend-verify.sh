@@ -10,10 +10,13 @@ VEHICLE_DETAIL_SECURITY_PATTERN='vehicles-security-negative|vehicles\.controller
 
 run_unit() {
   echo "==> Vehicle detail unit & characterization tests"
+  # CI: without forceExit Jest can hang on open handles from Redis/timer mocks in vehicle-detail specs.
   npm test -- \
     --testPathPatterns="$VD_PATTERN" \
     --testPathIgnorePatterns='integration|postgres\.invariants' \
-    --passWithNoTests
+    --passWithNoTests \
+    --runInBand \
+    --forceExit
 }
 
 run_security() {
