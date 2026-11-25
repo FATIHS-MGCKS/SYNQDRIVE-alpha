@@ -16,6 +16,7 @@ import { masterVehicleIdentityCs } from './master.vehicleIdentity.cs';
 import { masterOneAutoCs } from './master.oneAuto.cs';
 import { masterOrganizationsCs } from './master.organizations.cs';
 import { masterProductCommercialCs } from './master.productCommercial.cs';
+import { masterProductCatalogCs } from './master.productCatalog.cs';
 import { masterCreditManagementCs } from './master.creditManagement.cs';
 import { masterBillingInvoicesCs } from './master.billing.invoices.cs';
 import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
@@ -221,10 +222,11 @@ export const cs = {
   ...masterIntelligenceCs,
   ...masterSidebarV1Cs,
   ...masterMotionPhysicsCs,
-...masterVehicleIdentityCs,
+  ...masterVehicleIdentityCs,
   ...masterOneAutoCs,
   ...masterOrganizationsCs,
   ...masterProductCommercialCs,
+  ...masterProductCatalogCs,
   ...masterCreditManagementCs,
   ...masterBillingInvoicesCs,
   ...masterCvTechnicalSpecsCs,

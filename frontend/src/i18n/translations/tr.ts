@@ -3,6 +3,7 @@ import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
 import { masterOneAutoTr } from './master.oneAuto.tr';
 import { masterOrganizationsTr } from './master.organizations.tr';
 import { masterProductCommercialTr } from './master.productCommercial.tr';
+import { masterProductCatalogTr } from './master.productCatalog.tr';
 import { masterCreditManagementTr } from './master.creditManagement.tr';
 import { masterBillingInvoicesTr } from './master.billing.invoices.tr';
 import { masterCvTechnicalSpecsTr } from './master.cv.technicalSpecs.tr';
@@ -24,6 +25,7 @@ export const tr = {
   ...masterOneAutoTr,
   ...masterOrganizationsTr,
   ...masterProductCommercialTr,
+  ...masterProductCatalogTr,
   ...masterCreditManagementTr,
   ...masterBillingInvoicesTr,
   ...masterCvTechnicalSpecsTr,

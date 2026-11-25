@@ -1,0 +1,27 @@
+export const masterProductCatalogDe = {
+  'master.productCatalog.editor.title': 'Produktmetadaten bearbeiten',
+  'master.productCatalog.editor.nameLabel': 'Anzeigename',
+  'master.productCatalog.editor.descriptionLabel': 'Beschreibung',
+  'master.productCatalog.editor.catalogStatus': 'Katalogstatus',
+  'master.productCatalog.editor.businessReadiness': 'Geschäftsreife',
+  'master.productCatalog.editor.orgStats': 'Organisationen mit Zuweisung: {total} · aktiv: {active}',
+  'master.productCatalog.editor.save': 'Speichern',
+  'master.productCatalog.editor.cancel': 'Abbrechen',
+  'master.productCatalog.editor.unsavedWarning': 'Ungespeicherte Änderungen verwerfen?',
+  'master.productCatalog.editor.saveSuccess': 'Produktmetadaten gespeichert.',
+  'master.productCatalog.editor.loadError': 'Produkt konnte nicht geladen werden.',
+  'master.productCatalog.editor.openTariffs': 'Tarife & Preisversionen',
+  'master.productCatalog.editor.openOrgAssignments': 'Organisations-Produktzuweisungen',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Wählen Sie zuerst unten eine Organisation aus, dann öffnen Sie die Produktzuweisungen.',
+  'master.productCatalog.editor.conflictRetry':
+    'Das Produkt wurde zwischenzeitlich geändert. Ihre Eingaben bleiben im Formular — prüfen und erneut speichern.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Produktdaten konnten nach einem Konflikt nicht aktualisiert werden. Verbindung prüfen und erneut versuchen.',
+  'master.productCatalog.editor.viewOrgs': 'Plattform-Tarifprodukte',
+  'master.productCatalog.editor.editMetadata': 'Metadaten bearbeiten',
+  'master.productCatalog.editor.validationName': 'Der Name darf nicht leer sein.',
+  'master.productCatalog.business.EXISTING_PRODUCT': 'Bestehendes Geschäftsprodukt',
+  'master.productCatalog.business.IN_PREPARATION': 'In Vorbereitung',
+  'master.productCatalog.business.RETIRED_PRODUCT': 'Produkt eingestellt (Legacy)',
+};

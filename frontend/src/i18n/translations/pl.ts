@@ -16,6 +16,7 @@ import { masterVehicleIdentityPl } from './master.vehicleIdentity.pl';
 import { masterOneAutoPl } from './master.oneAuto.pl';
 import { masterOrganizationsPl } from './master.organizations.pl';
 import { masterProductCommercialPl } from './master.productCommercial.pl';
+import { masterProductCatalogPl } from './master.productCatalog.pl';
 import { masterCreditManagementPl } from './master.creditManagement.pl';
 import { masterBillingInvoicesPl } from './master.billing.invoices.pl';
 import { masterCvTechnicalSpecsPl } from './master.cv.technicalSpecs.pl';
@@ -221,10 +222,11 @@ export const pl = {
   ...masterIntelligencePl,
   ...masterSidebarV1Pl,
   ...masterMotionPhysicsPl,
-...masterVehicleIdentityPl,
+  ...masterVehicleIdentityPl,
   ...masterOneAutoPl,
   ...masterOrganizationsPl,
   ...masterProductCommercialPl,
+  ...masterProductCatalogPl,
   ...masterCreditManagementPl,
   ...masterBillingInvoicesPl,
   ...masterCvTechnicalSpecsPl,

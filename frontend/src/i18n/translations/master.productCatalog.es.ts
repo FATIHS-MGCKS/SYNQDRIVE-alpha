@@ -1,0 +1,27 @@
+export const masterProductCatalogEs = {
+  'master.productCatalog.editor.title': 'Editar metadatos del producto',
+  'master.productCatalog.editor.nameLabel': 'Nombre visible',
+  'master.productCatalog.editor.descriptionLabel': 'Descripción',
+  'master.productCatalog.editor.catalogStatus': 'Estado del catálogo',
+  'master.productCatalog.editor.businessReadiness': 'Preparación comercial',
+  'master.productCatalog.editor.orgStats': 'Organizaciones con asignación: {total} · activas: {active}',
+  'master.productCatalog.editor.save': 'Guardar',
+  'master.productCatalog.editor.cancel': 'Cancelar',
+  'master.productCatalog.editor.unsavedWarning': '¿Descartar cambios sin guardar?',
+  'master.productCatalog.editor.saveSuccess': 'Metadatos del producto guardados.',
+  'master.productCatalog.editor.loadError': 'No se pudo cargar el producto.',
+  'master.productCatalog.editor.openTariffs': 'Tarifas y versiones de precios',
+  'master.productCatalog.editor.openOrgAssignments': 'Asignaciones de producto por organización',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Seleccione primero una organización en esta página y luego abra las asignaciones de producto.',
+  'master.productCatalog.editor.conflictRetry':
+    'Otra persona cambió este producto. Sus ediciones siguen en el formulario — revise y guarde de nuevo.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'No se pudieron actualizar los datos del producto tras un conflicto. Compruebe la conexión e inténtelo de nuevo.',
+  'master.productCatalog.editor.viewOrgs': 'Productos tarifarios de la plataforma',
+  'master.productCatalog.editor.editMetadata': 'Editar metadatos',
+  'master.productCatalog.editor.validationName': 'El nombre no puede estar vacío.',
+  'master.productCatalog.business.EXISTING_PRODUCT': 'Producto comercial en producción',
+  'master.productCatalog.business.IN_PREPARATION': 'En preparación',
+  'master.productCatalog.business.RETIRED_PRODUCT': 'Retirado (legacy)',
+};

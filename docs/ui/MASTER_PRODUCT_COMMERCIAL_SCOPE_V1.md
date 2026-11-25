@@ -2,11 +2,24 @@
 
 ## A — Editable product metadata (platform catalog)
 
-**Current API:** `GET /admin/products`, org assignment `POST /admin/products/assign`, `PATCH .../vehicle-access-mode`, `DELETE .../:productSlug`.
+**Current API:** `GET /admin/products`, `GET /admin/products/:slug`, **`PATCH /admin/products/:slug`** (P1: `name`, `description` only; MFA `MASTER_ORGANIZATION`; compare-and-swap via `ifCurrentName` / `ifCurrentDescription`; mandatory audit in transaction), org assignment `POST /admin/products/assign`, `PATCH .../vehicle-access-mode`, `DELETE .../:orgId/:productSlug`.
 
-**Gap:** There is **no** approved `PATCH /admin/products/:slug` (or equivalent) for editing canonical catalog metadata (display name, roadmap status, catalog flags) outside assignment flows.
+**P1 exclusions:** `slug`, `id`, `catalogStatus`, billing, entitlements, org activation — not editable via this route. TAXI remains retired (metadata patch rejected).
 
-**UI policy:** Product Management shows **read-only** catalog rows and org assignment entry points — **no fake metadata editors**.
+**UI policy:** Product Management exposes a **real** metadata editor (name/description) with read-only slug/catalog status and business-readiness labels.
+
+### Catalog status safety (P1 audit — no behavior change)
+
+| Concern | P1 state |
+|--------|-----------|
+| `ProductCatalogStatus` (`ACTIVE`/`DISABLED`) | Stored on `Product`; exposed read-only; **not enforced** on `assignProductForMasterAdmin` / legacy `assignProduct` today (retired slug guard only). |
+| Business launch readiness | Presentation-only mapping (`RENTAL` existing, `FLEET`/`VYMOD` in preparation); unrelated to `catalogStatus`. |
+| `OrganizationProduct.status` | Org subscription lifecycle; unchanged by metadata PATCH. |
+| `ProductLicenseGuard` / `core.entitlements.v1` | Unchanged in P1. |
+| Vehicle activation / grants | Unchanged; separate admin APIs. |
+| Billing product configuration | Master Billing pricebooks; navigation only from editor. |
+
+**Follow-up PR (separate approval):** gated `catalogStatus` transitions with enforcement at assign/grant entrypoints and explicit audit.
 
 ## B — Commercial pricebooks & price versions
 

@@ -16,6 +16,7 @@ import { masterVehicleIdentityNl } from './master.vehicleIdentity.nl';
 import { masterOneAutoNl } from './master.oneAuto.nl';
 import { masterOrganizationsNl } from './master.organizations.nl';
 import { masterProductCommercialNl } from './master.productCommercial.nl';
+import { masterProductCatalogNl } from './master.productCatalog.nl';
 import { masterCreditManagementNl } from './master.creditManagement.nl';
 import { masterBillingInvoicesNl } from './master.billing.invoices.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
@@ -222,10 +223,11 @@ export const nl = {
   ...masterIntelligenceNl,
   ...masterSidebarV1Nl,
   ...masterMotionPhysicsNl,
-...masterVehicleIdentityNl,
+  ...masterVehicleIdentityNl,
   ...masterOneAutoNl,
   ...masterOrganizationsNl,
   ...masterProductCommercialNl,
+  ...masterProductCatalogNl,
   ...masterCreditManagementNl,
   ...masterBillingInvoicesNl,
   ...masterCvTechnicalSpecsNl,

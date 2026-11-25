@@ -1,0 +1,27 @@
+export const masterProductCatalogPl = {
+  'master.productCatalog.editor.title': 'Edycja metadanych produktu',
+  'master.productCatalog.editor.nameLabel': 'Nazwa wyświetlana',
+  'master.productCatalog.editor.descriptionLabel': 'Opis',
+  'master.productCatalog.editor.catalogStatus': 'Status katalogu',
+  'master.productCatalog.editor.businessReadiness': 'Gotowość biznesowa',
+  'master.productCatalog.editor.orgStats': 'Organizacje z przypisaniem: {total} · aktywne: {active}',
+  'master.productCatalog.editor.save': 'Zapisz',
+  'master.productCatalog.editor.cancel': 'Anuluj',
+  'master.productCatalog.editor.unsavedWarning': 'Odrzucić niezapisane zmiany?',
+  'master.productCatalog.editor.saveSuccess': 'Metadane produktu zapisane.',
+  'master.productCatalog.editor.loadError': 'Nie udało się wczytać produktu.',
+  'master.productCatalog.editor.openTariffs': 'Taryfy i wersje cen',
+  'master.productCatalog.editor.openOrgAssignments': 'Przypisania produktów organizacji',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Najpierw wybierz organizację na tej stronie, potem otwórz przypisania produktów.',
+  'master.productCatalog.editor.conflictRetry':
+    'Ktoś inny zmienił ten produkt. Twoje wpisy pozostają w formularzu — sprawdź i zapisz ponownie.',
+  'master.productCatalog.editor.conflictRefreshFailed':
+    'Nie można odświeżyć danych produktu po konflikcie. Sprawdź połączenie i spróbuj ponownie.',
+  'master.productCatalog.editor.viewOrgs': 'Produkty taryfowe platformy',
+  'master.productCatalog.editor.editMetadata': 'Edytuj metadane',
+  'master.productCatalog.editor.validationName': 'Nazwa nie może być pusta.',
+  'master.productCatalog.business.EXISTING_PRODUCT': 'Istniejący produkt biznesowy',
+  'master.productCatalog.business.IN_PREPARATION': 'W przygotowaniu',
+  'master.productCatalog.business.RETIRED_PRODUCT': 'Wycofany (legacy)',
+};
