@@ -1,0 +1,25 @@
+edges:
+  - from: USR-DOM-001
+    to: USR-UI-SEC-001
+    type: exposes
+  - from: USR-UI-SEC-001
+    to: USR-API-GOV-001
+    type: invokes
+  - from: USR-API-GOV-001
+    to: USR-SVC-AUDIT-001
+    type: invokes
+  - from: USR-API-GOV-001
+    to: USR-DATA-USER-001
+    type: persists
+  - from: USR-API-LEGACY-001
+    to: USR-DATA-USER-001
+    type: persists
+  - from: USR-DOM-001
+    to: USR-EVID-P0-001
+    type: documents
+  - from: USR-DOM-001
+    to: USR-DEC-P0-001
+    type: documents
+  - from: USR-DOM-001
+    to: USR-OWN-ATTEST-2026-11-25
+    type: documents
