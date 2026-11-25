@@ -12,7 +12,7 @@
 
 | Concern | P1 state |
 |--------|-----------|
-| `ProductCatalogStatus` (`ACTIVE`/`DISABLED`) | Stored on `Product`; exposed read-only; **not enforced** on `assignProductForMasterAdmin` / legacy `assignProduct` today (retired slug guard only). |
+| `ProductCatalogStatus` (`ACTIVE`/`DISABLED`) | Stored on `Product`; P2A enforces **admission** on assign/reactivate, vehicle grant/re-grant, and vehicle access broaden when `DISABLED` (existing entitlements preserved). |
 | Business launch readiness | Presentation-only mapping (`RENTAL` existing, `FLEET`/`VYMOD` in preparation); unrelated to `catalogStatus`. |
 | `OrganizationProduct.status` | Org subscription lifecycle; unchanged by metadata PATCH. |
 | `ProductLicenseGuard` / `core.entitlements.v1` | Unchanged in P1. |

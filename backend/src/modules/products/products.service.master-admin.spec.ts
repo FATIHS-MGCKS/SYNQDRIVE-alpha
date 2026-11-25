@@ -11,7 +11,8 @@ import { ProductsService } from './products.service';
 describe('ProductsService — vehicle access mode', () => {
   const masterAdminAudit = { record: jest.fn().mockResolvedValue(undefined) };
 
-  const prisma = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prisma: any = {
     product: { findUnique: jest.fn() },
     organizationProduct: {
       findUnique: jest.fn(),
@@ -22,7 +23,9 @@ describe('ProductsService — vehicle access mode', () => {
       findUniqueOrThrow: jest.fn(),
       delete: jest.fn(),
     },
+    $queryRaw: jest.fn(),
   };
+  prisma.$transaction = jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
 
   let service: ProductsService;
   const ORG = 'org-1';
@@ -32,11 +35,13 @@ describe('ProductsService — vehicle access mode', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     service = new ProductsService(prisma as never, masterAdminAudit as never);
-    prisma.product.findUnique.mockResolvedValue({
-      id: PID,
-      slug: ProductSlug.RENTAL,
-      catalogStatus: ProductCatalogStatus.ACTIVE,
-    });
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        id: PID,
+        slug: ProductSlug.RENTAL,
+        catalogStatus: ProductCatalogStatus.ACTIVE,
+      },
+    ]);
   });
 
   describe('retired TAXI platform product', () => {
@@ -48,7 +53,7 @@ describe('ProductsService — vehicle access mode', () => {
           actorUserId: ADMIN,
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
-      expect(prisma.product.findUnique).not.toHaveBeenCalled();
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
       expect(prisma.organizationProduct.create).not.toHaveBeenCalled();
     });
 
@@ -130,11 +135,13 @@ describe('ProductsService — vehicle access mode', () => {
   });
 
   it('new VYMOD assignment defaults to SELECTED_VEHICLES when mode omitted', async () => {
-    prisma.product.findUnique.mockResolvedValue({
-      id: 'prod-vymod',
-      slug: ProductSlug.VYMOD,
-      catalogStatus: ProductCatalogStatus.ACTIVE,
-    });
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        id: 'prod-vymod',
+        slug: ProductSlug.VYMOD,
+        catalogStatus: ProductCatalogStatus.ACTIVE,
+      },
+    ]);
     prisma.organizationProduct.findUnique.mockResolvedValue(null);
     prisma.organizationProduct.create.mockResolvedValue({
       id: 'op-v',
@@ -249,11 +256,13 @@ describe('ProductsService — vehicle access mode', () => {
 
   describe('retired TAXI vehicle access mode', () => {
     beforeEach(() => {
-      prisma.product.findUnique.mockResolvedValue({
-        id: 'prod-taxi',
-        slug: ProductSlug.TAXI,
-        catalogStatus: ProductCatalogStatus.DISABLED,
-      });
+      prisma.$queryRaw.mockResolvedValue([
+        {
+          id: 'prod-taxi',
+          slug: ProductSlug.TAXI,
+          catalogStatus: ProductCatalogStatus.DISABLED,
+        },
+      ]);
     });
 
     it('rejects broadening SELECTED_VEHICLES to ORGANIZATION_WIDE', async () => {

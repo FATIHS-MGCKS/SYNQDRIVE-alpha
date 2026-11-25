@@ -10,7 +10,8 @@ import { ProductsService } from './products.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
 describe('ProductsService — catalog foundation', () => {
-  const prisma = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prisma: any = {
     product: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -20,7 +21,9 @@ describe('ProductsService — catalog foundation', () => {
       findUnique: jest.fn(),
       delete: jest.fn(),
     },
+    $queryRaw: jest.fn(),
   };
+  prisma.$transaction = jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
 
   const masterAdminAudit = { record: jest.fn().mockResolvedValue(undefined) };
 
@@ -96,11 +99,11 @@ describe('ProductsService — catalog foundation', () => {
     });
 
     it('creates RENTAL with ORGANIZATION_WIDE without changing mode on update', async () => {
-      prisma.product.findUnique.mockResolvedValue({
-        id: 'p-rental',
-        slug: ProductSlug.RENTAL,
-      });
-      prisma.organizationProduct.upsert.mockImplementation(async (args) => args);
+      prisma.$queryRaw.mockResolvedValue([
+        { id: 'p-rental', slug: ProductSlug.RENTAL, catalogStatus: ProductCatalogStatus.ACTIVE },
+      ]);
+      prisma.organizationProduct.findUnique.mockResolvedValue(null);
+      prisma.organizationProduct.upsert.mockImplementation(async (args: unknown) => args);
 
       await service.assignProduct('org-1', 'RENTAL');
       expect(prisma.organizationProduct.upsert).toHaveBeenCalledWith(
@@ -116,10 +119,10 @@ describe('ProductsService — catalog foundation', () => {
     });
 
     it('creates VYMOD with SELECTED_VEHICLES', async () => {
-      prisma.product.findUnique.mockResolvedValue({
-        id: 'p-vymod',
-        slug: ProductSlug.VYMOD,
-      });
+      prisma.$queryRaw.mockResolvedValue([
+        { id: 'p-vymod', slug: ProductSlug.VYMOD, catalogStatus: ProductCatalogStatus.ACTIVE },
+      ]);
+      prisma.organizationProduct.findUnique.mockResolvedValue(null);
       prisma.organizationProduct.upsert.mockResolvedValue({
         id: 'op',
         status: OrgProductStatus.ACTIVE,

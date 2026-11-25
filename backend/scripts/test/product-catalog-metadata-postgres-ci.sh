@@ -130,4 +130,10 @@ run_jest_postgres_suite \
   "product-metadata.postgres.integration" \
   "4"
 
-echo "Product catalog metadata P1 disposable PostgreSQL certification: PASS"
+export PRODUCT_CATALOG_P2A_POSTGRES_INTEGRATION=1
+run_jest_postgres_suite \
+  "Product catalog admission PostgreSQL (P2A)" \
+  "product-catalog-admission.postgres.integration" \
+  "10"
+
+echo "Product catalog metadata P1 + P2A admission disposable PostgreSQL certification: PASS"

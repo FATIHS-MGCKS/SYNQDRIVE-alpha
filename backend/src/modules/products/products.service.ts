@@ -5,6 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  PRODUCT_CATALOG_ADMISSION_OPERATION,
+  assertProductCatalogAdmissionAllowed,
+  isOrganizationProductAdmissionCreate,
+  isOrganizationProductAdmissionReactivation,
+  isVehicleAccessScopeBroadening,
+  lockProductCatalogRowBySlug,
+} from './product-catalog-admission.authority';
+import {
   OrganizationProduct,
   OrganizationProductVehicleAccessMode,
   OrgProductPlan,
@@ -238,33 +246,56 @@ export class ProductsService {
     plan?: string,
   ): Promise<OrganizationProduct> {
     assertPlatformProductAssignable(productSlug);
-    const product = await this.prisma.product.findUnique({
-      where: { slug: productSlug as ProductSlug },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with slug "${productSlug}" not found`);
-    }
-
+    const slug = productSlug as ProductSlug;
     const planValue = (plan as OrgProductPlan) || OrgProductPlan.STARTER;
 
-    const vehicleAccessMode = defaultVehicleAccessModeForNewAssignment(product.slug);
+    return this.prisma.$transaction(async (tx) => {
+      const catalog = await lockProductCatalogRowBySlug(tx, slug);
+      if (!catalog) {
+        throw new NotFoundException(`Product with slug "${productSlug}" not found`);
+      }
 
-    return this.prisma.organizationProduct.upsert({
-      where: {
-        organizationId_productId: { organizationId: orgId, productId: product.id },
-      },
-      create: {
-        organizationId: orgId,
-        productId: product.id,
-        plan: planValue,
-        status: OrgProductStatus.ACTIVE,
-        vehicleAccessMode,
-        activatedAt: new Date(),
-      },
-      update: {
-        plan: planValue,
-        status: OrgProductStatus.ACTIVE,
-      },
+      const existing = await tx.organizationProduct.findUnique({
+        where: {
+          organizationId_productId: { organizationId: orgId, productId: catalog.id },
+        },
+      });
+
+      if (isOrganizationProductAdmissionCreate(existing)) {
+        assertProductCatalogAdmissionAllowed(
+          catalog.catalogStatus,
+          PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_NEW,
+          slug,
+        );
+      } else if (
+        isOrganizationProductAdmissionReactivation(existing!.status, OrgProductStatus.ACTIVE)
+      ) {
+        assertProductCatalogAdmissionAllowed(
+          catalog.catalogStatus,
+          PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_REACTIVATION,
+          slug,
+        );
+      }
+
+      const vehicleAccessMode = defaultVehicleAccessModeForNewAssignment(catalog.slug);
+
+      return tx.organizationProduct.upsert({
+        where: {
+          organizationId_productId: { organizationId: orgId, productId: catalog.id },
+        },
+        create: {
+          organizationId: orgId,
+          productId: catalog.id,
+          plan: planValue,
+          status: OrgProductStatus.ACTIVE,
+          vehicleAccessMode,
+          activatedAt: new Date(),
+        },
+        update: {
+          plan: planValue,
+          status: OrgProductStatus.ACTIVE,
+        },
+      });
     });
   }
 
@@ -278,90 +309,123 @@ export class ProductsService {
     audit?: MasterAdminAuditContext;
   }): Promise<OrganizationProduct> {
     assertPlatformProductAssignable(input.productSlug);
-    const product = await this.prisma.product.findUnique({
-      where: { slug: input.productSlug },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
-    }
-
     const planValue = (input.plan as OrgProductPlan) || OrgProductPlan.STARTER;
 
-    const existing = await this.prisma.organizationProduct.findUnique({
-      where: {
-        organizationId_productId: { organizationId: input.orgId, productId: product.id },
-      },
-    });
+    type AssignTxOutcome =
+      | { kind: 'noop'; row: OrganizationProduct }
+      | {
+          kind: 'reassign';
+          row: OrganizationProduct;
+          before: { plan: OrgProductPlan; status: OrgProductStatus };
+        }
+      | {
+          kind: 'assign';
+          row: OrganizationProduct;
+          vehicleAccessModeForCreate: OrganizationProductVehicleAccessMode;
+        };
 
-    if (existing) {
-      if (
-        input.vehicleAccessMode !== undefined &&
-        input.vehicleAccessMode !== existing.vehicleAccessMode
-      ) {
-        throw new BadRequestException(
-          'vehicleAccessMode cannot be changed via assign; use PATCH vehicle-access-mode',
-        );
+    const outcome = await this.prisma.$transaction(async (tx): Promise<AssignTxOutcome> => {
+      const catalog = await lockProductCatalogRowBySlug(tx, input.productSlug);
+      if (!catalog) {
+        throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
       }
-      const willMutate =
-        existing.plan !== planValue || existing.status !== OrgProductStatus.ACTIVE;
-      if (!willMutate) {
-        return existing;
-      }
-      const updated = await this.prisma.organizationProduct.update({
-        where: { id: existing.id },
-        data: {
-          plan: planValue,
-          status: OrgProductStatus.ACTIVE,
+
+      const existing = await tx.organizationProduct.findUnique({
+        where: {
+          organizationId_productId: { organizationId: input.orgId, productId: catalog.id },
         },
       });
-      if (input.audit) {
-        await this.masterAdminAudit.record({
-          auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
-          actorUserId: input.actorUserId,
-          actorPlatformRole: 'MASTER_ADMIN',
-          targetOrganizationId: input.orgId,
-          entityId: updated.id,
-          description: `Organization product reassigned (${input.productSlug})`,
-          correlationId: input.audit.correlationId,
-          route: input.audit.route,
-          ipAddress: input.audit.ipAddress,
-          userAgent: input.audit.userAgent,
-          changeSummary: 'reassign',
-          before: { plan: existing.plan, status: existing.status },
-          after: { plan: updated.plan, status: updated.status },
-          metadata: {
-            domain: 'organization_product',
-            action: 'reassign',
-            productSlug: input.productSlug,
-            vehicleAccessMode: existing.vehicleAccessMode,
+
+      if (existing) {
+        if (
+          input.vehicleAccessMode !== undefined &&
+          input.vehicleAccessMode !== existing.vehicleAccessMode
+        ) {
+          throw new BadRequestException(
+            'vehicleAccessMode cannot be changed via assign; use PATCH vehicle-access-mode',
+          );
+        }
+        const willMutate =
+          existing.plan !== planValue || existing.status !== OrgProductStatus.ACTIVE;
+        if (!willMutate) {
+          return { kind: 'noop', row: existing };
+        }
+        if (
+          isOrganizationProductAdmissionReactivation(existing.status, OrgProductStatus.ACTIVE)
+        ) {
+          assertProductCatalogAdmissionAllowed(
+            catalog.catalogStatus,
+            PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_REACTIVATION,
+            input.productSlug,
+          );
+        }
+        const updated = await tx.organizationProduct.update({
+          where: { id: existing.id },
+          data: {
+            plan: planValue,
+            status: OrgProductStatus.ACTIVE,
           },
         });
+        return {
+          kind: 'reassign',
+          row: updated,
+          before: { plan: existing.plan, status: existing.status },
+        };
       }
-      return updated;
-    }
 
-    const vehicleAccessModeForCreate =
-      input.vehicleAccessMode ?? defaultVehicleAccessModeForNewAssignment(product.slug);
+      assertProductCatalogAdmissionAllowed(
+        catalog.catalogStatus,
+        PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_NEW,
+        input.productSlug,
+      );
 
-    const created = await this.prisma.organizationProduct.create({
-      data: {
-        organizationId: input.orgId,
-        productId: product.id,
-        plan: planValue,
-        status: OrgProductStatus.ACTIVE,
-        vehicleAccessMode: vehicleAccessModeForCreate,
-        activatedAt: new Date(),
-      },
+      const vehicleAccessModeForCreate =
+        input.vehicleAccessMode ?? defaultVehicleAccessModeForNewAssignment(catalog.slug);
+
+      const created = await tx.organizationProduct.create({
+        data: {
+          organizationId: input.orgId,
+          productId: catalog.id,
+          plan: planValue,
+          status: OrgProductStatus.ACTIVE,
+          vehicleAccessMode: vehicleAccessModeForCreate,
+          activatedAt: new Date(),
+        },
+      });
+
+      return { kind: 'assign', row: created, vehicleAccessModeForCreate };
     });
 
-    if (input.audit) {
+    if (input.audit && outcome.kind === 'reassign') {
       await this.masterAdminAudit.record({
         auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
         actorUserId: input.actorUserId,
         actorPlatformRole: 'MASTER_ADMIN',
         targetOrganizationId: input.orgId,
-        entityId: created.id,
-        description: `Organization product assigned (${input.productSlug}) with vehicle access mode ${vehicleAccessModeForCreate}`,
+        entityId: outcome.row.id,
+        description: `Organization product reassigned (${input.productSlug})`,
+        correlationId: input.audit.correlationId,
+        route: input.audit.route,
+        ipAddress: input.audit.ipAddress,
+        userAgent: input.audit.userAgent,
+        changeSummary: 'reassign',
+        before: outcome.before,
+        after: { plan: outcome.row.plan, status: outcome.row.status },
+        metadata: {
+          domain: 'organization_product',
+          action: 'reassign',
+          productSlug: input.productSlug,
+          vehicleAccessMode: outcome.row.vehicleAccessMode,
+        },
+      });
+    } else if (input.audit && outcome.kind === 'assign') {
+      await this.masterAdminAudit.record({
+        auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
+        actorUserId: input.actorUserId,
+        actorPlatformRole: 'MASTER_ADMIN',
+        targetOrganizationId: input.orgId,
+        entityId: outcome.row.id,
+        description: `Organization product assigned (${input.productSlug}) with vehicle access mode ${outcome.vehicleAccessModeForCreate}`,
         correlationId: input.audit.correlationId,
         route: input.audit.route,
         ipAddress: input.audit.ipAddress,
@@ -369,14 +433,14 @@ export class ProductsService {
         changeSummary: 'assign',
         after: {
           productSlug: input.productSlug,
-          vehicleAccessMode: vehicleAccessModeForCreate,
-          status: created.status,
+          vehicleAccessMode: outcome.vehicleAccessModeForCreate,
+          status: outcome.row.status,
         },
         metadata: { domain: 'organization_product', action: 'assign' },
       });
     }
 
-    return created;
+    return outcome.row;
   }
 
   async updateVehicleAccessMode(input: {
@@ -387,65 +451,74 @@ export class ProductsService {
     actorUserId: string;
     audit?: MasterAdminAuditContext;
   }): Promise<OrganizationProduct> {
-    const product = await this.prisma.product.findUnique({
-      where: { slug: input.productSlug },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
-    }
+    const result = await this.prisma.$transaction(async (tx) => {
+      const catalog = await lockProductCatalogRowBySlug(tx, input.productSlug);
+      if (!catalog) {
+        throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+      }
 
-    const orgProduct = await this.prisma.organizationProduct.findUnique({
-      where: {
-        organizationId_productId: { organizationId: input.orgId, productId: product.id },
-      },
-    });
-    if (!orgProduct) {
-      throw new NotFoundException('Organization product assignment not found');
-    }
-
-    if (orgProduct.vehicleAccessMode !== input.ifCurrentVehicleAccessMode) {
-      throw new ConflictException(
-        `Vehicle access mode expectation mismatch; expected ${input.ifCurrentVehicleAccessMode}, found ${orgProduct.vehicleAccessMode}`,
-      );
-    }
-
-    if (orgProduct.vehicleAccessMode === input.vehicleAccessMode) {
-      return orgProduct;
-    }
-
-    assertRetiredPlatformVehicleAccessModeMutation({
-      productSlug: input.productSlug,
-      from: orgProduct.vehicleAccessMode,
-      to: input.vehicleAccessMode,
-    });
-
-    const updated = await this.prisma.organizationProduct.updateMany({
-      where: {
-        id: orgProduct.id,
-        organizationId: input.orgId,
-        vehicleAccessMode: input.ifCurrentVehicleAccessMode,
-      },
-      data: {
-        vehicleAccessMode: input.vehicleAccessMode,
-      },
-    });
-
-    if (updated.count !== 1) {
-      const current = await this.prisma.organizationProduct.findUnique({ where: { id: orgProduct.id } });
-      if (!current) {
+      const orgProduct = await tx.organizationProduct.findUnique({
+        where: {
+          organizationId_productId: { organizationId: input.orgId, productId: catalog.id },
+        },
+      });
+      if (!orgProduct) {
         throw new NotFoundException('Organization product assignment not found');
       }
-      throw new ConflictException(
-        `Vehicle access mode changed concurrently; expected ${input.ifCurrentVehicleAccessMode}, found ${current.vehicleAccessMode}`,
-      );
-    }
 
-    const result = await this.prisma.organizationProduct.findUniqueOrThrow({
-      where: { id: orgProduct.id },
+      if (orgProduct.vehicleAccessMode !== input.ifCurrentVehicleAccessMode) {
+        throw new ConflictException(
+          `Vehicle access mode expectation mismatch; expected ${input.ifCurrentVehicleAccessMode}, found ${orgProduct.vehicleAccessMode}`,
+        );
+      }
+
+      if (orgProduct.vehicleAccessMode === input.vehicleAccessMode) {
+        return orgProduct;
+      }
+
+      assertRetiredPlatformVehicleAccessModeMutation({
+        productSlug: input.productSlug,
+        from: orgProduct.vehicleAccessMode,
+        to: input.vehicleAccessMode,
+      });
+
+      if (isVehicleAccessScopeBroadening(orgProduct.vehicleAccessMode, input.vehicleAccessMode)) {
+        assertProductCatalogAdmissionAllowed(
+          catalog.catalogStatus,
+          PRODUCT_CATALOG_ADMISSION_OPERATION.VEHICLE_ACCESS_MODE_BROADEN,
+          input.productSlug,
+        );
+      }
+
+      const updated = await tx.organizationProduct.updateMany({
+        where: {
+          id: orgProduct.id,
+          organizationId: input.orgId,
+          vehicleAccessMode: input.ifCurrentVehicleAccessMode,
+        },
+        data: {
+          vehicleAccessMode: input.vehicleAccessMode,
+        },
+      });
+
+      if (updated.count !== 1) {
+        const current = await tx.organizationProduct.findUnique({ where: { id: orgProduct.id } });
+        if (!current) {
+          throw new NotFoundException('Organization product assignment not found');
+        }
+        throw new ConflictException(
+          `Vehicle access mode changed concurrently; expected ${input.ifCurrentVehicleAccessMode}, found ${current.vehicleAccessMode}`,
+        );
+      }
+
+      return tx.organizationProduct.findUniqueOrThrow({
+        where: { id: orgProduct.id },
+      });
     });
 
     if (
       input.audit &&
+      input.ifCurrentVehicleAccessMode !== input.vehicleAccessMode &&
       input.vehicleAccessMode === OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE
     ) {
       await this.masterAdminAudit.record({
@@ -464,7 +537,7 @@ export class ProductsService {
         after: { vehicleAccessMode: input.vehicleAccessMode },
         metadata: { domain: 'organization_product', action: 'vehicle_access_mode_patch' },
       });
-    } else if (input.audit) {
+    } else if (input.audit && input.ifCurrentVehicleAccessMode !== input.vehicleAccessMode) {
       await this.masterAdminAudit.record({
         auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
         actorUserId: input.actorUserId,
