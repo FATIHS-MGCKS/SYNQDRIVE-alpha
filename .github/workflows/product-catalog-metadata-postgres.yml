@@ -1,0 +1,41 @@
+name: Product catalog metadata — P1 PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/products/**'
+      - 'backend/scripts/test/product-catalog-metadata-postgres-ci.sh'
+      - 'backend/scripts/test/sql/ensure-product-metadata-p1-catalog-fixtures.sql'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/prisma/**'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/product-catalog-metadata-postgres.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: product-metadata-p1-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  CI_PG_CONTAINER: product-metadata-p1-ci-postgres
+
+jobs:
+  product-metadata-p1-postgres:
+    name: Product metadata PATCH PostgreSQL (P1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Product metadata P1 disposable PostgreSQL gate
+        working-directory: backend
+        run: bash scripts/test/product-catalog-metadata-postgres-ci.sh
