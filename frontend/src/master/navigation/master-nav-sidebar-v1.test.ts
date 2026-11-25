@@ -31,8 +31,8 @@ vi.mock('../../lib/auth', async (importOriginal) => {
 const sidebarSource = readFileSync(resolve(__dirname, '../components/Sidebar.tsx'), 'utf8');
 
 describe('Master Admin Sidebar V1', () => {
-  it('keeps exactly 24 registered nav items', () => {
-    expect(MASTER_NAV_ITEMS).toHaveLength(24);
+  it('keeps exactly 23 registered nav items', () => {
+    expect(MASTER_NAV_ITEMS).toHaveLength(23);
   });
 
   it('counts each registered view exactly once across main rail and footer', () => {
@@ -43,15 +43,15 @@ describe('Master Admin Sidebar V1', () => {
     for (const item of MASTER_NAV_ITEMS) {
       expect(counts.get(item.id), item.id).toBe(1);
     }
-    expect([...counts.values()].reduce((a, b) => a + b, 0)).toBe(24);
+    expect([...counts.values()].reduce((a, b) => a + b, 0)).toBe(23);
   });
 
   it('places each registered view exactly once in main nav or footer', () => {
     const main = new Set(getMasterSidebarMainNavViews());
     expect(main.has('support')).toBe(false);
-    expect(main.size).toBe(23);
+    expect(main.size).toBe(22);
     const allIds = new Set(MASTER_NAV_ITEMS.map((i) => i.id));
-    expect(allIds.size).toBe(24);
+    expect(allIds.size).toBe(23);
     for (const id of allIds) {
       if (id === 'support') continue;
       expect(main.has(id)).toBe(true);
@@ -117,6 +117,7 @@ describe('Master Admin Sidebar V1', () => {
     expect(normalizeMasterNavLocation('?view=hm-compatibility').view).toBe('high-mobility');
     expect(normalizeMasterNavLocation('?view=platform-health').view).toBe('platform-ops');
     expect(normalizeMasterNavLocation('?view=users').view).toBe('security-access');
+    expect(normalizeMasterNavLocation('?view=vehicle-logbook').view).toBe('vehicles');
   });
 
   it('includes engineering hub views in engineering group', () => {
