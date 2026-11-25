@@ -16,6 +16,7 @@ import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
 import { masterOneAutoEs } from './master.oneAuto.es';
 import { masterOrganizationsEs } from './master.organizations.es';
 import { masterProductCommercialEs } from './master.productCommercial.es';
+import { masterProductCatalogEs } from './master.productCatalog.es';
 import { masterCreditManagementEs } from './master.creditManagement.es';
 import { masterBillingInvoicesEs } from './master.billing.invoices.es';
 import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
@@ -221,10 +222,11 @@ export const es = {
   ...masterIntelligenceEs,
   ...masterSidebarV1Es,
   ...masterMotionPhysicsEs,
-...masterVehicleIdentityEs,
+  ...masterVehicleIdentityEs,
   ...masterOneAutoEs,
   ...masterOrganizationsEs,
   ...masterProductCommercialEs,
+  ...masterProductCatalogEs,
   ...masterCreditManagementEs,
   ...masterBillingInvoicesEs,
   ...masterCvTechnicalSpecsEs,

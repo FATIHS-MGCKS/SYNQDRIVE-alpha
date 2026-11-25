@@ -22,6 +22,7 @@ describe('ProductsController — HTTP security (vehicle access admin)', () => {
   const products = {
     assignProductForMasterAdmin: jest.fn(),
     updateVehicleAccessMode: jest.fn(),
+    updateProductMetadataForMasterAdmin: jest.fn(),
     findOrgProducts: jest.fn(),
     removeProduct: jest.fn(),
   };
@@ -104,6 +105,45 @@ describe('ProductsController — HTTP security (vehicle access admin)', () => {
       .post('/admin/products/assign')
       .send({ orgId: ORG, productSlug: ProductSlug.RENTAL })
       .expect(403);
+
+    await app.close();
+  });
+
+  it('propagates ConflictException from catalog metadata patch', async () => {
+    products.updateProductMetadataForMasterAdmin.mockRejectedValue(
+      new ConflictException('Product metadata changed concurrently'),
+    );
+
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProductsController],
+      providers: [
+        { provide: ProductsService, useValue: products },
+        { provide: APP_GUARD, useValue: authGuard },
+      ],
+    })
+      .overrideGuard(RolesGuard)
+      .useValue({
+        canActivate: (ctx: {
+          switchToHttp: () => { getRequest: () => { user?: { platformRole?: string } } };
+        }) => ctx.switchToHttp().getRequest().user?.platformRole === UserPlatformRole.MASTER_ADMIN,
+      })
+      .overrideGuard(MasterAdminMfaGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    await request(app.getHttpServer())
+      .patch(`/admin/products/${ProductSlug.RENTAL}`)
+      .set('Authorization', 'Bearer master-x')
+      .send({
+        name: 'SYNQDRIVE Rental',
+        description: 'Desc',
+        ifCurrentName: 'Rental',
+        ifCurrentDescription: null,
+      })
+      .expect(409);
 
     await app.close();
   });

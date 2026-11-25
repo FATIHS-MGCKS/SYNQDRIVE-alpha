@@ -16,6 +16,7 @@ import { masterVehicleIdentityFr } from './master.vehicleIdentity.fr';
 import { masterOneAutoFr } from './master.oneAuto.fr';
 import { masterOrganizationsFr } from './master.organizations.fr';
 import { masterProductCommercialFr } from './master.productCommercial.fr';
+import { masterProductCatalogFr } from './master.productCatalog.fr';
 import { masterCreditManagementFr } from './master.creditManagement.fr';
 import { masterBillingInvoicesFr } from './master.billing.invoices.fr';
 import { masterCvTechnicalSpecsFr } from './master.cv.technicalSpecs.fr';
@@ -972,10 +973,11 @@ export const fr = {
   ...masterIntelligenceFr,
   ...masterSidebarV1Fr,
   ...masterMotionPhysicsFr,
-...masterVehicleIdentityFr,
+  ...masterVehicleIdentityFr,
   ...masterOneAutoFr,
   ...masterOrganizationsFr,
   ...masterProductCommercialFr,
+  ...masterProductCatalogFr,
   ...masterCreditManagementFr,
   ...masterBillingInvoicesFr,
   ...masterCvTechnicalSpecsFr,
