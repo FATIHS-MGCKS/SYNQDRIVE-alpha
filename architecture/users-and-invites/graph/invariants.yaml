@@ -16,3 +16,31 @@ invariants:
     epistemic_status: CONFIRMED
     source_paths:
       - backend/src/modules/users/platform-permissions/platform-permission-mandatory-audit.util.ts
+
+  - id: USR-INV-004
+    statement: "OWNER_APPROVED: Master Admin central user management reuses existing IAM services — no parallel identity store (USR-OWN-01)."
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md
+
+  - id: USR-INV-005
+    statement: "OWNER_APPROVED: Revoked access must fail subsequent authorization checks after commit — not JWT-expiry-only (USR-OWN-02)."
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md
+
+  - id: USR-INV-006
+    statement: "OWNER_APPROVED: Mandatory MFA for MASTER_ADMIN and MASTER_BILLING delegates when enforced; prod flag arm separately gated (USR-OWN-03)."
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md
+
+  - id: USR-INV-007
+    statement: "OWNER_APPROVED: Privileged audit durable and attributable; no silent audit loss; revocation still succeeds on audit failure (USR-OWN-04)."
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md

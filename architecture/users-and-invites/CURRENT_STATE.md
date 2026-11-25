@@ -2,6 +2,8 @@
 
 **Epistemic baseline:** Repository @ `a5664ac105cc43ee4cd12da22bb4cffc1ffb50f6` (audited `origin/main`). Production runtime **NOT_VERIFIED**.
 
+**Owner policies (2026-11-25):** USR-OWN-01–04 **OWNER_APPROVED** — documented in [USR_P0_OWNER_ATTESTATION_2026-11-25.md](evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md). **Not implemented** in repository by this attestation; **no** deploy/flag/prod authorization.
+
 ## Executive verdicts (repository evidence only)
 
 | Verdict | Status | Evidence |

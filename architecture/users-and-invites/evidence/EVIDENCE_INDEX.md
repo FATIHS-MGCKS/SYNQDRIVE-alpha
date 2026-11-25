@@ -19,6 +19,7 @@
 | Lifecycle matrix | [USR_P0_LIFECYCLE_MATRIX.md](USR_P0_LIFECYCLE_MATRIX.md) |
 | Retention lifecycle | [USR_P0_RETENTION_LIFECYCLE.md](USR_P0_RETENTION_LIFECYCLE.md) |
 | Session test harness | [USR_P0_SESSION_TEST_HARNESS.md](USR_P0_SESSION_TEST_HARNESS.md) |
+| Owner attestation | [USR_P0_OWNER_ATTESTATION_2026-11-25.md](USR_P0_OWNER_ATTESTATION_2026-11-25.md) |
 | Production baseline | [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md) |
 
 ## Supporting (non-authority) repository docs

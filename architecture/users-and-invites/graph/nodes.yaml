@@ -61,3 +61,13 @@ nodes:
     decision_status: VALIDATED
     source_paths:
       - architecture/users-and-invites/decisions/DECISION_REGISTER.md
+
+  - id: USR-OWN-ATTEST-2026-11-25
+    type: decision
+    title: Owner policies USR-OWN-01–04
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Central user management, effective revocation, privileged MFA, security accountability — approved; not deployed.
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md
+      - architecture/users-and-invites/decisions/DECISION_REGISTER.md

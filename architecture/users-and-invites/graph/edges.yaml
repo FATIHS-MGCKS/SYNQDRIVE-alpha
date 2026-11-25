@@ -20,3 +20,6 @@ edges:
   - from: USR-DOM-001
     to: USR-DEC-P0-001
     type: documents
+  - from: USR-DOM-001
+    to: USR-OWN-ATTEST-2026-11-25
+    type: documents

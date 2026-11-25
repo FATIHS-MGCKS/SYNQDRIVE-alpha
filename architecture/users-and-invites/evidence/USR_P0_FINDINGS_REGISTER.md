@@ -77,8 +77,9 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **EXPECTED** | Product-defined: MA may only govern existing users centrally |
 | **ACTUAL** | MA hub is read + privileged ops (sessions, MFA, billing delegate) — not full CRUD |
 | **IMPACT** | Operators use org-scoped flows; document as intentional unless product requires central create |
-| **RECOMMENDED_FIX** | Document SOP; or add governed create with audit if required |
-| **OWNER_DECISION** | **YES** — product scope for central user creation |
+| **RECOMMENDED_FIX** | Implement central MA user management per **USR-OWN-01** (reuse existing services) |
+| **OWNER_DECISION** | **OWNER_APPROVED** (2026-11-25) — **NOT IMPLEMENTED** |
+| **POLICY_BIND** | USR-OWN-01 |
 
 ---
 
@@ -92,7 +93,8 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **SOURCE** | `IAM_MFA_MASTER_BILLING_DELEGATE` / P3B evidence |
 | **EXPECTED** | Owner arms when ready |
 | **ACTUAL** | Grant/revoke APIs exist; MFA enforcement env default false |
-| **OWNER_DECISION** | **YES** |
+| **OWNER_DECISION** | **OWNER_APPROVED** (2026-11-25, USR-OWN-03) — **flag arm NOT authorized** — **NOT IMPLEMENTED** |
+| **POLICY_BIND** | USR-OWN-03 |
 
 ---
 
@@ -144,6 +146,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **CLASS** | CONFIRMED_SECURITY_GAP (accountability) |
 | **SOURCE** | `security-governance-session-audit.service.ts` |
 | **DETAIL** | [USR_P0_AUDIT_DURABILITY.md](USR_P0_AUDIT_DURABILITY.md) |
+| **REMEDIATION_STATUS** | **REMEDIATION_REQUIRED** — owner policy **USR-OWN-04** approved; **NOT IMPLEMENTED** |
 
 ---
 
@@ -211,4 +214,5 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **CLASS** | CONFIRMED_DEFECT (session design) |
 | **SOURCE** | `auth.guard.ts` — no DB version check; refresh path validates versions |
 | **EVIDENCE** | [USR_P0_LIFECYCLE_MATRIX.md](USR_P0_LIFECYCLE_MATRIX.md) |
-| **OWNER_DECISION** | YES — accept TTL vs implement request-time reconciliation |
+| **OWNER_DECISION** | **OWNER_APPROVED_REMEDIATION_REQUIRED** (2026-11-25, USR-OWN-02) — reject stale access post-revocation; **NOT IMPLEMENTED** |
+| **POLICY_BIND** | USR-OWN-02 |
