@@ -19,13 +19,26 @@ import {
 import { ProductsService } from './products.service';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { AuditService } from '@modules/activity-log/audit.service';
-import { ProductCatalogAdmissionDeniedError } from './product-catalog-admission.authority';
+import {
+  ProductCatalogAdmissionDeniedError,
+  lockProductCatalogRowBySlug,
+} from './product-catalog-admission.authority';
 import { VehicleProductGrantService } from './vehicle-product-grants/vehicle-product-grant.service';
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 import { EntitlementsQueryService } from './entitlements/entitlements-query.service';
 
 const LIVE = process.env.PRODUCT_CATALOG_P2A_POSTGRES_INTEGRATION === '1';
 const DISPOSABLE_DB_TOKEN = 'synqdrive_product_metadata_p1';
+
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 function assertDisposableDatabaseUrl(): void {
   const url = process.env.DATABASE_URL ?? '';
@@ -260,5 +273,169 @@ function assertDisposableDatabaseUrl(): void {
     await expect(products.assignProduct(orgId, ProductSlug.RENTAL)).rejects.toBeInstanceOf(
       ProductCatalogAdmissionDeniedError,
     );
+  });
+
+  describe('catalog admission vs catalog_status concurrency (P2A seal)', () => {
+    const CONCURRENCY_SLUG = ProductSlug.VYMOD;
+    let prismaPeer: PrismaClient;
+
+    beforeAll(() => {
+      prismaPeer = new PrismaClient();
+    });
+
+    afterAll(async () => {
+      await prismaPeer.$disconnect();
+    });
+
+  async function snapshotCatalog(slug: ProductSlug): Promise<ProductCatalogStatus> {
+      const row = await prisma.product.findUniqueOrThrow({ where: { slug } });
+      return row.catalogStatus;
+    }
+
+    it('holds products-row FOR UPDATE through org-product create; competing DISABLED waits', async () => {
+      const orgId = await seedOrganization();
+      const catalogProduct = await prisma.product.findUniqueOrThrow({ where: { slug: CONCURRENCY_SLUG } });
+      await setCatalogStatus(CONCURRENCY_SLUG, ProductCatalogStatus.ACTIVE);
+
+      const admissionLocked = createDeferred();
+      const releaseAdmissionCreate = createDeferred();
+      const disableAttemptedForUpdate = createDeferred();
+      const disableFinished = createDeferred<{ status: 'ok' | 'failed'; error?: unknown }>();
+
+      const admissionTx = prisma.$transaction(
+        async (tx) => {
+          const locked = await lockProductCatalogRowBySlug(tx, CONCURRENCY_SLUG);
+          expect(locked?.catalogStatus).toBe(ProductCatalogStatus.ACTIVE);
+          admissionLocked.resolve();
+          await releaseAdmissionCreate.promise;
+          await tx.organizationProduct.create({
+            data: {
+              organizationId: orgId,
+              productId: catalogProduct.id,
+              plan: OrgProductPlan.STARTER,
+              status: OrgProductStatus.ACTIVE,
+              vehicleAccessMode: defaultVehicleAccessModeForNewAssignment(CONCURRENCY_SLUG),
+              activatedAt: new Date(),
+            },
+          });
+        },
+        { timeout: 120_000 },
+      );
+
+      await admissionLocked.promise;
+
+      const disableTx = prismaPeer
+        .$transaction(
+          async (tx) => {
+            disableAttemptedForUpdate.resolve();
+            await tx.$queryRaw`SELECT id FROM products WHERE slug = ${CONCURRENCY_SLUG}::"ProductSlug" FOR UPDATE`;
+            await tx.product.update({
+              where: { slug: CONCURRENCY_SLUG },
+              data: { catalogStatus: ProductCatalogStatus.DISABLED },
+            });
+          },
+          { timeout: 120_000 },
+        )
+        .then(
+          () => disableFinished.resolve({ status: 'ok' }),
+          (error) => disableFinished.resolve({ status: 'failed', error }),
+        );
+
+      await disableAttemptedForUpdate.promise;
+      let disableSettledEarly = false;
+      void disableTx.finally(() => {
+        disableSettledEarly = true;
+      });
+      for (let spin = 0; spin < 30 && !disableSettledEarly; spin += 1) {
+        await new Promise((r) => setImmediate(r));
+      }
+      expect(disableSettledEarly).toBe(false);
+
+      releaseAdmissionCreate.resolve();
+      await admissionTx;
+      const disableResult = await disableFinished.promise;
+      expect(disableResult.status).toBe('ok');
+
+      const orgProduct = await prisma.organizationProduct.findFirst({
+        where: { organizationId: orgId, productId: catalogProduct.id },
+      });
+      expect(orgProduct?.status).toBe(OrgProductStatus.ACTIVE);
+      expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
+
+      await setCatalogStatus(CONCURRENCY_SLUG, ProductCatalogStatus.ACTIVE);
+    });
+
+    it('denies admission when DISABLED is committed before admission obtains the row lock', async () => {
+      const orgId = await seedOrganization();
+      const adminId = await seedMasterAdmin();
+      await setCatalogStatus(CONCURRENCY_SLUG, ProductCatalogStatus.ACTIVE);
+
+      await prismaPeer.$transaction(async (tx) => {
+        const locked = await lockProductCatalogRowBySlug(tx, CONCURRENCY_SLUG);
+        expect(locked).not.toBeNull();
+        await tx.product.update({
+          where: { slug: CONCURRENCY_SLUG },
+          data: { catalogStatus: ProductCatalogStatus.DISABLED },
+        });
+      });
+
+      expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
+
+      await expect(
+        products.assignProductForMasterAdmin({
+          orgId,
+          productSlug: CONCURRENCY_SLUG,
+          actorUserId: adminId,
+        }),
+      ).rejects.toBeInstanceOf(ProductCatalogAdmissionDeniedError);
+
+      expect(
+        await prisma.organizationProduct.count({
+          where: { organizationId: orgId, productId: (await prisma.product.findUniqueOrThrow({ where: { slug: CONCURRENCY_SLUG } })).id },
+        }),
+      ).toBe(0);
+
+      await setCatalogStatus(CONCURRENCY_SLUG, ProductCatalogStatus.ACTIVE);
+    });
+
+    it('preserves admitted OrganizationProduct when DISABLED follows successful admission', async () => {
+      const orgId = await seedOrganization();
+      const adminId = await seedMasterAdmin();
+      await setCatalogStatus(CONCURRENCY_SLUG, ProductCatalogStatus.ACTIVE);
+
+      const admitted = await products.assignProductForMasterAdmin({
+        orgId,
+        productSlug: CONCURRENCY_SLUG,
+        actorUserId: adminId,
+      });
+      expect(admitted.status).toBe(OrgProductStatus.ACTIVE);
+
+      await prismaPeer.product.update({
+        where: { slug: CONCURRENCY_SLUG },
+        data: { catalogStatus: ProductCatalogStatus.DISABLED },
+      });
+
+      const row = await prisma.organizationProduct.findFirstOrThrow({
+        where: { organizationId: orgId, product: { slug: CONCURRENCY_SLUG } },
+      });
+      expect(row.status).toBe(OrgProductStatus.ACTIVE);
+      expect(row.id).toBe(admitted.id);
+      expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
+
+      const entitlement = await entitlements.getForOrganizationProduct(orgId, CONCURRENCY_SLUG);
+      expect(entitlement.capabilities.canAccessProductUi).toBe(true);
+
+      await setCatalogStatus(CONCURRENCY_SLUG, ProductCatalogStatus.ACTIVE);
+    });
+
+    it('TAXI retired policy is evaluated before catalog admission lock acquisition', async () => {
+      const orgId = await seedOrganization();
+      await expect(products.assignProduct(orgId, ProductSlug.TAXI)).rejects.toThrow(/retired/);
+      expect(
+        await prisma.organizationProduct.count({
+          where: { organizationId: orgId, product: { slug: ProductSlug.TAXI } },
+        }),
+      ).toBe(0);
+    });
   });
 });

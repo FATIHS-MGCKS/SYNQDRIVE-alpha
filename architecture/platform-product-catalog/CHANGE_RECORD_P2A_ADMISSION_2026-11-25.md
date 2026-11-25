@@ -16,7 +16,7 @@
 ## Evidence
 
 - Unit: `product-catalog-admission.authority.spec.ts`, `products.service.catalog-admission.spec.ts`, updated product/grant service specs
-- Postgres (opt-in): `product-catalog-admission.postgres.integration.spec.ts` (`PRODUCT_CATALOG_P2A_POSTGRES_INTEGRATION=1`)
+- Postgres (opt-in): `product-catalog-admission.postgres.integration.spec.ts` (`PRODUCT_CATALOG_P2A_POSTGRES_INTEGRATION=1`) — includes dual-connection concurrency seal (10 cases with P1 metadata gate script)
 - Matrix: `ADMISSION_ENTRYPOINT_MATRIX_P2A.md`
 
 ## P2B prerequisites
