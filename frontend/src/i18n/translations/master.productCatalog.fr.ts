@@ -50,4 +50,6 @@ export const masterProductCatalogFr = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Vérifiez l’aperçu actualisé, puis confirmez que vous êtes prêt.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'J’ai vérifié l’aperçu actualisé',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'Le statut du catalogue a changé pendant la MFA. Vérifiez l’aperçu actualisé et confirmez à nouveau.',
 };

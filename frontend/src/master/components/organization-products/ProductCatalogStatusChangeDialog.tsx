@@ -56,25 +56,29 @@ export function ProductCatalogStatusChangeDialog({
     setAuthoritativeRow(row);
   }, [row]);
 
-  const loadImpact = useCallback(async () => {
-    setImpact(null);
-    setImpactLoading(true);
-    setImpactError(null);
-    try {
-      const data = (await api.products.getCatalogStatusImpact(
-        authoritativeRow.slug,
-        oppositeCatalogStatus(authoritativeRow.catalogStatus),
-      )) as ImpactPreview;
-      setImpact(data);
-      return true;
-    } catch (e) {
+  const loadImpactForRow = useCallback(
+    async (catalogRow: AdminCatalogProductRow): Promise<boolean> => {
       setImpact(null);
-      setImpactError(e instanceof Error ? e.message : t('master.productCatalog.status.impactError'));
-      return false;
-    } finally {
-      setImpactLoading(false);
-    }
-  }, [authoritativeRow.catalogStatus, authoritativeRow.slug, t]);
+      setImpactLoading(true);
+      setImpactError(null);
+      const requestedTarget = oppositeCatalogStatus(catalogRow.catalogStatus);
+      try {
+        const data = (await api.products.getCatalogStatusImpact(
+          catalogRow.slug,
+          requestedTarget,
+        )) as ImpactPreview;
+        setImpact(data);
+        return true;
+      } catch (e) {
+        setImpact(null);
+        setImpactError(e instanceof Error ? e.message : t('master.productCatalog.status.impactError'));
+        return false;
+      } finally {
+        setImpactLoading(false);
+      }
+    },
+    [t],
+  );
 
   const refreshAuthoritativeRow = useCallback(async (): Promise<AdminCatalogProductRow | null> => {
     try {
@@ -92,12 +96,16 @@ export function ProductCatalogStatusChangeDialog({
       setSaveError(null);
       setSaveSuccess(false);
       setNeedsFreshConfirmAfterConflict(false);
-      void loadImpact();
     } else {
       setImpact(null);
       setImpactError(null);
     }
-  }, [open, loadImpact]);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    void loadImpactForRow(authoritativeRow);
+  }, [open, authoritativeRow.slug, authoritativeRow.catalogStatus, loadImpactForRow]);
 
   const runPatch = useCallback(
     async (body: ProductCatalogStatusPatchPending['body'], isRetry?: boolean) => {
@@ -135,7 +143,7 @@ export function ProductCatalogStatusChangeDialog({
             if (!fresh) {
               setSaveError(t('master.productCatalog.status.conflictRefreshFailed'));
             } else {
-              const impactOk = await loadImpact();
+              const impactOk = await loadImpactForRow(fresh);
               if (impactOk) {
                 setSaveError(t('master.productCatalog.status.conflictRetry'));
                 setNeedsFreshConfirmAfterConflict(true);
@@ -152,7 +160,7 @@ export function ProductCatalogStatusChangeDialog({
         submitInFlightRef.current = false;
       }
     },
-    [authoritativeRow.slug, loadImpact, onApplied, refreshAuthoritativeRow, t],
+    [authoritativeRow.slug, loadImpactForRow, onApplied, refreshAuthoritativeRow, t],
   );
 
   const handleConfirm = () => {
@@ -184,13 +192,23 @@ export function ProductCatalogStatusChangeDialog({
       setMfaOpen(false);
       return;
     }
-    await runPatch(
-      {
-        ...pending.body,
-        ifCurrentCatalogStatus: authoritativeRow.catalogStatus as 'ACTIVE' | 'DISABLED',
-      },
-      true,
-    );
+    const fresh = await refreshAuthoritativeRow();
+    if (!fresh) {
+      setSaveError(t('master.productCatalog.status.mfaCatalogDrift'));
+      pendingRef.current = null;
+      setMfaOpen(false);
+      setNeedsFreshConfirmAfterConflict(true);
+      return;
+    }
+    if (fresh.catalogStatus !== pending.body.ifCurrentCatalogStatus) {
+      setSaveError(t('master.productCatalog.status.mfaCatalogDrift'));
+      pendingRef.current = null;
+      setMfaOpen(false);
+      setNeedsFreshConfirmAfterConflict(true);
+      await loadImpactForRow(fresh);
+      return;
+    }
+    await runPatch(pending.body, true);
     setMfaOpen(false);
   };
 

@@ -50,4 +50,6 @@ export const masterProductCatalogCs = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Zkontrolujte obnovený náhled a potvrďte připravenost.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'Obnovený náhled jsem zkontroloval',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'Stav katalogu se během MFA změnil. Zkontrolujte obnovený náhled a potvrďte znovu.',
 };

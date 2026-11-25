@@ -50,4 +50,6 @@ export const masterProductCatalogNl = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Bekijk het vernieuwde voorbeeld en bevestig dat u klaar bent.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'Ik heb het vernieuwde voorbeeld bekeken',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'De catalogusstatus is gewijzigd tijdens MFA. Bekijk het vernieuwde voorbeeld en bevestig opnieuw.',
 };

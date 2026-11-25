@@ -50,4 +50,6 @@ export const masterProductCatalogTr = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Yenilenen önizlemeyi inceleyin ve hazır olduğunuzu onaylayın.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'Yenilenen önizlemeyi inceledim',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'MFA sırasında katalog durumu değişti. Yenilenen önizlemeyi inceleyin ve yeniden onaylayın.',
 };

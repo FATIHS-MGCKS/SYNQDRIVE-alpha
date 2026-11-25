@@ -50,4 +50,6 @@ export const masterProductCatalogEn = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Review the refreshed impact preview, then confirm you are ready to apply.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'I reviewed the refreshed preview',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'Catalog status changed during MFA. Review the refreshed preview and confirm again.',
 };

@@ -50,4 +50,6 @@ export const masterProductCatalogEs = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Revise la vista previa actualizada y confirme que está listo.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'He revisado la vista previa actualizada',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'El estado del catálogo cambió durante la MFA. Revise la vista previa actualizada y confirme de nuevo.',
 };

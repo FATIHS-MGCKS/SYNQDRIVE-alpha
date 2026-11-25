@@ -20,7 +20,18 @@ vi.mock('../../../lib/api', () => ({
 }));
 
 vi.mock('../../../components/mfa/MfaStepUpDialog', () => ({
-  MfaStepUpDialog: () => null,
+  MfaStepUpDialog: ({
+    open,
+    onSuccess,
+  }: {
+    open: boolean;
+    onSuccess: () => void;
+  }) => {
+    if (open) {
+      queueMicrotask(() => onSuccess());
+    }
+    return null;
+  },
 }));
 
 const baseRow = {
@@ -156,31 +167,121 @@ describe('ProductCatalogStatusChangeDialog', () => {
 
     expect(getCatalogProduct).toHaveBeenCalledWith('FLEET');
     expect(getCatalogStatusImpact.mock.calls.length).toBeGreaterThanOrEqual(2);
+    const lastImpactCall = getCatalogStatusImpact.mock.calls.at(-1);
+    expect(lastImpactCall).toEqual(['FLEET', 'ACTIVE']);
     expect(patchCatalogStatusResult).toHaveBeenCalledTimes(1);
+    const confirmAfter = findConfirmButton(container);
+    expect(confirmAfter?.disabled).toBe(true);
   });
 
-  it('retains MFA step-up pending body on 403', async () => {
+  it('keeps re-confirmation required after 409 until operator acknowledges preview', async () => {
+    getCatalogProduct.mockResolvedValueOnce({ ...baseRow, catalogStatus: 'DISABLED' });
+    getCatalogStatusImpact.mockResolvedValueOnce({
+      currentCatalogStatus: 'DISABLED',
+      requestedTargetCatalogStatus: 'ACTIVE',
+      organizationAssignmentsTotal: 2,
+      organizationProductsByStatus: { ACTIVE: 1, TRIAL: 1, SUSPENDED: 0, CANCELLED: 0, OTHER: 0 },
+      activeVehicleGrants: 0,
+      admissionAfterTarget: {},
+      guarantees: { existingOrganizationProductsPreserved: true },
+    });
+    patchCatalogStatusResult.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      errorMessage: 'Product catalog status changed concurrently',
+    });
+
+    const { container, confirm } = await renderDialog();
+    const reason = container.querySelector('#catalog-status-reason') as HTMLTextAreaElement;
+    await act(async () => {
+      setControlledTextareaValue(reason, 'Operator reason');
+    });
+    await act(async () => {
+      confirm.click();
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 80));
+    });
+
+    expect(findConfirmButton(container)?.disabled).toBe(true);
+    const ack = Array.from(container.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('I reviewed the refreshed preview'),
+    );
+    await act(async () => {
+      ack?.click();
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(findConfirmButton(container)?.disabled).toBe(false);
+  });
+
+  it('retries MFA with original CAS when catalog status unchanged', async () => {
+    getCatalogProduct.mockResolvedValue({ ...baseRow, catalogStatus: 'ACTIVE' });
+    patchCatalogStatusResult
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        errorMessage: 'STEP_UP_REQUIRED',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        data: { product: { ...baseRow, catalogStatus: 'DISABLED' }, impact: {}, noop: false },
+      });
+
+    const { container, confirm } = await renderDialog();
+    const reason = container.querySelector('#catalog-status-reason') as HTMLTextAreaElement;
+    await act(async () => {
+      setControlledTextareaValue(reason, 'Operator reason');
+    });
+    await act(async () => {
+      confirm.click();
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 80));
+    });
+
+    expect(patchCatalogStatusResult).toHaveBeenCalledTimes(2);
+    const firstBody = patchCatalogStatusResult.mock.calls[0]?.[1] as Record<string, string>;
+    const secondBody = patchCatalogStatusResult.mock.calls[1]?.[1] as Record<string, string>;
+    expect(firstBody.ifCurrentCatalogStatus).toBe('ACTIVE');
+    expect(secondBody.ifCurrentCatalogStatus).toBe('ACTIVE');
+    expect(secondBody.catalogStatus).toBe('DISABLED');
+  });
+
+  it('fails closed on MFA when catalog status drifted', async () => {
     patchCatalogStatusResult.mockResolvedValueOnce({
       ok: false,
       status: 403,
       errorMessage: 'STEP_UP_REQUIRED',
     });
+    getCatalogProduct.mockResolvedValue({ ...baseRow, catalogStatus: 'DISABLED' });
+    getCatalogStatusImpact.mockResolvedValueOnce({
+      currentCatalogStatus: 'DISABLED',
+      requestedTargetCatalogStatus: 'ACTIVE',
+      organizationAssignmentsTotal: 0,
+      organizationProductsByStatus: {},
+      activeVehicleGrants: 0,
+      admissionAfterTarget: {},
+      guarantees: { existingOrganizationProductsPreserved: true },
+    });
 
     const { container, confirm } = await renderDialog();
-
     const reason = container.querySelector('#catalog-status-reason') as HTMLTextAreaElement;
     await act(async () => {
       setControlledTextareaValue(reason, 'Operator reason');
     });
-
     await act(async () => {
       confirm.click();
     });
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 80));
     });
 
     expect(patchCatalogStatusResult).toHaveBeenCalledTimes(1);
+    expect(getCatalogProduct).toHaveBeenCalled();
+    expect(findConfirmButton(container)?.disabled).toBe(true);
   });
 
   it('applies successful status update', async () => {

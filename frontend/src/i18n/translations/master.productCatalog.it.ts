@@ -50,4 +50,6 @@ export const masterProductCatalogIt = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Rivedi l’anteprima aggiornata e conferma di essere pronto.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'Ho rivisto l’anteprima aggiornata',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'Lo stato del catalogo è cambiato durante la MFA. Rivedi l’anteprima aggiornata e conferma di nuovo.',
 };

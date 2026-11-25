@@ -50,4 +50,6 @@ export const masterProductCatalogPl = {
   'master.productCatalog.status.refreshPreviewRequired':
     'Przejrzyj odświeżony podgląd i potwierdź gotowość.',
   'master.productCatalog.status.acknowledgeRefreshedPreview': 'Przejrzałem odświeżony podgląd',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'Status katalogu zmienił się podczas MFA. Przejrzyj odświeżony podgląd i potwierdź ponownie.',
 };

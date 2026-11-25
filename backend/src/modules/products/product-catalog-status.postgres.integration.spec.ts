@@ -442,74 +442,104 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
 
       const disableCorrelationId = `p2b-race-disable-${Date.now()}`;
 
-      const disableTx = prismaPeer.$transaction(
-        async (tx) => {
-          const locked = await lockProductCatalogRowBySlug(tx, CONCURRENCY_SLUG);
-          expect(locked?.catalogStatus).toBe(ProductCatalogStatus.ACTIVE);
-          disableLocked.resolve();
-          await admissionContending.promise;
-          const updated = await tx.product.updateMany({
-            where: {
-              id: locked!.id,
-              slug: CONCURRENCY_SLUG,
-              catalogStatus: ProductCatalogStatus.ACTIVE,
-            },
-            data: { catalogStatus: ProductCatalogStatus.DISABLED },
-          });
-          expect(updated.count).toBe(1);
-          const impactSnapshot = await buildProductCatalogStatusImpactSnapshot(tx, {
-            productId: locked!.id,
-            productSlug: CONCURRENCY_SLUG,
-            currentCatalogStatus: ProductCatalogStatus.ACTIVE,
-            requestedTargetCatalogStatus: ProductCatalogStatus.DISABLED,
-          });
-          await persistProductCatalogStatusMandatoryAuditTx(
-            tx,
-            buildProductCatalogStatusAuditInput({
-              actorUserId: adminId,
+      let disableTx: Promise<void> | undefined;
+      try {
+        disableTx = prismaPeer.$transaction(
+          async (tx) => {
+            const locked = await lockProductCatalogRowBySlug(tx, CONCURRENCY_SLUG);
+            expect(locked?.catalogStatus).toBe(ProductCatalogStatus.ACTIVE);
+            disableLocked.resolve();
+            await admissionContending.promise;
+            const updated = await tx.product.updateMany({
+              where: {
+                id: locked!.id,
+                slug: CONCURRENCY_SLUG,
+                catalogStatus: ProductCatalogStatus.ACTIVE,
+              },
+              data: { catalogStatus: ProductCatalogStatus.DISABLED },
+            });
+            expect(updated.count).toBe(1);
+            const impactSnapshot = await buildProductCatalogStatusImpactSnapshot(tx, {
               productId: locked!.id,
               productSlug: CONCURRENCY_SLUG,
-              correlationId: disableCorrelationId,
-              mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
-              changeReason: 'P2B concurrency disable-first',
-              before: { catalogStatus: ProductCatalogStatus.ACTIVE },
-              after: { catalogStatus: ProductCatalogStatus.DISABLED },
-              impactSnapshot,
-            }),
-          );
-        },
-        { timeout: 120_000 },
-      );
+              currentCatalogStatus: ProductCatalogStatus.ACTIVE,
+              requestedTargetCatalogStatus: ProductCatalogStatus.DISABLED,
+            });
+            await persistProductCatalogStatusMandatoryAuditTx(
+              tx,
+              buildProductCatalogStatusAuditInput({
+                actorUserId: adminId,
+                productId: locked!.id,
+                productSlug: CONCURRENCY_SLUG,
+                correlationId: disableCorrelationId,
+                mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+                changeReason: 'P2B concurrency disable-first',
+                before: { catalogStatus: ProductCatalogStatus.ACTIVE },
+                after: { catalogStatus: ProductCatalogStatus.DISABLED },
+                impactSnapshot,
+              }),
+            );
+          },
+          { timeout: 120_000 },
+        );
 
-      await disableLocked.promise;
+        await disableLocked.promise;
 
-      const assignPromise = products.assignProductForMasterAdmin({
-        orgId,
-        productSlug: CONCURRENCY_SLUG,
-        actorUserId: adminId,
-      });
+        const assignPromise = products.assignProductForMasterAdmin({
+          orgId,
+          productSlug: CONCURRENCY_SLUG,
+          actorUserId: adminId,
+        });
 
-      let assignFinishedEarly = false;
-      void assignPromise.finally(() => {
-        assignFinishedEarly = true;
-      });
-      for (let spin = 0; spin < 40 && !assignFinishedEarly; spin += 1) {
-        await new Promise((r) => setImmediate(r));
+        type AssignSettlement =
+          | { status: 'fulfilled'; value: unknown }
+          | { status: 'rejected'; reason: unknown };
+        const assignSettlement: Promise<AssignSettlement> = assignPromise.then(
+          (value) => ({ status: 'fulfilled', value }),
+          (reason) => ({ status: 'rejected', reason }),
+        );
+
+        let assignSettledEarly = false;
+        void assignSettlement.finally(() => {
+          assignSettledEarly = true;
+        });
+
+        for (let spin = 0; spin < 40 && !assignSettledEarly; spin += 1) {
+          await new Promise((r) => setImmediate(r));
+        }
+        expect(assignSettledEarly).toBe(false);
+
+        const waitingLocks = await prisma.$queryRaw<{ cnt: bigint }[]>`
+          SELECT COUNT(*)::bigint AS cnt
+          FROM pg_locks l
+          JOIN pg_class c ON c.oid = l.relation
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND c.relname = 'products'
+            AND l.granted = false
+        `;
+        expect(Number(waitingLocks[0]?.cnt ?? 0)).toBeGreaterThanOrEqual(1);
+
+        admissionContending.resolve();
+        await disableTx;
+
+        const assignOutcome = await assignSettlement;
+        expect(assignOutcome.status).toBe('rejected');
+        expect(assignOutcome.reason).toBeInstanceOf(ProductCatalogAdmissionDeniedError);
+
+        expect(
+          await prisma.organizationProduct.count({
+            where: { organizationId: orgId, productId: productRow.id },
+          }),
+        ).toBe(0);
+        expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
+      } finally {
+        admissionContending.resolve();
+        if (disableTx) {
+          await disableTx.catch(() => undefined);
+        }
+        await ensureActive(CONCURRENCY_SLUG);
       }
-      expect(assignFinishedEarly).toBe(false);
-
-      admissionContending.resolve();
-      await disableTx;
-
-      await expect(assignPromise).rejects.toBeInstanceOf(ProductCatalogAdmissionDeniedError);
-      expect(
-        await prisma.organizationProduct.count({
-          where: { organizationId: orgId, productId: productRow.id },
-        }),
-      ).toBe(0);
-      expect(await snapshotCatalog(CONCURRENCY_SLUG)).toBe(ProductCatalogStatus.DISABLED);
-
-      await ensureActive(CONCURRENCY_SLUG);
     });
 
     it('B: admission commits while ACTIVE; later DISABLE preserves org product', async () => {
