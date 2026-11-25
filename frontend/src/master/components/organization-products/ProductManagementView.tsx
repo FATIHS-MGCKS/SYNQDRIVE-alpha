@@ -267,10 +267,12 @@ export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: Prod
         <ProductCatalogEditorPanel
           productSlug={editorSlug}
           stats={editorStats}
+          selectedOrgId={selectedOrgId}
           onClose={() => setEditorSlug(null)}
           onSaved={(row) => {
             mergeCatalogRow(row);
           }}
+          onOpenOrgProducts={onOpenOrgProducts}
           onOpenBilling={onOpenBilling}
         />
       )}

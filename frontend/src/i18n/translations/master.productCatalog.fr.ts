@@ -11,6 +11,11 @@ export const masterProductCatalogFr = {
   'master.productCatalog.editor.saveSuccess': 'Métadonnées produit enregistrées.',
   'master.productCatalog.editor.loadError': 'Impossible de charger le produit.',
   'master.productCatalog.editor.openTariffs': 'Tarifs et versions de prix',
+  'master.productCatalog.editor.openOrgAssignments': 'Attributions produit par organisation',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Sélectionnez d’abord une organisation sur cette page, puis ouvrez les attributions.',
+  'master.productCatalog.editor.conflictRetry':
+    'Le produit a été modifié entre-temps. Vos saisies restent dans le formulaire — vérifiez et enregistrez à nouveau.',
   'master.productCatalog.editor.viewOrgs': 'Produits tarifaires plateforme',
   'master.productCatalog.editor.editMetadata': 'Modifier les métadonnées',
   'master.productCatalog.editor.validationName': 'Le nom ne doit pas être vide.',

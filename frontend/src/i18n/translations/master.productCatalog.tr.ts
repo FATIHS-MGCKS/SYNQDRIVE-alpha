@@ -11,6 +11,11 @@ export const masterProductCatalogTr = {
   'master.productCatalog.editor.saveSuccess': 'Ürün meta verisi kaydedildi.',
   'master.productCatalog.editor.loadError': 'Ürün yüklenemedi.',
   'master.productCatalog.editor.openTariffs': 'Tarifeler ve fiyat sürümleri',
+  'master.productCatalog.editor.openOrgAssignments': 'Kuruluş ürün atamaları',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Önce bu sayfada bir kuruluş seçin, ardından ürün atamalarını açın.',
+  'master.productCatalog.editor.conflictRetry':
+    'Ürün bu arada değiştirildi. Girdileriniz formda kaldı — kontrol edip yeniden kaydedin.',
   'master.productCatalog.editor.viewOrgs': 'Platform tarife ürünleri',
   'master.productCatalog.editor.editMetadata': 'Meta veriyi düzenle',
   'master.productCatalog.editor.validationName': 'Ad boş olamaz.',

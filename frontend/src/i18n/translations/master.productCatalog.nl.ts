@@ -11,6 +11,11 @@ export const masterProductCatalogNl = {
   'master.productCatalog.editor.saveSuccess': 'Productmetadata opgeslagen.',
   'master.productCatalog.editor.loadError': 'Product kon niet worden geladen.',
   'master.productCatalog.editor.openTariffs': 'Tarieven en prijsversies',
+  'master.productCatalog.editor.openOrgAssignments': 'Organisatieproducttoewijzingen',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Selecteer eerst een organisatie op deze pagina en open daarna de producttoewijzingen.',
+  'master.productCatalog.editor.conflictRetry':
+    'Iemand anders heeft dit product gewijzigd. Uw invoer blijft in het formulier — controleer en sla opnieuw op.',
   'master.productCatalog.editor.viewOrgs': 'Platformtariefproducten',
   'master.productCatalog.editor.editMetadata': 'Metadata bewerken',
   'master.productCatalog.editor.validationName': 'Naam mag niet leeg zijn.',

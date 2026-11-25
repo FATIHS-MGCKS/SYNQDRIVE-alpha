@@ -11,6 +11,11 @@ export const masterProductCatalogPl = {
   'master.productCatalog.editor.saveSuccess': 'Metadane produktu zapisane.',
   'master.productCatalog.editor.loadError': 'Nie udało się wczytać produktu.',
   'master.productCatalog.editor.openTariffs': 'Taryfy i wersje cen',
+  'master.productCatalog.editor.openOrgAssignments': 'Przypisania produktów organizacji',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Najpierw wybierz organizację na tej stronie, potem otwórz przypisania produktów.',
+  'master.productCatalog.editor.conflictRetry':
+    'Ktoś inny zmienił ten produkt. Twoje wpisy pozostają w formularzu — sprawdź i zapisz ponownie.',
   'master.productCatalog.editor.viewOrgs': 'Produkty taryfowe platformy',
   'master.productCatalog.editor.editMetadata': 'Edytuj metadane',
   'master.productCatalog.editor.validationName': 'Nazwa nie może być pusta.',

@@ -29,8 +29,10 @@ function descriptionFromApi(value: string | undefined): string {
 export interface ProductCatalogEditorPanelProps {
   productSlug: string | null;
   stats?: { totalOrgs?: number; active?: number; trial?: number };
+  selectedOrgId?: string | null;
   onClose: () => void;
   onSaved: (row: AdminCatalogProductRow) => void;
+  onOpenOrgProducts?: (orgId: string) => void;
   onOpenBilling: (input: {
     section: MasterBillingSection;
     subTab?: string | null;
@@ -42,8 +44,10 @@ export interface ProductCatalogEditorPanelProps {
 export function ProductCatalogEditorPanel({
   productSlug,
   stats,
+  selectedOrgId,
   onClose,
   onSaved,
+  onOpenOrgProducts,
   onOpenBilling,
 }: ProductCatalogEditorPanelProps) {
   const { t } = useLanguage();
@@ -70,26 +74,37 @@ export function ProductCatalogEditorPanel({
     [name, description, baselineName, baselineDescription],
   );
 
-  const loadProduct = useCallback(async () => {
-    if (!productSlug) return;
-    setLoading(true);
-    setLoadError(null);
-    setSaveSuccess(false);
-    try {
-      const data = await api.products.getCatalogProduct(productSlug);
-      setRow(data);
-      const desc = descriptionFromApi(data.description);
-      setName(data.name);
-      setDescription(desc);
-      setBaselineName(data.name);
-      setBaselineDescription(desc);
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : t('master.productCatalog.editor.loadError'));
-      setRow(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [productSlug, t]);
+  const loadProduct = useCallback(
+    async (options?: { preserveUserEdits?: boolean }) => {
+      if (!productSlug) return;
+      if (!options?.preserveUserEdits) {
+        setLoading(true);
+        setLoadError(null);
+        setSaveSuccess(false);
+      }
+      try {
+        const data = await api.products.getCatalogProduct(productSlug);
+        setRow(data);
+        const desc = descriptionFromApi(data.description);
+        if (!options?.preserveUserEdits) {
+          setName(data.name);
+          setDescription(desc);
+        }
+        setBaselineName(data.name);
+        setBaselineDescription(desc);
+      } catch (e) {
+        if (!options?.preserveUserEdits) {
+          setLoadError(e instanceof Error ? e.message : t('master.productCatalog.editor.loadError'));
+          setRow(null);
+        }
+      } finally {
+        if (!options?.preserveUserEdits) {
+          setLoading(false);
+        }
+      }
+    },
+    [productSlug, t],
+  );
 
   useEffect(() => {
     void loadProduct();
@@ -136,7 +151,8 @@ export function ProductCatalogEditorPanel({
             return;
           }
           if (isProductMetadataConflict(res.status, res.errorMessage ?? '')) {
-            await loadProduct();
+            await loadProduct({ preserveUserEdits: true });
+            setSaveError(t('master.productCatalog.editor.conflictRetry'));
           }
         } else {
           pendingRef.current = null;
@@ -264,9 +280,18 @@ export function ProductCatalogEditorPanel({
                 type="button"
                 variant="outline"
                 className="justify-between"
-                onClick={() => onOpenBilling({ section: 'pricing', subTab: 'products', orgId: null })}
+                disabled={!selectedOrgId || !onOpenOrgProducts}
+                title={
+                  !selectedOrgId ? t('master.productCatalog.editor.orgAssignmentsDisabledHint') : undefined
+                }
+                onClick={() => {
+                  if (selectedOrgId && onOpenOrgProducts) {
+                    onOpenOrgProducts(selectedOrgId);
+                    onClose();
+                  }
+                }}
               >
-                {t('master.productCatalog.editor.viewOrgs')}
+                {t('master.productCatalog.editor.openOrgAssignments')}
                 <ArrowRight className="w-4 h-4" aria-hidden />
               </Button>
             </div>

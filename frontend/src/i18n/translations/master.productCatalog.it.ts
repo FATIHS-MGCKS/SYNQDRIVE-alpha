@@ -11,6 +11,11 @@ export const masterProductCatalogIt = {
   'master.productCatalog.editor.saveSuccess': 'Metadati prodotto salvati.',
   'master.productCatalog.editor.loadError': 'Impossibile caricare il prodotto.',
   'master.productCatalog.editor.openTariffs': 'Tariffe e versioni prezzo',
+  'master.productCatalog.editor.openOrgAssignments': 'Assegnazioni prodotto organizzazione',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Seleziona prima un’organizzazione in questa pagina, poi apri le assegnazioni prodotto.',
+  'master.productCatalog.editor.conflictRetry':
+    'Il prodotto è stato modificato nel frattempo. Le tue modifiche restano nel modulo — controlla e salva di nuovo.',
   'master.productCatalog.editor.viewOrgs': 'Prodotti tariffari piattaforma',
   'master.productCatalog.editor.editMetadata': 'Modifica metadati',
   'master.productCatalog.editor.validationName': 'Il nome non può essere vuoto.',

@@ -11,6 +11,11 @@ export const masterProductCatalogEn = {
   'master.productCatalog.editor.saveSuccess': 'Product metadata saved.',
   'master.productCatalog.editor.loadError': 'Product could not be loaded.',
   'master.productCatalog.editor.openTariffs': 'Tariffs & price versions',
+  'master.productCatalog.editor.openOrgAssignments': 'Organization product assignments',
+  'master.productCatalog.editor.orgAssignmentsDisabledHint':
+    'Select an organization on this page first, then open product assignments.',
+  'master.productCatalog.editor.conflictRetry':
+    'Someone else changed this product. Your edits are still in the form — review and save again.',
   'master.productCatalog.editor.viewOrgs': 'Platform tariff products',
   'master.productCatalog.editor.editMetadata': 'Edit metadata',
   'master.productCatalog.editor.validationName': 'Name must not be empty.',
