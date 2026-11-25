@@ -93,7 +93,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **SOURCE** | `IAM_MFA_MASTER_BILLING_DELEGATE` / P3B evidence |
 | **EXPECTED** | Owner arms when ready |
 | **ACTUAL** | Grant/revoke APIs exist; MFA enforcement env default false |
-| **OWNER_DECISION** | **OWNER_APPROVED** (2026-11-25, USR-OWN-03) — **flag arm NOT authorized** — **NOT IMPLEMENTED** |
+| **OWNER_DECISION** | **OWNER_APPROVED_POLICY_PENDING** — USR-OWN-03 adopted; **production flag arm NOT authorized**; enforcement **NOT IMPLEMENTED** |
 | **POLICY_BIND** | USR-OWN-03 |
 
 ---
@@ -119,9 +119,9 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 |-------|-------|
 | **SEVERITY** | — |
 | **TITLE** | Billing grant step-up parity |
-| **CLASS** | **NOT_APPLICABLE** (closeout R-004) |
-| **SOURCE** | `security-governance-platform-permission.http-security.spec.ts` — intentional `MASTER_USER_MANAGEMENT` only |
-| **ACTUAL** | Equivalent MFA enforcement via `MasterAdminMfaGuard`; not weaker than session paths when flags on |
+| **CLASS** | **DESIGN_SPECIFIC** — not unconditional MFA guarantee |
+| **SOURCE** | Billing uses `MasterAdminMfaGuard` only; enforcement requires feature flags + enrollment |
+| **ACTUAL** | When flags off, guard no-ops; when on, action-scoped step-up differs from session revoke |
 
 ---
 
@@ -209,10 +209,51 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 
 | Field | Value |
 |-------|-------|
-| **SEVERITY** | P2 |
-| **TITLE** | Access JWT may retain stale permissions until expiry |
-| **CLASS** | CONFIRMED_DEFECT (session design) |
-| **SOURCE** | `auth.guard.ts` — no DB version check; refresh path validates versions |
-| **EVIDENCE** | [USR_P0_LIFECYCLE_MATRIX.md](USR_P0_LIFECYCLE_MATRIX.md) |
-| **OWNER_DECISION** | **OWNER_APPROVED_REMEDIATION_REQUIRED** (2026-11-25, USR-OWN-02) — reject stale access post-revocation; **NOT IMPLEMENTED** |
+| **SEVERITY** | **P1** (privileged `/admin/*` stale `platformRole` / permissions) |
+| **TITLE** | Access JWT may retain stale privileges until expiry |
+| **CLASS** | CONFIRMED_SECURITY_GAP |
+| **SOURCE** | `auth.guard.ts`; `ACCESS_TOKEN_RESIDUAL_LIFETIME_NOTE`; `platform-permission-jwt.integration.spec.ts` |
+| **EVIDENCE** | [USR_P0_FINAL_EVIDENCE_SEAL.md](USR_P0_FINAL_EVIDENCE_SEAL.md) |
+| **OWNER_DECISION** | **OWNER_APPROVED_REMEDIATION_REQUIRED** (USR-OWN-02) — **NOT IMPLEMENTED** |
 | **POLICY_BIND** | USR-OWN-02 |
+
+---
+
+## USR-P0-R-009
+
+| Field | Value |
+|-------|-------|
+| **CLASS** | AUDIT_COVERAGE_GAP → **closed** |
+| **TITLE** | API inventory 78 vs 98 |
+| **EVIDENCE** | **98** routes — [USR_P0_COMPLETE_API_INVENTORY.md](USR_P0_COMPLETE_API_INVENTORY.md) |
+
+---
+
+## USR-P0-R-010 / R-011
+
+| Field | Value |
+|-------|-------|
+| **CLASS** | CONFIRMED_DEFECT (test) → **REMEDIATED in seal** |
+| **TITLE** | Inventory SQL test transaction safety |
+| **EVIDENCE** | `usr-p0-production-inventory-sql.postgres.integration.spec.ts` 2/2 PASS |
+
+---
+
+## USR-P0-R-012
+
+| Field | Value |
+|-------|-------|
+| **CLASS** | AUDIT_COVERAGE_GAP → **documented** |
+| **TITLE** | MFA orchestration flag-dependent |
+| **EVIDENCE** | [USR_P0_FINAL_EVIDENCE_SEAL.md](USR_P0_FINAL_EVIDENCE_SEAL.md) § R012 |
+
+---
+
+## USR-P0-R-013
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | P2 |
+| **CLASS** | CONFIRMED_DEFECT |
+| **TITLE** | Legacy `admin/users` parallel mutation authority |
+| **EVIDENCE** | [USR_P0_FINAL_EVIDENCE_SEAL.md](USR_P0_FINAL_EVIDENCE_SEAL.md) § R013 |

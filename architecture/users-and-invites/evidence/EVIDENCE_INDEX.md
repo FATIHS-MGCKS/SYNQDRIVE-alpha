@@ -20,6 +20,8 @@
 | Retention lifecycle | [USR_P0_RETENTION_LIFECYCLE.md](USR_P0_RETENTION_LIFECYCLE.md) |
 | Session test harness | [USR_P0_SESSION_TEST_HARNESS.md](USR_P0_SESSION_TEST_HARNESS.md) |
 | Owner attestation | [USR_P0_OWNER_ATTESTATION_2026-11-25.md](USR_P0_OWNER_ATTESTATION_2026-11-25.md) |
+| Final evidence seal | [USR_P0_FINAL_EVIDENCE_SEAL.md](USR_P0_FINAL_EVIDENCE_SEAL.md) |
+| Grouped remediation handoff | [USR_P0_GROUPED_REMEDIATION_HANDOFF.md](USR_P0_GROUPED_REMEDIATION_HANDOFF.md) |
 | Production baseline | [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md) |
 
 ## Supporting (non-authority) repository docs

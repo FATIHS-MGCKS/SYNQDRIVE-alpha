@@ -10,6 +10,7 @@
 | **Audit timestamp** | 2026-11-25 (Europe/Berlin) |
 | **Production VPS audit** | **NOT_EXECUTED** — no owner authorization in this workstream |
 | **Production DB audit** | **NOT_EXECUTED** — SQL spec prepared only |
+| **USR_P0 final seal** | 2026-11-25 — [USR_P0_FINAL_EVIDENCE_SEAL.md](evidence/USR_P0_FINAL_EVIDENCE_SEAL.md) |
 
 ## Registry modules touched (read / reconcile)
 

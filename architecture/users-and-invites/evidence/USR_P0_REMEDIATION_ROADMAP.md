@@ -1,5 +1,7 @@
 # USR_P0 — Remediation roadmap (+ owner attestation 2026-11-25)
 
+**Grouped handoff:** [USR_P0_GROUPED_REMEDIATION_HANDOFF.md](USR_P0_GROUPED_REMEDIATION_HANDOFF.md)
+
 **Binding:** Approved policies are **not implemented** until separate implementation PRs merge. No deploy/flag/prod authorized by attestation.
 
 ## Owner-approved implementation themes (post–P0)

@@ -52,7 +52,10 @@ Transition implementation: `backend/src/modules/users/*`, organization onboardin
 |----------|----------------|
 | P0 | 0 |
 | P1 | 0 |
-| P2 | 6 (F-001, F-002, F-004, F-006, R-002, R-008) |
+| P1 | 1 (R-008 stale privileged JWT) |
+| P2 | 6+ (F-001, F-002, F-004, F-006, R-002, R-013, …) |
+
+**P0 seal:** [USR_P0_FINAL_EVIDENCE_SEAL.md](evidence/USR_P0_FINAL_EVIDENCE_SEAL.md) — **not** a claim of zero security gaps.
 | P3 | 2 (F-003, R-005 doc fixed) |
 
 **Audit coverage gaps closed:** R-003, R-004, R-007. **Security gaps:** R-002 accountability, R-008 stale JWT.

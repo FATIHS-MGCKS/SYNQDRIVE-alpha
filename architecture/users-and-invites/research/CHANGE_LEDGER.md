@@ -5,3 +5,4 @@
 | 2026-11-25 | USR_P0 bootstrap authority + registry `AUDIT_IN_PROGRESS` |
 | 2026-11-25 | USR_P0 deep closeout — SQL fix, API/MFA/retention matrices, graph validator, R-001–R-008 |
 | 2026-11-25 | Owner attestation USR-OWN-01–04 recorded (no runtime/flag/deploy authorization) |
+| 2026-11-25 | USR_P0 final evidence seal — R008 P1, API 98, PG test hardening, R009–R013 |

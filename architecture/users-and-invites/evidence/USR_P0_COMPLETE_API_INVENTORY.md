@@ -1,8 +1,31 @@
 # USR_P0-R-003 — Complete API inventory
 
-Prefix: `/api/v1` unless noted. **Total audited HTTP operations: 78** (repository static scan).
+Prefix: `/api/v1` unless noted.
+
+**Total unique method+path combinations: 98** (static controller scan, USR_P0 IAM scope).
+
+**Reconciliation:** earlier **78** figure omitted slices (auth/account/MFA/retention detail) or used narrative rounding — **98** is authoritative for this inventory.
 
 Legend: **REACH** = `UI` | `LEGACY_UI` | `API_ONLY` | `PUBLIC`
+
+## Count breakdown
+
+| Area | Routes |
+|------|--------|
+| admin/security | 12 |
+| admin/users (+ DELETE controller) | 6 |
+| org users | 11 |
+| org invites | 4 |
+| public invites | 2 |
+| org roles | 9 |
+| iam team | 7 |
+| access reviews | 6 |
+| auth | 11 |
+| account | 7 |
+| activity log | 4 |
+| iam-mfa | 10 |
+| iam data-retention | 9 |
+| **Total** | **98** |
 
 ## `admin/security` — `SecurityGovernanceController` (12)
 
