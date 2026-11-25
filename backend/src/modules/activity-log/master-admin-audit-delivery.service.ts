@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { MasterAdminAuditScope } from '@prisma/client';
+import { MasterAdminAuditScope, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import {
@@ -62,16 +62,12 @@ export class MasterAdminAuditDeliveryService {
 
     let outboxId: string;
     try {
-      const row = await this.prisma.$transaction((tx) =>
-        this.outboxRepo.enqueueInTransaction(tx, {
-          idempotencyKey: options.idempotencyKey,
-          envelope,
-          occurredAt,
-          auditScope,
-          organizationContextId,
-        }),
-      );
-      outboxId = row.id;
+      outboxId = await this.persistAuthoritativeAuditIntent(envelope, {
+        idempotencyKey: options.idempotencyKey,
+        occurredAt,
+        auditScope,
+        organizationContextId,
+      });
     } catch (enqueueErr) {
       const code = classifyMasterAdminAuditDeliveryError(enqueueErr);
       this.logger.error(
@@ -92,13 +88,12 @@ export class MasterAdminAuditDeliveryService {
     }
 
     try {
-      const result = await this.outboxProcessor.deliverAtomic(
+      return await this.attemptImmediateDelivery(
         envelope,
         options.idempotencyKey,
         occurredAt,
         outboxId,
       );
-      return result === 'delivered' ? 'DELIVERED' : 'INTENT_PERSISTED';
     } catch (deliveryErr) {
       const code = classifyMasterAdminAuditDeliveryError(deliveryErr);
       this.logger.warn(
@@ -107,6 +102,47 @@ export class MasterAdminAuditDeliveryService {
       this.iamMetrics?.recordAuditOutboxFailed('MASTER_ADMIN_AUDIT_DELIVERY');
       return 'INTENT_PERSISTED';
     }
+  }
+
+  async persistAuthoritativeAuditIntent(
+    envelope: MasterAdminAuditRecordInput,
+    input: {
+      idempotencyKey: string;
+      occurredAt: Date;
+      auditScope: MasterAdminAuditScope;
+      organizationContextId: string | null;
+    },
+    tx?: Prisma.TransactionClient,
+  ): Promise<string> {
+    const run = async (client: Prisma.TransactionClient) => {
+      const row = await this.outboxRepo.enqueueInTransaction(client, {
+        idempotencyKey: input.idempotencyKey,
+        envelope,
+        occurredAt: input.occurredAt,
+        auditScope: input.auditScope,
+        organizationContextId: input.organizationContextId,
+      });
+      return row.id;
+    };
+    if (tx) {
+      return run(tx);
+    }
+    return this.prisma.$transaction(run);
+  }
+
+  async attemptImmediateDelivery(
+    envelope: MasterAdminAuditRecordInput,
+    idempotencyKey: string,
+    occurredAt: Date,
+    outboxId: string,
+  ): Promise<MasterAdminAuditDeliveryOutcome> {
+    const result = await this.outboxProcessor.deliverAtomic(
+      envelope,
+      idempotencyKey,
+      occurredAt,
+      outboxId,
+    );
+    return result === 'delivered' ? 'DELIVERED' : 'INTENT_PERSISTED';
   }
 
   private async recordDeliveryFailureDiagnostic(

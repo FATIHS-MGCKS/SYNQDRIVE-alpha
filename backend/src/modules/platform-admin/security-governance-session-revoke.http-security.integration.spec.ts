@@ -34,7 +34,9 @@ const sessionId = 'sess-mfa-test';
 describe('SecurityGovernance session revoke — real guard HTTP security', () => {
   const refreshTokens = {
     revokeSessionById: jest.fn().mockResolvedValue(true),
+    revokeSessionByIdInTransaction: jest.fn().mockResolvedValue(true),
     revokeAllActiveForUser: jest.fn().mockResolvedValue(2),
+    revokeAllActiveForUserInTransaction: jest.fn().mockResolvedValue(2),
     findSessionOrganizationId: jest.fn().mockResolvedValue('org-mfa'),
   };
 
@@ -54,10 +56,21 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
   };
 
   const auditDelivery = {
+    persistAuthoritativeAuditIntent: jest.fn().mockResolvedValue('outbox-test-id'),
+    attemptImmediateDelivery: jest.fn(async (record: unknown) => {
+      await masterAdminAudit.record(record as never);
+      return 'DELIVERED';
+    }),
     commitAuditIntent: jest.fn(async (record: unknown) => {
       await masterAdminAudit.record(record as never);
       return 'DELIVERED';
     }),
+  };
+
+  const prismaMock: { $transaction: jest.Mock } = {
+    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn(prismaMock as unknown),
+    ),
   };
 
   const platformPermissions = {
@@ -87,6 +100,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
       SecurityGovernanceSessionAuditService,
       { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
       { provide: MasterAdminAuditService, useValue: masterAdminAudit },
+      { provide: PrismaService, useValue: prismaMock },
       { provide: PlatformPermissionService, useValue: platformPermissions },
       { provide: SecurityGovernanceService, useValue: governance },
       { provide: RefreshTokenService, useValue: refreshTokens },
@@ -100,7 +114,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
       });
       try {
         await request(harness.app.getHttpServer()).post(revokeOnePath).expect(403);
-        expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+        expect(refreshTokens.revokeSessionByIdInTransaction).not.toHaveBeenCalled();
       } finally {
         await closeMasterAdminMfaHttpHarness(harness);
       }
@@ -117,7 +131,10 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           StepUpGuard,
           {
             provide: PrismaService,
-            useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) } },
+            useValue: {
+              ...prismaMock,
+              userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) },
+            },
           },
           { provide: IamMfaStepUpService, useValue: { validateGrant: jest.fn().mockResolvedValue(true) } },
         ],
@@ -136,7 +153,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           .post(revokeOnePath)
           .set('Authorization', 'Bearer member-token')
           .expect(403);
-        expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+        expect(refreshTokens.revokeSessionByIdInTransaction).not.toHaveBeenCalled();
       } finally {
         await app.close();
       }
@@ -154,7 +171,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           .expect(403);
         expect(res.body.code).toBe(MFA_ERROR.STEP_UP_REQUIRED);
         expect(harness.validateGrant).not.toHaveBeenCalled();
-        expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+        expect(refreshTokens.revokeSessionByIdInTransaction).not.toHaveBeenCalled();
       } finally {
         await closeMasterAdminMfaHttpHarness(harness);
       }
@@ -174,7 +191,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           .expect(403);
         expect(res.body.code).toBe(MFA_ERROR.STEP_UP_EXPIRED);
         expect(harness.validateGrant).toHaveBeenCalledTimes(1);
-        expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+        expect(refreshTokens.revokeSessionByIdInTransaction).not.toHaveBeenCalled();
       } finally {
         await closeMasterAdminMfaHttpHarness(harness);
       }
@@ -195,7 +212,10 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           StepUpGuard,
           {
             provide: PrismaService,
-            useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) } },
+            useValue: {
+              ...prismaMock,
+              userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) },
+            },
           },
           { provide: IamMfaStepUpService, useValue: { validateGrant } },
         ],
@@ -216,7 +236,7 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           .set('x-step-up-token', 'step-up-token-valid')
           .expect(403);
         expect([MFA_ERROR.STEP_UP_REQUIRED, MFA_ERROR.STEP_UP_EXPIRED]).toContain(res.body.code);
-        expect(refreshTokens.revokeSessionById).not.toHaveBeenCalled();
+        expect(refreshTokens.revokeSessionByIdInTransaction).not.toHaveBeenCalled();
       } finally {
         await app.close();
       }
@@ -239,7 +259,10 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           StepUpGuard,
           {
             provide: PrismaService,
-            useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) } },
+            useValue: {
+              ...prismaMock,
+              userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) },
+            },
           },
           { provide: IamMfaStepUpService, useValue: { validateGrant } },
         ],
@@ -263,8 +286,12 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
         expect(validateGrant).toHaveBeenCalledTimes(2);
         expectStepUpValidation(validateGrant, STEP_UP_ACTION.MASTER_USER_MANAGEMENT);
         expectStepUpValidation(validateGrant, STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS);
-        expect(refreshTokens.revokeSessionById).toHaveBeenCalledWith(targetUserId, sessionId);
-        expect(auditDelivery.commitAuditIntent).toHaveBeenCalled();
+        expect(refreshTokens.revokeSessionByIdInTransaction).toHaveBeenCalledWith(
+          expect.anything(),
+          targetUserId,
+          sessionId,
+        );
+        expect(auditDelivery.attemptImmediateDelivery).toHaveBeenCalled();
       } finally {
         await app.close();
       }
@@ -293,7 +320,10 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           StepUpGuard,
           {
             provide: PrismaService,
-            useValue: { userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) } },
+            useValue: {
+              ...prismaMock,
+              userMfaFactor: { findFirst: jest.fn().mockResolvedValue({ id: 'f1' }) },
+            },
           },
           { provide: IamMfaStepUpService, useValue: { validateGrant } },
         ],
@@ -313,7 +343,10 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
           .set('Authorization', 'Bearer master-token')
           .expect(200);
         expect(validateGrant).not.toHaveBeenCalled();
-        expect(refreshTokens.revokeAllActiveForUser).toHaveBeenCalledWith(targetUserId);
+        expect(refreshTokens.revokeAllActiveForUserInTransaction).toHaveBeenCalledWith(
+          expect.anything(),
+          targetUserId,
+        );
       } finally {
         await app.close();
       }

@@ -8,3 +8,4 @@
 | 2026-11-25 | USR_P0 final evidence seal — R008 P1, API 98, PG test hardening, R009–R013 |
 | 2026-11-25 | USR-P1A — session audit harness F-003 + durable delivery R-002 (`MasterAdminAuditDeliveryService`, IAM outbox carrier) |
 | 2026-11-25 | USR-P1A closeout — `master_admin_audit_outbox`, atomic ledger delivery, PG01–PG13 certification, IAM fail-closed |
+| 2026-11-25 | USR-P1A runtime wiring — outbox scheduler, atomic revoke+intent txn, tenant audit isolation, PG01–PG13 re-executed (13/13) |

@@ -15,6 +15,21 @@ export type MasterAdminAuditPersistOptions = {
   occurredAt: Date;
 };
 
+async function resolveMasterAdminActivityLogRelations(
+  tx: Prisma.TransactionClient,
+  input: MasterAdminAuditRecordInput,
+): Promise<{ organizationId: string | null; userId: string | null }> {
+  // Master-admin accountability rows are not tenant-indexed on organization_id.
+  let userId = input.actorUserId?.trim() || null;
+  if (userId) {
+    const actor = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!actor) {
+      userId = null;
+    }
+  }
+  return { organizationId: null, userId };
+}
+
 export async function persistMasterAdminAuditActivityLog(
   tx: Prisma.TransactionClient,
   input: MasterAdminAuditRecordInput,
@@ -25,11 +40,13 @@ export async function persistMasterAdminAuditActivityLog(
   const occurredAt = options?.occurredAt ?? new Date();
   const idempotencyKey =
     options?.idempotencyKey ?? `inline:${input.correlationId}:${input.auditAction}`;
+  const relations = await resolveMasterAdminActivityLogRelations(tx, input);
+  const targetOrganizationId = input.targetOrganizationId ?? null;
 
   const log = await tx.activityLog.create({
     data: {
-      organizationId: input.targetOrganizationId ?? null,
-      userId: input.actorUserId ?? null,
+      organizationId: relations.organizationId,
+      userId: relations.userId,
       action,
       entity: ActivityEntity.ADMIN_OPERATION,
       entityId: input.entityId ?? null,
@@ -46,7 +63,7 @@ export async function persistMasterAdminAuditActivityLog(
         actorUserId: input.actorUserId,
         actorPlatformRole: input.actorPlatformRole,
         actorPermissions: input.actorPermissions,
-        targetOrganizationId: input.targetOrganizationId,
+        targetOrganizationId,
         targetEntityType: 'ADMIN_OPERATION',
         targetEntityId: input.entityId,
         correlationId: input.correlationId,

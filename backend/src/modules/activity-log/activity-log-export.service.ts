@@ -5,6 +5,7 @@ import {
   AuditLogExportRow,
   normalizeActivityLogForExport,
 } from './audit-envelope.util';
+import { MASTER_ADMIN_AUDIT_DOMAIN } from './master-admin-audit.contract';
 
 export type ActivityLogExportFormat = 'json' | 'csv';
 
@@ -102,9 +103,15 @@ export class ActivityLogExportService {
 
   private buildWhere(query: ActivityLogExportQuery): Prisma.ActivityLogWhereInput {
     const where: Prisma.ActivityLogWhereInput = {};
+  const and: Prisma.ActivityLogWhereInput[] = [];
 
     if (query.organizationId) {
       where.organizationId = query.organizationId;
+      and.push({
+        NOT: {
+          metaJson: { path: ['auditDomain'], equals: MASTER_ADMIN_AUDIT_DOMAIN },
+        },
+      });
     }
     if (query.entity) {
       where.entity = query.entity as Prisma.EnumActivityEntityFilter['equals'];
@@ -129,6 +136,10 @@ export class ActivityLogExportService {
       if (query.to) {
         where.createdAt.lte = new Date(query.to);
       }
+    }
+
+    if (and.length > 0) {
+      where.AND = and;
     }
 
     return where;

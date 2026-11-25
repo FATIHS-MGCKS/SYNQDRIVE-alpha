@@ -3,11 +3,22 @@ import { SecurityGovernanceSessionAuditService } from './security-governance-ses
 
 describe('SecurityGovernanceSessionAuditService', () => {
   const auditDelivery = { commitAuditIntent: jest.fn().mockResolvedValue('DELIVERED') };
+  const refreshTokens = {
+    revokeSessionByIdInTransaction: jest.fn(),
+    findSessionOrganizationId: jest.fn(),
+  };
+  const prisma = {
+    $transaction: jest.fn(async (fn: (tx: object) => Promise<unknown>) => fn({})),
+  };
   let service: SecurityGovernanceSessionAuditService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new SecurityGovernanceSessionAuditService(auditDelivery as never);
+    service = new SecurityGovernanceSessionAuditService(
+      prisma as never,
+      auditDelivery as never,
+      refreshTokens as never,
+    );
   });
 
   const req = {

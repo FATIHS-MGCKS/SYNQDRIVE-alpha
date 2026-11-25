@@ -157,7 +157,14 @@ export class ActivityLogService {
 
     if (params.entity) where.entity = params.entity as ActivityEntity;
     if (params.action) where.action = params.action as ActivityAction;
-    if (params.organizationId) where.organizationId = params.organizationId;
+    if (params.organizationId) {
+      where.organizationId = params.organizationId;
+      and.push({
+        NOT: {
+          metaJson: { path: ['auditDomain'], equals: MASTER_ADMIN_AUDIT_DOMAIN },
+        },
+      });
+    }
     if (params.actorUserId) where.userId = params.actorUserId;
 
     if (params.from || params.to) {

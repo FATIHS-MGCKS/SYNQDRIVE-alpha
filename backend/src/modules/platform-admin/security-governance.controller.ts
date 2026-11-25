@@ -82,24 +82,12 @@ export class SecurityGovernanceController {
     @Param('sessionId') sessionId: string,
     @Req() req: AuthedRequest,
   ) {
-    const ok = await this.refreshTokens.revokeSessionById(userId, sessionId);
-    let targetOrganizationId: string | null = null;
-    try {
-      targetOrganizationId = await this.refreshTokens.findSessionOrganizationId(
-        userId,
-        sessionId,
-      );
-    } catch {
-      targetOrganizationId = null;
-    }
-    await this.sessionAudit.recordSingleSessionRevocation({
+    const { revoked } = await this.sessionAudit.revokeTargetSessionWithAtomicAudit({
       req,
       targetUserId: userId,
       sessionId,
-      outcome: ok ? 'SUCCESS' : 'NO_OP',
-      targetOrganizationId,
     });
-    return { revoked: ok };
+    return { revoked };
   }
 
   @Post('users/:userId/sessions/revoke-all')
@@ -108,13 +96,12 @@ export class SecurityGovernanceController {
   @RequireStepUp(STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS)
   @HttpCode(HttpStatus.OK)
   async revokeAllSessions(@Param('userId') userId: string, @Req() req: AuthedRequest) {
-    const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUser(userId);
-    await this.sessionAudit.recordRevokeAllSessions({
-      req,
-      targetUserId: userId,
-      revokedSessionCount,
-    });
-    return { revoked: true };
+    const { revokedSessionCount } =
+      await this.sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+        req,
+        targetUserId: userId,
+      });
+    return { revoked: revokedSessionCount > 0 };
   }
 
   @Post('users/:userId/mfa/reset')

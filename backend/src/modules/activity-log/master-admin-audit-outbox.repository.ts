@@ -93,21 +93,33 @@ export class MasterAdminAuditOutboxRepository {
     return this.findById(id);
   }
 
-  markProcessed(id: string, tx?: Prisma.TransactionClient) {
+  async markProcessed(id: string, tx?: Prisma.TransactionClient): Promise<boolean> {
     const client = tx ?? this.prisma;
-    return client.masterAdminAuditOutbox.update({
-      where: { id },
+    const result = await client.masterAdminAuditOutbox.updateMany({
+      where: {
+        id,
+        status: {
+          in: [
+            MasterAdminAuditOutboxStatus.PENDING,
+            MasterAdminAuditOutboxStatus.PROCESSING,
+          ],
+        },
+      },
       data: {
         status: MasterAdminAuditOutboxStatus.PROCESSED,
         processedAt: new Date(),
         errorCode: null,
       },
     });
+    return result.count > 0;
   }
 
-  markRetry(id: string, errorCode: string, nextRetryAt: Date) {
-    return this.prisma.masterAdminAuditOutbox.update({
-      where: { id },
+  async markRetry(id: string, errorCode: string, nextRetryAt: Date): Promise<boolean> {
+    const result = await this.prisma.masterAdminAuditOutbox.updateMany({
+      where: {
+        id,
+        status: MasterAdminAuditOutboxStatus.PROCESSING,
+      },
       data: {
         status: MasterAdminAuditOutboxStatus.PENDING,
         nextRetryAt,
@@ -116,17 +128,27 @@ export class MasterAdminAuditOutboxRepository {
         deadLetteredAt: null,
       },
     });
+    return result.count > 0;
   }
 
-  markDeadLetter(id: string, errorCode: string) {
-    return this.prisma.masterAdminAuditOutbox.update({
-      where: { id },
+  async markDeadLetter(id: string, errorCode: string): Promise<boolean> {
+    const result = await this.prisma.masterAdminAuditOutbox.updateMany({
+      where: {
+        id,
+        status: {
+          in: [
+            MasterAdminAuditOutboxStatus.PENDING,
+            MasterAdminAuditOutboxStatus.PROCESSING,
+          ],
+        },
+      },
       data: {
         status: MasterAdminAuditOutboxStatus.DEAD_LETTER,
         deadLetteredAt: new Date(),
         errorCode: errorCode.slice(0, 64),
       },
     });
+    return result.count > 0;
   }
 
   async recoverStaleProcessing(staleBefore: Date): Promise<string[]> {

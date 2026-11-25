@@ -51,22 +51,29 @@ export class MasterAdminAuditOutboxProcessorService {
     } catch (err) {
       const errorCode = classifyMasterAdminAuditDeliveryError(err);
       if (errorCode === 'AUDIT_PAYLOAD_SENSITIVE_VALUE') {
-        await this.outboxRepo.markDeadLetter(claimed.id, errorCode);
-        this.logger.error(`master_admin_audit_outbox dead-letter id=${claimed.id} code=${errorCode}`);
-        return 'dead_letter';
+        const deadLettered = await this.outboxRepo.markDeadLetter(claimed.id, errorCode);
+        if (deadLettered) {
+          this.logger.error(`master_admin_audit_outbox dead-letter id=${claimed.id} code=${errorCode}`);
+        }
+        return deadLettered ? 'dead_letter' : 'duplicate';
       }
 
       if (claimed.attempts >= MASTER_ADMIN_AUDIT_OUTBOX.maxAttempts) {
-        await this.outboxRepo.markDeadLetter(claimed.id, errorCode);
-        this.logger.error(`master_admin_audit_outbox dead-letter id=${claimed.id} code=${errorCode}`);
-        return 'dead_letter';
+        const deadLettered = await this.outboxRepo.markDeadLetter(claimed.id, errorCode);
+        if (deadLettered) {
+          this.logger.error(`master_admin_audit_outbox dead-letter id=${claimed.id} code=${errorCode}`);
+        }
+        return deadLettered ? 'dead_letter' : 'duplicate';
       }
 
       const retryAt = new Date(
         Date.now() +
           MASTER_ADMIN_AUDIT_OUTBOX.backoffMs * Math.pow(2, Math.max(0, claimed.attempts - 1)),
       );
-      await this.outboxRepo.markRetry(claimed.id, errorCode, retryAt);
+      const retried = await this.outboxRepo.markRetry(claimed.id, errorCode, retryAt);
+      if (!retried) {
+        return 'duplicate';
+      }
       this.logger.warn(
         `master_admin_audit_outbox retry id=${claimed.id} attempts=${claimed.attempts} code=${errorCode}`,
       );
