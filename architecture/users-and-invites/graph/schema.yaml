@@ -1,0 +1,25 @@
+# Users & Invites knowledge graph schema (USR_P0 bootstrap)
+node_types:
+  - domain
+  - api
+  - service
+  - data
+  - ui
+  - decision
+  - evidence
+edge_types:
+  - owns
+  - invokes
+  - persists
+  - exposes
+  - documents
+epistemic_status:
+  - CONFIRMED
+  - INFERRED
+  - UNKNOWN
+  - HISTORICAL
+decision_status:
+  - PROPOSED
+  - VALIDATED
+  - REJECTED
+  - SUPERSEDED

@@ -1,0 +1,73 @@
+nodes:
+  - id: USR-DOM-001
+    type: domain
+    title: Users & Invites
+    epistemic_status: CONFIRMED
+    summary: Master Admin Security & Access and org-scoped IAM; AUDIT_IN_PROGRESS.
+    source_paths:
+      - architecture/users-and-invites/README.md
+
+  - id: USR-UI-SEC-001
+    type: ui
+    title: SecurityAccessHub
+    epistemic_status: CONFIRMED
+    summary: Canonical MA user governance UI (?view=security-access).
+    source_paths:
+      - frontend/src/master/security-access/SecurityAccessHub.tsx
+
+  - id: USR-API-GOV-001
+    type: api
+    title: admin/security
+    epistemic_status: CONFIRMED
+    summary: SecurityGovernanceController — list users, sessions, MFA reset, billing delegate.
+    source_paths:
+      - backend/src/modules/platform-admin/security-governance.controller.ts
+
+  - id: USR-API-LEGACY-001
+    type: api
+    title: admin/users legacy
+    epistemic_status: CONFIRMED
+    summary: MASTER_ADMIN CRUD still mounted; App.tsx dead handlers.
+    source_paths:
+      - backend/src/modules/users/users.controller.ts
+
+  - id: USR-SVC-AUDIT-001
+    type: service
+    title: Session revocation audit
+    epistemic_status: CONFIRMED
+    summary: Fire-and-forget master admin audit on session revoke.
+    source_paths:
+      - backend/src/modules/platform-admin/security-governance-session-audit.service.ts
+
+  - id: USR-DATA-USER-001
+    type: data
+    title: users / organization_memberships
+    epistemic_status: CONFIRMED
+    summary: Global User + org MembershipStatus lifecycle.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: USR-EVID-P0-001
+    type: evidence
+    title: USR_P0 findings register
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_FINDINGS_REGISTER.md
+
+  - id: USR-DEC-P0-001
+    type: decision
+    title: USR-DEC-P0-001 authority bootstrap
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    source_paths:
+      - architecture/users-and-invites/decisions/DECISION_REGISTER.md
+
+  - id: USR-OWN-ATTEST-2026-11-25
+    type: decision
+    title: Owner policies USR-OWN-01–04
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Central user management, effective revocation, privileged MFA, security accountability — approved; not deployed.
+    source_paths:
+      - architecture/users-and-invites/evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md
+      - architecture/users-and-invites/decisions/DECISION_REGISTER.md
