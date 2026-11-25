@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   OrgProductStatus,
+  ProductCatalogStatus,
   ProductSlug,
   VehicleProductGrantStatus,
   VehicleRegistryLifecycle,
@@ -34,6 +35,13 @@ describe('VehicleProductGrantService', () => {
   function makePrisma(store: Map<string, Row>) {
     const key = (vehicleId: string, productSlug: ProductSlug) => `${vehicleId}:${productSlug}`;
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([
+        {
+          id: 'prod-catalog',
+          slug: ProductSlug.RENTAL,
+          catalogStatus: ProductCatalogStatus.ACTIVE,
+        },
+      ]),
       vehicleProductGrant: {
         findUnique: async ({
           where,

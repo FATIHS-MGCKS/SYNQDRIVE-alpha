@@ -15,6 +15,10 @@ import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { ORGANIZATION_PRODUCT_VEHICLE_GRANT_ENTITLEMENT_STATUSES } from '../entitlements/entitlements-policy';
 import { assertPlatformProductGrantWritable } from '../retired-platform-product-slugs';
+import {
+  PRODUCT_CATALOG_ADMISSION_OPERATION,
+  assertProductCatalogRowAdmissionAllowed,
+} from '../product-catalog-admission.authority';
 import type { VehicleProductGrantListItem, VehicleProductGrantRecord } from './vehicle-product-grant.types';
 
 const GRANT_ELIGIBLE_REGISTRY_LIFECYCLES: VehicleRegistryLifecycle[] = [VehicleRegistryLifecycle.ACTIVE];
@@ -54,6 +58,17 @@ export class VehicleProductGrantService {
     try {
       outcome = await this.prisma.$transaction(async (tx) => {
         const existing = await tx.vehicleProductGrant.findUnique({ where: uniqueKey });
+
+        const requiresCatalogAdmission =
+          existing == null ||
+          existing.status === VehicleProductGrantStatus.REVOKED;
+        if (requiresCatalogAdmission) {
+          await assertProductCatalogRowAdmissionAllowed(
+            tx,
+            input.productSlug,
+            PRODUCT_CATALOG_ADMISSION_OPERATION.VEHICLE_PRODUCT_GRANT,
+          );
+        }
 
         if (existing?.status === VehicleProductGrantStatus.ACTIVE) {
           if (existing.organizationId !== input.organizationId) {
