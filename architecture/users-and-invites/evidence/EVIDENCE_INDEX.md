@@ -13,6 +13,13 @@
 | Production audit spec | [USR_P0_PRODUCTION_AUDIT_SPEC.md](USR_P0_PRODUCTION_AUDIT_SPEC.md) |
 | Production SQL (aggregate, no PII) | [USR_P0_PRODUCTION_INVENTORY.sql](USR_P0_PRODUCTION_INVENTORY.sql) |
 | Remediation roadmap | [USR_P0_REMEDIATION_ROADMAP.md](USR_P0_REMEDIATION_ROADMAP.md) |
+| Complete API inventory | [USR_P0_COMPLETE_API_INVENTORY.md](USR_P0_COMPLETE_API_INVENTORY.md) |
+| Audit durability | [USR_P0_AUDIT_DURABILITY.md](USR_P0_AUDIT_DURABILITY.md) |
+| Effective MFA matrix | [USR_P0_EFFECTIVE_MFA_MATRIX.md](USR_P0_EFFECTIVE_MFA_MATRIX.md) |
+| Lifecycle matrix | [USR_P0_LIFECYCLE_MATRIX.md](USR_P0_LIFECYCLE_MATRIX.md) |
+| Retention lifecycle | [USR_P0_RETENTION_LIFECYCLE.md](USR_P0_RETENTION_LIFECYCLE.md) |
+| Session test harness | [USR_P0_SESSION_TEST_HARNESS.md](USR_P0_SESSION_TEST_HARNESS.md) |
+| Production baseline | [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md) |
 
 ## Supporting (non-authority) repository docs
 

@@ -12,18 +12,25 @@
 
 Master Admin **Security & Access** (`?view=security-access`), platform user governance APIs (`/admin/security/*`, `/admin/users/*`), org-scoped IAM (`/organizations/:orgId/users/*`, invites, roles), auth/MFA/session modules, and cross-links to Organizations onboarding — **without** duplicating Organizations offboarding authority or flat `architecture/IAM_*.md` design memos (those remain **supporting evidence**).
 
-## Mandatory entry documents (USR_P0 bootstrap)
+## Mandatory entry documents
 
 - [AUDIT_MANIFEST.md](AUDIT_MANIFEST.md)
 - [CURRENT_STATE.md](CURRENT_STATE.md)
+- [AGENT_CONTRACT.md](AGENT_CONTRACT.md)
+- [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md)
 - [governance/AUTHORITY_BOUNDARIES.md](governance/AUTHORITY_BOUNDARIES.md)
+- [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 - [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md)
+- [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md)
 - [evidence/USR_P0_FINDINGS_REGISTER.md](evidence/USR_P0_FINDINGS_REGISTER.md)
+- [contradictions/KNOWLEDGE_GAPS.md](contradictions/KNOWLEDGE_GAPS.md)
 
 ## Validation
 
 ```bash
 bash architecture/scripts/validate-module-registry.sh
+bash architecture/users-and-invites/scripts/validate-graph.sh
+USR_P0_INVENTORY_PG=1 cd backend && npm test -- --testPathPatterns=usr-p0-production-inventory-sql
 cd backend && npm test -- --testPathPatterns='users.controller.security|iam-removed-membership|master-admin-mfa'
 cd frontend && npm test -- --run src/master/security-access/security-access-url.test.ts
 ```

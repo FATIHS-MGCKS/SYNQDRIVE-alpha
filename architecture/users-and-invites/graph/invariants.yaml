@@ -1,0 +1,18 @@
+invariants:
+  - id: USR-INV-001
+    statement: Core must not depend on Rental business-logic services for IAM.
+    epistemic_status: CONFIRMED
+    source_paths:
+      - architecture/users-and-invites/governance/AUTHORITY_BOUNDARIES.md
+
+  - id: USR-INV-002
+    statement: REMOVED membership re-add must not mutate unrelated global credentials (P6B2).
+    epistemic_status: CONFIRMED
+    source_paths:
+      - backend/src/modules/users/iam-removed-membership-reprovision.spec.ts
+
+  - id: USR-INV-003
+    statement: Master billing grant audit must be transactional with grant row.
+    epistemic_status: CONFIRMED
+    source_paths:
+      - backend/src/modules/users/platform-permissions/platform-permission-mandatory-audit.util.ts

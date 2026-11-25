@@ -44,14 +44,16 @@ See [evidence/USR_P0_API_INVENTORY.md](evidence/USR_P0_API_INVENTORY.md).
 
 Transition implementation: `backend/src/modules/users/*`, organization onboarding P4, P6B2 REMOVED isolation — detailed matrix in [evidence/USR_P0_WIRING_MATRIX.md](evidence/USR_P0_WIRING_MATRIX.md).
 
-## Findings summary
+## Findings summary (post closeout — not a certification of zero risk)
 
-| Severity | Count |
-|----------|-------|
-| P0 | 0 confirmed |
-| P1 | 0 confirmed |
-| P2 | 4 |
-| P3 | 2 |
+| Severity | Open confirmed |
+|----------|----------------|
+| P0 | 0 |
+| P1 | 0 |
+| P2 | 6 (F-001, F-002, F-004, F-006, R-002, R-008) |
+| P3 | 2 (F-003, R-005 doc fixed) |
+
+**Audit coverage gaps closed:** R-003, R-004, R-007. **Security gaps:** R-002 accountability, R-008 stale JWT.
 
 Full register: [evidence/USR_P0_FINDINGS_REGISTER.md](evidence/USR_P0_FINDINGS_REGISTER.md).
 

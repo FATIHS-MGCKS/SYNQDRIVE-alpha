@@ -115,11 +115,100 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 
 | Field | Value |
 |-------|-------|
+| **SEVERITY** | — |
+| **TITLE** | Billing grant step-up parity |
+| **CLASS** | **NOT_APPLICABLE** (closeout R-004) |
+| **SOURCE** | `security-governance-platform-permission.http-security.spec.ts` — intentional `MASTER_USER_MANAGEMENT` only |
+| **ACTUAL** | Equivalent MFA enforcement via `MasterAdminMfaGuard`; not weaker than session paths when flags on |
+
+---
+
+## USR-P0-R-001
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | P2 (historical) → **REMEDIATED in closeout** |
+| **TITLE** | Production inventory SQL used wrong Prisma table/column names |
+| **CLASS** | CONFIRMED_DEFECT → fixed |
+| **SOURCE** | Prior `USR_P0_PRODUCTION_INVENTORY.sql` |
+| **EVIDENCE** | Disposable PG test PASS (`USR_P0_INVENTORY_PG=1`) |
+
+---
+
+## USR-P0-R-002
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | P2 |
+| **TITLE** | Session revocation audit silently dropped on persistence failure |
+| **CLASS** | CONFIRMED_SECURITY_GAP (accountability) |
+| **SOURCE** | `security-governance-session-audit.service.ts` |
+| **DETAIL** | [USR_P0_AUDIT_DURABILITY.md](USR_P0_AUDIT_DURABILITY.md) |
+
+---
+
+## USR-P0-R-003
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | — |
+| **TITLE** | Incomplete API inventory |
+| **CLASS** | AUDIT_COVERAGE_GAP → **closed** |
+| **EVIDENCE** | [USR_P0_COMPLETE_API_INVENTORY.md](USR_P0_COMPLETE_API_INVENTORY.md) |
+
+---
+
+## USR-P0-R-004
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | — |
+| **TITLE** | Effective MFA matrix incomplete |
+| **CLASS** | AUDIT_COVERAGE_GAP → **closed** |
+| **EVIDENCE** | [USR_P0_EFFECTIVE_MFA_MATRIX.md](USR_P0_EFFECTIVE_MFA_MATRIX.md) |
+
+---
+
+## USR-P0-R-005
+
+| Field | Value |
+|-------|-------|
 | **SEVERITY** | P3 |
-| **TITLE** | Master Billing grant path missing `StepUpGuard` on revoke/grant vs session revoke |
-| **CLASS** | SUSPECTED_UNVERIFIED (needs threat-model confirmation) |
-| **SOURCE** | `security-governance.controller.ts:139–178` — `@RequireMasterAdminMfa` only, no `@RequireStepUp` unlike session revoke |
-| **EXPECTED** | Consistent step-up for all privileged mutations |
-| **ACTUAL** | MFA guard + mandatory audit; step-up decorator absent on billing paths |
-| **IMPACT** | May be intentional if `MASTER_USER_MANAGEMENT` MFA satisfies policy |
-| **OWNER_DECISION** | YES — align step-up matrix |
+| **TITLE** | Incorrect ISO 27001 control references in compliance matrix |
+| **CLASS** | CONFIRMED_DEFECT (documentation) → **corrected** |
+| **SOURCE** | Prior A.12 logging references |
+
+---
+
+## USR-P0-R-006
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | P2 |
+| **TITLE** | Retention/deletion operational proof incomplete |
+| **CLASS** | AUDIT_COVERAGE_GAP |
+| **SOURCE** | `iam-data-retention` — enum ≠ scheduled erasure proof |
+| **EVIDENCE** | [USR_P0_RETENTION_LIFECYCLE.md](USR_P0_RETENTION_LIFECYCLE.md) |
+
+---
+
+## USR-P0-R-007
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | — |
+| **TITLE** | Module authority structure incomplete |
+| **CLASS** | AUDIT_COVERAGE_GAP → **closed in closeout** (graph + mandatory files) |
+
+---
+
+## USR-P0-R-008
+
+| Field | Value |
+|-------|-------|
+| **SEVERITY** | P2 |
+| **TITLE** | Access JWT may retain stale permissions until expiry |
+| **CLASS** | CONFIRMED_DEFECT (session design) |
+| **SOURCE** | `auth.guard.ts` — no DB version check; refresh path validates versions |
+| **EVIDENCE** | [USR_P0_LIFECYCLE_MATRIX.md](USR_P0_LIFECYCLE_MATRIX.md) |
+| **OWNER_DECISION** | YES — accept TTL vs implement request-time reconciliation |

@@ -8,16 +8,22 @@
 - Master Admin MFA guard + step-up on session revocation
 - Atomic org onboarding (P4)
 
-## Phase USR-P1 (mandatory quality / hygiene)
+## Phase USR-P1 (grouped — one PR per theme)
 
-1. **USR-P0-F-003** — Fix session-audit HTTP security test DI (unblocks CI signal)
-2. **USR-P0-F-001** — Remove dead `App.tsx` user CRUD + listAll fetch
-3. **USR-P0-F-002** — Migrate Security & Access strings to 9-locale keys
+| PR theme | Items |
+|----------|-------|
+| `usr-p1-audit-accountability` | R-002 session audit observability/retry; optional align with billing tx pattern for audit-only sidecar |
+| `usr-p1-test-harness` | F-003 session HTTP spec providers + real-guard MFA test parity |
+| `usr-p1-ma-shell-cleanup` | F-001 dead App.tsx |
+| `usr-p1-security-access-i18n` | F-002 |
 
-## Phase USR-P2 (security alignment)
+## Phase USR-P2 (security / session)
 
-4. Owner decision **USR-P0-F-007** — Step-up parity for billing grant/revoke vs sessions
-5. Owner decision **USR-P0-F-004** — Central MA user create scope
+| Item | Note |
+|------|------|
+| R-008 stale JWT | Owner: shorten access TTL vs request-time permission reconciliation |
+| F-004 | Central MA user create — product decision |
+| R-006 | Retention operational attestation + scheduler evidence |
 
 ## Phase USR-P3 (verification)
 

@@ -356,8 +356,8 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Authority directory** | [`architecture/users-and-invites/`](users-and-invites/) |
 | **Authority-native status** | USR_P0 repository audit **COMPLETE** · Production read-only **NOT_EXECUTED** |
 | **Production baseline** | **NOT_STARTED** |
-| **Mandatory entry documents (partial)** | [README.md](users-and-invites/README.md) · [AUDIT_MANIFEST.md](users-and-invites/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](users-and-invites/CURRENT_STATE.md) · [governance/AUTHORITY_BOUNDARIES.md](users-and-invites/governance/AUTHORITY_BOUNDARIES.md) · [evidence/EVIDENCE_INDEX.md](users-and-invites/evidence/EVIDENCE_INDEX.md) · [evidence/USR_P0_FINDINGS_REGISTER.md](users-and-invites/evidence/USR_P0_FINDINGS_REGISTER.md) |
-| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `cd backend && npm test -- --testPathPatterns='users.controller.security|iam-removed-membership|master-admin-mfa'` |
+| **Mandatory entry documents (partial)** | [README.md](users-and-invites/README.md) · [AUDIT_MANIFEST.md](users-and-invites/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](users-and-invites/CURRENT_STATE.md) · [AGENT_CONTRACT.md](users-and-invites/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](users-and-invites/KNOWLEDGE_GRAPH.md) · [governance/AUTHORITY_BOUNDARIES.md](users-and-invites/governance/AUTHORITY_BOUNDARIES.md) · [decisions/DECISION_REGISTER.md](users-and-invites/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](users-and-invites/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](users-and-invites/evidence/PRODUCTION_BASELINE.md) · [evidence/USR_P0_FINDINGS_REGISTER.md](users-and-invites/evidence/USR_P0_FINDINGS_REGISTER.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/users-and-invites/scripts/validate-graph.sh` |
 
 ---
 
