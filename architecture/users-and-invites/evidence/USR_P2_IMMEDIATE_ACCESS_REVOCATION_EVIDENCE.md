@@ -19,7 +19,7 @@
 | MFA pending (P2-R16) | Pending JWT binds `sessionVersion`, `securityVersion`, `platformRole`; completion rejects stale snapshot |
 | Auth snapshot fence (P2-R17) | `issueTokenPair` compares caller/`expectedAuth` to authoritative user row inside tx |
 | MFA assurance (P2-R18) | Rotation does not fabricate `totp`/`recovery` in `authMethods`; conservative `['pwd']` on stored MFA rows |
-| Legacy scope upgrade (P2-R19) | Destination org advisory acquired when binding resolves to a different org than predecessor |
+| Legacy scope upgrade (P2-R19) | All candidate org advisories (stored / last-selected / memberships) acquired in sorted order **before** user + row locks; destination revalidated inside fence; deny + safe retry if scope not in plan |
 | MFA refresh assurance | `buildSessionClaimsForStored` preserves MFA timestamps/level on rotation (methods conservative) |
 | Denial persistence (P2-R10) | Rotate returns outcome from tx; `UnauthorizedException` only after commit |
 | MFA login (P2-R08) | Verify-only MFA step; `issueTokenPair` returns single bound access JWT + refresh |
@@ -52,24 +52,30 @@ USR_P2_SESSION_CONCURRENCY_PG=1 DATABASE_URL=postgresql://postgres:postgres@127.
 
 ```bash
 cd backend && USR_P2_PG_USER=synqdrive USR_P2_PG_PASSWORD=synqdrive bash scripts/test/usr-p2-postgres-gate.sh
+# Local log: usr-p2-final-gate8.log — USR_P2_PG_EXECUTED=1
 ```
 
 | Suite | Executed | Pass | Notes |
 |-------|----------|------|-------|
-| `usr-p2-access-revocation.postgres` | 5 | 5 | PG01,04,06,12,20 |
-| `usr-p2-session-concurrency.postgres` | 5 | 5 | RACE01,02,04,06 + lock constants |
-| `usr-p1a-session-audit-certification.postgres` | 19 | 19 | PG01–13, PGA–PGF (incl. PG10 intent fault, PG07 lost-ack style replay) |
-| **Gate PostgreSQL total** | **29** | **29** | 456 migrations via resilient deploy |
+| `usr-p2-access-revocation.postgres` | 6 | 6 | incl. cross-replica `PG_CROSS_REPLICA` |
+| `usr-p2-session-concurrency.postgres` | 12 | 12 | RACE01–10 + `ORG_OFFBOARDING_RACE` + lock constants (**no explicit lock-order probe hooks**) |
+| `usr-p2-security-reset.postgres` | 3 | 3 | `PASSWORD_CHANGED` + MFA pending stale + **status INACTIVE only** — not `PasswordResetService` / `IamMfaResetService` HTTP paths |
+| `usr-p1a-session-audit-certification.postgres` | 22 | 22 | **P1A_A** outbox read fault on fallback; **P1A_B** idempotent second revoke (≠ lost commit ack); **P1A_C** dual-`PrismaClient` enqueue |
+| **Gate PostgreSQL total** | **43** | **43** | disposable DB ownership check + resilient migrate (baseline warnings persist) |
 
 ```bash
-npx jest auth-mfa-login.service.spec refresh-token-org-binding usr-p2-access-revocation.http-security.integration
-cd frontend && npm run test -- --run src/lib/auth.master-billing.test.ts src/i18n/auth-error-i18n.test.ts
-npm run build # backend
+npx tsc -p tsconfig.json --noEmit  # PASS (incl. auth-mfa-login.platform-permissions)
+npx jest usr-p2-access-revocation.http-security.integration.spec --runInBand  # HTTP01–HTTP21 (HTTP13 billing N/A stub) — 21/21 PASS
+npx jest auth-mfa-login.platform-permissions.spec --runInBand
+cd frontend && npm run test -- --run src/lib/auth.master-billing.test.ts src/i18n/auth-error-i18n.test.ts  # 6/6
+npm run build # backend PASS
+bash architecture/scripts/validate-module-registry.sh && node architecture/users-and-invites/scripts/validate-graph.mjs
 ```
 
-- HTTP harness: **9/21 executed** (HTTP01–07, HTTP18–19) — remainder not implemented in spec file.
-- RACE matrix: **4/10 + org offboarding** — RACE03,05,07–10, `ORG_OFFBOARDING_RACE` not implemented.
-- Frontend auth: **6** vitest cases executed (4 master-billing + 2 auth-error i18n); no dedicated refresh-coalescing E2E in repo.
+- **HTTP matrix:** **21/21** executed against real `AuthGuard` + authority harness (not full Nest HTTP stack for billing/org lifecycle).
+- **RACE matrix:** **10/10 + org offboarding** executed; **deterministic transaction barriers and advisory-order assertions not implemented** (best-effort `Promise.all` races only).
+- **Frontend auth:** **6** vitest cases; **no** legacy JWT refresh upgrade / refresh coalescing / failed-refresh logout specs in repo (no coalescing API in `frontend/src/lib/auth.ts`).
+- **Security reset gap:** MFA reset via `IamMfaResetService` blocked on disposable DB missing full `users` profile columns when service uses unconstrained `user.findUnique`.
 
 ### Schema drift (`users.first_name`)
 
@@ -77,7 +83,9 @@ Prisma `User.firstName` exists in schema; disposable DB after full migrate lacks
 
 ## R-008 status
 
-**IMPLEMENTED + TESTED (repo)** — request-time session binding and version checks on protected API routes. **NOT DEPLOYED / NOT PRODUCTION_VERIFIED.**
+**OPEN (P1)** — implementation on branch; **43/43** disposable PostgreSQL gate + **21/21** HTTP harness + build/typecheck PASS. **Acceptance gate not closed:** security-reset production-service proofs incomplete; P1A lost-commit-ack not demonstrated; RACE lacks ordered lock/barrier evidence; MFA TOTP/recovery refresh assurance not PG-certified; frontend refresh matrix absent; CI on final HEAD pending owner review.
+
+**NOT DEPLOYED / NOT PRODUCTION_VERIFIED.**
 
 ## Non-goals preserved
 

@@ -26,10 +26,11 @@ if ! [[ "$PG_PORT" =~ ^[0-9]+$ ]] || (( PG_PORT < 1 || PG_PORT > 65535 )); then
   fail "invalid PG port"
 fi
 
-EPHEMERAL_DB="${USR_P2_PG_DB:-usr_p2_disposable_$(date +%s)_$$}"
+EPHEMERAL_DB="${USR_P2_PG_DB:-usr_p2_disposable_$(date +%s)_$$_$(openssl rand -hex 4 2>/dev/null || echo rnd)}"
 if ! [[ "$EPHEMERAL_DB" =~ ^usr_p2_[a-z0-9_]+$ ]]; then
   fail 'database name must match ^usr_p2_[a-z0-9_]+$'
 fi
+CREATED_BY_GATE=0
 
 export PGPASSWORD="$PG_PASSWORD"
 export PGHOST="$PG_HOST"
@@ -40,15 +41,18 @@ psql_admin() {
 }
 
 cleanup() {
-  if [[ -n "${EPHEMERAL_DB:-}" ]]; then
+  if [[ "${CREATED_BY_GATE:-0}" == 1 && -n "${EPHEMERAL_DB:-}" ]]; then
     psql_admin -c "DROP DATABASE IF EXISTS \"${EPHEMERAL_DB}\";" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
 
 log "create disposable database ${EPHEMERAL_DB}"
-psql_admin -c "DROP DATABASE IF EXISTS \"${EPHEMERAL_DB}\";" >/dev/null
+if psql_admin -tAc "SELECT 1 FROM pg_database WHERE datname='${EPHEMERAL_DB}'" | grep -q 1; then
+  fail "refusing to reuse existing database ${EPHEMERAL_DB}"
+fi
 psql_admin -c "CREATE DATABASE \"${EPHEMERAL_DB}\";" >/dev/null
+CREATED_BY_GATE=1
 
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
 
@@ -68,6 +72,10 @@ run_jest usr-p2-access-revocation.postgres.integration.spec.ts
 log 'USR-P2 session concurrency PostgreSQL'
 export USR_P2_SESSION_CONCURRENCY_PG=1
 run_jest usr-p2-session-concurrency.postgres.integration.spec.ts
+
+log 'USR-P2 security reset PostgreSQL'
+export USR_P2_SECURITY_RESET_PG=1
+run_jest usr-p2-security-reset.postgres.integration.spec.ts
 
 log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1

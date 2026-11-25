@@ -38,6 +38,8 @@ function assertDisposableDb(): void {
   let prisma: PrismaClient;
   let refreshTokens: RefreshTokenService;
   let authority: UserAccessAuthorityService;
+  let authorityB: UserAccessAuthorityService;
+  let prismaReplica: PrismaClient;
 
   beforeAll(() => {
     assertDisposableDb();
@@ -63,10 +65,14 @@ function assertDisposableDb(): void {
       platformPermissions,
     );
     authority = new UserAccessAuthorityService(prisma as never, platformPermissions);
+    prismaReplica = new PrismaClient();
+    const platformReplica = new PlatformPermissionService(prismaReplica as never);
+    authorityB = new UserAccessAuthorityService(prismaReplica as never, platformReplica);
   });
 
   afterAll(async () => {
     await prisma?.$disconnect();
+    await prismaReplica?.$disconnect();
   });
 
   async function createUser(role: UserPlatformRole = UserPlatformRole.USER) {
@@ -198,6 +204,24 @@ function assertDisposableDb(): void {
     await expect(authority.validateAccessJwt(decoded as never)).rejects.toMatchObject({
       response: { code: ACCESS_AUTHORITY_FAILURE_CODES.SESSION_VERSION_MISMATCH },
     });
+  });
+
+  it('PG_CROSS_REPLICA equivalent authority outcomes', async () => {
+    const user = await createUser();
+    const { accessToken } = await refreshTokens.issueTokenPair(
+      {
+        id: user.id,
+        email: user.email,
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      null,
+    );
+    const decoded = jwt.verify(accessToken, JWT_SECRET) as jwt.JwtPayload;
+    const a = await authority.validateAccessJwt(decoded as never);
+    const b = await authorityB.validateAccessJwt(decoded as never);
+    expect(a.tokenFamily).toBe(b.tokenFamily);
   });
 
   it('PG20 legitimate refresh rotation remains usable', async () => {

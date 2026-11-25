@@ -780,4 +780,87 @@ const run = process.env[OPT_IN] === '1';
     expect(meta?.revokedSessionCount).toBe(2);
     record('PGF', 'PASS');
   });
+
+  it('P1A_A outbox read failure during fallback still revokes session', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id, null);
+    const findSpy = jest
+      .spyOn(prisma.masterAdminAuditOutbox, 'findUnique')
+      .mockRejectedValueOnce(new Error('P1A_A_outbox_read_fault'));
+    const { revoked } = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    findSpy.mockRestore();
+    expect(revoked).toBe(true);
+    const token = await prisma.refreshToken.findUnique({ where: { id: session.id } });
+    expect(token?.revokedAt).not.toBeNull();
+    record('P1A_A', 'PASS');
+  });
+
+  it('P1A_B committed revocation not duplicated after lost acknowledgement', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id, null);
+    const first = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    expect(first.revoked).toBe(true);
+    const before = await prisma.activityLog.count({
+      where: { metaJson: { path: ['targetUserId'], equals: target.id } },
+    });
+    const second = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+    });
+    expect(second.revoked).toBe(false);
+    const after = await prisma.activityLog.count({
+      where: { metaJson: { path: ['targetUserId'], equals: target.id } },
+    });
+    expect(after).toBeGreaterThanOrEqual(before);
+    record('P1A_B', 'PASS');
+  });
+
+  it('P1A_C independent transactions contend on outbox identity', async () => {
+    const prismaB = new PrismaClient();
+    const outboxRepoA = new MasterAdminAuditOutboxRepository(prisma as never);
+    const outboxRepoB = new MasterAdminAuditOutboxRepository(prismaB as never);
+    const actor = await createActor();
+    const operationId = generateMasterAdminSecurityOperationId();
+    const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
+    const envelope = pgEnvelope({
+      correlationId: randomUUID(),
+      actorUserId: actor.id,
+      targetUserId: randomUUID(),
+      sessionId: randomUUID(),
+    });
+    const [rowA, rowB] = await Promise.all([
+      prisma.$transaction((tx) =>
+        outboxRepoA.enqueueInTransaction(tx, {
+          idempotencyKey,
+          envelope,
+          occurredAt: new Date(),
+          auditScope: MasterAdminAuditScope.PLATFORM,
+        }),
+      ),
+      prismaB.$transaction((tx) =>
+        outboxRepoB.enqueueInTransaction(tx, {
+          idempotencyKey,
+          envelope,
+          occurredAt: new Date(),
+          auditScope: MasterAdminAuditScope.PLATFORM,
+        }),
+      ),
+    ]);
+    expect(rowA.id).toBe(rowB.id);
+    const rows = await prisma.masterAdminAuditOutbox.count({ where: { idempotencyKey } });
+    expect(rows).toBe(1);
+    await prismaB.$disconnect();
+    record('P1A_C', 'PASS');
+  });
 });

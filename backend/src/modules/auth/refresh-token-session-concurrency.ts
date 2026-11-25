@@ -1,4 +1,5 @@
-import type { Prisma } from '@prisma/client';
+import { MembershipStatus, RefreshTokenScope, type Prisma } from '@prisma/client';
+import type { PrismaService } from '@shared/database/prisma.service';
 
 /** Advisory lock class: user session write serialization (P2-R07). */
 export const IAM_USER_SESSION_WRITE_LOCK_CLASS = 913_104;
@@ -56,4 +57,51 @@ export async function acquireOrgScopeSessionWriteLock(
   organizationId: string,
 ): Promise<void> {
   await acquireOrgSessionWriteLock(tx, organizationId);
+}
+
+/**
+ * Plan organization advisory locks before user/row locks (P2-R19 legacy upgrade).
+ * Includes stored org, last-selected org, and all active membership orgs for legacy tokens.
+ */
+export async function planRotateOrganizationAdvisoryLocks(
+  client: PrismaService | Prisma.TransactionClient,
+  input: {
+    userId: string;
+    storedOrganizationId: string | null;
+    scope: RefreshTokenScope;
+  },
+): Promise<string[]> {
+  const ids = new Set<string>();
+  if (input.storedOrganizationId) {
+    ids.add(input.storedOrganizationId);
+  }
+  if (input.scope === RefreshTokenScope.LEGACY_UNSCOPED) {
+    const user = await client.user.findUnique({
+      where: { id: input.userId },
+      select: { lastSelectedOrganizationId: true },
+    });
+    if (user?.lastSelectedOrganizationId) {
+      ids.add(user.lastSelectedOrganizationId);
+    }
+    const memberships = await client.organizationMembership.findMany({
+      where: { userId: input.userId, status: MembershipStatus.ACTIVE },
+      select: { organizationId: true },
+    });
+    for (const row of memberships) {
+      ids.add(row.organizationId);
+    }
+  }
+  return [...ids].sort();
+}
+
+/** Canonical order: sorted org advisories, then user advisory (never org after user). */
+export async function acquireOrderedOrganizationLocksThenUser(
+  tx: Prisma.TransactionClient,
+  organizationIds: string[],
+  userId: string,
+): Promise<void> {
+  for (const organizationId of organizationIds) {
+    await acquireOrgSessionWriteLock(tx, organizationId);
+  }
+  await acquireUserSessionWriteLock(tx, userId);
 }

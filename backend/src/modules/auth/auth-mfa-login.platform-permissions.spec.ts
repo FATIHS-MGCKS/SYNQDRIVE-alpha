@@ -1,4 +1,4 @@
-import { AuthMfaLoginService } from './auth-mfa-login.service';
+import { AuthMfaLoginService, type MfaPendingLoginContext } from './auth-mfa-login.service';
 import { UserPlatformRole } from '@prisma/client';
 
 describe('AuthMfaLoginService — platformPermissions response parity', () => {
@@ -14,9 +14,14 @@ describe('AuthMfaLoginService — platformPermissions response parity', () => {
       }),
     };
     const challenge = {
-      challengeWithTotp: jest.fn().mockResolvedValue({
-        accessToken: 'mfa-access',
-        assuranceLevel: 2,
+      verifyLoginMfaTotp: jest.fn().mockResolvedValue({
+        claims: {
+          assuranceLevel: 2,
+          authenticatedAt: new Date().toISOString(),
+          mfaAuthenticatedAt: new Date().toISOString(),
+          authMethods: ['pwd', 'totp'],
+          securityVersion: 0,
+        },
       }),
     };
     const prisma = {
@@ -27,8 +32,8 @@ describe('AuthMfaLoginService — platformPermissions response parity', () => {
           name: 'Admin',
           status: 'ACTIVE',
           platformRole: UserPlatformRole.MASTER_ADMIN,
+          sessionVersion: 0,
           securityVersion: 0,
-          memberships: [],
         }),
       },
     };
@@ -40,7 +45,12 @@ describe('AuthMfaLoginService — platformPermissions response parity', () => {
       challenge as never,
       platformPermissions as never,
     );
-    jest.spyOn(service, 'verifyMfaPendingToken').mockReturnValue('admin-1');
+    jest.spyOn(service, 'verifyMfaPendingToken').mockReturnValue({
+      userId: 'admin-1',
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    } satisfies MfaPendingLoginContext);
 
     const result = await service.completeLoginMfa({
       mfaPendingToken: 'pending',

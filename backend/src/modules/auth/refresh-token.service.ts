@@ -27,9 +27,9 @@ import {
 import { assertOrganizationAllowsTenantSurface } from '@shared/auth/organization-lifecycle-access.policy';
 import {
   acquireOrgScopeSessionWriteLock,
-  acquireOrgSessionWriteLock,
+  acquireOrderedOrganizationLocksThenUser,
   acquireSessionWriteLocks,
-  acquireUserSessionWriteLock,
+  planRotateOrganizationAdvisoryLocks,
 } from './refresh-token-session-concurrency';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
@@ -318,19 +318,22 @@ export class RefreshTokenService {
 
     const preview = await this.prisma.refreshToken.findFirst({
       where: { tokenHash },
-      select: { userId: true, organizationId: true },
+      select: { userId: true, organizationId: true, scope: true },
     });
     if (!preview) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    const orgLockPlan = await planRotateOrganizationAdvisoryLocks(this.prisma, {
+      userId: preview.userId,
+      storedOrganizationId: preview.organizationId,
+      scope: preview.scope,
+    });
+
     let outcome: RotateOutcome;
     try {
       outcome = await this.prisma.$transaction(async (tx): Promise<RotateOutcome> => {
-      await acquireSessionWriteLocks(tx, {
-        userId: preview.userId,
-        organizationId: preview.organizationId,
-      });
+      await acquireOrderedOrganizationLocksThenUser(tx, orgLockPlan, preview.userId);
 
       const locked = await tx.$queryRaw<LockedRow[]>`
         SELECT id, user_id, family, scope, organization_id, membership_id,
@@ -447,11 +450,18 @@ export class RefreshTokenService {
 
       const membership = binding.membership;
       const destinationOrgId = membership?.organizationId ?? stored.organizationId;
-      if (
-        destinationOrgId &&
-        destinationOrgId !== preview.organizationId
-      ) {
-        await acquireOrgSessionWriteLock(tx, destinationOrgId);
+      if (destinationOrgId && !orgLockPlan.includes(destinationOrgId)) {
+        return {
+          kind: 'denied',
+          message: 'Refresh scope resolution requires a safe lock retry',
+          stored: {
+            userId: stored.userId,
+            organizationId: stored.organizationId,
+            membershipId: stored.membershipId,
+            refreshTokenId: stored.id,
+            tokenFamily: stored.family,
+          },
+        };
       }
       await this.assertOrganizationSessionIssuanceForOrganizationIdWithClient(
         tx,

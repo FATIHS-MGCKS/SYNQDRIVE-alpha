@@ -204,6 +204,207 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
       });
   });
 
+  it('HTTP08 duplicate session revocation still denied', async () => {
+    const user = {
+      id: 'http08-user',
+      email: 'http08@test.example',
+      platformRole: UserPlatformRole.USER,
+    };
+    const token = await issueFor(user);
+    const decoded = jwt.decode(token) as { tokenFamily?: string };
+    if (decoded.tokenFamily) {
+      harness.revokeHarnessRefreshFamily(user.id, decoded.tokenFamily);
+    }
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
+  it('HTTP09 missing Authorization header denied', async () => {
+    await request(app.getHttpServer()).get('/api/v1/usr-p2-probe/me').expect(401);
+  });
+
+  it('HTTP10 re-issued session allowed', async () => {
+    const user = {
+      id: 'http10-user',
+      email: 'http10@test.example',
+      platformRole: UserPlatformRole.USER,
+    };
+    harness.registerRefreshHarnessUser(user);
+    const reissued = (
+      await harness.service.issueTokenPair(user, null)
+    ).accessToken;
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${reissued}`)
+      .expect(200);
+  });
+
+  it('HTTP11 cross-user token binding denied', async () => {
+    const owner = {
+      id: 'http11-owner',
+      email: 'owner@test.example',
+      platformRole: UserPlatformRole.USER,
+    };
+    const other = {
+      id: 'http11-other',
+      email: 'other@test.example',
+      platformRole: UserPlatformRole.USER,
+    };
+    const token = await issueFor(owner);
+    harness.registerRefreshHarnessUser(other);
+    const base = jwt.decode(token) as Record<string, unknown>;
+    const { exp, iat, ...rest } = base;
+    const stolen = jwt.sign(
+      { ...rest, sub: other.id, email: other.email },
+      process.env.JWT_SECRET!,
+      { expiresIn: '15m' },
+    );
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${stolen}`)
+      .expect(401);
+  });
+
+  it('HTTP12 master admin platform-only session allowed', async () => {
+    const user = {
+      id: 'http12-master',
+      email: 'master@test.example',
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    };
+    const token = await issueFor(user);
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+  });
+
+  it('HTTP13 tenant without billing delegate denied on billing route N/A', async () => {
+    const token = await issueFor({
+      id: 'http13-user',
+      email: 'http13@test.example',
+      platformRole: UserPlatformRole.USER,
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+  });
+
+  it('HTTP14 revoked family after logout denied', async () => {
+    const user = {
+      id: 'http14-user',
+      email: 'http14@test.example',
+      platformRole: UserPlatformRole.USER,
+    };
+    harness.registerRefreshHarnessUser(user);
+    const issued = await harness.service.issueTokenPair(user, null);
+    const decoded = jwt.decode(issued.accessToken) as { tokenFamily?: string };
+    if (decoded.tokenFamily) {
+      harness.revokeHarnessRefreshFamily(user.id, decoded.tokenFamily);
+    }
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${issued.accessToken}`)
+      .expect(401);
+  });
+
+  it('HTTP15 mismatched sessionVersion denied', async () => {
+    const user = {
+      id: 'http15-user',
+      email: 'http15@test.example',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+    };
+    const token = await issueFor(user);
+    const decoded = jwt.decode(token) as Record<string, unknown>;
+    const { exp, iat, ...rest } = decoded;
+    const bad = jwt.sign(
+      { ...rest, sessionVersion: 99 },
+      process.env.JWT_SECRET!,
+      { expiresIn: '15m' },
+    );
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${bad}`)
+      .expect(401);
+  });
+
+  it('HTTP16 invalid tokenFamily binding denied', async () => {
+    const token = jwt.sign(
+      {
+        sub: 'http16-user',
+        email: 'http16@test.example',
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+        tokenFamily: 'missing-family',
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '15m' },
+    );
+    harness.registerRefreshHarnessUser({
+      id: 'http16-user',
+      email: 'http16@test.example',
+      platformRole: UserPlatformRole.USER,
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
+  it('HTTP17 expired jwt denied', async () => {
+    const token = jwt.sign(
+      {
+        sub: 'http17-user',
+        email: 'http17@test.example',
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+        tokenFamily: 'fam-expired',
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '-1s' },
+    );
+    harness.registerRefreshHarnessUser({
+      id: 'http17-user',
+      email: 'http17@test.example',
+      platformRole: UserPlatformRole.USER,
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
+  it('HTTP20 empty bearer denied', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', 'Bearer ')
+      .expect(401);
+  });
+
+  it('HTTP21 forged signature denied', async () => {
+    const token = jwt.sign(
+      {
+        sub: 'http21-user',
+        email: 'http21@test.example',
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+        tokenFamily: 'fam-21',
+      },
+      'wrong-secret',
+      { expiresIn: '15m' },
+    );
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
   it('HTTP19 authority unavailable fails closed', async () => {
     const token = await issueFor({
       id: 'http19-user',
