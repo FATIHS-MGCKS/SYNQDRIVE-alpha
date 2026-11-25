@@ -1,3 +1,4 @@
+import { isStartProxyPilotForwardCaptureJobRetryDisabled } from '@config/battery-health-v2.config';
 import type { BatteryV2JobType } from './battery-v2-job.types';
 
 export interface BatteryV2JobRetryPolicy {
@@ -58,5 +59,12 @@ export const BATTERY_V2_JOB_RETRY_POLICIES: Record<BatteryV2JobType, BatteryV2Jo
 };
 
 export function getBatteryV2JobRetryPolicy(jobType: BatteryV2JobType): BatteryV2JobRetryPolicy {
-  return BATTERY_V2_JOB_RETRY_POLICIES[jobType];
+  const base = BATTERY_V2_JOB_RETRY_POLICIES[jobType];
+  if (
+    jobType === 'BATTERY_START_PROXY_EXTRACT' &&
+    isStartProxyPilotForwardCaptureJobRetryDisabled()
+  ) {
+    return { ...base, attempts: 1 };
+  }
+  return base;
 }

@@ -5,6 +5,8 @@ import {
   isLegacyCrankAssessmentEnabled,
   isBatteryV2ReadinessEnabled,
   isBatteryV2RestSessionFeaturesShadowEnabled,
+  isBatteryV2StartProxyPilotScopeEnabled,
+  evaluateBatteryV2StartProxyPilotScope,
 } from './battery-health-v2.config';
 
 describe('battery-health-v2.config defaults', () => {
@@ -55,5 +57,16 @@ describe('battery-health-v2.config defaults', () => {
         '68868291-5478-42cd-b0c4-cc77b2a78e21',
       ),
     ).toBe(false);
+  });
+
+  it('keeps start-proxy pilot scope disabled by default', () => {
+    delete process.env.BATTERY_V2_START_PROXY_PILOT_SCOPE_ENABLED;
+    expect(isBatteryV2StartProxyPilotScopeEnabled()).toBe(false);
+    expect(
+      evaluateBatteryV2StartProxyPilotScope({
+        vehicleId: '19fedd4b-c4e8-4de8-a125-dab293326e7e',
+        tripStartedAt: new Date('2020-01-01T00:00:00.000Z'),
+      }).allowed,
+    ).toBe(true);
   });
 });

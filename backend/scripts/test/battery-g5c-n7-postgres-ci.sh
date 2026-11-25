@@ -50,4 +50,13 @@ BATTERY_V2_G5C_N7_POSTGRES_INTEGRATION=1 npx jest --runTestsByPath \
   --runInBand \
   --verbose
 
+P4C_PILOT_BUDGET_SPEC="src/modules/vehicle-intelligence/battery-health/lv-start-proxy/start-proxy-pilot-provider-budget.postgres.integration.spec.ts"
+if [[ -f "$P4C_PILOT_BUDGET_SPEC" ]]; then
+  log "G5C-N16 P4C start-proxy pilot provider budget postgres integration"
+  BATTERY_V2_START_PROXY_PILOT_INTEGRATION=1 npx jest --runTestsByPath \
+    "$P4C_PILOT_BUDGET_SPEC" \
+    --runInBand \
+    --verbose
+fi
+
 log "battery-g5c-n7-postgres-ci completed successfully"

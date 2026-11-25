@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  evaluateBatteryV2StartProxyPilotScope,
   getBatteryV2StartProxyDelayMs,
   isStartWindowCollectionEnabled,
 } from '../../../../config/battery-health-v2.config';
@@ -35,6 +36,14 @@ export class BatteryV2TripStartProducer {
     }
 
     if (!(await this.canEnqueueForVehicle(input.vehicleId))) {
+      return null;
+    }
+
+    const pilotScope = evaluateBatteryV2StartProxyPilotScope({
+      vehicleId: input.vehicleId,
+      tripStartedAt: input.tripStartedAt,
+    });
+    if (!pilotScope.allowed) {
       return null;
     }
 
