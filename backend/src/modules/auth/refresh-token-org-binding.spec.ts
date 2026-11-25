@@ -50,6 +50,11 @@ function wireTransactionalRotate(
     ...stored.user,
     securityVersion: 0,
   });
+  prisma.refreshToken.findFirst.mockResolvedValue({
+    userId: stored.userId,
+    organizationId: stored.organizationId ?? null,
+    family: stored.family,
+  });
 }
 
 function membershipRow(overrides: Record<string, unknown> = {}) {

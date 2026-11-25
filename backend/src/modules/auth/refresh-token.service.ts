@@ -6,6 +6,7 @@ import {
   Prisma,
   RefreshTokenScope,
   SessionAssuranceLevel,
+  UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamSessionPolicyService } from './iam-session-policy.service';
@@ -20,11 +21,13 @@ import { IamMetricsService } from '@modules/iam-observability/iam-metrics.servic
 import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import {
   AuthSessionClaims,
+  buildMfaClaims,
   buildPasswordOnlyClaims,
 } from '@shared/auth/auth-session-claims.types';
 import { assertOrganizationAllowsTenantSurface } from '@shared/auth/organization-lifecycle-access.policy';
 import {
-  acquireOrgSessionWriteLock,
+  acquireOrgScopeSessionWriteLock,
+  acquireSessionWriteLocks,
   acquireUserSessionWriteLock,
 } from './refresh-token-session-concurrency';
 import * as crypto from 'crypto';
@@ -88,22 +91,22 @@ export class RefreshTokenService {
     this.jwtExpiresIn = this.config.get<string>('app.jwtExpiresIn', '15m');
   }
 
-  private async withUserSessionWriteLock<T>(
-    userId: string,
+  private async withSessionWriteFence<T>(
+    scope: { userId: string; organizationId?: string | null },
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
-      await acquireUserSessionWriteLock(tx, userId);
+      await acquireSessionWriteLocks(tx, scope);
       return fn(tx);
     });
   }
 
-  private async withOrgSessionWriteLock<T>(
+  private async withOrgOnlySessionWriteFence<T>(
     organizationId: string,
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
     return this.prisma.$transaction(async (tx) => {
-      await acquireOrgSessionWriteLock(tx, organizationId);
+      await acquireOrgScopeSessionWriteLock(tx, organizationId);
       return fn(tx);
     });
   }
@@ -115,37 +118,97 @@ export class RefreshTokenService {
     context: { userAgent?: string; ipAddress?: string } = {},
     options?: IssueTokenPairOptions,
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
-    await this.assertOrganizationSessionIssuanceForMembership(membership);
     const family = crypto.randomUUID();
     const authenticatedAt = options?.sessionClaims?.authenticatedAt
       ? new Date(options.sessionClaims.authenticatedAt)
       : new Date();
-    const pair = await this.withUserSessionWriteLock(user.id, async (tx) =>
-      this.issueTokenPairWithFamilyTx(
-        tx,
-        user,
-        membership,
-        family,
-        context,
-        {
-          scope: classifyRefreshTokenScope(
-            membership
-              ? {
-                  id: membership.membershipId!,
-                  organizationId: membership.organizationId!,
-                  role: membership.role ?? 'WORKER',
-                  status: MembershipStatus.ACTIVE,
-                  membershipVersion: membership.membershipVersion ?? 0,
-                  permissions: membership.permissions,
-                  organizationRoleId: membership.organizationRoleId,
-                }
-              : null,
-          ),
-          authenticatedAt,
-          assuranceLevel: options?.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
-          sessionClaims: options?.sessionClaims,
-        },
-      ),
+    const orgId = membership?.organizationId ?? null;
+    const pair = await this.withSessionWriteFence(
+      { userId: user.id, organizationId: orgId },
+      async (tx) => {
+        const liveUser = await tx.user.findUnique({
+          where: { id: user.id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            platformRole: true,
+            sessionVersion: true,
+            securityVersion: true,
+            status: true,
+          },
+        });
+        if (!liveUser || liveUser.status !== UserStatus.ACTIVE) {
+          throw new UnauthorizedException('Account is inactive');
+        }
+
+        let liveMembership = membership;
+        if (membership?.membershipId) {
+          const row = await tx.organizationMembership.findFirst({
+            where: {
+              id: membership.membershipId,
+              userId: user.id,
+              status: MembershipStatus.ACTIVE,
+            },
+            select: {
+              id: true,
+              userId: true,
+              organizationId: true,
+              role: true,
+              organizationRoleId: true,
+              status: true,
+              membershipVersion: true,
+              permissions: true,
+              organization: { select: { companyName: true, logoUrl: true } },
+            },
+          });
+          if (!row) {
+            throw new UnauthorizedException('Membership is not active');
+          }
+          await this.assertOrganizationSessionIssuanceForOrganizationIdWithClient(
+            tx,
+            row.organizationId,
+          );
+          liveMembership = this.toMembershipContext(this.toLoginMembershipCandidate(row));
+        } else {
+          await this.assertOrganizationSessionIssuanceForMembership(liveMembership);
+        }
+
+        const userCtx: RefreshTokenUserContext = {
+          id: liveUser.id,
+          email: liveUser.email,
+          name: liveUser.name,
+          platformRole: liveUser.platformRole,
+          sessionVersion: liveUser.sessionVersion,
+          securityVersion: liveUser.securityVersion,
+        };
+
+        return this.issueTokenPairWithFamilyTx(
+          tx,
+          userCtx,
+          liveMembership,
+          family,
+          context,
+          {
+            scope: classifyRefreshTokenScope(
+              liveMembership
+                ? {
+                    id: liveMembership.membershipId!,
+                    organizationId: liveMembership.organizationId!,
+                    role: liveMembership.role ?? 'WORKER',
+                    status: MembershipStatus.ACTIVE,
+                    membershipVersion: liveMembership.membershipVersion ?? 0,
+                    permissions: liveMembership.permissions,
+                    organizationRoleId: liveMembership.organizationRoleId,
+                  }
+                : null,
+            ),
+            authenticatedAt,
+            assuranceLevel: options?.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
+            sessionClaims: options?.sessionClaims,
+          },
+        );
+      },
     );
     this.iamMetrics?.recordSessionCreated('login');
     return {
@@ -243,7 +306,22 @@ export class RefreshTokenService {
         }
       | { kind: 'ok'; accessToken: string; refreshToken: string; expiresIn: string };
 
-    const outcome = await this.prisma.$transaction(async (tx): Promise<RotateOutcome> => {
+    const preview = await this.prisma.refreshToken.findFirst({
+      where: { tokenHash },
+      select: { userId: true, organizationId: true },
+    });
+    if (!preview) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    let outcome: RotateOutcome;
+    try {
+      outcome = await this.prisma.$transaction(async (tx): Promise<RotateOutcome> => {
+      await acquireSessionWriteLocks(tx, {
+        userId: preview.userId,
+        organizationId: preview.organizationId,
+      });
+
       const locked = await tx.$queryRaw<LockedRow[]>`
         SELECT id, user_id, family, scope, organization_id, membership_id,
                session_version, membership_version, permission_version, role_version,
@@ -257,8 +335,6 @@ export class RefreshTokenService {
       if (!row) {
         return { kind: 'invalid' };
       }
-
-      await acquireUserSessionWriteLock(tx, row.user_id);
 
       if (row.revoked_at || row.expires_at < new Date()) {
         if (row.replaced_by) {
@@ -274,8 +350,20 @@ export class RefreshTokenService {
         return { kind: 'invalid' };
       }
 
-      const user = await tx.user.findUnique({ where: { id: row.user_id } });
-      if (!user || user.status !== 'ACTIVE') {
+      const user = await tx.user.findUnique({
+        where: { id: row.user_id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          platformRole: true,
+          status: true,
+          sessionVersion: true,
+          securityVersion: true,
+          lastSelectedOrganizationId: true,
+        },
+      });
+      if (!user || user.status !== UserStatus.ACTIVE) {
         return { kind: 'inactive' };
       }
 
@@ -295,9 +383,9 @@ export class RefreshTokenService {
         createdAt: row.created_at,
       };
 
-      const activeMemberships = await this.loadActiveMemberships(user.id);
+      const activeMemberships = await this.loadActiveMembershipsTx(tx, user.id);
       const boundMembership = stored.membershipId
-        ? await this.loadMembershipForUser(stored.membershipId, user.id)
+        ? await this.loadMembershipForUserTx(tx, stored.membershipId, user.id)
         : null;
 
       const binding = resolveRefreshBinding(
@@ -348,7 +436,8 @@ export class RefreshTokenService {
       }
 
       const membership = binding.membership;
-      await this.assertOrganizationSessionIssuanceForOrganizationId(
+      await this.assertOrganizationSessionIssuanceForOrganizationIdWithClient(
+        tx,
         membership?.organizationId ?? stored.organizationId,
       );
       const membershipContext = membership
@@ -380,6 +469,8 @@ export class RefreshTokenService {
       }
 
       const authenticatedAt = stored.authenticatedAt ?? stored.createdAt;
+      const rotationClaims = this.buildSessionClaimsForStored(stored, user.securityVersion);
+
       const newPair = await this.issueTokenPairWithFamilyTx(
         tx,
         {
@@ -397,10 +488,11 @@ export class RefreshTokenService {
           scope: binding.scope,
           authenticatedAt,
           assuranceLevel: stored.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
+          sessionClaims: rotationClaims,
         },
       );
 
-      const revoked = await tx.refreshToken.updateMany({
+      const replaced = await tx.refreshToken.updateMany({
         where: { id: stored.id, revokedAt: null },
         data: {
           revokedAt: new Date(),
@@ -408,8 +500,8 @@ export class RefreshTokenService {
           lastUsedAt: new Date(),
         },
       });
-      if (revoked.count !== 1) {
-        return { kind: 'invalid' };
+      if (replaced.count !== 1) {
+        throw new Error('REFRESH_ROTATION_REPLACE_RACE');
       }
 
       return {
@@ -419,6 +511,12 @@ export class RefreshTokenService {
         expiresIn: this.jwtExpiresIn,
       };
     });
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('REFRESH_ROTATION_')) {
+        throw new UnauthorizedException('Refresh token is no longer valid');
+      }
+      throw err;
+    }
 
     if (outcome.kind === 'reuse') {
       this.logger.warn(
@@ -471,19 +569,21 @@ export class RefreshTokenService {
     const tokenHash = await this.hashToken(rawToken);
     const row = await this.prisma.refreshToken.findFirst({
       where: { tokenHash },
-      select: { userId: true },
+      select: { userId: true, family: true, organizationId: true },
     });
-    if (!row) return;
+    if (!row?.family) return;
 
-    const result = await this.withUserSessionWriteLock(row.userId, async (tx) =>
-      tx.refreshToken.updateMany({
-        where: { tokenHash, revokedAt: null },
-        data: {
-          revokedAt: new Date(),
-          revocationReason: revocationReason ?? null,
-        },
-      }),
-    ).catch(() => ({ count: 0 }));
+    const result = await this.withSessionWriteFence(
+      { userId: row.userId, organizationId: row.organizationId },
+      async (tx) =>
+        tx.refreshToken.updateMany({
+          where: { family: row.family, userId: row.userId, revokedAt: null },
+          data: {
+            revokedAt: new Date(),
+            revocationReason: revocationReason ?? null,
+          },
+        }),
+    );
     if (result.count > 0) {
       this.iamMetrics?.recordSessionRevoked('single');
     }
@@ -494,14 +594,16 @@ export class RefreshTokenService {
   }
 
   async revokeAllActiveForUser(userId: string): Promise<number> {
-    const result = await this.withUserSessionWriteLock(userId, async (tx) =>
-      tx.refreshToken.updateMany({
-        where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
-        data: {
-          revokedAt: new Date(),
-          revocationReason: 'USER_ALL_SESSIONS_REVOKED',
-        },
-      }),
+    const result = await this.withSessionWriteFence(
+      { userId, organizationId: null },
+      async (tx) =>
+        tx.refreshToken.updateMany({
+          where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+          data: {
+            revokedAt: new Date(),
+            revocationReason: 'USER_ALL_SESSIONS_REVOKED',
+          },
+        }),
     );
     if (result.count > 0) {
       this.iamMetrics?.recordSessionRevoked('all');
@@ -514,7 +616,7 @@ export class RefreshTokenService {
    * Other-org tokens for the same user remain valid.
    */
   async revokeAllActiveForOrganization(organizationId: string): Promise<number> {
-    const result = await this.withOrgSessionWriteLock(organizationId, async (tx) =>
+    const result = await this.withOrgOnlySessionWriteFence(organizationId, async (tx) =>
       tx.refreshToken.updateMany({
         where: {
           organizationId,
@@ -537,19 +639,21 @@ export class RefreshTokenService {
     userId: string,
     organizationId: string,
   ): Promise<number> {
-    const result = await this.withUserSessionWriteLock(userId, async (tx) =>
-      tx.refreshToken.updateMany({
-        where: {
-          userId,
-          organizationId,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        data: {
-          revokedAt: new Date(),
-          revocationReason: 'ORG_MEMBERSHIP_SESSIONS_REVOKED',
-        },
-      }),
+    const result = await this.withSessionWriteFence(
+      { userId, organizationId },
+      async (tx) =>
+        tx.refreshToken.updateMany({
+          where: {
+            userId,
+            organizationId,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          data: {
+            revokedAt: new Date(),
+            revocationReason: 'ORG_MEMBERSHIP_SESSIONS_REVOKED',
+          },
+        }),
     );
     return result.count;
   }
@@ -557,13 +661,15 @@ export class RefreshTokenService {
   async revokeFamily(family: string): Promise<number> {
     const anchor = await this.prisma.refreshToken.findFirst({
       where: { family },
-      select: { userId: true },
+      select: { userId: true, organizationId: true },
       orderBy: { createdAt: 'desc' },
     });
     if (!anchor) return 0;
 
-    const result = await this.withUserSessionWriteLock(anchor.userId, async (tx) =>
-      tx.refreshToken.updateMany({
+    const result = await this.withSessionWriteFence(
+      { userId: anchor.userId, organizationId: anchor.organizationId },
+      async (tx) =>
+        tx.refreshToken.updateMany({
         where: { family, revokedAt: null },
         data: {
           revokedAt: new Date(),
@@ -578,7 +684,7 @@ export class RefreshTokenService {
   }
 
   async revokePrivilegedSessionsForUser(userId: string): Promise<number> {
-    return this.withUserSessionWriteLock(userId, async (tx) =>
+    return this.withSessionWriteFence({ userId, organizationId: null }, async (tx) =>
       tx.refreshToken.updateMany({
         where: {
           userId,
@@ -625,7 +731,7 @@ export class RefreshTokenService {
   }
 
   async revokeSessionById(userId: string, sessionId: string): Promise<boolean> {
-    return this.withUserSessionWriteLock(userId, async (tx) =>
+    return this.withSessionWriteFence({ userId, organizationId: null }, async (tx) =>
       this.revokeSessionByIdInTransaction(tx, userId, sessionId),
     );
   }
@@ -635,12 +741,12 @@ export class RefreshTokenService {
     userId: string,
     sessionId: string,
   ): Promise<boolean> {
-    await acquireUserSessionWriteLock(tx, userId);
     const target = await tx.refreshToken.findFirst({
       where: { id: sessionId, userId },
-      select: { family: true },
+      select: { family: true, organizationId: true },
     });
     if (!target?.family) return false;
+    await acquireSessionWriteLocks(tx, { userId, organizationId: target.organizationId });
     const result = await tx.refreshToken.updateMany({
       where: {
         userId,
@@ -660,7 +766,7 @@ export class RefreshTokenService {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<number> {
-    await acquireUserSessionWriteLock(tx, userId);
+    await acquireSessionWriteLocks(tx, { userId, organizationId: null });
     const result = await tx.refreshToken.updateMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
       data: {
@@ -695,7 +801,7 @@ export class RefreshTokenService {
       return { revoked: 0, keptSessionId: null };
     }
 
-    return this.withUserSessionWriteLock(userId, async (tx) => {
+    return this.withSessionWriteFence({ userId, organizationId: null }, async (tx) => {
       const keptHead = await tx.refreshToken.findFirst({
         where: {
           userId,
@@ -851,9 +957,26 @@ export class RefreshTokenService {
   private async loadActiveMemberships(
     userId: string,
   ): Promise<LoginMembershipCandidate[]> {
-    const rows = await this.prisma.organizationMembership.findMany({
+  return this.loadActiveMembershipsTx(this.prisma, userId);
+  }
+
+  private async loadActiveMembershipsTx(
+    client: Prisma.TransactionClient | PrismaService,
+    userId: string,
+  ): Promise<LoginMembershipCandidate[]> {
+    const rows = await client.organizationMembership.findMany({
       where: { userId, status: MembershipStatus.ACTIVE },
-      include: { organization: true },
+      select: {
+        id: true,
+        userId: true,
+        organizationId: true,
+        role: true,
+        organizationRoleId: true,
+        status: true,
+        membershipVersion: true,
+        permissions: true,
+        organization: { select: { companyName: true, logoUrl: true } },
+      },
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((row) => this.toLoginMembershipCandidate(row));
@@ -863,11 +986,51 @@ export class RefreshTokenService {
     membershipId: string,
     userId: string,
   ): Promise<LoginMembershipCandidate | null> {
-    const row = await this.prisma.organizationMembership.findFirst({
+    return this.loadMembershipForUserTx(this.prisma, membershipId, userId);
+  }
+
+  private async loadMembershipForUserTx(
+    client: Prisma.TransactionClient | PrismaService,
+    membershipId: string,
+    userId: string,
+  ): Promise<LoginMembershipCandidate | null> {
+    const row = await client.organizationMembership.findFirst({
       where: { id: membershipId, userId },
-      include: { organization: true },
+      select: {
+        id: true,
+        userId: true,
+        organizationId: true,
+        role: true,
+        organizationRoleId: true,
+        status: true,
+        membershipVersion: true,
+        permissions: true,
+        organization: { select: { companyName: true, logoUrl: true } },
+      },
     });
     return row ? this.toLoginMembershipCandidate(row) : null;
+  }
+
+  private buildSessionClaimsForStored(
+    stored: {
+      assuranceLevel: SessionAssuranceLevel | null;
+      authenticatedAt: Date | null;
+      createdAt: Date;
+    },
+    securityVersion: number,
+  ): AuthSessionClaims {
+    const authenticatedAt = (stored.authenticatedAt ?? stored.createdAt).toISOString();
+    if (stored.assuranceLevel === SessionAssuranceLevel.MFA) {
+      return buildMfaClaims({
+        authenticatedAt,
+        mfaAuthenticatedAt: authenticatedAt,
+        securityVersion,
+      });
+    }
+    return {
+      ...buildPasswordOnlyClaims(securityVersion),
+      authenticatedAt,
+    };
   }
 
   private toLoginMembershipCandidate(
@@ -973,8 +1136,18 @@ export class RefreshTokenService {
   private async assertOrganizationSessionIssuanceForOrganizationId(
     organizationId: string | null | undefined,
   ): Promise<void> {
+    return this.assertOrganizationSessionIssuanceForOrganizationIdWithClient(
+      this.prisma,
+      organizationId,
+    );
+  }
+
+  private async assertOrganizationSessionIssuanceForOrganizationIdWithClient(
+    client: Prisma.TransactionClient | PrismaService,
+    organizationId: string | null | undefined,
+  ): Promise<void> {
     if (!organizationId) return;
-    const org = await this.prisma.organization.findUnique({
+    const org = await client.organization.findUnique({
       where: { id: organizationId },
       select: { status: true },
     });

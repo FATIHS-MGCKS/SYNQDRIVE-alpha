@@ -1,0 +1,46 @@
+name: USR-P2 PostgreSQL gate
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/auth/**'
+      - 'backend/src/modules/users/usr-p2-*.postgres.integration.spec.ts'
+      - 'backend/scripts/test/usr-p2-postgres-gate.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - '.github/workflows/usr-p2-postgres-ci.yml'
+
+jobs:
+  usr-p2-disposable-postgres:
+    name: USR-P2 disposable PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+      - run: bash scripts/test/usr-p2-postgres-gate.sh
+        env:
+          CI_PG_HOST: 127.0.0.1
+          CI_PG_PORT: 5432
+          USR_P2_PG_USER: synqdrive
+          USR_P2_PG_PASSWORD: synqdrive

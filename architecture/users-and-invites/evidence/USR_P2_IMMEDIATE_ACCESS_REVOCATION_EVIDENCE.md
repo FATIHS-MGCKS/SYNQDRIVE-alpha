@@ -12,7 +12,11 @@
 | Family scope binding | Active head row (`replacedBy` null) + JWT/org/membership must match refresh authority |
 | Request-time authority | `UserAccessAuthorityService` invoked from `AuthGuard` after crypto verify |
 | Session revocation | Family-wide revoke by session id; atomic rotate under `FOR UPDATE` |
-| Session write fencing (P2-R07) | `pg_advisory_xact_lock` user class `913104`, org class `913105` on all refresh-token writers |
+| Session write fencing (P2-R07–R13) | Lock order: org advisory `913105` → user advisory `913104` → row `FOR UPDATE`; `acquireSessionWriteLocks` on all writers |
+| Lock inversion (P2-R12) | Rotate resolves token id, acquires advisories, then `FOR UPDATE` |
+| Logout family (P2-R14) | `revoke(raw)` revokes entire session `family` under fence |
+| Orphan prevention (P2-R10/R15) | Rotate throws on replace race → full tx rollback |
+| MFA refresh assurance | `buildSessionClaimsForStored` preserves MFA claims on rotation |
 | Denial persistence (P2-R10) | Rotate returns outcome from tx; `UnauthorizedException` only after commit |
 | MFA login (P2-R08) | Verify-only MFA step; `issueTokenPair` returns single bound access JWT + refresh |
 | Current session (P2-R09) | `revokeOtherSessions` keeps authenticated JWT `tokenFamily`, not newest row id |
@@ -40,7 +44,7 @@ USR_P2_SESSION_CONCURRENCY_PG=1 DATABASE_URL=postgresql://postgres:postgres@127.
   npx jest usr-p2-session-concurrency.postgres.integration.spec --runInBand
 ```
 
-**Agent run (2026-11-25 UTC):** `npm run build` PASS; `refresh-token-org-binding` 11/11; `account.service` 22/22; `user-access-authority` PASS. PostgreSQL matrix **not executed** on agent VM (no Docker/`DATABASE_URL` disposable DB).
+**Agent run (2026-11-26 CET):** local PostgreSQL 16 (`synqdrive@127.0.0.1`, disposable `test_db_*` + `scripts/test/usr-p2-postgres-gate.sh`). Migrations: `prisma-migrate-deploy-resilient.sh` 456 applied. **usr-p2-access-revocation.postgres** 5/5 PASS; **usr-p2-session-concurrency.postgres** 5/5 PASS (RACE01,02,04,06 + lock constants). Unit: `refresh-token-org-binding` 11/11. HTTP01–21, P1A full matrix, frontend auth, RACE03/05/07–10 remain open.
 
 ## R-008 status
 

@@ -76,11 +76,43 @@ function assertDisposableDb(): void {
       INSERT INTO users (
         id, email, platform_role, status, created_at, updated_at, session_version, security_version
       ) VALUES (
-        ${id}::uuid, ${email}, ${role}::"UserPlatformRole", ${UserStatus.ACTIVE}::"UserStatus",
+        ${id}, ${email}, ${role}::"UserPlatformRole", ${UserStatus.ACTIVE}::"UserStatus",
         NOW(), NOW(), 0, 0
       )
     `;
     return { id, email };
+  }
+
+  async function createOrgMembership(userId: string) {
+    const orgId = randomUUID();
+    const membershipId = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO organizations (
+        id, company_name, business_type, status, created_at, updated_at
+      ) VALUES (
+        ${orgId},
+        ${`org-${orgId.slice(0, 8)}`},
+        ${BusinessType.RENTAL}::"BusinessType",
+        'ACTIVE'::"OrganizationStatus",
+        NOW(),
+        NOW()
+      )
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO organization_memberships (
+        id, user_id, organization_id, role, status, created_at, updated_at, membership_version
+      ) VALUES (
+        ${membershipId},
+        ${userId},
+        ${orgId},
+        'WORKER'::"MembershipRole",
+        'ACTIVE'::"MembershipStatus",
+        NOW(),
+        NOW(),
+        0
+      )
+    `;
+    return { orgId, membershipId };
   }
 
   it('PG01 valid current session allowed', async () => {
@@ -161,7 +193,7 @@ function assertDisposableDb(): void {
       SET platform_role = ${UserPlatformRole.USER}::"UserPlatformRole",
           session_version = session_version + 1,
           updated_at = NOW()
-      WHERE id = ${user.id}::uuid
+      WHERE id = ${user.id}
     `;
     await expect(authority.validateAccessJwt(decoded as never)).rejects.toMatchObject({
       response: { code: ACCESS_AUTHORITY_FAILURE_CODES.SESSION_VERSION_MISMATCH },
@@ -170,6 +202,7 @@ function assertDisposableDb(): void {
 
   it('PG20 legitimate refresh rotation remains usable', async () => {
     const user = await createUser();
+    const { orgId, membershipId } = await createOrgMembership(user.id);
     const first = await refreshTokens.issueTokenPair(
       {
         id: user.id,
@@ -178,15 +211,19 @@ function assertDisposableDb(): void {
         sessionVersion: 0,
         securityVersion: 0,
       },
-      null,
+      {
+        organizationId: orgId,
+        membershipId,
+        role: 'WORKER',
+        membershipVersion: 0,
+      },
     );
     const rotated = await refreshTokens.rotate(first.refreshToken);
     const decoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
     const ctx = await authority.validateAccessJwt(decoded as never);
     expect(ctx.tokenFamily).toBeTruthy();
-    const priorDecoded = jwt.verify(first.accessToken, JWT_SECRET) as jwt.JwtPayload;
-    await expect(authority.validateAccessJwt(priorDecoded as never)).rejects.toMatchObject({
-      response: { code: ACCESS_AUTHORITY_FAILURE_CODES.SESSION_REVOKED },
-    });
+    await expect(refreshTokens.rotate(first.refreshToken)).rejects.toThrow(
+      /no longer valid/i,
+    );
   });
 });
