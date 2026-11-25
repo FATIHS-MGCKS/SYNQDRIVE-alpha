@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   MembershipRole,
   MembershipStatus,
+  Prisma,
   RefreshTokenScope,
   SessionAssuranceLevel,
 } from '@prisma/client';
@@ -405,6 +406,35 @@ export class RefreshTokenService {
       },
     });
     return result.count > 0;
+  }
+
+  async revokeSessionByIdInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    sessionId: string,
+  ): Promise<boolean> {
+    const result = await tx.refreshToken.updateMany({
+      where: { id: sessionId, userId, revokedAt: null },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'SESSION_REVOKED_BY_ID',
+      },
+    });
+    return result.count > 0;
+  }
+
+  async revokeAllActiveForUserInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<number> {
+    const result = await tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'USER_ALL_SESSIONS_REVOKED',
+      },
+    });
+    return result.count;
   }
 
   async revokeOtherSessionsForUser(

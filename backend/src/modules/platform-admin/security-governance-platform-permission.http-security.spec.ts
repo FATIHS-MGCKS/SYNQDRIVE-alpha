@@ -19,6 +19,7 @@ import {
 } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 import { buildMfaClaims } from '@shared/auth/auth-session-claims.types';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
+import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 import { SecurityGovernanceController } from './security-governance.controller';
 import { SecurityGovernanceService } from './security-governance.service';
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
@@ -78,6 +79,8 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
     recordMfaStepUp: jest.fn().mockResolvedValue(undefined),
   };
 
+  const auditDelivery = { commitAuditIntent: jest.fn().mockResolvedValue('DELIVERED') };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -101,6 +104,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
         providers: [
           SecurityGovernancePlatformPermissionAuditService,
           SecurityGovernanceSessionAuditService,
+          { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
           { provide: MasterAdminAuditService, useValue: masterAdminAudit },
           { provide: PlatformPermissionService, useValue: platformPermissions },
           { provide: SecurityGovernanceService, useValue: governance },
@@ -178,6 +182,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
         providers: [
           SecurityGovernancePlatformPermissionAuditService,
           SecurityGovernanceSessionAuditService,
+          { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
           { provide: MasterAdminAuditService, useValue: masterAdminAudit },
           { provide: PlatformPermissionService, useValue: platformPermissions },
           { provide: SecurityGovernanceService, useValue: governance },
@@ -205,6 +210,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
         providers: [
           SecurityGovernancePlatformPermissionAuditService,
           SecurityGovernanceSessionAuditService,
+          { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
           { provide: MasterAdminAuditService, useValue: masterAdminAudit },
           { provide: PlatformPermissionService, useValue: platformPermissions },
           { provide: SecurityGovernanceService, useValue: governance },
@@ -244,6 +250,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
         providers: [
           SecurityGovernancePlatformPermissionAuditService,
           SecurityGovernanceSessionAuditService,
+          { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
           { provide: MasterAdminAuditService, useValue: masterAdminAudit },
           { provide: PlatformPermissionService, useValue: platformPermissions },
           { provide: SecurityGovernanceService, useValue: governance },
@@ -288,6 +295,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
       providers: [
         SecurityGovernancePlatformPermissionAuditService,
         SecurityGovernanceSessionAuditService,
+        { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
         { provide: MasterAdminAuditService, useValue: masterAdminAudit },
         { provide: PlatformPermissionService, useValue: platformPermissions },
         { provide: SecurityGovernanceService, useValue: governance },
@@ -348,6 +356,7 @@ describe('SecurityGovernance — master-billing platform permission HTTP securit
       providers: [
         SecurityGovernancePlatformPermissionAuditService,
         SecurityGovernanceSessionAuditService,
+        { provide: MasterAdminAuditDeliveryService, useValue: auditDelivery },
         { provide: MasterAdminAuditService, useValue: masterAdminAudit },
         { provide: PlatformPermissionService, useValue: realPlatformPermissions },
         { provide: SecurityGovernanceService, useValue: governance },

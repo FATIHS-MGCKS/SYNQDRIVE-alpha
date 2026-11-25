@@ -4,9 +4,13 @@ import { ActivityLogService } from './activity-log.service';
 import { ActivityLogExportService } from './activity-log-export.service';
 import { AuditService } from './audit.service';
 import { MasterAdminAuditService } from './master-admin-audit.service';
+import { MasterAdminAuditDeliveryService } from './master-admin-audit-delivery.service';
 import { MasterCatalogAdminAuditService } from './master-catalog-admin-audit.service';
 import { MasterVoiceProvisioningAdminAuditService } from './master-voice-provisioning-admin-audit.service';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { MasterAdminAuditOutboxRepository } from './master-admin-audit-outbox.repository';
+import { MasterAdminAuditOutboxProcessorService } from './master-admin-audit-outbox.processor';
+import { MasterAdminAuditOutboxSchedulerService } from './master-admin-audit-outbox.scheduler.service';
 
 /**
  * @Global() ensures AuditService is injectable across all feature modules
@@ -22,6 +26,10 @@ import { PrismaModule } from '@shared/database/prisma.module';
     ActivityLogExportService,
     AuditService,
     MasterAdminAuditService,
+    MasterAdminAuditDeliveryService,
+    MasterAdminAuditOutboxRepository,
+    MasterAdminAuditOutboxProcessorService,
+    MasterAdminAuditOutboxSchedulerService,
     MasterCatalogAdminAuditService,
     MasterVoiceProvisioningAdminAuditService,
   ],
@@ -30,6 +38,10 @@ import { PrismaModule } from '@shared/database/prisma.module';
     ActivityLogExportService,
     AuditService,
     MasterAdminAuditService,
+    MasterAdminAuditDeliveryService,
+    MasterAdminAuditOutboxRepository,
+    MasterAdminAuditOutboxProcessorService,
+    MasterAdminAuditOutboxSchedulerService,
     MasterCatalogAdminAuditService,
     MasterVoiceProvisioningAdminAuditService,
   ],

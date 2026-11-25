@@ -2,12 +2,23 @@ import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit
 import { SecurityGovernanceSessionAuditService } from './security-governance-session-audit.service';
 
 describe('SecurityGovernanceSessionAuditService', () => {
-  const masterAdminAudit = { record: jest.fn().mockResolvedValue(undefined) };
+  const auditDelivery = { commitAuditIntent: jest.fn().mockResolvedValue('DELIVERED') };
+  const refreshTokens = {
+    revokeSessionByIdInTransaction: jest.fn(),
+    findSessionOrganizationId: jest.fn(),
+  };
+  const prisma = {
+    $transaction: jest.fn(async (fn: (tx: object) => Promise<unknown>) => fn({})),
+  };
   let service: SecurityGovernanceSessionAuditService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new SecurityGovernanceSessionAuditService(masterAdminAudit as never);
+    service = new SecurityGovernanceSessionAuditService(
+      prisma as never,
+      auditDelivery as never,
+      refreshTokens as never,
+    );
   });
 
   const req = {
@@ -19,8 +30,8 @@ describe('SecurityGovernanceSessionAuditService', () => {
     requestId: 'corr-1',
   };
 
-  it('records single session revocation with outcome metadata', () => {
-    service.recordSingleSessionRevocation({
+  it('records single session revocation with outcome metadata', async () => {
+    await service.recordSingleSessionRevocation({
       req,
       targetUserId: 'target-user',
       sessionId: 'sess-1',
@@ -28,7 +39,7 @@ describe('SecurityGovernanceSessionAuditService', () => {
       targetOrganizationId: 'org-1',
     });
 
-    expect(masterAdminAudit.record).toHaveBeenCalledWith(
+    expect(auditDelivery.commitAuditIntent).toHaveBeenCalledWith(
       expect.objectContaining({
         auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
         actorUserId: 'actor-1',
@@ -42,11 +53,15 @@ describe('SecurityGovernanceSessionAuditService', () => {
           sessionId: 'sess-1',
         }),
       }),
+      expect.objectContaining({
+        organizationContextId: 'org-1',
+        idempotencyKey: expect.stringContaining('ma-session-audit:'),
+      }),
     );
   });
 
-  it('records revoke-all with session count', () => {
-    service.recordRevokeAllSessions({
+  it('records revoke-all with session count', async () => {
+    await service.recordRevokeAllSessions({
       req: {
         ...req,
         originalUrl: '/api/v1/admin/security/users/target-user/sessions/revoke-all',
@@ -55,13 +70,16 @@ describe('SecurityGovernanceSessionAuditService', () => {
       revokedSessionCount: 3,
     });
 
-    expect(masterAdminAudit.record).toHaveBeenCalledWith(
+    expect(auditDelivery.commitAuditIntent).toHaveBeenCalledWith(
       expect.objectContaining({
         auditAction: MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL,
         metadata: expect.objectContaining({
           operation: 'REVOKE_ALL',
           revokedSessionCount: 3,
         }),
+      }),
+      expect.objectContaining({
+        idempotencyKey: expect.stringMatching(/^ma-session-audit:op:[0-9a-f-]{36}$/),
       }),
     );
   });

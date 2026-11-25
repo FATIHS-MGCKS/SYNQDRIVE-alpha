@@ -49,6 +49,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'invoice_overdue_refresh_payment_tasks',
   'invite_email',
   'iam_audit_outbox',
+  'master_admin_audit_outbox',
   'task_automation_outbox',
   'business_insights',
   'business_audit_outbox',

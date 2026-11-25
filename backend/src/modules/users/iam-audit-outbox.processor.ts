@@ -7,6 +7,7 @@ import { IAM_AUDIT_OUTBOX } from './iam-audit.constants';
 import { IamAuditOutboxMetricsService } from './iam-audit-outbox.metrics';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import { scanIamAuditPayloadForSecrets } from './iam-audit-sanitize.util';
+import { MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE } from '@modules/activity-log/master-admin-audit-delivery.contract';
 
 @Injectable()
 export class IamAuditOutboxProcessorService {
@@ -45,6 +46,22 @@ export class IamAuditOutboxProcessorService {
       });
       if (secretViolations.length > 0) {
         throw new Error(`Audit payload contains sensitive fields: ${secretViolations.join(', ')}`);
+      }
+
+      if (claimed.eventType === MASTER_ADMIN_AUDIT_OUTBOX_EVENT_TYPE) {
+        const errorCode = 'IAM_OUTBOX_MISROUTED_PLATFORM_AUDIT';
+        if (claimed.attempts >= IAM_AUDIT_OUTBOX.maxAttempts) {
+          await this.outboxRepo.markDeadLetter(claimed.id, errorCode);
+          this.metrics.record('dead_letter', claimed.eventType);
+          return 'dead_letter';
+        }
+        const retryAt = new Date(Date.now() + IAM_AUDIT_OUTBOX.backoffMs);
+        await this.outboxRepo.markRetry(claimed.id, errorCode, retryAt);
+        this.metrics.record('retry', claimed.eventType);
+        this.logger.error(
+          `iam audit outbox misrouted platform audit id=${claimed.id} — fail closed`,
+        );
+        return 'retry';
       }
 
       await this.userAudit.record({

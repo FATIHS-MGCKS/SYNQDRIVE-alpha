@@ -2677,6 +2677,54 @@ model IamAuditOutbox {
   @@map("iam_audit_outbox")
 }
 
+enum MasterAdminAuditOutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  DEAD_LETTER
+}
+
+enum MasterAdminAuditScope {
+  PLATFORM
+  ORGANIZATION_CONTEXT
+}
+
+/// Platform-scoped durable intent for master-admin semantic audit (no tenant FK / no cascade).
+model MasterAdminAuditOutbox {
+  id                      String                       @id @default(uuid())
+  eventId                 String                       @unique @default(uuid()) @map("event_id")
+  idempotencyKey          String                       @unique @map("idempotency_key")
+  auditScope              MasterAdminAuditScope        @default(PLATFORM) @map("audit_scope")
+  organizationContextId   String?                      @map("organization_context_id")
+  actorUserId             String?                      @map("actor_user_id")
+  subjectUserId           String?                      @map("subject_user_id")
+  auditAction             String                       @map("audit_action")
+  occurredAt              DateTime                     @map("occurred_at")
+  payloadVersion          Int                          @default(1) @map("payload_version")
+  payload                 Json
+  status                  MasterAdminAuditOutboxStatus @default(PENDING) @map("processing_status")
+  attempts                Int                          @default(0)
+  nextRetryAt             DateTime                     @default(now()) @map("next_retry_at")
+  processedAt             DateTime?                    @map("processed_at")
+  deadLetteredAt          DateTime?                    @map("dead_lettered_at")
+  errorCode               String?                      @map("error_code") @db.VarChar(64)
+  createdAt               DateTime                     @default(now()) @map("created_at")
+  updatedAt               DateTime                     @updatedAt @map("updated_at")
+
+  @@index([status, nextRetryAt])
+  @@index([auditScope, auditAction])
+  @@map("master_admin_audit_outbox")
+}
+
+model MasterAdminAuditDeliveryLedger {
+  idempotencyKey String   @id @map("idempotency_key")
+  activityLogId  String   @map("activity_log_id")
+  occurredAt     DateTime @map("occurred_at")
+  deliveredAt    DateTime @default(now()) @map("delivered_at")
+
+  @@map("master_admin_audit_delivery_ledger")
+}
+
 enum BusinessAuditOutboxStatus {
   PENDING
   PROCESSING
