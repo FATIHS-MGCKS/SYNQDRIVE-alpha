@@ -287,7 +287,7 @@ function assertDisposableDatabaseUrl(): void {
       await prismaPeer.$disconnect();
     });
 
-  async function snapshotCatalog(slug: ProductSlug): Promise<ProductCatalogStatus> {
+    async function snapshotCatalog(slug: ProductSlug): Promise<ProductCatalogStatus> {
       const row = await prisma.product.findUniqueOrThrow({ where: { slug } });
       return row.catalogStatus;
     }
