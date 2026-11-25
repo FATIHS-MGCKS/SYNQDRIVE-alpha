@@ -428,6 +428,21 @@ export function createRefreshTokenHarness() {
     activeRefreshFamilies.delete(`${userId}:${family}`);
   }
 
+  function bumpHarnessUserSessionVersion(userId: string, sessionVersion: number): void {
+    const row = registeredUsers.get(userId);
+    if (row) row.sessionVersion = sessionVersion;
+  }
+
+  function bumpHarnessUserSecurityVersion(userId: string, securityVersion: number): void {
+    const row = registeredUsers.get(userId);
+    if (row) row.securityVersion = securityVersion;
+  }
+
+  function setHarnessUserInactive(userId: string): void {
+    const row = registeredUsers.get(userId);
+    if (row) row.status = UserStatus.INACTIVE;
+  }
+
   return {
     prisma,
     config,
@@ -437,6 +452,9 @@ export function createRefreshTokenHarness() {
     accessAuthority,
     registerRefreshHarnessUser,
     revokeHarnessRefreshFamily,
+    bumpHarnessUserSessionVersion,
+    bumpHarnessUserSecurityVersion,
+    setHarnessUserInactive,
   };
 }
 

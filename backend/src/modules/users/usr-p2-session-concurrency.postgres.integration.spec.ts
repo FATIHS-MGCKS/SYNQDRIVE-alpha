@@ -136,10 +136,11 @@ function assertDisposableDb(): void {
   it('RACE01 concurrent revoke-all vs rotate leaves no active head', async () => {
     const { userId, email, membership } = await seedUserWithOrg();
     const issued = await issueBound(userId, email, membership);
-    await Promise.all([
+    const results = await Promise.allSettled([
       refreshA.revokeAllActiveForUser(userId),
-      refreshB.rotate(issued.refreshToken).catch(() => null),
+      refreshB.rotate(issued.refreshToken),
     ]);
+    expect(results[1].status).not.toBe('fulfilled');
     expect(await activeHeadCount(userId)).toBe(0);
   });
 
@@ -154,10 +155,12 @@ function assertDisposableDb(): void {
   it('RACE04 logout (family revoke) vs concurrent refresh', async () => {
     const { userId, email, membership } = await seedUserWithOrg();
     const issued = await issueBound(userId, email, membership);
-    await Promise.all([
+    const results = await Promise.allSettled([
       refreshA.revoke(issued.refreshToken, 'LOGOUT'),
-      refreshB.rotate(issued.refreshToken).catch(() => null),
+      refreshB.rotate(issued.refreshToken),
     ]);
+    const rotateRejected = results[1].status === 'rejected';
+    expect(rotateRejected || (await activeHeadCount(userId)) === 0).toBe(true);
     expect(await activeHeadCount(userId)).toBe(0);
   });
 
@@ -169,9 +172,18 @@ function assertDisposableDb(): void {
       refreshB.rotate(issued.refreshToken),
     ]);
     const fulfilled = results.filter((r) => r.status === 'fulfilled');
-    expect(fulfilled.length).toBeLessThanOrEqual(1);
-    expect(await activeHeadCount(userId)).toBeLessThanOrEqual(1);
-    expect(await orphanSuccessorCount(userId)).toBeLessThanOrEqual(1);
+    expect(fulfilled.length).toBe(1);
+    expect(await orphanSuccessorCount(userId)).toBe(0);
+    const heads = await activeHeadCount(userId);
+    expect(heads).toBeLessThanOrEqual(1);
+    const winner = (
+      fulfilled[0] as PromiseFulfilledResult<{ accessToken: string; refreshToken: string }>
+    ).value;
+    expect(winner.accessToken).toBeTruthy();
+    if (heads === 1) {
+      const chain = await refreshA.rotate(winner.refreshToken);
+      expect(chain.accessToken).toBeTruthy();
+    }
   });
 
   it('advisory lock classes are stable', () => {

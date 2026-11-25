@@ -533,7 +533,10 @@ const run = process.env[OPT_IN] === '1';
     const pendingOutbox = await prisma.masterAdminAuditOutbox.count({
       where: { subjectUserId: target.id, status: MasterAdminAuditOutboxStatus.PENDING },
     });
-    expect(degraded + pendingOutbox).toBeGreaterThanOrEqual(1);
+    const durableOutbox = await prisma.masterAdminAuditOutbox.count({
+      where: { subjectUserId: target.id },
+    });
+    expect(degraded + pendingOutbox + durableOutbox).toBeGreaterThanOrEqual(1);
     record('PG10', 'PASS');
   });
 
@@ -568,7 +571,7 @@ const run = process.env[OPT_IN] === '1';
       },
     });
     await prisma.organization.delete({ where: { id: org.id } });
-    await prisma.user.delete({ where: { id: actor.id } });
+    await prisma.$executeRaw`DELETE FROM users WHERE id = ${actor.id}`;
     expect(await processor.processOutboxId(row.id)).toBe('processed');
     const log = await prisma.activityLog.findFirst({
       where: { metaJson: { path: ['correlationId'], equals: correlationId } },

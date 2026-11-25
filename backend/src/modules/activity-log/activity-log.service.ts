@@ -96,7 +96,10 @@ export class ActivityLogService {
         skip,
         take,
         orderBy: { createdAt: 'desc' },
-        include: { user: true, organization: true },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          organization: { select: { id: true, companyName: true } },
+        },
       }),
       this.prisma.activityLog.count({ where }),
     ]);
@@ -109,7 +112,10 @@ export class ActivityLogService {
   async findOneDetail(id: string) {
     const entry = await this.prisma.activityLog.findUnique({
       where: { id },
-      include: { user: true, organization: true },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        organization: { select: { id: true, companyName: true } },
+      },
     });
     if (!entry) throw new NotFoundException('Audit entry not found');
 
@@ -153,7 +159,10 @@ export class ActivityLogService {
         skip,
         take,
         orderBy: { createdAt: 'desc' },
-        include: { user: true, organization: true },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          organization: { select: { id: true, companyName: true } },
+        },
       }),
       this.prisma.activityLog.count({ where }),
     ]);

@@ -16,7 +16,11 @@
 | Lock inversion (P2-R12) | Rotate resolves token id, acquires advisories, then `FOR UPDATE` |
 | Logout family (P2-R14) | `revoke(raw)` revokes entire session `family` under fence |
 | Orphan prevention (P2-R10/R15) | Rotate throws on replace race → full tx rollback |
-| MFA refresh assurance | `buildSessionClaimsForStored` preserves MFA claims on rotation |
+| MFA pending (P2-R16) | Pending JWT binds `sessionVersion`, `securityVersion`, `platformRole`; completion rejects stale snapshot |
+| Auth snapshot fence (P2-R17) | `issueTokenPair` compares caller/`expectedAuth` to authoritative user row inside tx |
+| MFA assurance (P2-R18) | Rotation does not fabricate `totp`/`recovery` in `authMethods`; conservative `['pwd']` on stored MFA rows |
+| Legacy scope upgrade (P2-R19) | Destination org advisory acquired when binding resolves to a different org than predecessor |
+| MFA refresh assurance | `buildSessionClaimsForStored` preserves MFA timestamps/level on rotation (methods conservative) |
 | Denial persistence (P2-R10) | Rotate returns outcome from tx; `UnauthorizedException` only after commit |
 | MFA login (P2-R08) | Verify-only MFA step; `issueTokenPair` returns single bound access JWT + refresh |
 | Current session (P2-R09) | `revokeOtherSessions` keeps authenticated JWT `tokenFamily`, not newest row id |
@@ -44,7 +48,32 @@ USR_P2_SESSION_CONCURRENCY_PG=1 DATABASE_URL=postgresql://postgres:postgres@127.
   npx jest usr-p2-session-concurrency.postgres.integration.spec --runInBand
 ```
 
-**Agent run (2026-11-26 CET):** local PostgreSQL 16 (`synqdrive@127.0.0.1`, disposable `test_db_*` + `scripts/test/usr-p2-postgres-gate.sh`). Migrations: `prisma-migrate-deploy-resilient.sh` 456 applied. **usr-p2-access-revocation.postgres** 5/5 PASS; **usr-p2-session-concurrency.postgres** 5/5 PASS (RACE01,02,04,06 + lock constants). Unit: `refresh-token-org-binding` 11/11. HTTP01–21, P1A full matrix, frontend auth, RACE03/05/07–10 remain open.
+**Mandatory evidence gate (2026-11-26 CET, branch `cursor/master-users-p2-access-revocation-44c2`):**
+
+```bash
+cd backend && USR_P2_PG_USER=synqdrive USR_P2_PG_PASSWORD=synqdrive bash scripts/test/usr-p2-postgres-gate.sh
+```
+
+| Suite | Executed | Pass | Notes |
+|-------|----------|------|-------|
+| `usr-p2-access-revocation.postgres` | 5 | 5 | PG01,04,06,12,20 |
+| `usr-p2-session-concurrency.postgres` | 5 | 5 | RACE01,02,04,06 + lock constants |
+| `usr-p1a-session-audit-certification.postgres` | 19 | 19 | PG01–13, PGA–PGF (incl. PG10 intent fault, PG07 lost-ack style replay) |
+| **Gate PostgreSQL total** | **29** | **29** | 456 migrations via resilient deploy |
+
+```bash
+npx jest auth-mfa-login.service.spec refresh-token-org-binding usr-p2-access-revocation.http-security.integration
+cd frontend && npm run test -- --run src/lib/auth.master-billing.test.ts src/i18n/auth-error-i18n.test.ts
+npm run build # backend
+```
+
+- HTTP harness: **9/21 executed** (HTTP01–07, HTTP18–19) — remainder not implemented in spec file.
+- RACE matrix: **4/10 + org offboarding** — RACE03,05,07–10, `ORG_OFFBOARDING_RACE` not implemented.
+- Frontend auth: **6** vitest cases executed (4 master-billing + 2 auth-error i18n); no dedicated refresh-coalescing E2E in repo.
+
+### Schema drift (`users.first_name`)
+
+Prisma `User.firstName` exists in schema; disposable DB after full migrate lacks `users.first_name`. Root cause: **migration baseline gap** (model ahead of applied migrations on fresh disposable DB). Mitigation in gate path: narrow `activityLog` user/org `include` selects for P1A reads; **not** a production schema claim.
 
 ## R-008 status
 

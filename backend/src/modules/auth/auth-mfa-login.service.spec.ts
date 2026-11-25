@@ -1,3 +1,4 @@
+import * as jwt from 'jsonwebtoken';
 import { AuthMfaLoginService } from './auth-mfa-login.service';
 import { UserPlatformRole } from '@prisma/client';
 
@@ -30,11 +31,20 @@ describe('AuthMfaLoginService', () => {
     const result = await service.evaluateMasterAdminLoginGate({
       id: 'admin-1',
       platformRole: UserPlatformRole.MASTER_ADMIN,
+      sessionVersion: 0,
+      securityVersion: 0,
     });
 
     expect(result.kind).toBe('mfa_required');
     if (result.kind === 'mfa_required') {
       expect(result.mfaPendingToken).toBeTruthy();
+      const decoded = jwt.verify(
+        result.mfaPendingToken,
+        'test-secret-key-for-mfa-login-service',
+      ) as jwt.JwtPayload;
+      expect(decoded.sessionVersion).toBe(0);
+      expect(decoded.securityVersion).toBe(0);
+      expect(decoded.platformRole).toBe(UserPlatformRole.MASTER_ADMIN);
     }
   });
 
@@ -52,6 +62,8 @@ describe('AuthMfaLoginService', () => {
     const result = await service.evaluateMasterAdminLoginGate({
       id: 'admin-1',
       platformRole: UserPlatformRole.MASTER_ADMIN,
+      sessionVersion: 0,
+      securityVersion: 0,
     });
 
     expect(result).toEqual({ kind: 'none' });
@@ -71,6 +83,8 @@ describe('AuthMfaLoginService', () => {
     const result = await service.evaluateMasterAdminLoginGate({
       id: 'user-1',
       platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+      securityVersion: 0,
     });
 
     expect(result).toEqual({ kind: 'none' });

@@ -20,13 +20,14 @@ import {
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import {
+  ASSURANCE_LEVEL_MFA,
   AuthSessionClaims,
-  buildMfaClaims,
   buildPasswordOnlyClaims,
 } from '@shared/auth/auth-session-claims.types';
 import { assertOrganizationAllowsTenantSurface } from '@shared/auth/organization-lifecycle-access.policy';
 import {
   acquireOrgScopeSessionWriteLock,
+  acquireOrgSessionWriteLock,
   acquireSessionWriteLocks,
   acquireUserSessionWriteLock,
 } from './refresh-token-session-concurrency';
@@ -47,9 +48,17 @@ export interface RefreshTokenMembershipContext {
   organizationRoleId?: string | null;
 }
 
+export type ExpectedAuthSnapshot = {
+  sessionVersion: number;
+  securityVersion: number;
+  platformRole: string;
+};
+
 export type IssueTokenPairOptions = {
   assuranceLevel?: SessionAssuranceLevel;
   sessionClaims?: AuthSessionClaims;
+  /** P2-R17: reject when caller/pending context does not match authoritative user row. */
+  expectedAuth?: ExpectedAuthSnapshot;
 };
 
 export interface RefreshTokenUserContext {
@@ -141,6 +150,7 @@ export class RefreshTokenService {
         if (!liveUser || liveUser.status !== UserStatus.ACTIVE) {
           throw new UnauthorizedException('Account is inactive');
         }
+        this.assertIssuanceAuthSnapshot(liveUser, user, options?.expectedAuth);
 
         let liveMembership = membership;
         if (membership?.membershipId) {
@@ -436,9 +446,16 @@ export class RefreshTokenService {
       }
 
       const membership = binding.membership;
+      const destinationOrgId = membership?.organizationId ?? stored.organizationId;
+      if (
+        destinationOrgId &&
+        destinationOrgId !== preview.organizationId
+      ) {
+        await acquireOrgSessionWriteLock(tx, destinationOrgId);
+      }
       await this.assertOrganizationSessionIssuanceForOrganizationIdWithClient(
         tx,
-        membership?.organizationId ?? stored.organizationId,
+        destinationOrgId,
       );
       const membershipContext = membership
         ? this.toMembershipContext(membership)
@@ -1021,16 +1038,55 @@ export class RefreshTokenService {
   ): AuthSessionClaims {
     const authenticatedAt = (stored.authenticatedAt ?? stored.createdAt).toISOString();
     if (stored.assuranceLevel === SessionAssuranceLevel.MFA) {
-      return buildMfaClaims({
+      // P2-R18: refresh rows do not persist authMethods — keep MFA assurance timestamps
+      // but do not fabricate totp/recovery on rotation (conservative pwd-only methods).
+      return {
+        assuranceLevel: ASSURANCE_LEVEL_MFA,
         authenticatedAt,
         mfaAuthenticatedAt: authenticatedAt,
+        authMethods: ['pwd'],
         securityVersion,
-      });
+      };
     }
     return {
       ...buildPasswordOnlyClaims(securityVersion),
       authenticatedAt,
     };
+  }
+
+  private assertIssuanceAuthSnapshot(
+    liveUser: {
+      sessionVersion: number;
+      securityVersion: number;
+      platformRole: string;
+    },
+    caller: RefreshTokenUserContext,
+    expected?: ExpectedAuthSnapshot,
+  ): void {
+    if (expected) {
+      if (
+        liveUser.sessionVersion !== expected.sessionVersion ||
+        liveUser.securityVersion !== expected.securityVersion ||
+        liveUser.platformRole !== expected.platformRole
+      ) {
+        throw new UnauthorizedException('Authentication snapshot is no longer valid');
+      }
+    }
+    if (
+      caller.sessionVersion !== undefined &&
+      caller.sessionVersion !== liveUser.sessionVersion
+    ) {
+      throw new UnauthorizedException('Authentication snapshot is no longer valid');
+    }
+    if (
+      caller.securityVersion !== undefined &&
+      caller.securityVersion !== liveUser.securityVersion
+    ) {
+      throw new UnauthorizedException('Authentication snapshot is no longer valid');
+    }
+    if (caller.platformRole !== liveUser.platformRole) {
+      throw new UnauthorizedException('Authentication snapshot is no longer valid');
+    }
   }
 
   private toLoginMembershipCandidate(

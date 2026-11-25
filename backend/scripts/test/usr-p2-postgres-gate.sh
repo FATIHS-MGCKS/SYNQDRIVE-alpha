@@ -1,53 +1,77 @@
 #!/usr/bin/env bash
-# USR-P2 disposable PostgreSQL gate (local CI / agent VM with system PostgreSQL).
+# USR-P2 disposable PostgreSQL gate (GitHub Actions + guarded local execution).
 set -euo pipefail
+set -o pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
+log() { printf '[usr-p2-postgres-gate] %s\n' "$*"; }
+fail() { printf '[usr-p2-postgres-gate] FAIL: %s\n' "$*" >&2; exit 1; }
+
 if [[ "${DATABASE_URL:-}" == *"app.synqdrive"* || "${DATABASE_URL:-}" == *"production"* ]]; then
-  echo "Refusing production-like DATABASE_URL" >&2
-  exit 1
+  fail 'production-like DATABASE_URL is not permitted'
 fi
 
-EPHEMERAL_DB="${USR_P2_PG_DB:-usr_p2_disposable_$(date +%s)}"
 PG_HOST="${CI_PG_HOST:-127.0.0.1}"
 PG_PORT="${CI_PG_PORT:-5432}"
+PG_USER="${USR_P2_PG_USER:-synqdrive}"
+PG_PASSWORD="${USR_P2_PG_PASSWORD:-synqdrive}"
 
-log() { printf '[usr-p2-postgres-gate] %s\n' "$*"; }
-
-log "Creating disposable database ${EPHEMERAL_DB}"
-if command -v sudo >/dev/null && id -u postgres >/dev/null 2>&1; then
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres \
-    -c "DROP DATABASE IF EXISTS \"${EPHEMERAL_DB}\";" >/dev/null
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres \
-    -c "CREATE DATABASE \"${EPHEMERAL_DB}\" OWNER synqdrive;" >/dev/null
-else
-  PGPASSWORD="${USR_P2_PG_PASSWORD:-synqdrive}" psql -h "$PG_HOST" -p "$PG_PORT" -U postgres -v ON_ERROR_STOP=1 -d postgres \
-    -c "DROP DATABASE IF EXISTS \"${EPHEMERAL_DB}\";" >/dev/null
-  PGPASSWORD="${USR_P2_PG_PASSWORD:-synqdrive}" psql -h "$PG_HOST" -p "$PG_PORT" -U postgres -v ON_ERROR_STOP=1 -d postgres \
-    -c "CREATE DATABASE \"${EPHEMERAL_DB}\" OWNER synqdrive;" >/dev/null
+if ! [[ "$PG_HOST" =~ ^(127\.0\.0\.1|localhost)$ ]]; then
+  fail "PG host must be loopback (got ${PG_HOST})"
 fi
 
-export PGPASSWORD="${USR_P2_PG_PASSWORD:-synqdrive}"
-export DATABASE_URL="postgresql://${USR_P2_PG_USER:-synqdrive}:${PGPASSWORD}@${PG_HOST}:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
+if ! [[ "$PG_PORT" =~ ^[0-9]+$ ]] || (( PG_PORT < 1 || PG_PORT > 65535 )); then
+  fail "invalid PG port"
+fi
 
-log "migrate deploy (resilient)"
+EPHEMERAL_DB="${USR_P2_PG_DB:-usr_p2_disposable_$(date +%s)_$$}"
+if ! [[ "$EPHEMERAL_DB" =~ ^usr_p2_[a-z0-9_]+$ ]]; then
+  fail 'database name must match ^usr_p2_[a-z0-9_]+$'
+fi
+
+export PGPASSWORD="$PG_PASSWORD"
+export PGHOST="$PG_HOST"
+export PGPORT="$PG_PORT"
+
+psql_admin() {
+  psql -v ON_ERROR_STOP=1 -U "$PG_USER" -d postgres "$@"
+}
+
+cleanup() {
+  if [[ -n "${EPHEMERAL_DB:-}" ]]; then
+    psql_admin -c "DROP DATABASE IF EXISTS \"${EPHEMERAL_DB}\";" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+log "create disposable database ${EPHEMERAL_DB}"
+psql_admin -c "DROP DATABASE IF EXISTS \"${EPHEMERAL_DB}\";" >/dev/null
+psql_admin -c "CREATE DATABASE \"${EPHEMERAL_DB}\";" >/dev/null
+
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${EPHEMERAL_DB}?schema=public"
+
+log 'migrate deploy (resilient)'
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
 export JWT_SECRET="${JWT_SECRET:-usr-p2-pg-test-secret}"
 
-log "USR-P2 access revocation PostgreSQL"
+run_jest() {
+  npx jest "$@" --runInBand --forceExit || fail "jest failed: $*"
+}
+
+log 'USR-P2 access revocation PostgreSQL'
 export USR_P2_ACCESS_REVOCATION_PG=1
-npx jest usr-p2-access-revocation.postgres.integration.spec.ts --runInBand --forceExit
+run_jest usr-p2-access-revocation.postgres.integration.spec.ts
 
-log "USR-P2 session concurrency PostgreSQL"
+log 'USR-P2 session concurrency PostgreSQL'
 export USR_P2_SESSION_CONCURRENCY_PG=1
-npx jest usr-p2-session-concurrency.postgres.integration.spec.ts --runInBand --forceExit
+run_jest usr-p2-session-concurrency.postgres.integration.spec.ts
 
-log "USR-P1A session audit PostgreSQL (P1A residuals gate)"
+log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1
-npx jest usr-p1a-session-audit-certification.postgres.integration.spec.ts --runInBand --forceExit
+run_jest usr-p1a-session-audit-certification.postgres.integration.spec.ts
 
-log "PASS disposable DB ${EPHEMERAL_DB}"
-echo "USR_P2_PG_EXECUTED=1 DATABASE_URL=${DATABASE_URL}"
+log "PASS disposable database ${EPHEMERAL_DB}"
+echo "USR_P2_PG_EXECUTED=1"

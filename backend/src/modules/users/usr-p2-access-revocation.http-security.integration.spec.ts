@@ -72,6 +72,46 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
       .expect(200);
   });
 
+  it('HTTP02 stale sessionVersion denied', async () => {
+    const user = {
+      id: 'http02-user',
+      email: 'http02@test.example',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+      securityVersion: 0,
+    };
+    const token = await issueFor(user);
+    harness.bumpHarnessUserSessionVersion(user.id, 1);
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401)
+      .expect((res) => {
+        const code = res.body?.code ?? res.body?.message?.code;
+        expect(code).toBe(ACCESS_AUTHORITY_FAILURE_CODES.SESSION_VERSION_MISMATCH);
+      });
+  });
+
+  it('HTTP03 stale securityVersion denied', async () => {
+    const user = {
+      id: 'http03-user',
+      email: 'http03@test.example',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+      securityVersion: 0,
+    };
+    const token = await issueFor(user);
+    harness.bumpHarnessUserSecurityVersion(user.id, 1);
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401)
+      .expect((res) => {
+        const code = res.body?.code ?? res.body?.message?.code;
+        expect(code).toBe(ACCESS_AUTHORITY_FAILURE_CODES.SECURITY_VERSION_MISMATCH);
+      });
+  });
+
   it('HTTP04 revoked individual session denied', async () => {
     const user = {
       id: 'http04-user',
@@ -86,6 +126,54 @@ describe('USR-P2 access revocation — real JWT HTTP security', () => {
     await request(app.getHttpServer())
       .get('/api/v1/usr-p2-probe/me')
       .set('Authorization', `Bearer ${token}`)
+      .expect(401);
+  });
+
+  it('HTTP05 inactive user denied', async () => {
+    const user = {
+      id: 'http05-user',
+      email: 'http05@test.example',
+      platformRole: UserPlatformRole.USER,
+    };
+    const token = await issueFor(user);
+    harness.setHarnessUserInactive(user.id);
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401)
+      .expect((res) => {
+        const code = res.body?.code ?? res.body?.message?.code;
+        expect(code).toBe(ACCESS_AUTHORITY_FAILURE_CODES.USER_INACTIVE);
+      });
+  });
+
+  it('HTTP06 unknown user denied', async () => {
+    const token = jwt.sign(
+      {
+        sub: 'ghost-user',
+        email: 'ghost@test.example',
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+        tokenFamily: 'family-ghost',
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '15m' },
+    );
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(401)
+      .expect((res) => {
+        const code = res.body?.code ?? res.body?.message?.code;
+        expect(code).toBe(ACCESS_AUTHORITY_FAILURE_CODES.USER_NOT_FOUND);
+      });
+  });
+
+  it('HTTP07 malformed token denied', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/usr-p2-probe/me')
+      .set('Authorization', 'Bearer not-a-jwt')
       .expect(401);
   });
 
