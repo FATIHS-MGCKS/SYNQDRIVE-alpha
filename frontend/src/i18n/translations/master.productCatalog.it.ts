@@ -24,4 +24,24 @@ export const masterProductCatalogIt = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Prodotto commerciale attivo',
   'master.productCatalog.business.IN_PREPARATION': 'In preparazione',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Ritirato (legacy)',
+  'master.productCatalog.status.changeAction': 'Modifica stato catalogo',
+  'master.productCatalog.status.dialogTitle': 'Imposta stato catalogo di {slug} su {target}',
+  'master.productCatalog.status.dialogIntro':
+    'Modifica solo la politica di ammissione della piattaforma. Assegnazioni, grant e fatturazione esistenti restano invariati.',
+  'master.productCatalog.status.current': 'Stato catalogo attuale',
+  'master.productCatalog.status.assignments': 'Assegnazioni organizzazione',
+  'master.productCatalog.status.activeGrants': 'Grant veicolo attivi',
+  'master.productCatalog.status.entitlementsPreserved':
+    'Prodotti organizzazione e grant esistenti restano preservati. L’accesso runtime continua.',
+  'master.productCatalog.status.previewStaleHint':
+    'I conteggi possono cambiare prima della conferma. Il server rivalida lo stato sotto lock all’applicazione.',
+  'master.productCatalog.status.reasonLabel': 'Motivo della modifica',
+  'master.productCatalog.status.reasonRequired': 'È richiesto un motivo.',
+  'master.productCatalog.status.confirm': 'Applica modifica stato',
+  'master.productCatalog.status.success': 'Stato catalogo aggiornato.',
+  'master.productCatalog.status.conflictRetry':
+    'Stato catalogo modificato in parallelo. Aggiorna l’anteprima e riprova.',
+  'master.productCatalog.status.impactError': 'Impossibile caricare l’anteprima impatto.',
+  'master.productCatalog.status.value.ACTIVE': 'Attivo',
+  'master.productCatalog.status.value.DISABLED': 'Disattivato',
 };

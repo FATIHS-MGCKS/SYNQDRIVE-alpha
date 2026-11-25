@@ -24,4 +24,24 @@ export const masterProductCatalogNl = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Bestaand bedrijfsproduct',
   'master.productCatalog.business.IN_PREPARATION': 'In voorbereiding',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Beëindigd (legacy)',
+  'master.productCatalog.status.changeAction': 'Catalogusstatus wijzigen',
+  'master.productCatalog.status.dialogTitle': 'Catalogusstatus van {slug} instellen op {target}',
+  'master.productCatalog.status.dialogIntro':
+    'Dit wijzigt alleen het platformtoelatingsbeleid. Bestaande toewijzingen, grants en facturatie blijven ongewijzigd.',
+  'master.productCatalog.status.current': 'Huidige catalogusstatus',
+  'master.productCatalog.status.assignments': 'Organisatietoewijzingen',
+  'master.productCatalog.status.activeGrants': 'Actieve voertuiggrants',
+  'master.productCatalog.status.entitlementsPreserved':
+    'Bestaande organisatieproducten en grants blijven behouden. Runtime-toegang voor huidige rechten blijft.',
+  'master.productCatalog.status.previewStaleHint':
+    'Tellingen kunnen wijzigen vóór bevestiging. De server valideert de status opnieuw onder lock bij toepassen.',
+  'master.productCatalog.status.reasonLabel': 'Reden van wijziging',
+  'master.productCatalog.status.reasonRequired': 'Een reden is verplicht.',
+  'master.productCatalog.status.confirm': 'Statuswijziging toepassen',
+  'master.productCatalog.status.success': 'Catalogusstatus bijgewerkt.',
+  'master.productCatalog.status.conflictRetry':
+    'Catalogusstatus parallel gewijzigd. Vernieuw de impactvoorbeeld en probeer opnieuw.',
+  'master.productCatalog.status.impactError': 'Impactvoorbeeld kon niet worden geladen.',
+  'master.productCatalog.status.value.ACTIVE': 'Actief',
+  'master.productCatalog.status.value.DISABLED': 'Uitgeschakeld',
 };

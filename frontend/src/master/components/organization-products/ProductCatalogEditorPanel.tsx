@@ -10,6 +10,7 @@ import type { AdminCatalogProductRow } from '../../organizations/product-managem
 import { businessLaunchStatusForSlug } from '../../organizations/product-management.policy';
 import type { TranslationKey } from '../../../i18n/LanguageContext';
 import { applyMasterProductApiResult } from './product-management-mutations';
+import { ProductCatalogStatusChangeDialog } from './ProductCatalogStatusChangeDialog';
 import {
   isProductMetadataConflict,
   shouldRetainProductMetadataPending,
@@ -62,6 +63,7 @@ export function ProductCatalogEditorPanel({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [mfaOpen, setMfaOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const pendingRef = useRef<ProductMetadataPatchPending | null>(null);
 
   const business = productSlug ? businessLaunchStatusForSlug(productSlug) : null;
@@ -237,10 +239,22 @@ export function ProductCatalogEditorPanel({
 
         {!loading && !loadError && row && (
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <StatusChip tone="neutral" className="!text-xs">
-                {t('master.productCatalog.editor.catalogStatus')}: {row.catalogStatus}
+                {t('master.productCatalog.editor.catalogStatus')}:{' '}
+                {t(
+                  `master.productCatalog.status.value.${row.catalogStatus}` as TranslationKey,
+                )}
               </StatusChip>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={saving}
+                onClick={() => setStatusDialogOpen(true)}
+              >
+                {t('master.productCatalog.status.changeAction')}
+              </Button>
               {business && (
                 <StatusChip tone="neutral" className="!text-xs">
                   {t('master.productCatalog.editor.businessReadiness')}: {businessLabel}
@@ -341,6 +355,19 @@ export function ProductCatalogEditorPanel({
         onClose={() => setMfaOpen(false)}
         onSuccess={() => void handleMfaSuccess()}
       />
+
+      {row && (
+        <ProductCatalogStatusChangeDialog
+          row={row}
+          open={statusDialogOpen}
+          onClose={() => setStatusDialogOpen(false)}
+          onApplied={(updated) => {
+            setRow(updated);
+            onSaved(updated);
+            setStatusDialogOpen(false);
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -7799,6 +7799,38 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify(body),
       }),
+    getCatalogStatusImpact: (productSlug: string, targetCatalogStatus?: 'ACTIVE' | 'DISABLED') => {
+      const qs =
+        targetCatalogStatus != null
+          ? `?targetCatalogStatus=${encodeURIComponent(targetCatalogStatus)}`
+          : '';
+      return get<Record<string, unknown>>(
+        `/admin/products/${encodeURIComponent(productSlug)}/catalog-status/impact${qs}`,
+      );
+    },
+    patchCatalogStatusResult: (
+      productSlug: string,
+      body: {
+        catalogStatus: 'ACTIVE' | 'DISABLED';
+        ifCurrentCatalogStatus: 'ACTIVE' | 'DISABLED';
+        changeReason: string;
+      },
+    ) =>
+      requestResult<{
+        product: {
+          id: string;
+          slug: string;
+          name: string;
+          description: string;
+          catalogStatus: string;
+          organizationsCount: number;
+        };
+        impact: Record<string, unknown>;
+        noop: boolean;
+      }>(`/admin/products/${encodeURIComponent(productSlug)}/catalog-status`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
     assignResult: (data: {
       orgId: string;
       productSlug: string;

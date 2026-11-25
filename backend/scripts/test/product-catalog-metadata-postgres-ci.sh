@@ -136,4 +136,10 @@ run_jest_postgres_suite \
   "product-catalog-admission.postgres.integration" \
   "10"
 
-echo "Product catalog metadata P1 + P2A admission disposable PostgreSQL certification: PASS"
+export PRODUCT_CATALOG_P2B_POSTGRES_INTEGRATION=1
+run_jest_postgres_suite \
+  "Product catalog status lifecycle PostgreSQL (P2B)" \
+  "product-catalog-status.postgres.integration" \
+  "11"
+
+echo "Product catalog metadata P1 + P2A admission + P2B status disposable PostgreSQL certification: PASS"

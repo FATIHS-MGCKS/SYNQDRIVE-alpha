@@ -24,4 +24,24 @@ export const masterProductCatalogPl = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Istniejący produkt biznesowy',
   'master.productCatalog.business.IN_PREPARATION': 'W przygotowaniu',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Wycofany (legacy)',
+  'master.productCatalog.status.changeAction': 'Zmień status katalogu',
+  'master.productCatalog.status.dialogTitle': 'Ustaw status katalogu {slug} na {target}',
+  'master.productCatalog.status.dialogIntro':
+    'To zmienia wyłącznie politykę dopuszczenia platformy. Istniejące przypisania, granty i rozliczenia pozostają bez zmian.',
+  'master.productCatalog.status.current': 'Bieżący status katalogu',
+  'master.productCatalog.status.assignments': 'Przypisania organizacji',
+  'master.productCatalog.status.activeGrants': 'Aktywne granty pojazdów',
+  'master.productCatalog.status.entitlementsPreserved':
+    'Istniejące produkty organizacji i granty są zachowane. Dostęp runtime dla bieżących uprawnień trwa dalej.',
+  'master.productCatalog.status.previewStaleHint':
+    'Liczby mogą się zmienić przed potwierdzeniem. Serwer ponownie weryfikuje status pod blokadą przy zapisie.',
+  'master.productCatalog.status.reasonLabel': 'Powód zmiany',
+  'master.productCatalog.status.reasonRequired': 'Powód jest wymagany.',
+  'master.productCatalog.status.confirm': 'Zastosuj zmianę statusu',
+  'master.productCatalog.status.success': 'Zaktualizowano status katalogu.',
+  'master.productCatalog.status.conflictRetry':
+    'Status katalogu zmieniony równolegle. Odśwież podgląd wpływu i spróbuj ponownie.',
+  'master.productCatalog.status.impactError': 'Nie udało się załadować podglądu wpływu.',
+  'master.productCatalog.status.value.ACTIVE': 'Aktywny',
+  'master.productCatalog.status.value.DISABLED': 'Wyłączony',
 };

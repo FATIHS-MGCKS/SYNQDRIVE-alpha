@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { OrganizationProductVehicleAccessMode, ProductSlug } from '@prisma/client';
+import { OrganizationProductVehicleAccessMode, ProductCatalogStatus, ProductSlug } from '@prisma/client';
 
 /** Platform catalog products retired by owner decision — not assignable or reactivatable via write APIs. */
 export const RETIRED_PLATFORM_PRODUCT_SLUGS: ReadonlySet<ProductSlug> = new Set([ProductSlug.TAXI]);
@@ -33,6 +33,26 @@ export function assertPlatformProductMetadataEditable(productSlug: ProductSlug |
   if (RETIRED_PLATFORM_PRODUCT_SLUGS.has(normalized)) {
     throw new BadRequestException(
       `Product "${normalized}" is retired and cannot have catalog metadata edited`,
+    );
+  }
+}
+
+/** Retired catalog rows (TAXI) must not be reactivated via catalog status toggle. */
+export function assertPlatformProductCatalogStatusTransition(input: {
+  productSlug: ProductSlug | string;
+  from: ProductCatalogStatus;
+  to: ProductCatalogStatus;
+}): void {
+  if (input.from === input.to) {
+    return;
+  }
+  const normalized = normalizeProductSlug(input.productSlug);
+  if (
+    RETIRED_PLATFORM_PRODUCT_SLUGS.has(normalized) &&
+    input.to === ProductCatalogStatus.ACTIVE
+  ) {
+    throw new BadRequestException(
+      `Product "${normalized}" is retired and cannot be reactivated`,
     );
   }
 }

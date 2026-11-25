@@ -24,4 +24,24 @@ export const masterProductCatalogEn = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Live business product',
   'master.productCatalog.business.IN_PREPARATION': 'In preparation',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Retired (legacy)',
+  'master.productCatalog.status.changeAction': 'Change catalog status',
+  'master.productCatalog.status.dialogTitle': 'Set {slug} catalog status to {target}',
+  'master.productCatalog.status.dialogIntro':
+    'This changes platform admission policy only. Existing organization assignments, grants, and billing stay unchanged.',
+  'master.productCatalog.status.current': 'Current catalog status',
+  'master.productCatalog.status.assignments': 'Organization assignments',
+  'master.productCatalog.status.activeGrants': 'Active vehicle grants',
+  'master.productCatalog.status.entitlementsPreserved':
+    'Existing organization products and vehicle grants remain preserved. Runtime access for current entitlements continues.',
+  'master.productCatalog.status.previewStaleHint':
+    'Counts may change before you confirm. The server re-validates status under lock when you apply.',
+  'master.productCatalog.status.reasonLabel': 'Change reason',
+  'master.productCatalog.status.reasonRequired': 'A change reason is required.',
+  'master.productCatalog.status.confirm': 'Apply status change',
+  'master.productCatalog.status.success': 'Catalog status updated.',
+  'master.productCatalog.status.conflictRetry':
+    'Catalog status changed concurrently. Review the refreshed impact preview and try again.',
+  'master.productCatalog.status.impactError': 'Impact preview could not be loaded.',
+  'master.productCatalog.status.value.ACTIVE': 'Active',
+  'master.productCatalog.status.value.DISABLED': 'Disabled',
 };

@@ -1,7 +1,8 @@
 # Product catalog admission entrypoint matrix (P2A)
 
 **Last updated:** 2026-11-25  
-**Authority:** `backend/src/modules/products/product-catalog-admission.authority.ts`
+**Authority:** `backend/src/modules/products/product-catalog-admission.authority.ts`  
+**P2B status toggle:** uses the same `products` row `FOR UPDATE` lock — `STATUS_TRANSITION_MATRIX_P2B.md`.
 
 ## Catalog semantics (enforcement)
 

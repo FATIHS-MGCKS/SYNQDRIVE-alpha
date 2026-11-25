@@ -38,7 +38,7 @@
 - Change `ProductLicenseGuard` (still `OrganizationProduct.status === ACTIVE` only)
 - Alter billing, subscriptions, or `core.entitlements.v1` read semantics for existing entitlements
 
-Catalog status mutation (toggle) remains **P2B** — not implemented in P2A.
+**P2B (2026-11-25):** Master Admin catalog status toggle (`ACTIVE` ↔ `DISABLED`) — dedicated API + impact preview + UI. See `STATUS_TRANSITION_MATRIX_P2B.md` and `CHANGE_RECORD_P2B_STATUS_2026-11-25.md`. P2A admission lock ordering preserved.
 
 ## External applications — service client registry (P3-PR1)
 

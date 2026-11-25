@@ -24,4 +24,24 @@ export const masterProductCatalogFr = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Produit métier en production',
   'master.productCatalog.business.IN_PREPARATION': 'En préparation',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Retiré (legacy)',
+  'master.productCatalog.status.changeAction': 'Modifier le statut catalogue',
+  'master.productCatalog.status.dialogTitle': 'Définir le statut catalogue de {slug} sur {target}',
+  'master.productCatalog.status.dialogIntro':
+    "Cela modifie uniquement la politique d'admission plateforme. Les affectations, grants et la facturation existants restent inchangés.",
+  'master.productCatalog.status.current': 'Statut catalogue actuel',
+  'master.productCatalog.status.assignments': 'Affectations organisation',
+  'master.productCatalog.status.activeGrants': 'Grants véhicule actifs',
+  'master.productCatalog.status.entitlementsPreserved':
+    "Les produits organisation et grants véhicule existants sont conservés. L'accès runtime des droits actuels continue.",
+  'master.productCatalog.status.previewStaleHint':
+    'Les compteurs peuvent changer avant confirmation. Le serveur revalide le statut sous verrou à l’application.',
+  'master.productCatalog.status.reasonLabel': 'Motif du changement',
+  'master.productCatalog.status.reasonRequired': 'Un motif est requis.',
+  'master.productCatalog.status.confirm': 'Appliquer le changement',
+  'master.productCatalog.status.success': 'Statut catalogue mis à jour.',
+  'master.productCatalog.status.conflictRetry':
+    'Statut catalogue modifié en parallèle. Actualisez l’aperçu et réessayez.',
+  'master.productCatalog.status.impactError': "Impossible de charger l'aperçu d'impact.",
+  'master.productCatalog.status.value.ACTIVE': 'Actif',
+  'master.productCatalog.status.value.DISABLED': 'Désactivé',
 };

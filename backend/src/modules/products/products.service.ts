@@ -17,6 +17,7 @@ import {
   OrganizationProductVehicleAccessMode,
   OrgProductPlan,
   OrgProductStatus,
+  ProductCatalogStatus,
   ProductSlug,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -25,10 +26,20 @@ import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audi
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 import {
   assertPlatformProductAssignable,
+  assertPlatformProductCatalogStatusTransition,
   assertPlatformProductMetadataEditable,
   assertRetiredPlatformVehicleAccessModeMutation,
 } from './retired-platform-product-slugs';
 import type { ParsedProductMetadataPatch } from './parse-product-metadata-patch';
+import type { ParsedProductCatalogStatusPatch } from './parse-product-catalog-status-patch';
+import {
+  buildProductCatalogStatusImpactSnapshot,
+  type ProductCatalogStatusImpactSnapshot,
+} from './product-catalog-status-impact.util';
+import {
+  buildProductCatalogStatusAuditInput,
+  persistProductCatalogStatusMandatoryAuditTx,
+} from './product-catalog-status-mandatory-audit.util';
 import {
   buildProductMetadataAuditInput,
   persistProductMetadataMandatoryAuditTx,
@@ -213,6 +224,145 @@ export class ProductsService {
     });
 
     return this.findCatalogProductBySlug(input.productSlug);
+  }
+
+  async getProductCatalogStatusImpact(
+    productSlug: ProductSlug,
+    requestedTargetCatalogStatus?: ProductCatalogStatus | null,
+  ): Promise<ProductCatalogStatusImpactSnapshot> {
+    const product = await this.prisma.product.findUnique({
+      where: { slug: productSlug },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${productSlug}" not found`);
+    }
+    return buildProductCatalogStatusImpactSnapshot(this.prisma, {
+      productId: product.id,
+      productSlug,
+      currentCatalogStatus: product.catalogStatus,
+      requestedTargetCatalogStatus: requestedTargetCatalogStatus ?? null,
+    });
+  }
+
+  async updateProductCatalogStatusForMasterAdmin(input: {
+    productSlug: ProductSlug;
+    patch: ParsedProductCatalogStatusPatch;
+    actorUserId: string;
+    audit: MasterAdminAuditContext;
+  }) {
+    assertPlatformProductCatalogStatusTransition({
+      productSlug: input.productSlug,
+      from: input.patch.ifCurrentCatalogStatus,
+      to: input.patch.catalogStatus,
+    });
+
+    const product = await this.prisma.product.findUnique({
+      where: { slug: input.productSlug },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+    }
+
+    if (product.catalogStatus !== input.patch.ifCurrentCatalogStatus) {
+      throw new ConflictException(
+        'Product catalog status changed concurrently; reload impact preview and retry with current status',
+      );
+    }
+
+    if (product.catalogStatus === input.patch.catalogStatus) {
+      return {
+        product: await this.findCatalogProductBySlug(input.productSlug),
+        impact: await this.getProductCatalogStatusImpact(input.productSlug, input.patch.catalogStatus),
+        noop: true as const,
+      };
+    }
+
+    assertPlatformProductCatalogStatusTransition({
+      productSlug: input.productSlug,
+      from: product.catalogStatus,
+      to: input.patch.catalogStatus,
+    });
+
+    const before = { catalogStatus: product.catalogStatus };
+    const after = { catalogStatus: input.patch.catalogStatus };
+
+    let impactAtCommit: ProductCatalogStatusImpactSnapshot | null = null;
+
+    await this.prisma.$transaction(async (tx) => {
+      const locked = await lockProductCatalogRowBySlug(tx, input.productSlug);
+      if (!locked) {
+        throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+      }
+      if (locked.catalogStatus !== input.patch.ifCurrentCatalogStatus) {
+        throw new ConflictException(
+          'Product catalog status changed concurrently; reload impact preview and retry with current status',
+        );
+      }
+      if (locked.catalogStatus === input.patch.catalogStatus) {
+        return;
+      }
+
+      assertPlatformProductCatalogStatusTransition({
+        productSlug: input.productSlug,
+        from: locked.catalogStatus,
+        to: input.patch.catalogStatus,
+      });
+
+      impactAtCommit = await buildProductCatalogStatusImpactSnapshot(tx, {
+        productId: locked.id,
+        productSlug: input.productSlug,
+        currentCatalogStatus: locked.catalogStatus,
+        requestedTargetCatalogStatus: input.patch.catalogStatus,
+      });
+
+      const updated = await tx.product.updateMany({
+        where: {
+          id: locked.id,
+          slug: input.productSlug,
+          catalogStatus: input.patch.ifCurrentCatalogStatus,
+        },
+        data: { catalogStatus: input.patch.catalogStatus },
+      });
+
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          'Product catalog status changed concurrently; reload impact preview and retry with current status',
+        );
+      }
+
+      await persistProductCatalogStatusMandatoryAuditTx(
+        tx,
+        buildProductCatalogStatusAuditInput({
+          actorUserId: input.actorUserId,
+          productId: locked.id,
+          productSlug: input.productSlug,
+          correlationId: input.audit.correlationId,
+          route: input.audit.route,
+          ipAddress: input.audit.ipAddress,
+          userAgent: input.audit.userAgent,
+          mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+          changeReason: input.patch.changeReason,
+          before,
+          after,
+          impactSnapshot: impactAtCommit,
+        }),
+      );
+    });
+
+    const impact =
+      impactAtCommit ??
+      (await buildProductCatalogStatusImpactSnapshot(this.prisma, {
+        productId: product.id,
+        productSlug: input.productSlug,
+        currentCatalogStatus: input.patch.catalogStatus,
+        requestedTargetCatalogStatus: input.patch.catalogStatus,
+      }));
+
+    return {
+      product: await this.findCatalogProductBySlug(input.productSlug),
+      impact,
+      noop: false as const,
+    };
   }
 
   async getProductStats() {

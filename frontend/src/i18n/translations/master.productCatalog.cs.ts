@@ -24,4 +24,24 @@ export const masterProductCatalogCs = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Stávající obchodní produkt',
   'master.productCatalog.business.IN_PREPARATION': 'V přípravě',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Ukončeno (legacy)',
+  'master.productCatalog.status.changeAction': 'Změnit stav katalogu',
+  'master.productCatalog.status.dialogTitle': 'Nastavit stav katalogu {slug} na {target}',
+  'master.productCatalog.status.dialogIntro':
+    'Mění se pouze pravidla přijímání na platformě. Stávající přiřazení, granty a fakturace zůstávají beze změny.',
+  'master.productCatalog.status.current': 'Aktuální stav katalogu',
+  'master.productCatalog.status.assignments': 'Přiřazení organizací',
+  'master.productCatalog.status.activeGrants': 'Aktivní granty vozidel',
+  'master.productCatalog.status.entitlementsPreserved':
+    'Stávající organizační produkty a granty zůstávají zachovány. Runtime přístup pokračuje.',
+  'master.productCatalog.status.previewStaleHint':
+    'Počty se mohou před potvrzením změnit. Server při zápisu znovu ověří stav pod zámkem.',
+  'master.productCatalog.status.reasonLabel': 'Důvod změny',
+  'master.productCatalog.status.reasonRequired': 'Důvod je povinný.',
+  'master.productCatalog.status.confirm': 'Použít změnu stavu',
+  'master.productCatalog.status.success': 'Stav katalogu aktualizován.',
+  'master.productCatalog.status.conflictRetry':
+    'Stav katalogu se mezitím změnil. Obnovte náhled dopadu a zkuste znovu.',
+  'master.productCatalog.status.impactError': 'Nepodařilo se načíst náhled dopadu.',
+  'master.productCatalog.status.value.ACTIVE': 'Aktivní',
+  'master.productCatalog.status.value.DISABLED': 'Deaktivováno',
 };
