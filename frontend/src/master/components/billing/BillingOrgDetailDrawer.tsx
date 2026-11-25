@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { Button } from '../../../components/ui/button';
 import {
@@ -28,6 +28,14 @@ import {
 } from './master-contract.utils';
 import { MasterContractPreviewPanel } from './MasterContractPreviewPanel';
 import { useMasterOrgContract } from './useMasterOrgContract';
+import { DiscountKind } from '../../../lib/billing-domain';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import {
+  summarizeMasterDiscountPayload,
+  validateMasterAddDiscountForm,
+  type MasterAddDiscountPayload,
+  type MasterSubscriptionDiscountType,
+} from './master-discount.contract';
 
 interface BillingOrgDetailDrawerProps {
   row: AdminOrgBillingRowDto | null;
@@ -49,15 +57,37 @@ export function BillingOrgDetailDrawer({
   onOpenChange,
   onContractUpdated,
 }: BillingOrgDetailDrawerProps) {
+  const { t } = useLanguage();
   const [tab, setTab] = useState<DrawerTab>('details');
   const [priceVersionId, setPriceVersionId] = useState('');
   const [trialEndAt, setTrialEndAt] = useState('');
   const [effectiveAt, setEffectiveAt] = useState('');
+  const [discountType, setDiscountType] = useState<MasterSubscriptionDiscountType>(DiscountKind.PERCENTAGE);
   const [discountPercent, setDiscountPercent] = useState('10');
+  const [discountFixedAmount, setDiscountFixedAmount] = useState('25');
+  const [discountValidFrom, setDiscountValidFrom] = useState('');
+  const [discountValidTo, setDiscountValidTo] = useState('');
   const [discountReason, setDiscountReason] = useState('');
+  const [discountPreviewSummary, setDiscountPreviewSummary] = useState<string | null>(null);
+  const [discountInputError, setDiscountInputError] = useState<string | null>(null);
+  const [pendingDiscountPayload, setPendingDiscountPayload] = useState<MasterAddDiscountPayload | null>(null);
+  const [endDiscountId, setEndDiscountId] = useState('');
   const [pendingAction, setPendingAction] = useState<PendingCriticalAction>(null);
 
   const contract = useMasterOrgContract(row, open, onContractUpdated);
+
+  useEffect(() => {
+    setDiscountPreviewSummary(null);
+    setPendingDiscountPayload(null);
+    setDiscountInputError(null);
+  }, [
+    discountType,
+    discountPercent,
+    discountFixedAmount,
+    discountValidFrom,
+    discountValidTo,
+    discountReason,
+  ]);
 
   const domainStatus =
     contract.contractState?.contract?.domainStatus ??
@@ -165,16 +195,71 @@ export function BillingOrgDetailDrawer({
     });
   };
 
-  const handleAddDiscount = async () => {
-    const percentBps = Math.round(Number(discountPercent) * 100);
-    if (!Number.isFinite(percentBps) || percentBps <= 0) return;
-    await contract.runMutation('add-discount', {
-      discountType: 'PERCENT',
-      percentBps,
-      validFrom: new Date().toISOString(),
-      reason: discountReason || 'Master-Rabatt',
-      currency: 'EUR',
-    });
+  const buildDiscountForm = () => ({
+    discountType,
+    percentInput: discountPercent,
+    fixedAmountInput: discountFixedAmount,
+    currency: 'EUR' as const,
+    validFromLocal: discountValidFrom,
+    validToLocal: discountValidTo,
+    reason: discountReason,
+  });
+
+  const mapDiscountError = (code: string) => {
+    const key = `master.productCommercial.discount.error.${code}` as const;
+    const translated = t(key as 'master.productCommercial.discount.validationError');
+    if (code === 'MISSING_REASON') return t('master.productCommercial.discount.error.MISSING_REASON');
+    if (code === 'INVALID_VALID_FROM') return t('master.productCommercial.discount.error.INVALID_VALID_FROM');
+    if (code === 'INVALID_VALID_TO') return t('master.productCommercial.discount.error.INVALID_VALID_TO');
+    if (code === 'VALID_TO_BEFORE_VALID_FROM') {
+      return t('master.productCommercial.discount.error.VALID_TO_BEFORE_VALID_FROM');
+    }
+    if (code === 'INVALID_PERCENT') return t('master.productCommercial.discount.error.INVALID_PERCENT');
+    if (code === 'INVALID_PERCENT_BPS') return t('master.productCommercial.discount.error.INVALID_PERCENT_BPS');
+    if (code === 'INVALID_FIXED_AMOUNT_CENTS') {
+      return t('master.productCommercial.discount.error.INVALID_FIXED_AMOUNT_CENTS');
+    }
+    return translated !== key ? translated : t('master.productCommercial.discount.validationError');
+  };
+
+  const handlePreviewDiscount = () => {
+    const validated = validateMasterAddDiscountForm(buildDiscountForm());
+    if (!validated.ok) {
+      setDiscountInputError(mapDiscountError(validated.error));
+      setDiscountPreviewSummary(null);
+      setPendingDiscountPayload(null);
+      return;
+    }
+    setDiscountInputError(null);
+    setDiscountPreviewSummary(summarizeMasterDiscountPayload(validated.payload));
+    setPendingDiscountPayload(null);
+  };
+
+  const handleRequestApplyDiscount = () => {
+    const validated = validateMasterAddDiscountForm(buildDiscountForm());
+    if (!validated.ok) {
+      setDiscountInputError(mapDiscountError(validated.error));
+      return;
+    }
+    setDiscountInputError(null);
+    setDiscountPreviewSummary(summarizeMasterDiscountPayload(validated.payload));
+    setPendingDiscountPayload(validated.payload);
+  };
+
+  const handleConfirmApplyDiscount = async () => {
+    if (!pendingDiscountPayload) return;
+    const ok = await contract.runMutation('add-discount', { ...pendingDiscountPayload });
+    if (ok) {
+      setPendingDiscountPayload(null);
+      setDiscountPreviewSummary(null);
+    }
+  };
+
+  const handleEndDiscount = async () => {
+    const id = endDiscountId.trim();
+    if (!id) return;
+    await contract.runMutation('end-discount', {}, { discountId: id });
+    setEndDiscountId('');
   };
 
   const confirmCriticalAction = async () => {
@@ -400,25 +485,104 @@ export function BillingOrgDetailDrawer({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border/60 p-4 space-y-3">
+              <div className="rounded-xl border border-border/60 p-4 space-y-3" data-testid="master-contract-discount">
                 <h4 className="text-[12px] font-semibold">Rabatt</h4>
+                <select
+                  className={inputClass}
+                  value={discountType}
+                  onChange={(e) =>
+                    setDiscountType(e.target.value as MasterSubscriptionDiscountType)
+                  }
+                  aria-label={t('master.productCommercial.discount.typePercent')}
+                >
+                  <option value={DiscountKind.PERCENTAGE}>
+                    {t('master.productCommercial.discount.typePercent')}
+                  </option>
+                  <option value={DiscountKind.FIXED_AMOUNT}>
+                    {t('master.productCommercial.discount.typeFixed')}
+                  </option>
+                </select>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {discountType === DiscountKind.PERCENTAGE ? (
+                    <input
+                      className={inputClass}
+                      placeholder="%"
+                      inputMode="decimal"
+                      value={discountPercent}
+                      onChange={(e) => setDiscountPercent(e.target.value)}
+                    />
+                  ) : (
+                    <input
+                      className={inputClass}
+                      placeholder="EUR"
+                      inputMode="decimal"
+                      value={discountFixedAmount}
+                      onChange={(e) => setDiscountFixedAmount(e.target.value)}
+                    />
+                  )}
                   <input
                     className={inputClass}
-                    placeholder="Prozent"
-                    value={discountPercent}
-                    onChange={(e) => setDiscountPercent(e.target.value)}
-                  />
-                  <input
-                    className={inputClass}
-                    placeholder="Grund"
+                    placeholder={t('master.productCommercial.discount.reason')}
                     value={discountReason}
                     onChange={(e) => setDiscountReason(e.target.value)}
                   />
+                  <input
+                    type="datetime-local"
+                    className={inputClass}
+                    aria-label={t('master.productCommercial.discount.validFrom')}
+                    value={discountValidFrom}
+                    onChange={(e) => setDiscountValidFrom(e.target.value)}
+                  />
+                  <input
+                    type="datetime-local"
+                    className={inputClass}
+                    aria-label={t('master.productCommercial.discount.validTo')}
+                    value={discountValidTo}
+                    onChange={(e) => setDiscountValidTo(e.target.value)}
+                  />
                 </div>
-                <Button type="button" size="sm" onClick={() => void handleAddDiscount()}>
-                  Rabatt hinzufügen
-                </Button>
+                {discountInputError ? (
+                  <p className="text-[11px] text-destructive">{discountInputError}</p>
+                ) : null}
+                {discountPreviewSummary ? (
+                  <p className="text-[11px] rounded-lg bg-muted/30 px-3 py-2 text-muted-foreground">
+                    {t('master.productCommercial.discount.descriptiveOnly')}: {discountPreviewSummary}
+                  </p>
+                ) : null}
+                <p className="text-[10px] text-muted-foreground">
+                  {t('master.productCommercial.discount.previewServerGap')}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={handlePreviewDiscount}>
+                    {t('master.productCommercial.discount.preview')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={contract.actionLoading}
+                    onClick={handleRequestApplyDiscount}
+                  >
+                    {t('master.productCommercial.discount.apply')}
+                  </Button>
+                </div>
+                <div className="pt-2 border-t border-border/40 space-y-2">
+                  <p className="text-[11px] font-semibold">{t('master.productCommercial.discount.endTitle')}</p>
+                  <input
+                    className={inputClass}
+                    placeholder={t('master.productCommercial.discount.endIdPlaceholder')}
+                    value={endDiscountId}
+                    onChange={(e) => setEndDiscountId(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!endDiscountId.trim() || contract.actionLoading}
+                    onClick={() => void handleEndDiscount()}
+                  >
+                    {t('master.productCommercial.discount.endAction')}
+                  </Button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -446,6 +610,29 @@ export function BillingOrgDetailDrawer({
           ) : null}
         </div>
       </DetailDrawer>
+
+      <AlertDialog
+        open={pendingDiscountPayload != null}
+        onOpenChange={(next) => !next && setPendingDiscountPayload(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('master.productCommercial.discount.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('master.productCommercial.discount.confirmBody')}{' '}
+              {pendingDiscountPayload
+                ? summarizeMasterDiscountPayload(pendingDiscountPayload)
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('master.productCommercial.discount.confirmCancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleConfirmApplyDiscount()}>
+              {t('master.productCommercial.discount.confirmApply')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingAction != null} onOpenChange={(next) => !next && setPendingAction(null)}>
         <AlertDialogContent>

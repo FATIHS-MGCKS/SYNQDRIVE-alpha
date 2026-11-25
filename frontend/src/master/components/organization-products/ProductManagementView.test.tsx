@@ -2,9 +2,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { ProductManagementView } from './ProductManagementView';
 
 const onOpenOrgProducts = vi.fn();
+const onOpenBilling = vi.fn();
 
 vi.mock('../../../lib/api', () => ({
   api: {
@@ -43,7 +45,13 @@ describe('ProductManagementView', () => {
 
   it('renders roadmap cards without TAXI and deep-links org products', async () => {
     await act(async () => {
-      root.render(createElement(ProductManagementView, { onOpenOrgProducts }));
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(ProductManagementView, { onOpenOrgProducts, onOpenBilling }),
+        ),
+      );
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));

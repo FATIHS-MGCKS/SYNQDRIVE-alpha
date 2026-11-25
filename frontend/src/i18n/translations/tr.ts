@@ -2,6 +2,9 @@ import type { PartialTranslationDictionary } from '../dictionary-types';
 import { masterVehicleIdentityTr } from './master.vehicleIdentity.tr';
 import { masterOneAutoTr } from './master.oneAuto.tr';
 import { masterOrganizationsTr } from './master.organizations.tr';
+import { masterProductCommercialTr } from './master.productCommercial.tr';
+import { masterCreditManagementTr } from './master.creditManagement.tr';
+import { masterBillingInvoicesTr } from './master.billing.invoices.tr';
 import { masterCvTechnicalSpecsTr } from './master.cv.technicalSpecs.tr';
 import { masterCvDimoPrivilegeTr } from './master.cv.dimoPrivilege.tr';
 import { masterCvOemSpecsTr } from './master.cv.oemSpecs.tr';
@@ -20,6 +23,9 @@ export const tr = {
   ...masterVehicleIdentityTr,
   ...masterOneAutoTr,
   ...masterOrganizationsTr,
+  ...masterProductCommercialTr,
+  ...masterCreditManagementTr,
+  ...masterBillingInvoicesTr,
   ...masterCvTechnicalSpecsTr,
   ...masterCvDimoPrivilegeTr,
   ...masterCvOemSpecsTr,

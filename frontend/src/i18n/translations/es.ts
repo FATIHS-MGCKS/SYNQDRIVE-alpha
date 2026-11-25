@@ -15,6 +15,9 @@ import { masterMotionPhysicsEs } from './master.motionPhysics.es';
 import { masterVehicleIdentityEs } from './master.vehicleIdentity.es';
 import { masterOneAutoEs } from './master.oneAuto.es';
 import { masterOrganizationsEs } from './master.organizations.es';
+import { masterProductCommercialEs } from './master.productCommercial.es';
+import { masterCreditManagementEs } from './master.creditManagement.es';
+import { masterBillingInvoicesEs } from './master.billing.invoices.es';
 import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
 import { masterCvDimoPrivilegeEs } from './master.cv.dimoPrivilege.es';
 import { masterCvOemSpecsEs } from './master.cv.oemSpecs.es';
@@ -221,6 +224,9 @@ export const es = {
 ...masterVehicleIdentityEs,
   ...masterOneAutoEs,
   ...masterOrganizationsEs,
+  ...masterProductCommercialEs,
+  ...masterCreditManagementEs,
+  ...masterBillingInvoicesEs,
   ...masterCvTechnicalSpecsEs,
   ...masterCvDimoPrivilegeEs,
   ...masterCvOemSpecsEs,

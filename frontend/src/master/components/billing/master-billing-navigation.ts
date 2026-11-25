@@ -12,7 +12,14 @@ export type MasterBillingLegacySection =
   | 'invoices-payments'
   | 'system-sync';
 
-export type MasterBillingInvoicesTab = 'invoices';
+export type MasterBillingInvoicesTab = 'invoices' | 'credit-notes';
+
+export const MASTER_BILLING_INVOICES_TABS: Array<{ id: MasterBillingInvoicesTab }> = [
+  { id: 'invoices' },
+  { id: 'credit-notes' },
+];
+
+export const MASTER_BILLING_PRICING_PRODUCT_PARAM = 'masterBillingProductKey';
 
 export type MasterBillingReconciliationTab = 'drifts' | 'platform-sync' | 'webhooks';
 
@@ -110,6 +117,7 @@ export interface MasterBillingLocationState {
   subTab: string | null;
   orgId: string | null;
   subscriptionId: string | null;
+  pricingProductKey?: string | null;
 }
 
 export function readMasterBillingLocation(search = ''): MasterBillingLocationState {
@@ -124,6 +132,7 @@ export function readMasterBillingLocation(search = ''): MasterBillingLocationSta
     subTab: rawSubTab ? (LEGACY_SUB_TAB_MAP[rawSubTab] ?? rawSubTab) : null,
     orgId: legacyOrgId,
     subscriptionId,
+    pricingProductKey: params.get(MASTER_BILLING_PRICING_PRODUCT_PARAM),
   };
 }
 
@@ -157,6 +166,12 @@ export function buildMasterBillingSearch(
     params.set(MASTER_BILLING_ORG_PARAM, input.orgId);
   }
 
+  if (input.pricingProductKey === null) {
+    params.delete(MASTER_BILLING_PRICING_PRODUCT_PARAM);
+  } else if (input.pricingProductKey) {
+    params.set(MASTER_BILLING_PRICING_PRODUCT_PARAM, input.pricingProductKey);
+  }
+
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -178,6 +193,43 @@ export function defaultSubTabForSection(section: MasterBillingSection): string |
 
 export function sectionNeedsOperationalData(section: MasterBillingSection): boolean {
   return section === 'overview' || section === 'subscriptions';
+}
+
+/** Navigate to Master Billing with canonical URL params (Product Management drill-down). */
+export function pushMasterBillingNavigation(input: {
+  orgId?: string | null;
+  section?: MasterBillingSection;
+  subTab?: string | null;
+  pricingProductKey?: string | null;
+  replace?: boolean;
+}) {
+  if (typeof window === 'undefined') return;
+  const section = input.section ?? 'pricing';
+  const subTab = input.subTab ?? defaultSubTabForSection(section);
+  const subscriptionId = input.orgId ?? null;
+
+  const billingQuery = buildMasterBillingSearch(
+    {
+      section,
+      subTab,
+      subscriptionId,
+      orgId: input.orgId ?? null,
+      pricingProductKey: input.pricingProductKey ?? null,
+    },
+    '',
+  );
+  const params = new URLSearchParams(billingQuery.startsWith('?') ? billingQuery.slice(1) : billingQuery);
+  params.set('view', 'billing');
+  if (input.orgId) {
+    params.set('orgId', input.orgId);
+  }
+
+  const next = `${window.location.pathname}?${params.toString()}`;
+  if (input.replace) {
+    window.history.replaceState(null, '', next);
+  } else {
+    window.history.pushState(null, '', next);
+  }
 }
 
 /** @deprecated use sectionNeedsOperationalData */

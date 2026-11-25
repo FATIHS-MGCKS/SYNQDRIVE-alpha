@@ -23,6 +23,7 @@ import {
   defaultSubTabForSection,
   readMasterBillingLocation,
   type MasterBillingAuditTab,
+  type MasterBillingInvoicesTab,
   type MasterBillingPricingTab,
   type MasterBillingReconciliationTab,
   type MasterBillingSection,
@@ -41,6 +42,7 @@ function syncMasterBillingUrl(
   section: MasterBillingSection,
   subTab: string | null,
   subscriptionId: string | null,
+  pricingProductKey: string | null,
   replace = false,
 ) {
   const nextSearch = buildMasterBillingSearch(
@@ -49,6 +51,7 @@ function syncMasterBillingUrl(
       subTab,
       subscriptionId,
       orgId: null,
+      pricingProductKey,
     },
     window.location.search,
   );
@@ -77,6 +80,9 @@ export function BillingControlCenter({
   );
   const [subscriptionFilters, setSubscriptionFilters] = useState<Record<string, string>>({});
   const [pricingRefresh, setPricingRefresh] = useState(0);
+  const [pricingProductKey, setPricingProductKey] = useState<string | null>(
+    initialLocation.pricingProductKey ?? null,
+  );
   const [contractDrawerRow, setContractDrawerRow] = useState<AdminOrgBillingRowDto | null>(null);
   const [contractDrawerOpen, setContractDrawerOpen] = useState(false);
 
@@ -87,30 +93,30 @@ export function BillingControlCenter({
     setActiveSection(section);
     setActiveSubTab(subTab);
     setSubscriptionId(null);
-    syncMasterBillingUrl(section, subTab, null, replace);
+    syncMasterBillingUrl(section, subTab, null, pricingProductKey, replace);
   };
 
   const navigateSubTab = (subTab: string) => {
     setActiveSubTab(subTab);
-    syncMasterBillingUrl(activeSection, subTab, subscriptionId);
+    syncMasterBillingUrl(activeSection, subTab, subscriptionId, pricingProductKey);
   };
 
   const openSubscription = (orgId: string) => {
     setSubscriptionId(orgId);
     setActiveSection('subscriptions');
-    syncMasterBillingUrl('subscriptions', activeSubTab, orgId);
+    syncMasterBillingUrl('subscriptions', activeSubTab, orgId, pricingProductKey);
   };
 
   const closeSubscription = () => {
     setSubscriptionId(null);
-    syncMasterBillingUrl('subscriptions', activeSubTab, null, true);
+    syncMasterBillingUrl('subscriptions', activeSubTab, null, pricingProductKey, true);
   };
 
   const goSubscriptionsWithFilters = (filters?: Record<string, string>) => {
     setSubscriptionFilters(filters ?? {});
     setSubscriptionId(null);
     setActiveSection('subscriptions');
-    syncMasterBillingUrl('subscriptions', null, null);
+    syncMasterBillingUrl('subscriptions', null, null, pricingProductKey);
   };
 
   useEffect(() => {
@@ -119,6 +125,7 @@ export function BillingControlCenter({
       setActiveSection(location.section);
       setActiveSubTab(location.subTab ?? defaultSubTabForSection(location.section));
       setSubscriptionId(location.subscriptionId);
+      setPricingProductKey(location.pricingProductKey ?? null);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -225,12 +232,18 @@ export function BillingControlCenter({
           <BillingPricingTab
             refreshToken={pricingRefresh}
             activeSubTab={activeSubTab}
+            focusProductKey={pricingProductKey}
             onSubTabChange={(tab: MasterBillingPricingTab) => navigateSubTab(tab)}
           />
         </div>
       ) : null}
 
-      {activeSection === 'invoices' ? <BillingInvoicesSection /> : null}
+      {activeSection === 'invoices' ? (
+        <BillingInvoicesSection
+          activeSubTab={activeSubTab}
+          onSubTabChange={(tab: MasterBillingInvoicesTab) => navigateSubTab(tab)}
+        />
+      ) : null}
 
       {activeSection === 'reconciliation' ? (
         <BillingReconciliationSection
