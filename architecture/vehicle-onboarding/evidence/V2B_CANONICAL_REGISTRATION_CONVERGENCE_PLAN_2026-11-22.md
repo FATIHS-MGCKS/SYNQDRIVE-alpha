@@ -37,7 +37,7 @@ Define a **minimal, reversible** path to converge **all vehicle registration ent
 | Registration billing | **Single consumer:** `VehicleRegistryLifecycleOutboxProcessor` → `onVehicleProvisioned` on `VEHICLE_ACTIVATED` | VO-DEC-2B-003, PG-05, V2B-PR6 |
 | Legacy `VehiclesService.create` billing hook | **Removed** — `create` fail-closes with `MANUAL_VEHICLE_REGISTRATION_RETIRED` | V2B-PR4 |
 | `VEHICLE_REGISTRATION_CONVERGENCE_BILLING_SINGLE_RAIL` | **NOT_ARMABLE**; **not required** to enforce registration billing authority | V2B-PR6 |
-| HM_ONLY canonical | Behind `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` (default OFF) | V2B-PR2/PR3 |
+| HM_ONLY canonical | `VEHICLE_REGISTRATION_HM_ONLY_CANONICAL_ENABLED` — **ON in production** since PR9C ops @ `4c029c5d` | V2B-PR2/PR3 · VO-EVID-2B-012 |
 | HM_ONLY legacy (flag OFF) | Inline vehicle row; **no** outbox/billing (gap preserved) | PG-05-C |
 | Integration harness | `createVehicleRowForIntegrationHarness` — **not** a registration channel; production **default deny** with **explicit** `ALLOW_VEHICLE_ROW_INTEGRATION_HARNESS=1` override | V2B-PR4/PR6 |
 | Manual canonical (M-A/B/C) | **Not implemented** — options in §3.3 are historical | OWN-1 SUPERSEDED |
@@ -274,7 +274,8 @@ HM_ONLY **must not** commit vehicle row outside activation TX once converged.
 
 | Stage | Status |
 |-------|--------|
-| Design contract (this document) | **PROPOSED** (§1B normative for post-PR4 facts) |
-| Implementation | **IN PROGRESS** (V2B-PR1–PR7 **merged** @ `ff90ff14`; V2B-PR8 owner package **DRAFT**; cutover flags not armed) |
-| Cutover | **FORBIDDEN** until owner approval |
-| Production validation | **NOT CLAIMED** |
+| Design contract (this document) | **VALIDATED** (§1B normative for post-PR4 facts) |
+| Implementation | **COMPLETE** (V2B-PR1–PR8 **merged**; PR9A docs **merged** #2524) |
+| Cutover | **COMPLETE** (PR9C ops — OWN-5B; SHA `4c029c5d`; P4B16 gen **109**) |
+| Production validation | **PRODUCTION_ACTIVE** — [V2B_PR10_FINAL_PRODUCTION_CLOSEOUT_2026-11-25.md](./V2B_PR10_FINAL_PRODUCTION_CLOSEOUT_2026-11-25.md) |
+| V2B workstream | **CLOSED** (registration convergence); VO module authority **not** promoted to `AUTHORITY_ACTIVE` |

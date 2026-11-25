@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'v2b-pr10-final-production-closeout-2026-11-25',
+    version: '4.9.5042',
+    title: 'V2B-PR10 — registration convergence production closeout',
+    summary: [
+      'V2B workstream closed as PRODUCTION_ACTIVE @ 4c029c5d (P4B16 gen 109); HM canonical enabled on both replicas per PR9C ops record.',
+      'Governance only in this merge: evidence, CURRENT_STATE, decision VO-DEC-2B-005; no deploy or flag changes in PR.',
+      'Legacy HM inline routing and shadow-compare observation code retained for rollback and certification.',
+    ],
+    reason: 'Close V2B after authorized direct production cutover (OWN-5B).',
+    previousBehavior: 'V2B merged through PR9A docs; production activation tracked only in external ops evidence.',
+    details:
+      'architecture/vehicle-onboarding/evidence/V2B_PR10_FINAL_PRODUCTION_CLOSEOUT_2026-11-25.md; VO-EVID-2B-012',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-11-25T07:30:00.000Z',
+  },
+  {
     id: 'v2b-pr5-provider-billing-outbox-parity-2026-11-24',
     version: '4.9.5041',
     title: 'V2B-PR5 — provider billing / outbox parity certification (DIMO vs HM canonical)',

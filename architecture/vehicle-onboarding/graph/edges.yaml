@@ -61,3 +61,12 @@ edges:
   - from: VO-EVID-2B-009
     relation: supports
     to: VO-DEC-OWN-6
+  - from: VO-EVID-2B-012
+    relation: supports
+    to: VO-DEC-2B-005
+  - from: VO-EVID-2B-012
+    relation: supports
+    to: VO-DEC-OWN-5B
+  - from: VO-EVID-2B-011
+    relation: supports
+    to: VO-EVID-2B-012
