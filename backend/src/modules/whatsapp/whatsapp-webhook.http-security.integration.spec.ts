@@ -5,6 +5,10 @@ import { Test } from '@nestjs/testing';
 import * as crypto from 'crypto';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  authGuardHttpSecurityProviders,
+} from '@shared/auth/testing/http-security-jwt.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { CommunicationConversationRepository } from '@modules/communication/communication-conversation.repository';
@@ -39,6 +43,10 @@ describe('WhatsAppWebhookController HTTP security', () => {
     wabaId: 'waba',
   };
 
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
+
   const prisma = {
     orgWhatsAppConfig: {
       findFirst: jest.fn(async () => orgConfig),
@@ -64,6 +72,8 @@ describe('WhatsAppWebhookController HTTP security', () => {
       update: jest.fn(),
     },
   };
+
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'whatsapp-webhook-test-secret';
@@ -92,6 +102,7 @@ describe('WhatsAppWebhookController HTTP security', () => {
           provide: WhatsAppCommunicationProjectionIntegration,
           useValue: { projectInbound: jest.fn(), projectStatusUpdate: jest.fn(), projectOutboundAccepted: jest.fn() },
         },
+        ...authGuardHttpSecurityProviders(prisma, platformPermissions),
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();

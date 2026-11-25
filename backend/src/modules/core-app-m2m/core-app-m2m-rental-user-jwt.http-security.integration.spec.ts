@@ -6,6 +6,11 @@ import * as request from 'supertest';
 import { ProductSlug } from '@prisma/client';
 import { AuthGuard } from '@shared/auth/auth.guard';
 import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  authGuardHttpSecurityProviders,
+  signHttpSecurityAccessToken,
+} from '@shared/auth/testing/http-security-jwt.util';
+import {
   CORE_APP_M2M_JWT_AUDIENCE_DEFAULT,
   CORE_APP_M2M_JWT_ISSUER_DEFAULT,
   CORE_APP_M2M_TOKEN_TYPE,
@@ -16,6 +21,13 @@ const ORG_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const VEHICLE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const USER_JWT_SECRET = 'rental-route-user-jwt-secret';
 const M2M_SECRET = 'rental-route-m2m-jwt-secret';
+
+const platformPermissions = {
+  resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+};
+
+const prisma: Record<string, unknown> = {};
+attachHttpSecurityAuthorityPrismaMocks(prisma as never);
 
 /**
  * Representative Rental surface route shape (vehicle rental-health).
@@ -40,7 +52,7 @@ describe('Core M2M — Rental user-JWT route compatibility (HTTP)', () => {
 
     const moduleRef = await Test.createTestingModule({
       controllers: [RentalHealthRouteStubController],
-      providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+      providers: [...authGuardHttpSecurityProviders(prisma, platformPermissions), { provide: APP_GUARD, useClass: AuthGuard }],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -79,16 +91,17 @@ describe('Core M2M — Rental user-JWT route compatibility (HTTP)', () => {
   });
 
   it('accepts valid user JWT on rental-health route', async () => {
-    const userJwt = jwt.sign(
-      {
-        sub: 'rental-user-1',
-        email: 'user@test.local',
-        platformRole: 'USER',
-        organizationId: ORG_ID,
-      },
-      USER_JWT_SECRET,
-      { expiresIn: 300 },
+    const userId = 'rental-user-1';
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      userId,
+      { platformRole: 'USER' },
     );
+    const userJwt = signHttpSecurityAccessToken(USER_JWT_SECRET, {
+      id: userId,
+      email: 'user@test.local',
+      platformRole: 'USER',
+      organizationId: ORG_ID,
+    });
 
     const res = await request(app.getHttpServer())
       .get(rentalRoute)

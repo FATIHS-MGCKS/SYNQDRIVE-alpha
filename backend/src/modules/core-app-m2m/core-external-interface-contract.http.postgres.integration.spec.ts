@@ -25,6 +25,7 @@ import {
   VehicleStatus,
 } from '@prisma/client';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import { authGuardHttpSecurityProviders } from '@shared/auth/testing/http-security-jwt.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
 import { CORE_APP_M2M_SCOPE_VEHICLE_READ } from './core-app-m2m.constants';
@@ -43,6 +44,9 @@ const USER_JWT_SECRET = 'p11-disposable-user-jwt-secret';
   const prisma = new PrismaClient();
   let app: INestApplication;
   const envBackup = { ...process.env };
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
 
   const runId = Date.now();
   let orgId: string;
@@ -131,7 +135,10 @@ const USER_JWT_SECRET = 'p11-disposable-user-jwt-secret';
           .overrideProvider(RedisService)
           .useValue(new CoreAppM2mRateLimitMemoryRedis()),
       {
-        providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+        providers: [
+          ...authGuardHttpSecurityProviders(prisma, platformPermissions),
+          { provide: APP_GUARD, useClass: AuthGuard },
+        ],
       },
     ).compile();
 

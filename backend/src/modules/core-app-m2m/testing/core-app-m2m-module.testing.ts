@@ -2,6 +2,7 @@ import { Provider, Type } from '@nestjs/common';
 import { Test, TestingModuleBuilder } from '@nestjs/testing';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { MasterAdminAuditOutboxSchedulerService } from '@modules/activity-log/master-admin-audit-outbox.scheduler.service';
 import { CoreAppM2mModule } from '../core-app-m2m.module';
 
 export type CoreAppM2mTestModuleExtras = {
@@ -25,6 +26,8 @@ export function createCoreAppM2mIntegrationModule(
     .overrideGuard(RolesGuard)
     .useValue({ canActivate: () => true })
     .overrideGuard(MasterAdminMfaGuard)
-    .useValue({ canActivate: () => true });
+    .useValue({ canActivate: () => true })
+    .overrideProvider(MasterAdminAuditOutboxSchedulerService)
+    .useValue({ pollPendingOutbox: jest.fn().mockResolvedValue(undefined) });
   return configure(builder);
 }

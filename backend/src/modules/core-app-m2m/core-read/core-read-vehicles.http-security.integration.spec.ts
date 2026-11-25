@@ -6,6 +6,7 @@ import * as request from 'supertest';
 import {
   CoreAppServiceClientStatus,
   CoreAppServiceGrantStatus,
+  OrganizationStatus,
   OrgProductPlan,
   OrgProductStatus,
   OrganizationProductVehicleAccessMode,
@@ -14,6 +15,11 @@ import {
   VehicleStatus,
 } from '@prisma/client';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  authGuardHttpSecurityProviders,
+  signHttpSecurityAccessToken,
+} from '@shared/auth/testing/http-security-jwt.util';
 import { RedisService } from '@shared/redis/redis.service';
 import { CoreEntitlementsReadController } from '@modules/products/entitlements/core-entitlements-read.controller';
 import { EntitlementsQueryService } from '@modules/products/entitlements/entitlements-query.service';
@@ -64,14 +70,22 @@ describe('Core read vehicles — HTTP security integration', () => {
 
   const ORG_PRODUCT_ID = '11111111-1111-4111-8111-111111111111';
 
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
+
   const prisma = {
     coreAppServiceClient: { findUnique: jest.fn() },
     coreAppServiceOrgGrant: { findFirst: jest.fn() },
     organizationProduct: { findFirst: jest.fn(), findMany: jest.fn() },
     vehicle: { count: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
-    organization: { findUnique: jest.fn(async () => ({ id: ORG_ID })) },
+    organization: {
+      findUnique: jest.fn(async () => ({ id: ORG_ID, status: OrganizationStatus.ACTIVE })),
+    },
     organizationMembership: { findFirst: jest.fn() },
   };
+
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
 
   function activeOrgProductRow() {
     return {
@@ -204,6 +218,7 @@ describe('Core read vehicles — HTTP security integration', () => {
         providers: [
           EntitlementsQueryService,
           Reflector,
+          ...authGuardHttpSecurityProviders(prisma, platformPermissions),
           { provide: APP_GUARD, useClass: AuthGuard },
         ],
       },
@@ -304,15 +319,16 @@ describe('Core read vehicles — HTTP security integration', () => {
   });
 
   it('accepts valid user JWT on entitlements while blocking service JWT', async () => {
-    const userJwt = jwt.sign(
-      {
-        sub: 'admin',
-        platformRole: 'MASTER_ADMIN',
-        organizationId: ORG_ID,
-      },
-      USER_JWT_SECRET,
-      { expiresIn: 300 },
+    const userId = 'admin';
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      userId,
+      { platformRole: 'MASTER_ADMIN' },
     );
+    const userJwt = signHttpSecurityAccessToken(USER_JWT_SECRET, {
+      id: userId,
+      platformRole: 'MASTER_ADMIN',
+      organizationId: ORG_ID,
+    });
     await request(app.getHttpServer())
       .get(entitlementsRoute)
       .set('Authorization', `Bearer ${userJwt}`)

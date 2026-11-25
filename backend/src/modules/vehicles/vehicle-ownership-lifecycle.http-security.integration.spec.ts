@@ -7,14 +7,17 @@ import {
 import { APP_GUARD } from '@nestjs/core';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { OrganizationStatus, UserPlatformRole } from '@prisma/client';
+import { OrganizationStatus, RefreshTokenScope, UserPlatformRole } from '@prisma/client';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { RefreshTokenMembershipContext } from '@modules/auth/refresh-token.service';
 import { createRefreshTokenHarness } from '@modules/users/iam-security-regression.harness';
 import { ORGANIZATION_LIFECYCLE_DENIED_CODE } from '@shared/auth/organization-lifecycle-access.policy';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
@@ -68,13 +71,54 @@ function makePrisma() {
     organizationMembership: {
       findFirst: jest.fn(
         async (args: {
-          where: { userId: string; organizationId: string; status?: string };
+          where: {
+            id?: string;
+            userId?: string;
+            organizationId?: string;
+            status?: string;
+          };
         }) => {
-          const key = `${args.where.userId}|${args.where.organizationId}`;
+          const where = args.where;
+          if (where.status && where.status !== 'ACTIVE') return null;
+
+          if (where.id) {
+            for (const [key, row] of Object.entries(MEMBERSHIPS)) {
+              const memId = `m-${key}`;
+              if (memId !== where.id) continue;
+              const [userId, organizationId] = key.split('|');
+              if (where.userId && where.userId !== userId) continue;
+              if (row.status !== 'ACTIVE') return null;
+              return {
+                id: memId,
+                role: row.role,
+                permissions: row.permissions,
+                membershipVersion: 1,
+                organizationId,
+                organization: {
+                  status: ORG_STATUS[organizationId] ?? OrganizationStatus.ACTIVE,
+                  companyName: organizationId,
+                },
+              };
+            }
+            return null;
+          }
+
+          const key = `${where.userId}|${where.organizationId}`;
           const row = MEMBERSHIPS[key];
           if (!row) return null;
-          if (args.where.status && row.status !== args.where.status) return null;
-          return { id: `m-${key}`, role: row.role, permissions: row.permissions };
+          if (row.status !== 'ACTIVE') return null;
+          const organizationId = where.organizationId!;
+          return {
+            id: `m-${key}`,
+            role: row.role,
+            permissions: row.permissions,
+            membershipVersion: 1,
+            organizationId,
+            organization: {
+              status: ORG_STATUS[organizationId] ?? OrganizationStatus.ACTIVE,
+              companyName: organizationId,
+            },
+          };
         },
       ),
     },
@@ -100,13 +144,13 @@ function makePrisma() {
         },
       ),
     },
-    refreshToken: { create: jest.fn().mockResolvedValue({ id: 'rt-1' }) },
   };
 }
 
 describe('VehiclesController — vehicle ownership lifecycle HTTP security', () => {
   let app: INestApplication;
-  let prisma: ReturnType<typeof makePrisma>;
+  let harness: ReturnType<typeof createRefreshTokenHarness>;
+  let prisma: ReturnType<typeof createRefreshTokenHarness>['prisma'];
   let vehiclesService: {
     findById: jest.Mock;
     update: jest.Mock;
@@ -117,74 +161,132 @@ describe('VehiclesController — vehicle ownership lifecycle HTTP security', () 
   let accessTokenSuspended: string;
   let accessTokenOrgB: string;
 
+  const membershipA = {
+    role: 'WORKER',
+    organizationId: 'org-a',
+    organizationName: 'Org A',
+    organizationLogoUrl: null,
+    permissions: { fleet: { read: true, write: true } },
+    membershipId: 'm-fleet-mgr|org-a',
+    membershipVersion: 1,
+    organizationRoleId: null,
+  };
+
+  async function issueMembershipToken(
+    user: { id: string; email: string; name: string },
+    membership: RefreshTokenMembershipContext,
+  ): Promise<string> {
+    harness.registerRefreshHarnessUser({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+    });
+    return (
+      await harness.service.issueTokenPair(
+        {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          platformRole: UserPlatformRole.USER,
+          sessionVersion: 0,
+        },
+        membership,
+      )
+    ).accessToken;
+  }
+
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-jwt-secret';
-    const harness = createRefreshTokenHarness();
-    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-http-lifecycle' });
+    harness = createRefreshTokenHarness();
+    const extraPrisma = makePrisma();
+    harness.prisma.organizationMembership.findFirst = extraPrisma.organizationMembership.findFirst;
+    harness.prisma.organization = extraPrisma.organization;
+    Object.assign(harness.prisma, { vehicle: extraPrisma.vehicle });
+    prisma = harness.prisma;
 
-    const membershipA = {
-      role: 'WORKER',
-      organizationId: 'org-a',
-      organizationName: 'Org A',
-      organizationLogoUrl: null,
-      permissions: { fleet: { read: true, write: true } },
-      membershipId: 'm-fleet-mgr|org-a',
-      membershipVersion: 1,
-      organizationRoleId: null,
-    };
+    const refreshBindings = new Map<
+      string,
+      {
+        family: string;
+        scope: RefreshTokenScope;
+        organizationId: string | null;
+        membershipId: string | null;
+        sessionVersion: number;
+        membershipVersion: number | null;
+      }
+    >();
+    const baseRefreshCreate = harness.prisma.refreshToken.create.getMockImplementation();
+    harness.prisma.refreshToken.create.mockImplementation(async (args: { data: Record<string, unknown> }) => {
+      const created = await baseRefreshCreate!(args);
+      const data = args.data;
+      const userId = data.userId as string;
+      const family = data.family as string;
+      refreshBindings.set(`${userId}:${family}`, {
+        family,
+        scope: data.scope as RefreshTokenScope,
+        organizationId: (data.organizationId as string | null | undefined) ?? null,
+        membershipId: (data.membershipId as string | null | undefined) ?? null,
+        sessionVersion: (data.sessionVersion as number | undefined) ?? 0,
+        membershipVersion: (data.membershipVersion as number | null | undefined) ?? null,
+      });
+      return created;
+    });
+    harness.prisma.refreshToken.findFirst.mockImplementation(
+      async (query: {
+        where: {
+          userId?: string;
+          family?: string;
+          revokedAt?: null;
+          replacedBy?: null;
+          expiresAt?: { gt: Date };
+        };
+      }) => {
+        const w = query.where;
+        if (!w.userId || !w.family || w.revokedAt !== null) {
+          return null;
+        }
+        const row = refreshBindings.get(`${w.userId}:${w.family}`);
+        if (!row) {
+          return null;
+        }
+        return {
+          id: 'rt-bound',
+          family: row.family,
+          scope: row.scope,
+          organizationId: row.organizationId,
+          membershipId: row.membershipId,
+          sessionVersion: row.sessionVersion,
+          membershipVersion: row.membershipVersion,
+        };
+      },
+    );
 
-    accessTokenOrgA = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'fleet-mgr',
-          email: 'fleet@test.example',
-          name: 'Fleet',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        {
-          ...membershipA,
-          organizationId: 'org-a',
-        },
-      )
-    ).accessToken;
+    accessTokenOrgA = await issueMembershipToken(
+      { id: 'fleet-mgr', email: 'fleet@test.example', name: 'Fleet' },
+      { ...membershipA, organizationId: 'org-a' },
+    );
 
-    accessTokenSuspended = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'fleet-mgr',
-          email: 'susp@test.example',
-          name: 'Susp',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        {
-          ...membershipA,
-          organizationId: 'org-suspended',
-          membershipId: 'm-fleet-mgr|org-suspended',
-        },
-      )
-    ).accessToken;
+    ORG_STATUS['org-suspended'] = OrganizationStatus.ACTIVE;
+    accessTokenSuspended = await issueMembershipToken(
+      { id: 'fleet-mgr', email: 'susp@test.example', name: 'Susp' },
+      {
+        ...membershipA,
+        organizationId: 'org-suspended',
+        membershipId: 'm-fleet-mgr|org-suspended',
+      },
+    );
+    ORG_STATUS['org-suspended'] = OrganizationStatus.SUSPENDED;
 
-    accessTokenOrgB = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'fleet-mgr',
-          email: 'b@test.example',
-          name: 'B',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        {
-          ...membershipA,
-          organizationId: 'org-b',
-          membershipId: 'm-fleet-mgr|org-b',
-        },
-      )
-    ).accessToken;
-
-    Object.assign(harness.prisma, makePrisma());
-    prisma = harness.prisma as unknown as ReturnType<typeof makePrisma>;
+    accessTokenOrgB = await issueMembershipToken(
+      { id: 'fleet-mgr', email: 'b@test.example', name: 'B' },
+      {
+        ...membershipA,
+        organizationId: 'org-b',
+        membershipId: 'm-fleet-mgr|org-b',
+      },
+    );
 
     vehiclesService = {
       findById: jest.fn().mockResolvedValue({ id: 'veh-owned' }),
@@ -210,6 +312,8 @@ describe('VehiclesController — vehicle ownership lifecycle HTTP security', () 
         { provide: VehicleExteriorImagesService, useValue: { listByVehicle: jest.fn() } },
         { provide: VehicleCleaningTaskService, useValue: {} },
         { provide: VehiclesOperationalService, useValue: {} },
+        UserAccessAuthorityService,
+        { provide: PlatformPermissionService, useValue: harness.platformPermissions },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();
@@ -276,61 +380,41 @@ describe('VehiclesController — vehicle ownership lifecycle HTTP security', () 
   });
 
   it('5 — revoked membership denies before vehicle lookup', async () => {
-    const harness = createRefreshTokenHarness();
-    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-inactive' });
-    const inactiveToken = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'inactive',
-          email: 'in@test.example',
-          name: 'Inactive',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        {
-          role: 'WORKER',
-          organizationId: 'org-a',
-          organizationName: 'Org A',
-          organizationLogoUrl: null,
-          permissions: {},
-          membershipId: 'm-inactive|org-a',
-          membershipVersion: 1,
-          organizationRoleId: null,
-        },
-      )
-    ).accessToken;
+    const inactiveToken = await issueMembershipToken(
+      { id: 'inactive', email: 'in@test.example', name: 'Inactive' },
+      {
+        role: 'WORKER',
+        organizationId: 'org-a',
+        organizationName: 'Org A',
+        organizationLogoUrl: null,
+        permissions: {},
+        membershipId: 'm-inactive|org-a',
+        membershipVersion: 1,
+        organizationRoleId: null,
+      },
+    );
 
     await request(app.getHttpServer())
       .get('/api/v1/vehicles/veh-owned')
       .set('Authorization', `Bearer ${inactiveToken}`)
-      .expect(403);
+      .expect(401);
     expect(vehiclesService.findById).not.toHaveBeenCalled();
   });
 
   it('6 — missing fleet.write denies PATCH', async () => {
-    const harness = createRefreshTokenHarness();
-    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-reader' });
-    const readerToken = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'reader',
-          email: 'r@test.example',
-          name: 'R',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        {
-          role: 'WORKER',
-          organizationId: 'org-a',
-          organizationName: 'Org A',
-          organizationLogoUrl: null,
-          permissions: { fleet: { read: true, write: false } },
-          membershipId: 'm-reader|org-a',
-          membershipVersion: 1,
-          organizationRoleId: null,
-        },
-      )
-    ).accessToken;
+    const readerToken = await issueMembershipToken(
+      { id: 'reader', email: 'r@test.example', name: 'R' },
+      {
+        role: 'WORKER',
+        organizationId: 'org-a',
+        organizationName: 'Org A',
+        organizationLogoUrl: null,
+        permissions: { fleet: { read: true, write: false } },
+        membershipId: 'm-reader|org-a',
+        membershipVersion: 1,
+        organizationRoleId: null,
+      },
+    );
 
     await request(app.getHttpServer())
       .patch('/api/v1/vehicles/veh-owned')
@@ -349,20 +433,23 @@ describe('VehiclesController — vehicle ownership lifecycle HTTP security', () 
 
   it('8 — MASTER_ADMIN bypasses lifecycle on GET', async () => {
     ORG_STATUS['org-a'] = OrganizationStatus.SUSPENDED;
-    const harness = createRefreshTokenHarness();
-    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-ma' });
-    const maToken = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'ma',
-          email: 'ma@test.example',
-          name: 'MA',
-          platformRole: UserPlatformRole.MASTER_ADMIN,
-          sessionVersion: 0,
-        },
-        null,
-      )
-    ).accessToken;
+    harness.registerRefreshHarnessUser({
+      id: 'ma',
+      email: 'ma@test.example',
+      name: 'MA',
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+      sessionVersion: 0,
+    });
+    const maToken = (await harness.service.issueTokenPair(
+      {
+        id: 'ma',
+        email: 'ma@test.example',
+        name: 'MA',
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionVersion: 0,
+      },
+      null,
+    )).accessToken;
     vehiclesService.findById.mockResolvedValue({ id: 'veh-owned' });
     await request(app.getHttpServer())
       .get('/api/v1/vehicles/veh-owned')

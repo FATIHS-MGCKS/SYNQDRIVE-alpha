@@ -2,9 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { OrganizationStatus, OrgProductStatus, ProductSlug } from '@prisma/client';
-import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  signHttpSecurityAccessToken,
+} from '@shared/auth/testing/http-security-jwt.util';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
@@ -45,6 +50,10 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
   const recordPresentation = jest.fn().mockResolvedValue({ id: 'ev-1' });
 
   const DOC_ID = '550e8400-e29b-41d4-a716-446655440001';
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
+
   const presentationBody = {
     customerId: '550e8400-e29b-41d4-a716-446655440010',
     legalDocumentId: '550e8400-e29b-41d4-a716-446655440011',
@@ -56,7 +65,9 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
   const prisma = {
     organization: {
       findUnique: jest.fn(async (args: { where: { id: string } }) =>
-        args.where.id === ORG_A || args.where.id === ORG_B ? { id: args.where.id } : null,
+        args.where.id === ORG_A || args.where.id === ORG_B
+          ? { id: args.where.id, status: OrganizationStatus.ACTIVE }
+          : null,
       ),
     },
     organizationMembership: {
@@ -116,34 +127,37 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
     },
   };
 
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
+
   function signMasterAdmin(orgId: string): string {
-    return jwt.sign(
-      {
-        sub: 'ma-1',
-        email: 'ma@test.local',
-        name: 'MA',
-        platformRole: 'MASTER_ADMIN',
-        membershipRole: 'MASTER_ADMIN',
-        organizationId: orgId,
-      },
-      jwtSecret,
-      { expiresIn: '1h' },
+    const id = 'ma-1';
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      id,
+      { platformRole: 'MASTER_ADMIN' },
     );
+    return signHttpSecurityAccessToken(jwtSecret, {
+      id,
+      email: 'ma@test.local',
+      name: 'MA',
+      platformRole: 'MASTER_ADMIN',
+      membershipRole: 'MASTER_ADMIN',
+      organizationId: orgId,
+    });
   }
 
   function signWorker(orgId: string, userId: string): string {
-    return jwt.sign(
-      {
-        sub: userId,
-        email: `${userId}@test.local`,
-        name: userId,
-        platformRole: 'USER',
-        membershipRole: 'WORKER',
-        organizationId: orgId,
-      },
-      jwtSecret,
-      { expiresIn: '1h' },
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      userId,
+      { platformRole: 'USER' },
     );
+    return signHttpSecurityAccessToken(jwtSecret, {
+      id: userId,
+      email: `${userId}@test.local`,
+      name: userId,
+      platformRole: 'USER',
+      membershipRole: 'WORKER',
+      organizationId: orgId,
+    });
   }
 
   const documentsRoute = `/api/v1/organizations/${ORG_A}/bookings/${BOOKING_ID}/documents`;
@@ -170,6 +184,8 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
           provide: BookingDocumentGenerationDispatcherService,
           useValue: { enqueueInitialBundle },
         },
+        UserAccessAuthorityService,
+        { provide: PlatformPermissionService, useValue: platformPermissions },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();
@@ -190,6 +206,8 @@ describe('Booking document routes — RENTAL product license HTTP enforcement', 
           provide: LegalDocumentDeliveryEvidenceService,
           useValue: { listForBooking: evidenceList, recordPresentation },
         },
+        UserAccessAuthorityService,
+        { provide: PlatformPermissionService, useValue: platformPermissions },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();
