@@ -14,19 +14,13 @@ export type MasterAdminAuditDeliveryOptions = {
 };
 
 export function buildMasterAdminSessionRevocationAuditIdempotencyKey(input: {
-  correlationId: string;
   auditAction: MasterAdminAuditActionCode;
   targetUserId: string;
   sessionId?: string;
   outcome: string;
 }): string {
   const sessionPart = input.sessionId ?? 'revoke-all';
-  return [
-    'ma-session-audit',
-    input.correlationId,
-    input.auditAction,
-    input.targetUserId,
-    sessionPart,
-    input.outcome,
-  ].join(':');
+  return ['ma-session-audit', input.auditAction, input.targetUserId, sessionPart, input.outcome].join(
+    ':',
+  );
 }

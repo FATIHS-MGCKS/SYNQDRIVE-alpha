@@ -34,26 +34,41 @@ export class MasterAdminAuditOutboxRepository {
       return existing;
     }
 
-    return tx.masterAdminAuditOutbox.create({
-      data: {
-        idempotencyKey: input.idempotencyKey,
-        auditScope: input.auditScope,
-        organizationContextId: input.organizationContextId?.trim() || null,
-        actorUserId: envelope.actorUserId ?? null,
-        subjectUserId:
-          typeof envelope.metadata?.targetUserId === 'string'
-            ? envelope.metadata.targetUserId
-            : null,
-        auditAction: envelope.auditAction,
-        occurredAt: input.occurredAt,
-        payloadVersion: MASTER_ADMIN_AUDIT_OUTBOX.payloadVersion,
-        payload: {
-          masterAdminAuditEnvelope: envelope,
-        } as unknown as Prisma.InputJsonValue,
-        status: MasterAdminAuditOutboxStatus.PENDING,
-        nextRetryAt: new Date(),
-      },
-    });
+    try {
+      return await tx.masterAdminAuditOutbox.create({
+        data: {
+          idempotencyKey: input.idempotencyKey,
+          auditScope: input.auditScope,
+          organizationContextId: input.organizationContextId?.trim() || null,
+          actorUserId: envelope.actorUserId ?? null,
+          subjectUserId:
+            typeof envelope.metadata?.targetUserId === 'string'
+              ? envelope.metadata.targetUserId
+              : null,
+          auditAction: envelope.auditAction,
+          occurredAt: input.occurredAt,
+          payloadVersion: MASTER_ADMIN_AUDIT_OUTBOX.payloadVersion,
+          payload: {
+            masterAdminAuditEnvelope: envelope,
+          } as unknown as Prisma.InputJsonValue,
+          status: MasterAdminAuditOutboxStatus.PENDING,
+          nextRetryAt: new Date(),
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existingRow = await tx.masterAdminAuditOutbox.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+        });
+        if (existingRow) {
+          return existingRow;
+        }
+      }
+      throw err;
+    }
   }
 
   findByIdempotencyKey(idempotencyKey: string) {
@@ -151,25 +166,17 @@ export class MasterAdminAuditOutboxRepository {
     return result.count > 0;
   }
 
-  async recoverStaleProcessing(staleBefore: Date): Promise<string[]> {
-    const stale = await this.prisma.masterAdminAuditOutbox.findMany({
+  async recoverStaleProcessing(staleBefore: Date): Promise<number> {
+    const result = await this.prisma.masterAdminAuditOutbox.updateMany({
       where: {
         status: MasterAdminAuditOutboxStatus.PROCESSING,
         updatedAt: { lt: staleBefore },
       },
-      select: { id: true },
-    });
-    if (stale.length === 0) {
-      return [];
-    }
-    const ids = stale.map((row) => row.id);
-    await this.prisma.masterAdminAuditOutbox.updateMany({
-      where: { id: { in: ids } },
       data: {
         status: MasterAdminAuditOutboxStatus.PENDING,
         nextRetryAt: new Date(),
       },
     });
-    return ids;
+    return result.count;
   }
 }

@@ -55,7 +55,7 @@ describe('SecurityGovernanceSessionAuditService', () => {
       }),
       expect.objectContaining({
         organizationContextId: 'org-1',
-        idempotencyKey: expect.stringContaining('ma-session-audit:corr-1'),
+        idempotencyKey: expect.stringContaining('ma-session-audit:'),
       }),
     );
   });

@@ -96,12 +96,11 @@ export class SecurityGovernanceController {
   @RequireStepUp(STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS)
   @HttpCode(HttpStatus.OK)
   async revokeAllSessions(@Param('userId') userId: string, @Req() req: AuthedRequest) {
-    const { revokedSessionCount } =
-      await this.sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
-        req,
-        targetUserId: userId,
-      });
-    return { revoked: revokedSessionCount > 0 };
+    await this.sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+      req,
+      targetUserId: userId,
+    });
+    return { revoked: true };
   }
 
   @Post('users/:userId/mfa/reset')

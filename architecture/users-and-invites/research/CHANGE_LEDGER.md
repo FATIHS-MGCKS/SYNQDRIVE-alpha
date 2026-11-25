@@ -9,3 +9,4 @@
 | 2026-11-25 | USR-P1A — session audit harness F-003 + durable delivery R-002 (`MasterAdminAuditDeliveryService`, IAM outbox carrier) |
 | 2026-11-25 | USR-P1A closeout — `master_admin_audit_outbox`, atomic ledger delivery, PG01–PG13 certification, IAM fail-closed |
 | 2026-11-25 | USR-P1A runtime wiring — outbox scheduler, atomic revoke+intent txn, tenant audit isolation, PG01–PG13 re-executed (13/13) |
+| 2026-11-25 | USR-P1A merge gate — outbox CAS recovery, authoritative immediate delivery, tenant null-safe scope filter, PG08/10/12 hardening |

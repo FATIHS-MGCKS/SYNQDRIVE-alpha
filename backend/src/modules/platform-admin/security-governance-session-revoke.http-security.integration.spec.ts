@@ -56,11 +56,11 @@ describe('SecurityGovernance session revoke — real guard HTTP security', () =>
   };
 
   const auditDelivery = {
-    persistAuthoritativeAuditIntent: jest.fn().mockResolvedValue('outbox-test-id'),
-    attemptImmediateDelivery: jest.fn(async (record: unknown) => {
+    persistAuthoritativeAuditIntent: jest.fn(async (record: unknown) => {
       await masterAdminAudit.record(record as never);
-      return 'DELIVERED';
+      return 'outbox-test-id';
     }),
+    attemptImmediateDelivery: jest.fn(async () => 'DELIVERED'),
     commitAuditIntent: jest.fn(async (record: unknown) => {
       await masterAdminAudit.record(record as never);
       return 'DELIVERED';

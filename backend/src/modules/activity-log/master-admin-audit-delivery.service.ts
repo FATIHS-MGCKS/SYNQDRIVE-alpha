@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { MasterAdminAuditScope, Prisma } from '@prisma/client';
+import { MasterAdminAuditOutboxStatus, MasterAdminAuditScope, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import {
@@ -88,12 +88,7 @@ export class MasterAdminAuditDeliveryService {
     }
 
     try {
-      return await this.attemptImmediateDelivery(
-        envelope,
-        options.idempotencyKey,
-        occurredAt,
-        outboxId,
-      );
+      return await this.attemptImmediateDelivery(outboxId);
     } catch (deliveryErr) {
       const code = classifyMasterAdminAuditDeliveryError(deliveryErr);
       this.logger.warn(
@@ -130,16 +125,27 @@ export class MasterAdminAuditDeliveryService {
     return this.prisma.$transaction(run);
   }
 
-  async attemptImmediateDelivery(
-    envelope: MasterAdminAuditRecordInput,
-    idempotencyKey: string,
-    occurredAt: Date,
-    outboxId: string,
-  ): Promise<MasterAdminAuditDeliveryOutcome> {
+  async attemptImmediateDelivery(outboxId: string): Promise<MasterAdminAuditDeliveryOutcome> {
+    const row = await this.outboxRepo.findById(outboxId);
+    if (!row) {
+      return 'FAILED';
+    }
+    if (row.status === MasterAdminAuditOutboxStatus.PROCESSED) {
+      return 'INTENT_PERSISTED';
+    }
+    if (row.status === MasterAdminAuditOutboxStatus.DEAD_LETTER) {
+      return 'FAILED';
+    }
+    const payload = row.payload as Record<string, unknown>;
+    const raw = payload.masterAdminAuditEnvelope;
+    if (!raw || typeof raw !== 'object') {
+      throw new Error('AUDIT_ENVELOPE_MISSING');
+    }
+    const envelope = sanitizeMasterAdminAuditRecordInput(raw as MasterAdminAuditRecordInput);
     const result = await this.outboxProcessor.deliverAtomic(
       envelope,
-      idempotencyKey,
-      occurredAt,
+      row.idempotencyKey,
+      row.occurredAt,
       outboxId,
     );
     return result === 'delivered' ? 'DELIVERED' : 'INTENT_PERSISTED';

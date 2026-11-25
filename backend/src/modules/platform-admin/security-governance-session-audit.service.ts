@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MasterAdminAuditScope } from '@prisma/client';
+import { MasterAdminAuditOutboxStatus, MasterAdminAuditScope } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import {
@@ -63,7 +63,6 @@ export class SecurityGovernanceSessionAuditService {
     const auditAction = MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED;
     const idempotencyKeyBuilder = (outcome: 'SUCCESS' | 'NO_OP') =>
       buildMasterAdminSessionRevocationAuditIdempotencyKey({
-        correlationId,
         auditAction,
         targetUserId: input.targetUserId,
         sessionId: input.sessionId,
@@ -104,37 +103,22 @@ export class SecurityGovernanceSessionAuditService {
       });
 
       try {
-        await this.auditDelivery.attemptImmediateDelivery(
-          txn.record,
-          idempotencyKeyBuilder(txn.outcome),
-          occurredAt,
-          txn.outboxId,
-        );
+        await this.auditDelivery.attemptImmediateDelivery(txn.outboxId);
       } catch {
         /* durable intent committed; scheduler will deliver */
       }
       return { revoked: txn.ok };
     } catch {
-      const ok = await this.refreshTokens.revokeSessionById(
-        input.targetUserId,
-        input.sessionId,
-      );
-      const outcome: 'SUCCESS' | 'NO_OP' = ok ? 'SUCCESS' : 'NO_OP';
-      const record = this.buildSingleSessionRecord({
+      return this.fallbackSingleSessionRevocation({
         req: input.req,
         mfa,
         correlationId,
         targetUserId: input.targetUserId,
         sessionId: input.sessionId,
-        outcome,
-        targetOrganizationId,
-      });
-      await this.auditDelivery.commitAuditIntent(record, {
-        idempotencyKey: idempotencyKeyBuilder(outcome),
-        organizationContextId: targetOrganizationId,
+        targetOrganizationId: targetOrganizationId ?? null,
         occurredAt,
+        idempotencyKeyBuilder,
       });
-      return { revoked: ok };
     }
   }
 
@@ -148,7 +132,6 @@ export class SecurityGovernanceSessionAuditService {
     const occurredAt = input.occurredAt ?? new Date();
     const auditAction = MasterAdminAuditAction.MASTER_USER_SESSIONS_REVOKED_ALL;
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey({
-      correlationId,
       auditAction,
       targetUserId: input.targetUserId,
       outcome: 'SUCCESS',
@@ -181,20 +164,41 @@ export class SecurityGovernanceSessionAuditService {
       });
 
       try {
-        await this.auditDelivery.attemptImmediateDelivery(
-          txn.record,
-          idempotencyKey,
-          occurredAt,
-          txn.outboxId,
-        );
+        await this.auditDelivery.attemptImmediateDelivery(txn.outboxId);
       } catch {
         /* durable intent committed; scheduler will deliver */
       }
       return { revokedSessionCount: txn.revokedSessionCount };
     } catch {
-      const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUser(
-        input.targetUserId,
-      );
+      const activeCount = await this.prisma.refreshToken.count({
+        where: {
+          userId: input.targetUserId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+      });
+      let revokedSessionCount = 0;
+      if (activeCount > 0) {
+        revokedSessionCount = await this.refreshTokens.revokeAllActiveForUser(input.targetUserId);
+      } else {
+        revokedSessionCount = await this.prisma.refreshToken.count({
+          where: { userId: input.targetUserId, revokedAt: { not: null } },
+        });
+      }
+      const existing = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey },
+      });
+      if (existing?.status === MasterAdminAuditOutboxStatus.PROCESSED) {
+        return { revokedSessionCount };
+      }
+      if (existing) {
+        try {
+          await this.auditDelivery.attemptImmediateDelivery(existing.id);
+        } catch {
+          /* intent durable */
+        }
+        return { revokedSessionCount };
+      }
       const record = this.buildRevokeAllRecord({
         req: input.req,
         mfa,
@@ -236,7 +240,6 @@ export class SecurityGovernanceSessionAuditService {
 
     await this.auditDelivery.commitAuditIntent(record, {
       idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey({
-        correlationId,
         auditAction,
         targetUserId: input.targetUserId,
         sessionId: input.sessionId,
@@ -268,7 +271,6 @@ export class SecurityGovernanceSessionAuditService {
 
     await this.auditDelivery.commitAuditIntent(record, {
       idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey({
-        correlationId,
         auditAction,
         targetUserId: input.targetUserId,
         outcome: 'SUCCESS',
@@ -276,6 +278,58 @@ export class SecurityGovernanceSessionAuditService {
       organizationContextId: null,
       occurredAt,
     });
+  }
+
+  private async fallbackSingleSessionRevocation(input: {
+    req: SessionRevocationAuditRequest;
+    mfa: ReturnType<typeof resolveMfaAuditFields>;
+    correlationId: string;
+    targetUserId: string;
+    sessionId: string;
+    targetOrganizationId: string | null;
+    occurredAt: Date;
+    idempotencyKeyBuilder: (outcome: 'SUCCESS' | 'NO_OP') => string;
+  }): Promise<{ revoked: boolean }> {
+    const token = await this.prisma.refreshToken.findFirst({
+      where: { id: input.sessionId, userId: input.targetUserId },
+      select: { revokedAt: true },
+    });
+    const alreadyRevoked = Boolean(token?.revokedAt);
+    let revoked = alreadyRevoked;
+    if (token && !alreadyRevoked) {
+      revoked = await this.refreshTokens.revokeSessionById(input.targetUserId, input.sessionId);
+    }
+    const outcome: 'SUCCESS' | 'NO_OP' = revoked ? 'SUCCESS' : 'NO_OP';
+    const idempotencyKey = input.idempotencyKeyBuilder(outcome);
+    const existing = await this.prisma.masterAdminAuditOutbox.findUnique({
+      where: { idempotencyKey },
+    });
+    if (existing?.status === MasterAdminAuditOutboxStatus.PROCESSED) {
+      return { revoked: alreadyRevoked || revoked };
+    }
+    if (existing) {
+      try {
+        await this.auditDelivery.attemptImmediateDelivery(existing.id);
+      } catch {
+        /* durable intent already present */
+      }
+      return { revoked: alreadyRevoked || revoked };
+    }
+    const record = this.buildSingleSessionRecord({
+      req: input.req,
+      mfa: input.mfa,
+      correlationId: input.correlationId,
+      targetUserId: input.targetUserId,
+      sessionId: input.sessionId,
+      outcome,
+      targetOrganizationId: input.targetOrganizationId,
+    });
+    await this.auditDelivery.commitAuditIntent(record, {
+      idempotencyKey,
+      organizationContextId: input.targetOrganizationId,
+      occurredAt: input.occurredAt,
+    });
+    return { revoked: alreadyRevoked || revoked };
   }
 
   private buildSingleSessionRecord(input: {

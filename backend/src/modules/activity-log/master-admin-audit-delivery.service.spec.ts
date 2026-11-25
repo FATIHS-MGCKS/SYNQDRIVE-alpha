@@ -3,7 +3,7 @@ import { MasterAdminAuditDeliveryService } from './master-admin-audit-delivery.s
 
 describe('MasterAdminAuditDeliveryService', () => {
   const prisma = { $transaction: jest.fn() };
-  const outboxRepo = { enqueueInTransaction: jest.fn() };
+  const outboxRepo = { enqueueInTransaction: jest.fn(), findById: jest.fn() };
   const outboxProcessor = { deliverAtomic: jest.fn() };
 
   let service: MasterAdminAuditDeliveryService;
@@ -27,6 +27,13 @@ describe('MasterAdminAuditDeliveryService', () => {
 
   it('returns DELIVERED when outbox intent and atomic delivery succeed', async () => {
     outboxRepo.enqueueInTransaction.mockResolvedValue({ id: 'outbox-1' });
+    outboxRepo.findById.mockResolvedValue({
+      id: 'outbox-1',
+      status: 'PENDING',
+      idempotencyKey: 'idem-1',
+      occurredAt: new Date(),
+      payload: { masterAdminAuditEnvelope: baseInput },
+    });
     prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn({}));
     outboxProcessor.deliverAtomic.mockResolvedValue('delivered');
 
@@ -40,6 +47,13 @@ describe('MasterAdminAuditDeliveryService', () => {
 
   it('returns INTENT_PERSISTED when delivery fails after durable enqueue', async () => {
     outboxRepo.enqueueInTransaction.mockResolvedValue({ id: 'outbox-1' });
+    outboxRepo.findById.mockResolvedValue({
+      id: 'outbox-1',
+      status: 'PENDING',
+      idempotencyKey: 'idem-2',
+      occurredAt: new Date(),
+      payload: { masterAdminAuditEnvelope: baseInput },
+    });
     prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn({}));
     outboxProcessor.deliverAtomic.mockRejectedValue(new Error('db_down'));
 

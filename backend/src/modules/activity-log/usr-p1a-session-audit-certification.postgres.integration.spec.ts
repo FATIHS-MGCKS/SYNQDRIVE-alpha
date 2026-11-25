@@ -26,6 +26,8 @@ import { IamAuditOutboxMetricsService } from '@modules/users/iam-audit-outbox.me
 import { SecurityGovernanceSessionAuditService } from '@modules/platform-admin/security-governance-session-audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { ActivityLogService } from './activity-log.service';
+import { ActivityLogExportService } from './activity-log-export.service';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import * as persistenceUtil from './master-admin-audit-persistence.util';
 
 const OPT_IN = 'USR_P1A_SESSION_AUDIT_PG';
@@ -69,6 +71,7 @@ const run = process.env[OPT_IN] === '1';
   let sessionAudit: SecurityGovernanceSessionAuditService;
   let refreshTokens: RefreshTokenService;
   let activityLogService: ActivityLogService;
+  let activityLogExport: ActivityLogExportService;
   let iamProcessor: IamAuditOutboxProcessorService;
 
   const reqStub = (actorId: string) => ({
@@ -100,6 +103,7 @@ const run = process.env[OPT_IN] === '1';
       refreshTokens,
     );
     activityLogService = new ActivityLogService(prisma as never);
+    activityLogExport = new ActivityLogExportService(prisma as never);
     const iamOutbox = new IamAuditOutboxRepository(prisma as never);
     iamProcessor = new IamAuditOutboxProcessorService(
       prisma as never,
@@ -310,29 +314,35 @@ const run = process.env[OPT_IN] === '1';
     record('PG06', 'PASS');
   });
 
-  it('PG08 concurrent duplicate delivery yields one semantic audit', async () => {
+  it('PG08 concurrent delivery of undelivered outbox yields one semantic audit', async () => {
     const actor = await createActor();
     const correlationId = randomUUID();
     const idempotencyKey = `pg08:${correlationId}`;
-    const outcome1 = await delivery.commitAuditIntent(
-      pgEnvelope({
-        correlationId,
+    const envelope = pgEnvelope({
+      correlationId,
+      actorUserId: actor.id,
+      targetUserId: randomUUID(),
+      sessionId: randomUUID(),
+    });
+    const row = await prisma.masterAdminAuditOutbox.create({
+      data: {
+        idempotencyKey,
+        auditScope: MasterAdminAuditScope.PLATFORM,
+        auditAction: MasterAdminAuditAction.MASTER_USER_SESSION_REVOKED,
+        occurredAt: new Date(),
         actorUserId: actor.id,
-        targetUserId: randomUUID(),
-        sessionId: randomUUID(),
-      }),
-      { idempotencyKey, organizationContextId: null },
-    );
-    expect(outcome1).toBe('DELIVERED');
-    const outbox = await prisma.masterAdminAuditOutbox.findUnique({ where: { idempotencyKey } });
+        payloadVersion: 1,
+        payload: { masterAdminAuditEnvelope: envelope },
+        status: MasterAdminAuditOutboxStatus.PENDING,
+        nextRetryAt: new Date(),
+      },
+    });
     const [raceA, raceB] = await Promise.all([
-      processor.processOutboxId(outbox!.id),
-      processor.processOutboxId(outbox!.id),
+      processor.processOutboxId(row.id),
+      processor.processOutboxId(row.id),
     ]);
-    expect([raceA, raceB]).toContain('duplicate');
-    expect([raceA, raceB]).toEqual(
-      expect.arrayContaining(['duplicate', expect.stringMatching(/processed|duplicate|skipped/)]),
-    );
+    expect([raceA, raceB].filter((o) => o === 'processed')).toHaveLength(1);
+    expect([raceA, raceB]).not.toEqual(['processed', 'processed']);
     const logs = await prisma.activityLog.count({
       where: { metaJson: { path: ['auditDeliveryIdempotencyKey'], equals: idempotencyKey } },
     });
@@ -359,27 +369,60 @@ const run = process.env[OPT_IN] === '1';
     record('PG11', 'PASS');
   });
 
-  it('PG12 platform master audit not visible via tenant organization list', async () => {
+  it('PG12 tenant isolation and authorized master admin visibility', async () => {
     const actor = await createActor();
     const org = await createOrg();
     const target = await createActor();
     const session = await createSession(target.id, org.id);
+    const legacyLogId = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO activity_logs (
+        id, organization_id, user_id, action, entity, description, created_at
+      ) VALUES (
+        ${legacyLogId}::uuid,
+        ${org.id}::uuid,
+        ${actor.id}::uuid,
+        ${ActivityAction.UPDATE}::"ActivityAction",
+        ${ActivityEntity.USER}::"ActivityEntity",
+        ${'legacy tenant activity without auditDomain'},
+        NOW()
+      )
+    `;
     await sessionAudit.revokeTargetSessionWithAtomicAudit({
       req: reqStub(actor.id),
       targetUserId: target.id,
       sessionId: session.id,
     });
-    const orgVisible = await activityLogService.findByOrganization(org.id, {});
+    const orgVisible = await activityLogService.findByOrganization(org.id, { page: 1, limit: 50 });
     const leaked = orgVisible.data.filter(
       (row: { auditDomain?: string | null }) => row.auditDomain === MASTER_ADMIN_AUDIT_DOMAIN,
     );
     expect(leaked).toHaveLength(0);
-    const adminVisible = await activityLogService.findAll({
+    const legacyTenantCount = await prisma.activityLog.count({
+      where: { id: legacyLogId },
+    });
+    expect(legacyTenantCount).toBe(1);
+    expect(
+      orgVisible.data.some((row: { id: string }) => row.id === legacyLogId),
+    ).toBe(true);
+    const adminOrgScope = await activityLogService.findAll({
+      organizationId: org.id,
       auditDomain: MASTER_ADMIN_AUDIT_DOMAIN,
       page: 1,
       limit: 50,
     });
-    expect(adminVisible.meta.total).toBeGreaterThanOrEqual(1);
+    expect(adminOrgScope.meta.total).toBeGreaterThanOrEqual(1);
+    const tenantExport = await activityLogExport.export({ organizationId: org.id });
+    expect(
+      tenantExport.rows.some(
+        (row) => (row.meta as Record<string, unknown>).auditDomain === MASTER_ADMIN_AUDIT_DOMAIN,
+      ),
+    ).toBe(false);
+    const adminExport = await activityLogExport.export({
+      organizationId: org.id,
+      auditDomain: MASTER_ADMIN_AUDIT_DOMAIN,
+    });
+    expect(adminExport.rowCount).toBeGreaterThanOrEqual(1);
     record('PG12', 'PASS');
   });
 
@@ -460,39 +503,34 @@ const run = process.env[OPT_IN] === '1';
     record('PG09', 'PASS');
   });
 
-  it('PG10 degraded diagnostic when intent storage fails', async () => {
+  it('PG10 audit-intent persistence failure with revocation fallback', async () => {
     const actor = await createActor();
-    const correlationId = randomUUID();
-    const duplicateKey = `pg10-duplicate:${randomUUID()}`;
-    const envelope = pgEnvelope({
-      correlationId,
-      actorUserId: actor.id,
-      targetUserId: randomUUID(),
-      sessionId: randomUUID(),
+    const target = await createActor();
+    const session = await createSession(target.id, null);
+    const intentSpy = jest
+      .spyOn(delivery, 'persistAuthoritativeAuditIntent')
+      .mockRejectedValueOnce(new Error('PG10_intent_storage_fault'));
+    const { revoked } = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
     });
-    await prisma.masterAdminAuditOutbox.create({
-      data: {
-        idempotencyKey: duplicateKey,
-        auditScope: MasterAdminAuditScope.PLATFORM,
-        auditAction: envelope.auditAction,
-        occurredAt: new Date(),
-        actorUserId: actor.id,
-        payloadVersion: 1,
-        payload: { masterAdminAuditEnvelope: envelope },
-        status: MasterAdminAuditOutboxStatus.PENDING,
-        nextRetryAt: new Date(),
+    intentSpy.mockRestore();
+    expect(revoked).toBe(true);
+    const token = await prisma.refreshToken.findUnique({ where: { id: session.id } });
+    expect(token?.revokedAt).not.toBeNull();
+    const degraded = await prisma.activityLog.count({
+      where: {
+        metaJson: {
+          path: ['auditAction'],
+          equals: MasterAdminAuditAction.MASTER_PRIVILEGED_AUDIT_DELIVERY_FAILED,
+        },
       },
     });
-    const session = await createSession(actor.id, null);
-    await prisma.refreshToken.updateMany({
-      where: { id: session.id },
-      data: { revokedAt: new Date() },
+    const pendingOutbox = await prisma.masterAdminAuditOutbox.count({
+      where: { subjectUserId: target.id, status: MasterAdminAuditOutboxStatus.PENDING },
     });
-    const outcome = await delivery.commitAuditIntent(envelope, {
-      idempotencyKey: duplicateKey,
-      organizationContextId: null,
-    });
-    expect(['INTENT_PERSISTED', 'FAILURE_RECORDED', 'DELIVERED']).toContain(outcome);
+    expect(degraded + pendingOutbox).toBeGreaterThanOrEqual(1);
     record('PG10', 'PASS');
   });
 

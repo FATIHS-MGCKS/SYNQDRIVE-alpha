@@ -5,7 +5,7 @@ import {
   AuditLogExportRow,
   normalizeActivityLogForExport,
 } from './audit-envelope.util';
-import { MASTER_ADMIN_AUDIT_DOMAIN } from './master-admin-audit.contract';
+import { activityLogTenantScopeExcludesMasterAdmin } from './activity-log-tenant-scope.util';
 
 export type ActivityLogExportFormat = 'json' | 'csv';
 
@@ -103,15 +103,21 @@ export class ActivityLogExportService {
 
   private buildWhere(query: ActivityLogExportQuery): Prisma.ActivityLogWhereInput {
     const where: Prisma.ActivityLogWhereInput = {};
-  const and: Prisma.ActivityLogWhereInput[] = [];
+    const and: Prisma.ActivityLogWhereInput[] = [];
 
     if (query.organizationId) {
-      where.organizationId = query.organizationId;
-      and.push({
-        NOT: {
-          metaJson: { path: ['auditDomain'], equals: MASTER_ADMIN_AUDIT_DOMAIN },
-        },
-      });
+      if (query.auditDomain) {
+        and.push({
+          OR: [
+            { organizationId: query.organizationId },
+            { metaJson: { path: ['targetOrganizationId'], equals: query.organizationId } },
+            { metaJson: { path: ['tenant', 'organizationId'], equals: query.organizationId } },
+          ],
+        });
+      } else {
+        where.organizationId = query.organizationId;
+        and.push(activityLogTenantScopeExcludesMasterAdmin());
+      }
     }
     if (query.entity) {
       where.entity = query.entity as Prisma.EnumActivityEntityFilter['equals'];
@@ -123,10 +129,12 @@ export class ActivityLogExportService {
       where.level = query.level;
     }
     if (query.auditDomain) {
-      where.metaJson = {
-        path: ['auditDomain'],
-        equals: query.auditDomain,
-      };
+      and.push({
+        metaJson: {
+          path: ['auditDomain'],
+          equals: query.auditDomain,
+        },
+      });
     }
     if (query.from || query.to) {
       where.createdAt = {};

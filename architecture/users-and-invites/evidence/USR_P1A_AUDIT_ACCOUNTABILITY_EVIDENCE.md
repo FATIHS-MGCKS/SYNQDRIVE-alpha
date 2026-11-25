@@ -38,6 +38,24 @@ USR_P1A_SESSION_AUDIT_PG=1 DATABASE_URL=postgresql://127.0.0.1:5432/<disposable>
 
 Migration `20261125103000_master_admin_audit_outbox` — validated on disposable DB via `prisma migrate deploy` (not production).
 
+## Merge gate (`SYNQDRIVE_MASTER_USERS_P1A_FINAL_MERGE_GATE`)
+
+| Control | Status |
+|---------|--------|
+| Stale `PROCESSING` recovery CAS (`status=PROCESSING` + `updatedAt < staleBefore`) | **YES** — `recoverStaleProcessing` |
+| Immediate delivery uses persisted outbox payload + `occurredAt` | **YES** — `attemptImmediateDelivery(outboxId)` |
+| Concurrent enqueue via unique `idempotencyKey` (P2002 → existing row) | **YES** — `enqueueInTransaction` |
+| Idempotency excludes caller `correlationId` | **YES** — `buildMasterAdminSessionRevocationAuditIdempotencyKey` |
+| Ambiguous combined-txn commit fallback (no double revoke / duplicate audit) | **YES** — `fallbackSingleSessionRevocation` + revoke-all catch |
+| Master Admin vs tenant query scope | **YES** — `buildMasterAdminAuditWhere` / `buildTenantAuditWhere` + export split |
+| Legacy tenant rows (`meta_json` null) visible to org reads | **YES** — `activityLogTenantScopeExcludesMasterAdmin` |
+| Revoke-all HTTP `{ revoked: true }` contract | **PRESERVED** — `SecurityGovernanceController` |
+| PG01–PG13 (disposable `vo5b_p6c_closeout_test`) | **13/13 PASS** (2026-11-25 CET agent run) |
+| ActivityLogModule scheduler registration | **VERIFIED** — boot spec + `scheduler-leader.registry` |
+| FSD workflow run `45605127510` attempt 1 | **Flake** — concurrent FSD3 terminalStatus race (`FAILED` vs `COMPLETED`); attempt 2 **green**; unrelated to USR-P1A diff |
+
+**R-002:** **REMEDIATED** (PG + HTTP + fallback guarantees). **R-008:** **OPEN P1**. **R012:** **USR-P3**. **Retention:** **USR-P4**.
+
 ## Non-goals preserved
 
-No JWT/R-008 fix, no MFA flag arm, no deploy, no central user CRUD, no schema migration.
+No JWT/R-008 fix, no MFA flag arm, no deploy, no central user CRUD, no schema migration, no merge.

@@ -37,12 +37,15 @@ describe('ActivityLogExportService', () => {
     expect(result.rowCount).toBe(1);
     expect(result.rows[0].trace.correlationId).toBe('corr-1');
     expect(JSON.parse(result.body).rows).toHaveLength(1);
-    expect(prisma.activityLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
+    const findArgs = prisma.activityLog.findMany.mock.calls[0][0] as {
+      where: { AND?: unknown[] };
+    };
+    expect(findArgs.where.AND).toEqual(
+      expect.arrayContaining([
+        {
           metaJson: { path: ['auditDomain'], equals: 'MASTER_ADMIN' },
-        }),
-      }),
+        },
+      ]),
     );
   });
 
