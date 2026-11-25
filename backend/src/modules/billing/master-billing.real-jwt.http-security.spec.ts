@@ -11,6 +11,7 @@ import { Test } from '@nestjs/testing';
 import { UserPlatformRole } from '@prisma/client';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
 import { MasterBillingGuard } from '@shared/auth/master-billing.guard';
 import { RequireMasterBilling } from '@shared/decorators/require-master-billing.decorator';
 import { createRefreshTokenHarness } from '@modules/users/iam-security-regression.harness';
@@ -50,6 +51,7 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
   let accessTokenMaster: string;
   let accessTokenDelegate: string;
   let accessTokenStaleDelegate: string;
+  let sharedHarness: ReturnType<typeof createRefreshTokenHarness>;
 
   const platformPermissions = {
     hasActiveMasterBillingGrant: jest.fn(),
@@ -59,7 +61,7 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-jwt-secret';
     const harness = createRefreshTokenHarness();
-    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-http' });
+    sharedHarness = harness;
 
     harness.platformPermissions.resolveJwtPermissions.mockImplementation(async (userId: string) => {
       if (userId === DELEGATE_ID) {
@@ -71,57 +73,45 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
       return [];
     });
 
-    accessTokenTenant = (
-      await harness.service.issueTokenPair(
-        {
-          id: TENANT_USER_ID,
-          email: 'tenant@test.example',
-          name: 'Tenant',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        null,
-      )
-    ).accessToken;
+    const tenantUser = {
+      id: TENANT_USER_ID,
+      email: 'tenant@test.example',
+      name: 'Tenant',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+    };
+    harness.registerRefreshHarnessUser(tenantUser);
+    accessTokenTenant = (await harness.service.issueTokenPair(tenantUser, null)).accessToken;
 
-    accessTokenMaster = (
-      await harness.service.issueTokenPair(
-        {
-          id: MASTER_ID,
-          email: 'master@test.example',
-          name: 'Master Admin',
-          platformRole: UserPlatformRole.MASTER_ADMIN,
-          sessionVersion: 0,
-        },
-        null,
-      )
-    ).accessToken;
+    const masterUser = {
+      id: MASTER_ID,
+      email: 'master@test.example',
+      name: 'Master Admin',
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+      sessionVersion: 0,
+    };
+    harness.registerRefreshHarnessUser(masterUser);
+    accessTokenMaster = (await harness.service.issueTokenPair(masterUser, null)).accessToken;
 
-    accessTokenDelegate = (
-      await harness.service.issueTokenPair(
-        {
-          id: DELEGATE_ID,
-          email: 'delegate@test.example',
-          name: 'Delegate',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        null,
-      )
-    ).accessToken;
+    const delegateUser = {
+      id: DELEGATE_ID,
+      email: 'delegate@test.example',
+      name: 'Delegate',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+    };
+    harness.registerRefreshHarnessUser(delegateUser);
+    accessTokenDelegate = (await harness.service.issueTokenPair(delegateUser, null)).accessToken;
 
-    accessTokenStaleDelegate = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'stale-delegate',
-          email: 'stale@test.example',
-          name: 'Stale',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        null,
-      )
-    ).accessToken;
+    const staleUser = {
+      id: 'stale-delegate',
+      email: 'stale@test.example',
+      name: 'Stale',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+    };
+    harness.registerRefreshHarnessUser(staleUser);
+    accessTokenStaleDelegate = (await harness.service.issueTokenPair(staleUser, null)).accessToken;
   });
 
   afterAll(() => {
@@ -148,6 +138,7 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
         MasterBillingGuard,
         AuthThenBillingGuard,
         { provide: PlatformPermissionService, useValue: platformPermissions },
+        { provide: UserAccessAuthorityService, useValue: sharedHarness.accessAuthority },
         {
           provide: APP_GUARD,
           useExisting: AuthThenBillingGuard,
@@ -203,23 +194,23 @@ describe('Master billing — real RefreshTokenService JWT (HTTP)', () => {
       if (userId === 'inactive-delegate') return false;
       return userId === DELEGATE_ID;
     });
-    const harness = createRefreshTokenHarness();
-    harness.prisma.refreshToken.create.mockResolvedValue({ id: 'rt-inactive' });
-    harness.platformPermissions.resolveJwtPermissions.mockResolvedValue([
-      PLATFORM_PERMISSION_JWT_VALUES.MASTER_BILLING,
-    ]);
-    const token = (
-      await harness.service.issueTokenPair(
-        {
-          id: 'inactive-delegate',
-          email: 'inactive@test.example',
-          name: 'Inactive',
-          platformRole: UserPlatformRole.USER,
-          sessionVersion: 0,
-        },
-        null,
-      )
-    ).accessToken;
+    const inactiveUser = {
+      id: 'inactive-delegate',
+      email: 'inactive@test.example',
+      name: 'Inactive',
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+    };
+    sharedHarness.registerRefreshHarnessUser(inactiveUser);
+    sharedHarness.platformPermissions.resolveJwtPermissions.mockImplementation(
+      async (userId: string) => {
+        if (userId === 'inactive-delegate') {
+          return [PLATFORM_PERMISSION_JWT_VALUES.MASTER_BILLING];
+        }
+        return [];
+      },
+    );
+    const token = (await sharedHarness.service.issueTokenPair(inactiveUser, null)).accessToken;
     const app = await createApp();
     try {
       await request(app.getHttpServer())

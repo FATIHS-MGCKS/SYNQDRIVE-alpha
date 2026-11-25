@@ -8,6 +8,8 @@ import { OrganizationRoleService } from './organization-role.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
 import { ConfigService } from '@nestjs/config';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import type { RefreshTokenUserContext } from '@modules/auth/refresh-token.service';
 
 export const IAM_REGRESSION_IDS = {
   orgA: 'org-regression-a',
@@ -275,9 +277,37 @@ export function createRoleServiceHarness() {
 }
 
 export function createRefreshTokenHarness() {
+  const registeredUsers = new Map<
+    string,
+    {
+      email: string;
+      name?: string | null;
+      platformRole: string;
+      sessionVersion: number;
+      securityVersion: number;
+      status: UserStatus;
+    }
+  >();
+
   const prisma = {
+    user: {
+      findUnique: jest.fn(async (args: { where: { id: string } }) => {
+        const row = registeredUsers.get(args.where.id);
+        if (!row) return null;
+        return {
+          id: args.where.id,
+          email: row.email,
+          name: row.name ?? null,
+          status: row.status,
+          platformRole: row.platformRole,
+          sessionVersion: row.sessionVersion,
+          securityVersion: row.securityVersion,
+        };
+      }),
+    },
     refreshToken: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
@@ -290,6 +320,33 @@ export function createRefreshTokenHarness() {
       findFirst: jest.fn().mockResolvedValue(null),
     },
   };
+
+  const activeRefreshFamilies = new Set<string>();
+
+  prisma.refreshToken.findFirst.mockImplementation(
+    async (query: { where: { userId?: string; family?: string; revokedAt?: null } }) => {
+      const w = query.where;
+      if (
+        w.userId &&
+        w.family &&
+        Object.prototype.hasOwnProperty.call(w, 'revokedAt') &&
+        w.revokedAt === null &&
+        activeRefreshFamilies.has(`${w.userId}:${w.family}`)
+      ) {
+        return { id: `rt-${w.family.slice(0, 8)}` };
+      }
+      return null;
+    },
+  );
+
+  prisma.refreshToken.create.mockImplementation(
+    async (args: { data: { userId: string; family: string } }) => {
+      const { userId, family } = args.data;
+      activeRefreshFamilies.add(`${userId}:${family}`);
+      const id = `rt-${family.slice(0, 8)}`;
+      return { id, ...args.data };
+    },
+  );
   const config = {
     get: jest.fn((key: string, fallback?: unknown) => {
       if (key === 'app.jwtSecret') return 'test-jwt-secret';
@@ -312,7 +369,37 @@ export function createRefreshTokenHarness() {
     sessionPolicy as never,
     platformPermissions as never,
   );
-  return { prisma, config, sessionPolicy, platformPermissions, service };
+
+  const accessAuthority = new UserAccessAuthorityService(
+    prisma as unknown as PrismaService,
+    platformPermissions as never,
+  );
+
+  function registerRefreshHarnessUser(user: RefreshTokenUserContext): void {
+    registeredUsers.set(user.id, {
+      email: user.email,
+      name: user.name,
+      platformRole: user.platformRole,
+      sessionVersion: user.sessionVersion ?? 0,
+      securityVersion: user.securityVersion ?? user.sessionVersion ?? 0,
+      status: UserStatus.ACTIVE,
+    });
+  }
+
+  function revokeHarnessRefreshFamily(userId: string, family: string): void {
+    activeRefreshFamilies.delete(`${userId}:${family}`);
+  }
+
+  return {
+    prisma,
+    config,
+    sessionPolicy,
+    platformPermissions,
+    service,
+    accessAuthority,
+    registerRefreshHarnessUser,
+    revokeHarnessRefreshFamily,
+  };
 }
 
 export function multiOrgUserFixture() {

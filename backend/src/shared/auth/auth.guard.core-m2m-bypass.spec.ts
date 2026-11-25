@@ -2,6 +2,7 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { CORE_APP_M2M_SKIP_USER_JWT_KEY } from '@modules/core-app-m2m/core-app-m2m-skip-user-jwt.decorator';
 import { AuthGuard } from './auth.guard';
+import { UserAccessAuthorityService } from './user-access-authority.service';
 
 describe('AuthGuard — Core M2M user-JWT bypass', () => {
   const envBackup = { ...process.env };
@@ -11,7 +12,10 @@ describe('AuthGuard — Core M2M user-JWT bypass', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = 'guard-bypass-test-secret';
     reflector = new Reflector();
-    guard = new AuthGuard(reflector);
+    const accessAuthority = {
+      validateAccessJwt: jest.fn(),
+    } as unknown as UserAccessAuthorityService;
+    guard = new AuthGuard(reflector, accessAuthority);
   });
 
   afterEach(() => {

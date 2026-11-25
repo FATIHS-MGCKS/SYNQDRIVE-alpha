@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { AuthGuard } from './auth.guard';
+import { UserAccessAuthorityService } from './user-access-authority.service';
 import { RolesGuard } from './roles.guard';
 import { OrgScopingGuard } from './org-scoping.guard';
 import { VehicleOwnershipGuard } from './vehicle-ownership.guard';
@@ -12,6 +13,7 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 @Module({
   imports: [PrismaModule, forwardRef(() => IamMfaModule)],
   providers: [
+    UserAccessAuthorityService,
     AuthGuard,
     RolesGuard,
     OrgScopingGuard,
@@ -21,6 +23,7 @@ import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   exports: [
+    UserAccessAuthorityService,
     AuthGuard,
     RolesGuard,
     OrgScopingGuard,

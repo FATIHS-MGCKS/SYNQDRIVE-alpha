@@ -46,6 +46,7 @@ export interface RefreshTokenUserContext {
   name?: string | null;
   platformRole: string;
   sessionVersion?: number;
+  securityVersion?: number;
 }
 
 type MembershipWithOrg = {
@@ -85,16 +86,57 @@ export class RefreshTokenService {
     context: { userAgent?: string; ipAddress?: string } = {},
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
     await this.assertOrganizationSessionIssuanceForMembership(membership);
-    const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
-    const accessToken = this.signAccessToken(user, membership, undefined, platformPermissions);
-    const refreshToken = await this.createRefreshToken(user, membership, context);
-    return { accessToken, refreshToken, expiresIn: this.jwtExpiresIn };
+    const family = crypto.randomUUID();
+    const pair = await this.issueTokenPairWithFamily(
+      user,
+      membership,
+      family,
+      context,
+      {
+        scope: classifyRefreshTokenScope(
+          membership
+            ? {
+                id: membership.membershipId!,
+                organizationId: membership.organizationId!,
+                role: membership.role ?? 'WORKER',
+                status: MembershipStatus.ACTIVE,
+                membershipVersion: membership.membershipVersion ?? 0,
+                permissions: membership.permissions,
+                organizationRoleId: membership.organizationRoleId,
+              }
+            : null,
+        ),
+        authenticatedAt: new Date(),
+        assuranceLevel: SessionAssuranceLevel.PASSWORD,
+      },
+    );
+    this.iamMetrics?.recordSessionCreated('login');
+    return {
+      accessToken: pair.accessToken,
+      refreshToken: pair.rawRefreshToken,
+      expiresIn: this.jwtExpiresIn,
+    };
+  }
+
+  /** Most recent non-revoked refresh family for MFA/step-up reissue binding. */
+  async resolveLatestActiveTokenFamily(userId: string): Promise<string | null> {
+    const row = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { family: true },
+    });
+    return row?.family ?? null;
   }
 
   async reissueAccessToken(
     user: RefreshTokenUserContext,
     membership: RefreshTokenMembershipContext | null,
     sessionClaims: AuthSessionClaims,
+    options?: { tokenFamily?: string | null },
   ): Promise<{ accessToken: string; expiresIn: string }> {
     await this.assertOrganizationSessionIssuanceForMembership(membership);
     const platformPermissions = await this.platformPermissions.resolveJwtPermissions(user.id);
@@ -104,6 +146,7 @@ export class RefreshTokenService {
         membership,
         sessionClaims,
         platformPermissions,
+        options?.tokenFamily ?? null,
       ),
       expiresIn: this.jwtExpiresIn,
     };
@@ -470,39 +513,6 @@ export class RefreshTokenService {
     return { revoked: result.count, keptSessionId: keepId };
   }
 
-  private async createRefreshToken(
-    user: RefreshTokenUserContext,
-    membership: RefreshTokenMembershipContext | null,
-    context: { userAgent?: string; ipAddress?: string },
-  ): Promise<string> {
-    const family = crypto.randomUUID();
-    const result = await this.issueTokenPairWithFamily(
-      user,
-      membership,
-      family,
-      context,
-      {
-        scope: classifyRefreshTokenScope(
-          membership
-            ? {
-                id: membership.membershipId!,
-                organizationId: membership.organizationId!,
-                role: membership.role ?? 'WORKER',
-                status: MembershipStatus.ACTIVE,
-                membershipVersion: membership.membershipVersion ?? 0,
-                permissions: membership.permissions,
-                organizationRoleId: membership.organizationRoleId,
-              }
-            : null,
-        ),
-        authenticatedAt: new Date(),
-        assuranceLevel: SessionAssuranceLevel.PASSWORD,
-      },
-    );
-    this.iamMetrics?.recordSessionCreated('login');
-    return result.rawRefreshToken;
-  }
-
   private async issueTokenPairWithFamily(
     user: RefreshTokenUserContext | null,
     membership: RefreshTokenMembershipContext | null,
@@ -560,7 +570,7 @@ export class RefreshTokenService {
       ? await this.platformPermissions.resolveJwtPermissions(user.id)
       : [];
     const accessToken = user
-      ? this.signAccessToken(user, membership, undefined, platformPermissions)
+      ? this.signAccessToken(user, membership, undefined, platformPermissions, family)
       : '';
 
     return { accessToken, rawRefreshToken: rawToken, refreshTokenId: record.id };
@@ -655,8 +665,11 @@ export class RefreshTokenService {
     membership: RefreshTokenMembershipContext | null,
     sessionClaims?: AuthSessionClaims,
     platformPermissions: string[] = [],
+    tokenFamily?: string | null,
   ): string {
-    const claims = sessionClaims ?? buildPasswordOnlyClaims(user.sessionVersion ?? 0);
+    const securityVersion =
+      sessionClaims?.securityVersion ?? user.securityVersion ?? user.sessionVersion ?? 0;
+    const claims = sessionClaims ?? buildPasswordOnlyClaims(securityVersion);
     const payload = {
       sub: user.id,
       email: user.email,
@@ -669,6 +682,7 @@ export class RefreshTokenService {
       sessionVersion: user.sessionVersion ?? 0,
       membershipVersion: membership?.membershipVersion ?? null,
       membershipId: membership?.membershipId ?? null,
+      tokenFamily: tokenFamily ?? null,
       assuranceLevel: claims.assuranceLevel,
       authenticatedAt: claims.authenticatedAt,
       mfaAuthenticatedAt: claims.mfaAuthenticatedAt,

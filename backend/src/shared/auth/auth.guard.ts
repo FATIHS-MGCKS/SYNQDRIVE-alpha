@@ -3,7 +3,8 @@ import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { CORE_APP_M2M_SKIP_USER_JWT_KEY } from '@modules/core-app-m2m/core-app-m2m-skip-user-jwt.decorator';
 import { CORE_APP_M2M_TOKEN_TYPE } from '@modules/core-app-m2m/core-app-m2m-jwt.config';
-import { sessionClaimsFromJwt } from '@shared/auth/auth-session-claims.types';
+import { UserAccessAuthorityService } from './user-access-authority.service';
+import type { AccessJwtPayload } from './user-access-authority.types';
 
 /**
  * Exact paths (not prefixes) that require no authentication.
@@ -61,7 +62,10 @@ export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
   private readonly jwtSecret: string;
 
-  constructor(private readonly reflector: Reflector) {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly accessAuthority: UserAccessAuthorityService,
+  ) {
     // JWT_SECRET must be present — validated by app.config.ts at startup before this runs
     if (!process.env.JWT_SECRET) {
       throw new Error('FATAL: JWT_SECRET is not set. AuthGuard cannot initialise without it.');
@@ -105,34 +109,24 @@ export class AuthGuard implements CanActivate {
     return this.validateJwt(request, token);
   }
 
-  private validateJwt(request: any, token: string): boolean {
+  private async validateJwt(request: { user?: unknown }, token: string): Promise<boolean> {
     const decodedUnsafe = jwt.decode(token) as jwt.JwtPayload | null;
     if (decodedUnsafe?.token_type === CORE_APP_M2M_TOKEN_TYPE) {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
+    let decoded: jwt.JwtPayload;
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
-      if (decoded.token_type === CORE_APP_M2M_TOKEN_TYPE) {
-        throw new UnauthorizedException('Invalid or expired token');
-      }
-      request.user = {
-        id: decoded.sub,
-        email: decoded.email,
-        name: decoded.name,
-        platformRole: decoded.platformRole,
-        platformPermissions: decoded.platformPermissions ?? [],
-        membershipRole: decoded.membershipRole,
-        organizationId: decoded.organizationId,
-        membershipId: decoded.membershipId ?? null,
-        sessionVersion: decoded.sessionVersion ?? 0,
-        membershipVersion: decoded.membershipVersion ?? null,
-        sessionClaims: sessionClaimsFromJwt(decoded as Record<string, unknown>),
-      };
-      return true;
+      decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+    if (decoded.token_type === CORE_APP_M2M_TOKEN_TYPE) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    request.user = await this.accessAuthority.validateAccessJwt(decoded as AccessJwtPayload);
+    return true;
   }
 
   private extractToken(request: any): string | undefined {

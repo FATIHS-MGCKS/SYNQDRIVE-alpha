@@ -270,9 +270,14 @@ export class SecurityGovernanceSessionAuditService {
     operationId: string;
     idempotencyKey: string;
   }): Promise<{ revoked: boolean }> {
-    const existing = await this.prisma.masterAdminAuditOutbox.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
+    let existing = null;
+    try {
+      existing = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+    } catch {
+      /* audit read failure must not block security-critical session revocation */
+    }
     if (existing) {
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
         try {
@@ -325,9 +330,14 @@ export class SecurityGovernanceSessionAuditService {
     operationId: string;
     idempotencyKey: string;
   }): Promise<{ revokedSessionCount: number }> {
-    const existing = await this.prisma.masterAdminAuditOutbox.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
+    let existing = null;
+    try {
+      existing = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+    } catch {
+      /* audit read failure must not block security-critical session revocation */
+    }
     if (existing) {
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
         try {

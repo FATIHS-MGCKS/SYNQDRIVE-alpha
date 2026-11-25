@@ -87,6 +87,7 @@ export class IamMfaChallengeService {
       securityVersion: input.existingClaims?.securityVersion ?? user.securityVersion,
     });
 
+    const tokenFamily = await this.refreshTokens.resolveLatestActiveTokenFamily(input.userId);
     const tokenResult = await this.refreshTokens.reissueAccessToken(
       user,
       membership
@@ -95,9 +96,12 @@ export class IamMfaChallengeService {
             organizationId: membership.organizationId,
             organizationName: membership.organization?.companyName ?? null,
             permissions: membership.permissions,
+            membershipId: membership.id,
+            membershipVersion: membership.membershipVersion,
           }
         : null,
       claims,
+      { tokenFamily },
     );
 
     const grant = await this.stepUp.createGrant({
@@ -178,6 +182,7 @@ export class IamMfaChallengeService {
       securityVersion: input.existingClaims?.securityVersion ?? user.securityVersion,
     });
 
+    const tokenFamily = await this.refreshTokens.resolveLatestActiveTokenFamily(input.userId);
     const tokenResult = await this.refreshTokens.reissueAccessToken(
       user,
       membership
@@ -186,9 +191,12 @@ export class IamMfaChallengeService {
             organizationId: membership.organizationId,
             organizationName: membership.organization?.companyName ?? null,
             permissions: membership.permissions,
+            membershipId: membership.id,
+            membershipVersion: membership.membershipVersion,
           }
         : null,
       claims,
+      { tokenFamily },
     );
 
     const grant = await this.stepUp.createGrant({

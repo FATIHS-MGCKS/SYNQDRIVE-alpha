@@ -5,7 +5,13 @@ import { OrgProductPlan, OrgProductStatus, OrganizationStatus, ProductSlug } fro
 import * as jwt from 'jsonwebtoken';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  signHttpSecurityAccessToken,
+} from '@shared/auth/testing/http-security-jwt.util';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CoreEntitlementsReadController } from './core-entitlements-read.controller';
 import { EntitlementsQueryService } from './entitlements-query.service';
@@ -40,10 +46,16 @@ describe('CoreEntitlementsReadController — HTTP security integration', () => {
   const originalSecret = process.env.JWT_SECRET;
   const jwtSecret = 'p2-pr2-entitlements-http-security-test-secret';
 
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
+
   const prisma = {
     organization: {
       findUnique: jest.fn(async (args: { where: { id: string } }) =>
-        args.where.id === ORG_A || args.where.id === ORG_B ? { id: args.where.id } : null,
+        args.where.id === ORG_A || args.where.id === ORG_B
+          ? { id: args.where.id, status: OrganizationStatus.ACTIVE, companyName: args.where.id }
+          : null,
       ),
     },
     organizationMembership: {
@@ -86,19 +98,15 @@ describe('CoreEntitlementsReadController — HTTP security integration', () => {
     },
   };
 
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
+
   function signToken(claims: Record<string, unknown>): string {
-    return jwt.sign(
-      {
-        sub: claims.id,
-        email: `${claims.id}@test.local`,
-        name: String(claims.id),
-        platformRole: claims.platformRole ?? 'USER',
-        membershipRole: claims.membershipRole ?? 'WORKER',
-        organizationId: claims.organizationId,
-      },
-      jwtSecret,
-      { expiresIn: '1h' },
+    const id = claims.id as string;
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      id,
+      { platformRole: claims.platformRole as string },
     );
+    return signHttpSecurityAccessToken(jwtSecret, claims);
   }
 
   function bearer(claims: Record<string, unknown>): string {
@@ -118,6 +126,8 @@ describe('CoreEntitlementsReadController — HTTP security integration', () => {
         EntitlementsQueryService,
         OrgScopingGuard,
         { provide: PrismaService, useValue: prisma },
+        UserAccessAuthorityService,
+        { provide: PlatformPermissionService, useValue: platformPermissions },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();
@@ -181,7 +191,7 @@ describe('CoreEntitlementsReadController — HTTP security integration', () => {
     await request(app.getHttpServer())
       .get(routeList)
       .set('Authorization', bearer({ id: USER_SUSPENDED, organizationId: ORG_A }))
-      .expect(403);
+      .expect(401);
   });
 
   it('allows MASTER_ADMIN cross-org per OrgScopingGuard pass-through', async () => {
