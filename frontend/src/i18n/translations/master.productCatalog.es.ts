@@ -24,4 +24,32 @@ export const masterProductCatalogEs = {
   'master.productCatalog.business.EXISTING_PRODUCT': 'Producto comercial en producción',
   'master.productCatalog.business.IN_PREPARATION': 'En preparación',
   'master.productCatalog.business.RETIRED_PRODUCT': 'Retirado (legacy)',
+  'master.productCatalog.status.changeAction': 'Cambiar estado del catálogo',
+  'master.productCatalog.status.dialogTitle': 'Establecer estado de {slug} en {target}',
+  'master.productCatalog.status.dialogIntro':
+    'Solo cambia la política de admisión de la plataforma. Las asignaciones, concesiones y facturación existentes no cambian.',
+  'master.productCatalog.status.current': 'Estado actual del catálogo',
+  'master.productCatalog.status.assignments': 'Asignaciones de organización',
+  'master.productCatalog.status.activeGrants': 'Concesiones de vehículo activas',
+  'master.productCatalog.status.entitlementsPreserved':
+    'Se conservan los productos de organización y concesiones existentes. El acceso en tiempo de ejecución continúa.',
+  'master.productCatalog.status.previewStaleHint':
+    'Los recuentos pueden cambiar antes de confirmar. El servidor revalida el estado bajo bloqueo al aplicar.',
+  'master.productCatalog.status.reasonLabel': 'Motivo del cambio',
+  'master.productCatalog.status.reasonRequired': 'Se requiere un motivo.',
+  'master.productCatalog.status.confirm': 'Aplicar cambio de estado',
+  'master.productCatalog.status.success': 'Estado del catálogo actualizado.',
+  'master.productCatalog.status.conflictRetry':
+    'El estado cambió en paralelo. Actualice la vista previa e inténtelo de nuevo.',
+  'master.productCatalog.status.impactError': 'No se pudo cargar la vista previa de impacto.',
+  'master.productCatalog.status.value.ACTIVE': 'Activo',
+  'master.productCatalog.status.value.DISABLED': 'Desactivado',
+  'master.productCatalog.status.impactLoading': 'Cargando vista previa…',
+  'master.productCatalog.status.conflictRefreshFailed':
+    'No se pudo actualizar el estado del catálogo tras un conflicto.',
+  'master.productCatalog.status.refreshPreviewRequired':
+    'Revise la vista previa actualizada y confirme que está listo.',
+  'master.productCatalog.status.acknowledgeRefreshedPreview': 'He revisado la vista previa actualizada',
+  'master.productCatalog.status.mfaCatalogDrift':
+    'El estado del catálogo cambió durante la MFA. Revise la vista previa actualizada y confirme de nuevo.',
 };

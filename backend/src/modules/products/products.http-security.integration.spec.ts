@@ -23,6 +23,8 @@ describe('ProductsController — HTTP security (vehicle access admin)', () => {
     assignProductForMasterAdmin: jest.fn(),
     updateVehicleAccessMode: jest.fn(),
     updateProductMetadataForMasterAdmin: jest.fn(),
+    updateProductCatalogStatusForMasterAdmin: jest.fn(),
+    getProductCatalogStatusImpact: jest.fn(),
     findOrgProducts: jest.fn(),
     removeProduct: jest.fn(),
   };
@@ -221,5 +223,43 @@ describe('ProductsController — HTTP security (vehicle access admin)', () => {
     });
 
     process.env = originalEnv;
+  });
+
+  it('propagates ConflictException from catalog-status patch', async () => {
+    products.updateProductCatalogStatusForMasterAdmin.mockRejectedValue(
+      new ConflictException('Product catalog status changed concurrently'),
+    );
+
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProductsController],
+      providers: [
+        { provide: ProductsService, useValue: products },
+        { provide: APP_GUARD, useValue: authGuard },
+      ],
+    })
+      .overrideGuard(RolesGuard)
+      .useValue({
+        canActivate: (ctx: {
+          switchToHttp: () => { getRequest: () => { user?: { platformRole?: string } } };
+        }) => ctx.switchToHttp().getRequest().user?.platformRole === UserPlatformRole.MASTER_ADMIN,
+      })
+      .overrideGuard(MasterAdminMfaGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    await request(app.getHttpServer())
+      .patch(`/admin/products/${ProductSlug.FLEET}/catalog-status`)
+      .set('Authorization', 'Bearer master-x')
+      .send({
+        catalogStatus: 'DISABLED',
+        ifCurrentCatalogStatus: 'ACTIVE',
+        changeReason: 'Test',
+      })
+      .expect(409);
+
+    await app.close();
   });
 });
