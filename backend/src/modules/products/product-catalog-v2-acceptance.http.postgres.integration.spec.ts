@@ -46,7 +46,7 @@ async function countCatalogStatusAuditRows(
     where: {
       entity: ActivityEntity.ADMIN_OPERATION,
       entityId: productId,
-      metaJson: { path: ['metadata', 'action'], equals: 'catalog_status_patch' },
+      metaJson: { path: ['action'], equals: 'catalog_status_patch' },
     },
   });
 }
@@ -226,7 +226,7 @@ async function countCatalogStatusAuditRows(
       where: {
         entity: ActivityEntity.ADMIN_OPERATION,
         entityId: productBefore.id,
-        metaJson: { path: ['metadata', 'action'], equals: 'catalog_status_patch' },
+        metaJson: { path: ['action'], equals: 'catalog_status_patch' },
       },
       orderBy: { createdAt: 'desc' },
     });
