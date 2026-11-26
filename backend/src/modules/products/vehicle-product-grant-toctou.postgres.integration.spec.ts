@@ -142,7 +142,7 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
     };
     let observedLockOrder: string[] = [];
     try {
-      grantPrisma.$transaction = async (
+      grantPrisma.$transaction = (async (
         fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
         opts?: Parameters<PrismaClient['$transaction']>[1],
       ) => {
@@ -152,8 +152,8 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
           data: { status: OrgProductStatus.SUSPENDED },
         });
         observedLockOrder.push('org_product_suspended_before_grant_mutation');
-        return originalTransaction(fn, opts);
-      };
+        return originalTransaction(fn as Parameters<typeof originalTransaction>[0], opts);
+      }) as typeof prisma.$transaction;
 
       const grant = await grants.grantExplicit({
         organizationId: orgId,
