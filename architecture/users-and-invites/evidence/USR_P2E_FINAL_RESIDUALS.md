@@ -13,6 +13,6 @@ P2E scope items C01–C08; **E1-only** acceptance on PR **#2534** branch `cursor
 | C07 | Public/M2M authentication regressions | **PASS (E1)** | `usr-p2-postgres-gate.sh` — `core-app-m2m-token.http-security.integration.spec.ts` (in-memory HTTP) |
 | C08 | Lifecycle routes + session binding | **PASS (E1)** | `usr-p2-postgres-gate.sh` — `org-scoping.organization-status.http-security.integration.spec.ts` (PENDING onboarding allow, operational deny, SUSPENDED deny, MASTER_ADMIN bypass). Vehicle-ownership PG spec remains cited crosswalk probe (separate disposable DB name). |
 
-**Gate execution:** `backend/scripts/test/usr-p2-postgres-gate.sh` — **PASS** after semantic-guard + E1 org lifecycle fixes (see agent artifact `usr-p2-postgres-gate-e1-rerun.log` on final push).
+**Gate execution:** `backend/scripts/test/usr-p2-postgres-gate.sh` — **PASS** (artifact `usr-p2-postgres-gate-e1-final.log`, exit 0, `USR_P2_PG_EXECUTED=1`).
 
 **R-008** remains **OPEN** until full P2E (E2–E5) and owner attestation — E1 concurrency/authorization slice **PASS** on executed evidence above.
