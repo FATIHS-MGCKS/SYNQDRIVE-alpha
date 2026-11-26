@@ -330,22 +330,33 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
         processOutboxIds: jest.fn().mockResolvedValue(undefined),
       };
       const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(undefined),
         userMfaFactor: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
         userMfaRecoveryCode: { deleteMany: jest.fn().mockResolvedValue({ count: 10 }) },
         userMfaStepUpGrant: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
-        user: { update: jest.fn().mockResolvedValue({}) },
+        user: {
+          update: jest.fn().mockResolvedValue({}),
+          findUnique: jest.fn().mockResolvedValue({ securityVersion: 0 }),
+        },
         refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) },
         organizationMembership: { findFirst: jest.fn().mockResolvedValue({ organizationId: orgId }) },
+        iamSessionRevocationIntent: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({ id: 'intent-1' }),
+          update: jest.fn().mockResolvedValue({}),
+        },
       };
       const prisma = {
         user: { findUnique: jest.fn().mockResolvedValue({ id: userId }) },
         $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
       } as never;
-      const service = new IamMfaResetService(
-        prisma,
-        { revokeAllForUser: jest.fn() } as never,
-        iamAudit as never,
-      );
+      const sessionPolicy = {
+        enqueueInTransactionWithAuthoritativeInvalidation: jest
+          .fn()
+          .mockResolvedValue({ intentIds: ['intent-1'], revokedTokenCount: 2 }),
+        processIntents: jest.fn().mockResolvedValue([]),
+      };
+      const service = new IamMfaResetService(prisma, sessionPolicy as never, iamAudit as never);
 
       const result = await service.resetMfaForUser({
         organizationId: orgId,

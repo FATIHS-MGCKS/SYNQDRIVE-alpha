@@ -17,6 +17,7 @@ import {
   acquireSessionWriteLocks,
   acquireUserSessionWriteLock,
 } from './refresh-token-session-concurrency';
+import { acquireCanonicalSecurityMutationLocks } from './iam-security-mutation-concurrency';
 
 export interface IamSessionRevocationIntentInput {
   eventType: IamSessionInvalidationTrigger;
@@ -34,6 +35,13 @@ export interface IamSessionRevocationIntentInput {
 
 export interface IamSessionRevocationResult {
   intentId: string;
+  scopes: SessionInvalidationScope[];
+  revokedTokenCount: number;
+  idempotentReplay: boolean;
+}
+
+export interface IamSessionRevocationEnqueueResult {
+  intentIds: string[];
   scopes: SessionInvalidationScope[];
   revokedTokenCount: number;
   idempotentReplay: boolean;
@@ -138,27 +146,67 @@ export class IamSessionPolicyService {
   async enqueueInTransactionWithAuthoritativeInvalidation(
     tx: TxClient,
     input: IamSessionRevocationIntentInput,
-  ): Promise<{
-    intentIds: string[];
-    scopes: SessionInvalidationScope[];
-    revokedTokenCount: number;
-  }> {
-    const { intentIds, scopes } = await this.enqueueInTransaction(tx, input);
-    const revokedTokenCount = await this.applyAuthoritativeScopesInTransaction(tx, scopes, {
-      userId: input.userId,
-      organizationId: input.organizationId ?? null,
-      membershipId: input.membershipId ?? null,
-      refreshTokenId: input.refreshTokenId ?? null,
-      tokenFamily: input.tokenFamily ?? null,
+  ): Promise<IamSessionRevocationEnqueueResult> {
+    await acquireCanonicalSecurityMutationLocks(tx, {
+      organizationIds: input.organizationId ? [input.organizationId] : [],
+      userIds: [input.userId],
     });
 
-    for (const intentId of intentIds) {
-      const existing = await tx.iamSessionRevocationIntent.findUnique({
-        where: { id: intentId },
-        select: { metadata: true },
+    const resolved = await this.resolveSecurityMutationIdentity(tx, input);
+    const { intentIds, scopes } = await this.enqueueInTransaction(tx, resolved);
+
+    const priorRows = await Promise.all(
+      intentIds.map((intentId) =>
+        tx.iamSessionRevocationIntent.findUnique({
+          where: { id: intentId },
+          select: { metadata: true, revokedTokenCount: true, status: true },
+        }),
+      ),
+    );
+
+    const allAuthoritative = priorRows.every((row) => {
+      if (!row) return false;
+      const meta =
+        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null;
+      return meta?.authoritativeAppliedInCommit === true;
+    });
+
+    if (allAuthoritative) {
+      const revokedTokenCount = Math.max(
+        0,
+        ...priorRows.map((row) => row?.revokedTokenCount ?? 0),
+      );
+      return { intentIds, scopes, revokedTokenCount, idempotentReplay: true };
+    }
+
+    const revokedTokenCount = await this.applyAuthoritativeScopesInTransaction(tx, scopes, {
+      userId: resolved.userId,
+      organizationId: resolved.organizationId ?? null,
+      membershipId: resolved.membershipId ?? null,
+      refreshTokenId: resolved.refreshTokenId ?? null,
+      tokenFamily: resolved.tokenFamily ?? null,
+    });
+
+    const operationIdentity =
+      resolved.idempotencyKey ??
+      buildRevocationIdempotencyKey({
+        eventType: resolved.eventType,
+        userId: resolved.userId,
+        organizationId: resolved.organizationId,
+        membershipId: resolved.membershipId,
+        refreshTokenId: resolved.refreshTokenId,
+        tokenFamily: resolved.tokenFamily,
+        mutationVersion: resolved.mutationVersion,
       });
+
+    for (const intentId of intentIds) {
+      const existing = priorRows[intentIds.indexOf(intentId)];
       const prior =
-        existing?.metadata && typeof existing.metadata === 'object' && !Array.isArray(existing.metadata)
+        existing?.metadata &&
+        typeof existing.metadata === 'object' &&
+        !Array.isArray(existing.metadata)
           ? (existing.metadata as Record<string, unknown>)
           : {};
       await tx.iamSessionRevocationIntent.update({
@@ -167,14 +215,57 @@ export class IamSessionPolicyService {
           revokedTokenCount,
           metadata: {
             ...prior,
-            ...(input.metadata ?? {}),
+            ...(resolved.metadata ?? {}),
             authoritativeAppliedInCommit: true,
+            operationIdentity,
+            mutationVersion: resolved.mutationVersion ?? 0,
           } as Prisma.InputJsonValue,
         },
       });
     }
 
-    return { intentIds, scopes, revokedTokenCount };
+    return { intentIds, scopes, revokedTokenCount, idempotentReplay: false };
+  }
+
+  /**
+   * Stable server-side operation identity for idempotency keys when callers omit explicit keys.
+   * Distinct legitimate mutations must not share mutationVersion=0 forever (P2-R21).
+   */
+  private async resolveSecurityMutationIdentity(
+    tx: TxClient,
+    input: IamSessionRevocationIntentInput,
+  ): Promise<IamSessionRevocationIntentInput> {
+    if (input.idempotencyKey || (input.mutationVersion ?? 0) > 0) {
+      return input;
+    }
+
+    const userRow = await tx.user.findUnique({
+      where: { id: input.userId },
+      select: { sessionVersion: true, securityVersion: true },
+    });
+    if (!userRow) {
+      return input;
+    }
+
+    let mutationVersion = 0;
+    if (input.eventType === 'MFA_RESET') {
+      mutationVersion = userRow.securityVersion + 1;
+    } else if (
+      input.eventType === 'PASSWORD_CHANGED' ||
+      input.eventType === 'PASSWORD_COMPROMISED'
+    ) {
+      mutationVersion = userRow.sessionVersion + 1;
+    } else if (input.membershipId) {
+      const membership = await tx.organizationMembership.findUnique({
+        where: { id: input.membershipId },
+        select: { membershipVersion: true },
+      });
+      mutationVersion = (membership?.membershipVersion ?? 0) + 1;
+    } else {
+      mutationVersion = userRow.sessionVersion + 1;
+    }
+
+    return { ...input, mutationVersion };
   }
 
   /** Process intents created in a transaction (call after commit). */

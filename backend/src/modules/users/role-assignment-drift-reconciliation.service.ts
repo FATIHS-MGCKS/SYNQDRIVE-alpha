@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 import { OrganizationRoleVersionService } from './organization-role-version.service';
 import {
   buildDriftAuditReport,
@@ -281,6 +282,11 @@ export class RoleAssignmentDriftReconciliationService {
     const intentIds: string[] = [];
 
     const result = await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [input.organizationId],
+        userIds: [membership.userId],
+      });
+
       await tx.organizationRoleAssignment.updateMany({
         where: { membershipId: pkg.membershipId, isCurrent: true },
         data: { isCurrent: false, endedAt: new Date() },

@@ -19,6 +19,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 import {
   NOTIFICATION_CATEGORY_META,
@@ -277,10 +278,27 @@ export class AccountService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    const hash = await bcrypt.hash(dto.newPassword, 10);
     let intentIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: jwtOrgId ? [jwtOrgId] : [],
+        userIds: [userId],
+      });
+
+      const locked = await tx.user.findUnique({
+        where: { id: userId },
+        select: { passwordHash: true, sessionVersion: true },
+      });
+      if (!locked?.passwordHash) {
+        throw new BadRequestException('Password is not set for this account');
+      }
+      const stillValid = await bcrypt.compare(dto.currentPassword, locked.passwordHash);
+      if (!stillValid) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+
+      const hash = await bcrypt.hash(dto.newPassword, 10);
       await tx.user.update({
         where: { id: userId },
         data: { passwordHash: hash, mustChangePassword: false },
@@ -290,6 +308,7 @@ export class AccountService {
         userId,
         organizationId: jwtOrgId,
         actorUserId: userId,
+        mutationVersion: locked.sessionVersion + 1,
         metadata: { revokeOtherSessions: dto.revokeOtherSessions },
       });
       intentIds = enqueued.intentIds;

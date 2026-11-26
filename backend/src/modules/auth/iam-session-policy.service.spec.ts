@@ -185,6 +185,38 @@ describe('IamSessionPolicyService', () => {
     expect(result.revokedTokenCount).toBe(2);
   });
 
+  it('authoritative enqueue skips re-invalidation when intent already applied in commit', async () => {
+    prisma.iamSessionRevocationIntent.findUnique
+      .mockResolvedValueOnce({
+        id: 'intent-1',
+        status: IamSessionRevocationStatus.PENDING,
+        metadata: { authoritativeAppliedInCommit: true },
+        revokedTokenCount: 4,
+      })
+      .mockResolvedValue({
+        id: 'intent-1',
+        metadata: { authoritativeAppliedInCommit: true },
+        revokedTokenCount: 4,
+      });
+
+    const tx = {
+      ...prisma,
+      user: { findUnique: jest.fn().mockResolvedValue({ sessionVersion: 2, securityVersion: 0 }) },
+      organizationMembership: { findUnique: jest.fn() },
+      $executeRaw: jest.fn(),
+      refreshToken: { updateMany: jest.fn() },
+    };
+
+    const result = await service.enqueueInTransactionWithAuthoritativeInvalidation(tx as never, {
+      eventType: 'PASSWORD_CHANGED',
+      userId: 'user-1',
+    });
+
+    expect(result.idempotentReplay).toBe(true);
+    expect(result.revokedTokenCount).toBe(4);
+    expect(refreshTokens.revokeAllActiveForUser).not.toHaveBeenCalled();
+  });
+
   it('executeIntent is idempotent when already completed', async () => {
     prisma.iamSessionRevocationIntent.findUnique.mockResolvedValue({
       id: 'intent-done',

@@ -229,7 +229,15 @@ function assertDisposableDb(): void {
       {},
     );
 
-    await new Promise((r) => setTimeout(r, 150));
+    const bumpDeadline = Date.now() + 30_000;
+    while (Date.now() < bumpDeadline) {
+      const live = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { sessionVersion: true },
+      });
+      if ((live?.sessionVersion ?? 0) > 0) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
     await expect(authority.validateAccessJwt(decoded as never)).rejects.toThrow();
     await expect(refreshTokens.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
     await expect(

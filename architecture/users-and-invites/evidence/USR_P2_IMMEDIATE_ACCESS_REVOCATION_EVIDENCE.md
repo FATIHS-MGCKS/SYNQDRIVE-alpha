@@ -50,6 +50,8 @@ USR_P2_SESSION_CONCURRENCY_PG=1 DATABASE_URL=postgresql://postgres:postgres@127.
 
 **P2A disposable IAM baseline (2026-11-26 CET):** see [`USR_P2A_DISPOSABLE_DATABASE_BASELINE.md`](USR_P2A_DISPOSABLE_DATABASE_BASELINE.md) — targeted SQL parity + fail-closed preflight; GATE-1 `AccountService.changePassword` PG now executes (no `password_hash` skip).
 
+**P2B atomic security mutations (2026-11-26 CET):** see [`USR_P2B_ATOMIC_SECURITY_MUTATIONS.md`](USR_P2B_ATOMIC_SECURITY_MUTATIONS.md) — canonical lock fences, authoritative idempotency, P2B PG matrix (B01–B04,B06–B09), disposable gate **60/60** PG.
+
 **Mandatory evidence gate (2026-11-26 CET, branch `cursor/master-users-p2-access-revocation-44c2`):**
 
 ```bash

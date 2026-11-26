@@ -56,6 +56,7 @@ describe('PasswordResetService (Prompt 6)', () => {
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      $executeRaw: jest.fn().mockResolvedValue(undefined),
       $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
         fn(prisma),
       ),
@@ -166,7 +167,7 @@ describe('PasswordResetService (Prompt 6)', () => {
       expiresAt: new Date(Date.now() + 60_000),
       usedAt: null,
       revokedAt: null,
-      user: { id: userId, email, status: UserStatus.ACTIVE },
+      user: { id: userId, email, status: UserStatus.ACTIVE, sessionVersion: 0 },
     });
     prisma.passwordResetToken.update.mockResolvedValue({});
     prisma.user.update.mockResolvedValue({});

@@ -98,10 +98,17 @@ describe('IamMembershipLifecycleService', () => {
       processOutboxIds: jest.fn().mockResolvedValue(undefined),
     };
     notifications = { notifyAfterCommit: jest.fn().mockResolvedValue(undefined) };
+    const sessionPolicy = {
+      enqueueInTransactionWithAuthoritativeInvalidation: jest
+        .fn()
+        .mockResolvedValue({ intentIds: [], revokedTokenCount: 0, idempotentReplay: false }),
+      processIntents: jest.fn().mockResolvedValue([]),
+    };
     service = new IamMembershipLifecycleService(
       prisma as unknown as PrismaService,
       iamAudit as unknown as IamAuditService,
       notifications as unknown as IamMembershipLifecycleNotificationService,
+      sessionPolicy as never,
     );
   });
 

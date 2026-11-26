@@ -30,6 +30,7 @@ describe('AccountService', () => {
     timezone: 'Europe/Berlin',
     dateFormat: 'DD.MM.YYYY',
     passwordHash: '$2b$10$hash',
+    sessionVersion: 0,
     status: 'ACTIVE',
     lastLoginAt: new Date('2026-06-01T10:00:00Z'),
     lastLoginIp: '127.0.0.1',
@@ -77,6 +78,7 @@ describe('AccountService', () => {
       findFirst: jest.fn(),
       count: jest.fn(),
     },
+    $executeRaw: jest.fn().mockResolvedValue(undefined),
     $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
       fn(prisma),
     ),

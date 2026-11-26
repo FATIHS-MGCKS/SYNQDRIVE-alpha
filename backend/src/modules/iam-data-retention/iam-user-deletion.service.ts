@@ -8,7 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { IamAuditService } from '@modules/users/iam-audit.service';
 import { UserAccessAuditAction } from '@modules/users/user-access-audit.service';
 import { IamLegalHoldService } from './iam-legal-hold.service';
-import { acquireUserSessionWriteLock } from '@modules/auth/refresh-token-session-concurrency';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 import { randomUUID } from 'crypto';
 
 export interface GlobalUserDeletionAssessment {
@@ -82,6 +82,8 @@ export class IamUserDeletionService {
     const outboxIds: string[] = [];
 
     const user = await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, { userIds: [input.userId] });
+
       const updated = await tx.user.update({
         where: { id: input.userId },
         data: {
@@ -102,7 +104,6 @@ export class IamUserDeletionService {
 
       await tx.userMfaFactor.deleteMany({ where: { userId: input.userId } });
       await tx.userMfaRecoveryCode.deleteMany({ where: { userId: input.userId } });
-      await acquireUserSessionWriteLock(tx, input.userId);
       await tx.refreshToken.updateMany({
         where: { userId: input.userId, revokedAt: null },
         data: { revokedAt: new Date() },
