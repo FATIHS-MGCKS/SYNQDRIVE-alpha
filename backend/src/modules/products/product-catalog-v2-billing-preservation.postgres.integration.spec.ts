@@ -105,17 +105,21 @@ async function snapshotCommercialState(
       });
     }
     if (orgId) {
-      await prisma.billingInvoice.deleteMany({
-        where: { subscription: { organizationId: orgId } },
-      });
-      await prisma.billingSubscription.deleteMany({ where: { organizationId: orgId } });
-      await prisma.priceTariffVersion.deleteMany({ where: { organizationId: orgId } });
-      await prisma.priceTariffGroup.deleteMany({ where: { organizationId: orgId } });
-      await prisma.priceBook.deleteMany({ where: { organizationId: orgId } });
-      await prisma.organization.delete({ where: { id: orgId } }).catch(() => undefined);
+      await prisma.billingDiscount
+        .deleteMany({ where: { subscription: { organizationId: orgId } } })
+        .catch(() => undefined);
+      await prisma.billingInvoice
+        .deleteMany({ where: { subscription: { organizationId: orgId } } })
+        .catch(() => undefined);
+      await prisma.billingSubscription.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.priceTariffVersion.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.priceTariffGroup.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.priceBook.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.organizationProduct.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
     }
+    // activity_logs is append-only; catalog audits reference the master user — disposable CI drops the DB.
     if (adminId) {
-      await prisma.user.deleteMany({ where: { id: adminId } });
+      await prisma.user.deleteMany({ where: { id: adminId } }).catch(() => undefined);
     }
     await prisma.$disconnect();
   });
