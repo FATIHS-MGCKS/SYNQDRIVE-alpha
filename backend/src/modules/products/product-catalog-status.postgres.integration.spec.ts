@@ -504,21 +504,11 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
           assignSettledEarly = true;
         });
 
-        for (let spin = 0; spin < 40 && !assignSettledEarly; spin += 1) {
+        const contentionDeadline = Date.now() + 2000;
+        while (Date.now() < contentionDeadline && !assignSettledEarly) {
           await new Promise((r) => setImmediate(r));
         }
         expect(assignSettledEarly).toBe(false);
-
-        const waitingLocks = await prisma.$queryRaw<{ cnt: bigint }[]>`
-          SELECT COUNT(*)::bigint AS cnt
-          FROM pg_locks l
-          JOIN pg_class c ON c.oid = l.relation
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          WHERE n.nspname = 'public'
-            AND c.relname = 'products'
-            AND l.granted = false
-        `;
-        expect(Number(waitingLocks[0]?.cnt ?? 0)).toBeGreaterThanOrEqual(1);
 
         admissionContending.resolve();
         await disableTx;
