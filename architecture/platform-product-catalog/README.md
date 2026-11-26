@@ -129,7 +129,7 @@ Evidence record: [`evidence/P3_FINAL_INTEGRATION_CERTIFICATION_2026-11-17.md`](e
 |----------|--------|
 | Final audit + reconciliation | [`PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md`](evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md) |
 | Disposable PG @ `7e0a00b49` | Workflow [`45816331418`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45816331418) — **28/28** |
-| Harness #2539 | Merge `245f2aa59`; PG **48/48** run [`45842923193`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45842923193) |
+| Harness #2539 | Merge to `main` `245f2aa59`; PG **48/48** run [`45842923193`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45842923193) executed on PR head `09952835f` |
 | TOCTOU #2540 | Merge `00912553c`; PG **51/51** run [`45858083141`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45858083141) |
 
 **Not claimed:** production deploy, live MFA browser E2E, registry `AUTHORITY_ACTIVE`.

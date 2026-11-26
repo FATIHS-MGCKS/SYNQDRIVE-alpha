@@ -361,7 +361,7 @@ Vehicle Detail readiness run [`45779674935`](https://github.com/FATIHS-MGCKS/SYN
 | SHA / context | Workflow run | Total | Breakdown (script) | Verdict |
 |---------------|--------------|-------|-------------------|---------|
 | `7e0a00b49` (pre-harness `main`) | [`45816331418`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45816331418) | **28/28 PASS** | P1 4 + P2A 10 + P2B 14 | **RECORDED_PASS** on audited baseline |
-| #2539 merge `245f2aa59` | [`45842923193`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45842923193) | **48/48 PASS** | + HTTP 16, billing 1, TOCTOU repro 3 | Harness CI seal |
+| #2539 branch head `09952835f` (merged to `main` as `245f2aa59`) | [`45842923193`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45842923193) | **48/48 PASS** | + HTTP 16, billing 1, TOCTOU repro 3 | Harness CI seal — **workflow `head_sha` = `09952835f`**, not merge commit `245f2aa59` |
 | #2540 head `c740a247e` | [`45858083141`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45858083141) | **51/51 PASS** | + TOCTOU regression **6/6** (A–F) | **POSTGRES_ACCEPTANCE** authority for harness scope |
 | `00912553c` (`main` after #2540) | Pending canonical push CI | — | Same script expectation 51/51 | See § Main CI |
 
@@ -379,7 +379,7 @@ Vehicle Detail readiness run [`45779674935`](https://github.com/FATIHS-MGCKS/SYN
 - `vehicle-product-grant.transaction-locks.ts` — transactional `FOR UPDATE` order: **products → organization_products → vehicles → vehicle_product_grants**
 - `VehicleProductGrantService.grantExplicit` — org-product entitlement + vehicle registry lifecycle revalidated **inside** grant transaction (closes org-product eligibility TOCTOU)
 - Preserves P2A catalog admission, idempotent ACTIVE grants, versioning, audit, tenant isolation, TAXI retirement, no auto-revoke of prior valid grants
-- PR head CI: 37 checks success; both canonical **CI gate (all critical jobs)** green on `c740a247e`
+- PR head CI @ `c740a247e`: **37 checks total** — **35 SUCCESS**, **2 SKIPPED**, **0 FAILED**, **0 PENDING**; both canonical **CI gate (all critical jobs)** green
 
 ### Defect register — reconciled status (does not edit historical § Defect register)
 
