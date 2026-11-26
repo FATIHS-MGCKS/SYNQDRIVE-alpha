@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,12 +12,15 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
-import { ORGANIZATION_PRODUCT_VEHICLE_GRANT_ENTITLEMENT_STATUSES } from '../entitlements/entitlements-policy';
 import { assertPlatformProductGrantWritable } from '../retired-platform-product-slugs';
 import {
   PRODUCT_CATALOG_ADMISSION_OPERATION,
   assertProductCatalogRowAdmissionAllowed,
 } from '../product-catalog-admission.authority';
+import {
+  lockGrantMutationScope,
+  lockVehicleProductGrantRowForUpdate,
+} from './vehicle-product-grant.transaction-locks';
 import type { VehicleProductGrantListItem, VehicleProductGrantRecord } from './vehicle-product-grant.types';
 
 const GRANT_ELIGIBLE_REGISTRY_LIFECYCLES: VehicleRegistryLifecycle[] = [VehicleRegistryLifecycle.ACTIVE];
@@ -38,8 +40,6 @@ export class VehicleProductGrantService {
     audit?: { correlationId: string; route?: string; ipAddress?: string; userAgent?: string };
   }): Promise<VehicleProductGrantRecord> {
     assertPlatformProductGrantWritable(input.productSlug);
-    await this.assertOrganizationProductActive(input.organizationId, input.productSlug);
-    await this.loadGrantEligibleVehicle(input.organizationId, input.vehicleId);
 
     const now = new Date();
     const uniqueKey = {
@@ -57,7 +57,11 @@ export class VehicleProductGrantService {
     let outcome: GrantOutcome;
     try {
       outcome = await this.prisma.$transaction(async (tx) => {
-        const existing = await tx.vehicleProductGrant.findUnique({ where: uniqueKey });
+        const { existingGrant: existing } = await lockGrantMutationScope(tx, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          productSlug: input.productSlug,
+        });
 
         const requiresCatalogAdmission =
           existing == null ||
@@ -176,16 +180,13 @@ export class VehicleProductGrantService {
   }): Promise<VehicleProductGrantRecord> {
     const now = new Date();
     const { record, transitioned } = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.vehicleProductGrant.findUnique({
-        where: {
-          vehicleId_productSlug: {
-            vehicleId: input.vehicleId,
-            productSlug: input.productSlug,
-          },
-        },
+      const existing = await lockVehicleProductGrantRowForUpdate(tx, {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        productSlug: input.productSlug,
       });
 
-      if (!existing || existing.organizationId !== input.organizationId) {
+      if (!existing) {
         throw new NotFoundException('Vehicle product grant not found');
       }
 
@@ -293,43 +294,5 @@ export class VehicleProductGrantService {
       orderBy: [{ grantedAt: 'desc' }, { vehicleId: 'asc' }],
     });
     return rows;
-  }
-
-  private async assertOrganizationProductActive(
-    organizationId: string,
-    productSlug: ProductSlug,
-  ): Promise<void> {
-    const orgProduct = await this.prisma.organizationProduct.findFirst({
-      where: {
-        organizationId,
-        product: { slug: productSlug },
-        status: { in: [...ORGANIZATION_PRODUCT_VEHICLE_GRANT_ENTITLEMENT_STATUSES] },
-      },
-      select: { id: true },
-    });
-    if (!orgProduct) {
-      throw new ForbiddenException(
-        `Product license '${productSlug}' is not active for this organization`,
-      );
-    }
-  }
-
-  private async loadGrantEligibleVehicle(organizationId: string, vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: vehicleId },
-      select: { id: true, organizationId: true, registryLifecycle: true },
-    });
-    if (!vehicle) {
-      throw new NotFoundException('Vehicle not found');
-    }
-    if (vehicle.organizationId !== organizationId) {
-      throw new NotFoundException('Vehicle not found');
-    }
-    if (!GRANT_ELIGIBLE_REGISTRY_LIFECYCLES.includes(vehicle.registryLifecycle)) {
-      throw new BadRequestException(
-        'Vehicle registry lifecycle does not allow product grants',
-      );
-    }
-    return vehicle;
   }
 }
