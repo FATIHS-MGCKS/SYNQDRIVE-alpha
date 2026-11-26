@@ -80,11 +80,18 @@ describe('UsersService — security & membership', () => {
         message: 'If an account exists for this request, password reset instructions will be sent.',
       }),
     };
+    const sessionPolicy = {
+      enqueueInTransactionWithAuthoritativeInvalidation: jest
+        .fn()
+        .mockResolvedValue({ intentIds: [], revokedTokenCount: 0 }),
+      processIntents: jest.fn().mockResolvedValue([]),
+    };
     service = new UsersService(
       prisma as unknown as PrismaService,
       iamAudit as unknown as IamAuditService,
       lifecycle as unknown as IamMembershipLifecycleService,
       passwordReset as unknown as import('@modules/auth/password-reset.service').PasswordResetService,
+      sessionPolicy as unknown as import('@modules/auth/iam-session-policy.service').IamSessionPolicyService,
     );
   });
 

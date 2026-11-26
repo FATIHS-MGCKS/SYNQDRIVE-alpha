@@ -69,6 +69,7 @@ import { masterVehicleIdentityEn } from './master.vehicleIdentity.en';
 import { masterOneAutoEn } from './master.oneAuto.en';
 import { masterOrganizationsEn } from './master.organizations.en';
 import { masterProductCommercialEn } from './master.productCommercial.en';
+import { masterProductCatalogEn } from './master.productCatalog.en';
 import { masterCreditManagementEn } from './master.creditManagement.en';
 import { masterBillingInvoicesEn } from './master.billing.invoices.en';
 import { masterRegistrationBrakeEn } from './master.registration.brake.en';
@@ -6033,6 +6034,7 @@ export const en = {
   ...masterOneAutoEn,
   ...masterOrganizationsEn,
   ...masterProductCommercialEn,
+  ...masterProductCatalogEn,
   ...masterCreditManagementEn,
   ...masterBillingInvoicesEn,
   ...masterRegistrationBrakeEn,

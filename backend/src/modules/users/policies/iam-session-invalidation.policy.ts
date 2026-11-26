@@ -188,6 +188,18 @@ export function stationScopeWasReduced(
   return true;
 }
 
+/** Scope suffix for durable intent rows (explicit caller keys included). */
+export function buildScopedRevocationIdempotencyKey(
+  baseKey: string,
+  scope: SessionInvalidationScope,
+): string {
+  const suffix = `:${scope}`;
+  if (baseKey.endsWith(suffix)) {
+    return baseKey;
+  }
+  return `${baseKey}${suffix}`;
+}
+
 export function buildRevocationIdempotencyKey(input: {
   eventType: string;
   userId: string;

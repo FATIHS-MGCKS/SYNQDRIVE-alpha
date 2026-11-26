@@ -58,9 +58,9 @@ describe('ProductManagementView', () => {
     });
     const text = container.textContent ?? '';
     expect(text).toContain('Produktmanagement');
-    expect(text).toContain('SYNQDRIVE Rental');
-    expect(text).toContain('Bestehendes Geschäftsprodukt');
-    expect(text).toContain('In Vorbereitung');
+    expect(text).toContain('Rental');
+    expect(text).toContain('Live business product');
+    expect(text).toContain('In preparation');
     expect(text).not.toContain('data-product-slug="TAXI"');
     expect(container.querySelector('[data-product-slug="TAXI"]')).toBeNull();
 

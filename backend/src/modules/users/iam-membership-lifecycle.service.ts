@@ -237,6 +237,7 @@ export class IamMembershipLifecycleService {
     }
 
     const outboxIds: string[] = [];
+    const sessionIntentIds: string[] = [];
     let sessionsRevoked = 0;
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -279,7 +280,22 @@ export class IamMembershipLifecycleService {
       });
 
       if (preview.sessionInvalidationRequired) {
-        sessionsRevoked = await revokeUserRefreshTokens(tx, input.userId);
+        const eventType =
+          preview.permissionChanges.lost.length > 0 ? 'PERMISSION_REVOKED' : 'ROLE_UPGRADED';
+        const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(
+          tx,
+          {
+            eventType,
+            userId: input.userId,
+            organizationId: input.organizationId,
+            membershipId: row.id,
+            actorUserId: input.actor?.userId,
+            idempotencyKey: `${input.idempotencyKey}:session`,
+            mutationVersion: row.membershipVersion,
+          },
+        );
+        sessionIntentIds.push(...enqueued.intentIds);
+        sessionsRevoked = enqueued.revokedTokenCount;
       }
 
       const outbox = await this.iamAudit.enqueueInTransaction(tx, {
@@ -315,6 +331,9 @@ export class IamMembershipLifecycleService {
       return row;
     });
 
+    if (sessionIntentIds.length > 0) {
+      await this.sessionPolicy.processIntents(sessionIntentIds);
+    }
     await this.iamAudit.processOutboxIds(outboxIds);
     const result: LifecycleMutationResult = {
       membershipId: updated.id,

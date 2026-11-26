@@ -5,10 +5,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  PRODUCT_CATALOG_ADMISSION_OPERATION,
+  assertProductCatalogAdmissionAllowed,
+  isOrganizationProductAdmissionCreate,
+  isOrganizationProductAdmissionReactivation,
+  isVehicleAccessScopeBroadening,
+  lockProductCatalogRowBySlug,
+} from './product-catalog-admission.authority';
+import {
   OrganizationProduct,
   OrganizationProductVehicleAccessMode,
   OrgProductPlan,
   OrgProductStatus,
+  ProductCatalogStatus,
   ProductSlug,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -17,8 +26,25 @@ import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audi
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 import {
   assertPlatformProductAssignable,
+  assertPlatformProductCatalogStatusTransition,
+  assertPlatformProductMetadataEditable,
   assertRetiredPlatformVehicleAccessModeMutation,
 } from './retired-platform-product-slugs';
+import type { ParsedProductMetadataPatch } from './parse-product-metadata-patch';
+import type { ParsedProductCatalogStatusPatch } from './parse-product-catalog-status-patch';
+import {
+  buildProductCatalogStatusImpactSnapshot,
+  type ProductCatalogStatusImpactSnapshot,
+} from './product-catalog-status-impact.util';
+import {
+  buildProductCatalogStatusAuditInput,
+  persistProductCatalogStatusMandatoryAuditTx,
+} from './product-catalog-status-mandatory-audit.util';
+import {
+  buildProductMetadataAuditInput,
+  persistProductMetadataMandatoryAuditTx,
+} from './product-metadata-mandatory-audit.util';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Active',
@@ -87,6 +113,268 @@ export class ProductsService {
     }));
   }
 
+  private storageDescription(description: string | null): string | null {
+    return description;
+  }
+
+  private descriptionsEqual(a: string | null, b: string | null): boolean {
+    return (a ?? null) === (b ?? null);
+  }
+
+  async findCatalogProductBySlug(productSlug: ProductSlug) {
+    const product = await this.prisma.product.findUnique({
+      where: { slug: productSlug },
+      include: {
+        organizationProducts: {
+          where: { status: { in: ['ACTIVE', 'TRIAL'] } },
+          select: { id: true },
+        },
+      },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${productSlug}" not found`);
+    }
+    return {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description ?? '',
+      catalogStatus: product.catalogStatus,
+      organizationsCount: product.organizationProducts.length,
+    };
+  }
+
+  async updateProductMetadataForMasterAdmin(input: {
+    productSlug: ProductSlug;
+    patch: ParsedProductMetadataPatch;
+    actorUserId: string;
+    audit: MasterAdminAuditContext;
+  }) {
+    assertPlatformProductMetadataEditable(input.productSlug);
+
+    const product = await this.prisma.product.findUnique({
+      where: { slug: input.productSlug },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+    }
+
+    const currentName = product.name;
+    const currentDescription = this.storageDescription(product.description);
+
+    if (
+      currentName !== input.patch.ifCurrentName ||
+      !this.descriptionsEqual(currentDescription, input.patch.ifCurrentDescription)
+    ) {
+      throw new ConflictException(
+        'Product metadata changed concurrently; reload and retry with current name and description',
+      );
+    }
+
+    const targetDescription = this.storageDescription(input.patch.description);
+    const willMutate =
+      currentName !== input.patch.name ||
+      !this.descriptionsEqual(currentDescription, targetDescription);
+
+    if (!willMutate) {
+      return this.findCatalogProductBySlug(input.productSlug);
+    }
+
+    const before = { name: currentName, description: currentDescription };
+    const after = { name: input.patch.name, description: targetDescription };
+
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.product.updateMany({
+        where: {
+          id: product.id,
+          slug: input.productSlug,
+          name: input.patch.ifCurrentName,
+          description:
+            input.patch.ifCurrentDescription === null
+              ? { equals: null }
+              : input.patch.ifCurrentDescription,
+        },
+        data: {
+          name: input.patch.name,
+          description: targetDescription,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          'Product metadata changed concurrently; reload and retry with current name and description',
+        );
+      }
+
+      await persistProductMetadataMandatoryAuditTx(
+        tx,
+        buildProductMetadataAuditInput({
+          actorUserId: input.actorUserId,
+          productId: product.id,
+          productSlug: input.productSlug,
+          correlationId: input.audit.correlationId,
+          route: input.audit.route,
+          ipAddress: input.audit.ipAddress,
+          userAgent: input.audit.userAgent,
+          mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+          before,
+          after,
+        }),
+      );
+    });
+
+    return this.findCatalogProductBySlug(input.productSlug);
+  }
+
+  async getProductCatalogStatusImpact(
+    productSlug: ProductSlug,
+    requestedTargetCatalogStatus?: ProductCatalogStatus | null,
+  ): Promise<ProductCatalogStatusImpactSnapshot> {
+    const product = await this.prisma.product.findUnique({
+      where: { slug: productSlug },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${productSlug}" not found`);
+    }
+    return buildProductCatalogStatusImpactSnapshot(this.prisma, {
+      productId: product.id,
+      productSlug,
+      currentCatalogStatus: product.catalogStatus,
+      requestedTargetCatalogStatus: requestedTargetCatalogStatus ?? null,
+    });
+  }
+
+  async updateProductCatalogStatusForMasterAdmin(input: {
+    productSlug: ProductSlug;
+    patch: ParsedProductCatalogStatusPatch;
+    actorUserId: string;
+    audit: MasterAdminAuditContext;
+  }) {
+    assertPlatformProductCatalogStatusTransition({
+      productSlug: input.productSlug,
+      from: input.patch.ifCurrentCatalogStatus,
+      to: input.patch.catalogStatus,
+    });
+
+    const product = await this.prisma.product.findUnique({
+      where: { slug: input.productSlug },
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+    }
+
+    if (product.catalogStatus !== input.patch.ifCurrentCatalogStatus) {
+      throw new ConflictException(
+        'Product catalog status changed concurrently; reload impact preview and retry with current status',
+      );
+    }
+
+    assertPlatformProductCatalogStatusTransition({
+      productSlug: input.productSlug,
+      from: product.catalogStatus,
+      to: input.patch.catalogStatus,
+    });
+
+    const before = { catalogStatus: product.catalogStatus };
+    const after = { catalogStatus: input.patch.catalogStatus };
+
+    let impactAtCommit: ProductCatalogStatusImpactSnapshot | null = null;
+    let isNoopUnderLock = false;
+
+    await this.prisma.$transaction(async (tx) => {
+      const locked = await lockProductCatalogRowBySlug(tx, input.productSlug);
+      if (!locked) {
+        throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+      }
+      if (locked.catalogStatus !== input.patch.ifCurrentCatalogStatus) {
+        throw new ConflictException(
+          'Product catalog status changed concurrently; reload impact preview and retry with current status',
+        );
+      }
+      if (locked.catalogStatus === input.patch.catalogStatus) {
+        impactAtCommit = await buildProductCatalogStatusImpactSnapshot(tx, {
+          productId: locked.id,
+          productSlug: input.productSlug,
+          currentCatalogStatus: locked.catalogStatus,
+          requestedTargetCatalogStatus: input.patch.catalogStatus,
+        });
+        isNoopUnderLock = true;
+        return;
+      }
+
+      assertPlatformProductCatalogStatusTransition({
+        productSlug: input.productSlug,
+        from: locked.catalogStatus,
+        to: input.patch.catalogStatus,
+      });
+
+      impactAtCommit = await buildProductCatalogStatusImpactSnapshot(tx, {
+        productId: locked.id,
+        productSlug: input.productSlug,
+        currentCatalogStatus: locked.catalogStatus,
+        requestedTargetCatalogStatus: input.patch.catalogStatus,
+      });
+
+      const updated = await tx.product.updateMany({
+        where: {
+          id: locked.id,
+          slug: input.productSlug,
+          catalogStatus: input.patch.ifCurrentCatalogStatus,
+        },
+        data: { catalogStatus: input.patch.catalogStatus },
+      });
+
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          'Product catalog status changed concurrently; reload impact preview and retry with current status',
+        );
+      }
+
+      await persistProductCatalogStatusMandatoryAuditTx(
+        tx,
+        buildProductCatalogStatusAuditInput({
+          actorUserId: input.actorUserId,
+          productId: locked.id,
+          productSlug: input.productSlug,
+          correlationId: input.audit.correlationId,
+          route: input.audit.route,
+          ipAddress: input.audit.ipAddress,
+          userAgent: input.audit.userAgent,
+          mfaStepUpAction: STEP_UP_ACTION.MASTER_ORGANIZATION,
+          changeReason: input.patch.changeReason,
+          before,
+          after,
+          impactSnapshot: impactAtCommit,
+        }),
+      );
+    });
+
+    if (isNoopUnderLock) {
+      return {
+        product: await this.findCatalogProductBySlug(input.productSlug),
+        impact:
+          impactAtCommit ??
+          (await this.getProductCatalogStatusImpact(input.productSlug, input.patch.catalogStatus)),
+        noop: true as const,
+      };
+    }
+
+    const impact =
+      impactAtCommit ??
+      (await buildProductCatalogStatusImpactSnapshot(this.prisma, {
+        productId: product.id,
+        productSlug: input.productSlug,
+        currentCatalogStatus: input.patch.catalogStatus,
+        requestedTargetCatalogStatus: input.patch.catalogStatus,
+      }));
+
+    return {
+      product: await this.findCatalogProductBySlug(input.productSlug),
+      impact,
+      noop: false as const,
+    };
+  }
+
   async getProductStats() {
     const products = await this.prisma.product.findMany({
       include: {
@@ -118,33 +406,56 @@ export class ProductsService {
     plan?: string,
   ): Promise<OrganizationProduct> {
     assertPlatformProductAssignable(productSlug);
-    const product = await this.prisma.product.findUnique({
-      where: { slug: productSlug as ProductSlug },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with slug "${productSlug}" not found`);
-    }
-
+    const slug = productSlug as ProductSlug;
     const planValue = (plan as OrgProductPlan) || OrgProductPlan.STARTER;
 
-    const vehicleAccessMode = defaultVehicleAccessModeForNewAssignment(product.slug);
+    return this.prisma.$transaction(async (tx) => {
+      const catalog = await lockProductCatalogRowBySlug(tx, slug);
+      if (!catalog) {
+        throw new NotFoundException(`Product with slug "${productSlug}" not found`);
+      }
 
-    return this.prisma.organizationProduct.upsert({
-      where: {
-        organizationId_productId: { organizationId: orgId, productId: product.id },
-      },
-      create: {
-        organizationId: orgId,
-        productId: product.id,
-        plan: planValue,
-        status: OrgProductStatus.ACTIVE,
-        vehicleAccessMode,
-        activatedAt: new Date(),
-      },
-      update: {
-        plan: planValue,
-        status: OrgProductStatus.ACTIVE,
-      },
+      const existing = await tx.organizationProduct.findUnique({
+        where: {
+          organizationId_productId: { organizationId: orgId, productId: catalog.id },
+        },
+      });
+
+      if (isOrganizationProductAdmissionCreate(existing)) {
+        assertProductCatalogAdmissionAllowed(
+          catalog.catalogStatus,
+          PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_NEW,
+          slug,
+        );
+      } else if (
+        isOrganizationProductAdmissionReactivation(existing!.status, OrgProductStatus.ACTIVE)
+      ) {
+        assertProductCatalogAdmissionAllowed(
+          catalog.catalogStatus,
+          PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_REACTIVATION,
+          slug,
+        );
+      }
+
+      const vehicleAccessMode = defaultVehicleAccessModeForNewAssignment(catalog.slug);
+
+      return tx.organizationProduct.upsert({
+        where: {
+          organizationId_productId: { organizationId: orgId, productId: catalog.id },
+        },
+        create: {
+          organizationId: orgId,
+          productId: catalog.id,
+          plan: planValue,
+          status: OrgProductStatus.ACTIVE,
+          vehicleAccessMode,
+          activatedAt: new Date(),
+        },
+        update: {
+          plan: planValue,
+          status: OrgProductStatus.ACTIVE,
+        },
+      });
     });
   }
 
@@ -158,90 +469,123 @@ export class ProductsService {
     audit?: MasterAdminAuditContext;
   }): Promise<OrganizationProduct> {
     assertPlatformProductAssignable(input.productSlug);
-    const product = await this.prisma.product.findUnique({
-      where: { slug: input.productSlug },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
-    }
-
     const planValue = (input.plan as OrgProductPlan) || OrgProductPlan.STARTER;
 
-    const existing = await this.prisma.organizationProduct.findUnique({
-      where: {
-        organizationId_productId: { organizationId: input.orgId, productId: product.id },
-      },
-    });
+    type AssignTxOutcome =
+      | { kind: 'noop'; row: OrganizationProduct }
+      | {
+          kind: 'reassign';
+          row: OrganizationProduct;
+          before: { plan: OrgProductPlan; status: OrgProductStatus };
+        }
+      | {
+          kind: 'assign';
+          row: OrganizationProduct;
+          vehicleAccessModeForCreate: OrganizationProductVehicleAccessMode;
+        };
 
-    if (existing) {
-      if (
-        input.vehicleAccessMode !== undefined &&
-        input.vehicleAccessMode !== existing.vehicleAccessMode
-      ) {
-        throw new BadRequestException(
-          'vehicleAccessMode cannot be changed via assign; use PATCH vehicle-access-mode',
-        );
+    const outcome = await this.prisma.$transaction(async (tx): Promise<AssignTxOutcome> => {
+      const catalog = await lockProductCatalogRowBySlug(tx, input.productSlug);
+      if (!catalog) {
+        throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
       }
-      const willMutate =
-        existing.plan !== planValue || existing.status !== OrgProductStatus.ACTIVE;
-      if (!willMutate) {
-        return existing;
-      }
-      const updated = await this.prisma.organizationProduct.update({
-        where: { id: existing.id },
-        data: {
-          plan: planValue,
-          status: OrgProductStatus.ACTIVE,
+
+      const existing = await tx.organizationProduct.findUnique({
+        where: {
+          organizationId_productId: { organizationId: input.orgId, productId: catalog.id },
         },
       });
-      if (input.audit) {
-        await this.masterAdminAudit.record({
-          auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
-          actorUserId: input.actorUserId,
-          actorPlatformRole: 'MASTER_ADMIN',
-          targetOrganizationId: input.orgId,
-          entityId: updated.id,
-          description: `Organization product reassigned (${input.productSlug})`,
-          correlationId: input.audit.correlationId,
-          route: input.audit.route,
-          ipAddress: input.audit.ipAddress,
-          userAgent: input.audit.userAgent,
-          changeSummary: 'reassign',
-          before: { plan: existing.plan, status: existing.status },
-          after: { plan: updated.plan, status: updated.status },
-          metadata: {
-            domain: 'organization_product',
-            action: 'reassign',
-            productSlug: input.productSlug,
-            vehicleAccessMode: existing.vehicleAccessMode,
+
+      if (existing) {
+        if (
+          input.vehicleAccessMode !== undefined &&
+          input.vehicleAccessMode !== existing.vehicleAccessMode
+        ) {
+          throw new BadRequestException(
+            'vehicleAccessMode cannot be changed via assign; use PATCH vehicle-access-mode',
+          );
+        }
+        const willMutate =
+          existing.plan !== planValue || existing.status !== OrgProductStatus.ACTIVE;
+        if (!willMutate) {
+          return { kind: 'noop', row: existing };
+        }
+        if (
+          isOrganizationProductAdmissionReactivation(existing.status, OrgProductStatus.ACTIVE)
+        ) {
+          assertProductCatalogAdmissionAllowed(
+            catalog.catalogStatus,
+            PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_REACTIVATION,
+            input.productSlug,
+          );
+        }
+        const updated = await tx.organizationProduct.update({
+          where: { id: existing.id },
+          data: {
+            plan: planValue,
+            status: OrgProductStatus.ACTIVE,
           },
         });
+        return {
+          kind: 'reassign',
+          row: updated,
+          before: { plan: existing.plan, status: existing.status },
+        };
       }
-      return updated;
-    }
 
-    const vehicleAccessModeForCreate =
-      input.vehicleAccessMode ?? defaultVehicleAccessModeForNewAssignment(product.slug);
+      assertProductCatalogAdmissionAllowed(
+        catalog.catalogStatus,
+        PRODUCT_CATALOG_ADMISSION_OPERATION.ORGANIZATION_PRODUCT_NEW,
+        input.productSlug,
+      );
 
-    const created = await this.prisma.organizationProduct.create({
-      data: {
-        organizationId: input.orgId,
-        productId: product.id,
-        plan: planValue,
-        status: OrgProductStatus.ACTIVE,
-        vehicleAccessMode: vehicleAccessModeForCreate,
-        activatedAt: new Date(),
-      },
+      const vehicleAccessModeForCreate =
+        input.vehicleAccessMode ?? defaultVehicleAccessModeForNewAssignment(catalog.slug);
+
+      const created = await tx.organizationProduct.create({
+        data: {
+          organizationId: input.orgId,
+          productId: catalog.id,
+          plan: planValue,
+          status: OrgProductStatus.ACTIVE,
+          vehicleAccessMode: vehicleAccessModeForCreate,
+          activatedAt: new Date(),
+        },
+      });
+
+      return { kind: 'assign', row: created, vehicleAccessModeForCreate };
     });
 
-    if (input.audit) {
+    if (input.audit && outcome.kind === 'reassign') {
       await this.masterAdminAudit.record({
         auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
         actorUserId: input.actorUserId,
         actorPlatformRole: 'MASTER_ADMIN',
         targetOrganizationId: input.orgId,
-        entityId: created.id,
-        description: `Organization product assigned (${input.productSlug}) with vehicle access mode ${vehicleAccessModeForCreate}`,
+        entityId: outcome.row.id,
+        description: `Organization product reassigned (${input.productSlug})`,
+        correlationId: input.audit.correlationId,
+        route: input.audit.route,
+        ipAddress: input.audit.ipAddress,
+        userAgent: input.audit.userAgent,
+        changeSummary: 'reassign',
+        before: outcome.before,
+        after: { plan: outcome.row.plan, status: outcome.row.status },
+        metadata: {
+          domain: 'organization_product',
+          action: 'reassign',
+          productSlug: input.productSlug,
+          vehicleAccessMode: outcome.row.vehicleAccessMode,
+        },
+      });
+    } else if (input.audit && outcome.kind === 'assign') {
+      await this.masterAdminAudit.record({
+        auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
+        actorUserId: input.actorUserId,
+        actorPlatformRole: 'MASTER_ADMIN',
+        targetOrganizationId: input.orgId,
+        entityId: outcome.row.id,
+        description: `Organization product assigned (${input.productSlug}) with vehicle access mode ${outcome.vehicleAccessModeForCreate}`,
         correlationId: input.audit.correlationId,
         route: input.audit.route,
         ipAddress: input.audit.ipAddress,
@@ -249,14 +593,14 @@ export class ProductsService {
         changeSummary: 'assign',
         after: {
           productSlug: input.productSlug,
-          vehicleAccessMode: vehicleAccessModeForCreate,
-          status: created.status,
+          vehicleAccessMode: outcome.vehicleAccessModeForCreate,
+          status: outcome.row.status,
         },
         metadata: { domain: 'organization_product', action: 'assign' },
       });
     }
 
-    return created;
+    return outcome.row;
   }
 
   async updateVehicleAccessMode(input: {
@@ -267,65 +611,74 @@ export class ProductsService {
     actorUserId: string;
     audit?: MasterAdminAuditContext;
   }): Promise<OrganizationProduct> {
-    const product = await this.prisma.product.findUnique({
-      where: { slug: input.productSlug },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
-    }
+    const result = await this.prisma.$transaction(async (tx) => {
+      const catalog = await lockProductCatalogRowBySlug(tx, input.productSlug);
+      if (!catalog) {
+        throw new NotFoundException(`Product with slug "${input.productSlug}" not found`);
+      }
 
-    const orgProduct = await this.prisma.organizationProduct.findUnique({
-      where: {
-        organizationId_productId: { organizationId: input.orgId, productId: product.id },
-      },
-    });
-    if (!orgProduct) {
-      throw new NotFoundException('Organization product assignment not found');
-    }
-
-    if (orgProduct.vehicleAccessMode !== input.ifCurrentVehicleAccessMode) {
-      throw new ConflictException(
-        `Vehicle access mode expectation mismatch; expected ${input.ifCurrentVehicleAccessMode}, found ${orgProduct.vehicleAccessMode}`,
-      );
-    }
-
-    if (orgProduct.vehicleAccessMode === input.vehicleAccessMode) {
-      return orgProduct;
-    }
-
-    assertRetiredPlatformVehicleAccessModeMutation({
-      productSlug: input.productSlug,
-      from: orgProduct.vehicleAccessMode,
-      to: input.vehicleAccessMode,
-    });
-
-    const updated = await this.prisma.organizationProduct.updateMany({
-      where: {
-        id: orgProduct.id,
-        organizationId: input.orgId,
-        vehicleAccessMode: input.ifCurrentVehicleAccessMode,
-      },
-      data: {
-        vehicleAccessMode: input.vehicleAccessMode,
-      },
-    });
-
-    if (updated.count !== 1) {
-      const current = await this.prisma.organizationProduct.findUnique({ where: { id: orgProduct.id } });
-      if (!current) {
+      const orgProduct = await tx.organizationProduct.findUnique({
+        where: {
+          organizationId_productId: { organizationId: input.orgId, productId: catalog.id },
+        },
+      });
+      if (!orgProduct) {
         throw new NotFoundException('Organization product assignment not found');
       }
-      throw new ConflictException(
-        `Vehicle access mode changed concurrently; expected ${input.ifCurrentVehicleAccessMode}, found ${current.vehicleAccessMode}`,
-      );
-    }
 
-    const result = await this.prisma.organizationProduct.findUniqueOrThrow({
-      where: { id: orgProduct.id },
+      if (orgProduct.vehicleAccessMode !== input.ifCurrentVehicleAccessMode) {
+        throw new ConflictException(
+          `Vehicle access mode expectation mismatch; expected ${input.ifCurrentVehicleAccessMode}, found ${orgProduct.vehicleAccessMode}`,
+        );
+      }
+
+      if (orgProduct.vehicleAccessMode === input.vehicleAccessMode) {
+        return orgProduct;
+      }
+
+      assertRetiredPlatformVehicleAccessModeMutation({
+        productSlug: input.productSlug,
+        from: orgProduct.vehicleAccessMode,
+        to: input.vehicleAccessMode,
+      });
+
+      if (isVehicleAccessScopeBroadening(orgProduct.vehicleAccessMode, input.vehicleAccessMode)) {
+        assertProductCatalogAdmissionAllowed(
+          catalog.catalogStatus,
+          PRODUCT_CATALOG_ADMISSION_OPERATION.VEHICLE_ACCESS_MODE_BROADEN,
+          input.productSlug,
+        );
+      }
+
+      const updated = await tx.organizationProduct.updateMany({
+        where: {
+          id: orgProduct.id,
+          organizationId: input.orgId,
+          vehicleAccessMode: input.ifCurrentVehicleAccessMode,
+        },
+        data: {
+          vehicleAccessMode: input.vehicleAccessMode,
+        },
+      });
+
+      if (updated.count !== 1) {
+        const current = await tx.organizationProduct.findUnique({ where: { id: orgProduct.id } });
+        if (!current) {
+          throw new NotFoundException('Organization product assignment not found');
+        }
+        throw new ConflictException(
+          `Vehicle access mode changed concurrently; expected ${input.ifCurrentVehicleAccessMode}, found ${current.vehicleAccessMode}`,
+        );
+      }
+
+      return tx.organizationProduct.findUniqueOrThrow({
+        where: { id: orgProduct.id },
+      });
     });
 
     if (
       input.audit &&
+      input.ifCurrentVehicleAccessMode !== input.vehicleAccessMode &&
       input.vehicleAccessMode === OrganizationProductVehicleAccessMode.ORGANIZATION_WIDE
     ) {
       await this.masterAdminAudit.record({
@@ -344,7 +697,7 @@ export class ProductsService {
         after: { vehicleAccessMode: input.vehicleAccessMode },
         metadata: { domain: 'organization_product', action: 'vehicle_access_mode_patch' },
       });
-    } else if (input.audit) {
+    } else if (input.audit && input.ifCurrentVehicleAccessMode !== input.vehicleAccessMode) {
       await this.masterAdminAudit.record({
         auditAction: MasterAdminAuditAction.PRIVILEGED_HTTP_MUTATION,
         actorUserId: input.actorUserId,

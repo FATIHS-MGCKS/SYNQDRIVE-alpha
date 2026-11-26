@@ -28,6 +28,7 @@ import { AuthMfaLoginService } from '@modules/auth/auth-mfa-login.service';
 import { IamMfaResetService } from '@modules/iam-mfa/iam-mfa-reset.service';
 import { IamAuditService } from '@modules/users/iam-audit.service';
 import { IamMembershipLifecycleService } from '@modules/users/iam-membership-lifecycle.service';
+import { UsersService } from '@modules/users/users.service';
 import { generatePasswordResetToken, passwordResetTokenLookupKey } from '@modules/auth/utils/password-reset-token.util';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 
@@ -53,7 +54,9 @@ function assertDisposableDb(): void {
   let passwordReset: PasswordResetService;
   let mfaReset: IamMfaResetService;
   let lifecycle: IamMembershipLifecycleService;
+  let usersService: UsersService;
   let mfaLogin: AuthMfaLoginService;
+  let prismaB: PrismaClient;
 
   const config = {
     get: (key: string, fallback?: unknown) => {
@@ -69,6 +72,7 @@ function assertDisposableDb(): void {
     assertDisposableDb();
     process.env.JWT_SECRET = JWT_SECRET;
     prisma = new PrismaClient();
+    prismaB = new PrismaClient();
     const userAudit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as UserAccessAuditService;
     const notifications = new IamSessionNotificationService();
     const platformPermissions = new PlatformPermissionService(prisma as never);
@@ -113,6 +117,13 @@ function assertDisposableDb(): void {
       { notifyAfterCommit: jest.fn() } as never,
       sessionPolicy,
     );
+    usersService = new UsersService(
+      prisma as never,
+      iamAudit,
+      lifecycle,
+      passwordReset,
+      sessionPolicy,
+    );
     mfaLogin = new AuthMfaLoginService(
       { get: () => JWT_SECRET } as never,
       prisma as never,
@@ -135,7 +146,21 @@ function assertDisposableDb(): void {
 
   afterAll(async () => {
     await prisma?.$disconnect();
+    await prismaB?.$disconnect();
   });
+
+  async function waitForSessionBump(userId: string, minVersion = 1, timeoutMs = 30_000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const live = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { sessionVersion: true },
+      });
+      if ((live?.sessionVersion ?? 0) >= minVersion) return live!.sessionVersion;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error('timeout waiting for session version bump');
+  }
 
   async function seedUserWithOrg(passwordPlain = 'password-A1!long') {
     const email = `p2b-${randomUUID()}@example.test`;
@@ -250,9 +275,12 @@ function assertDisposableDb(): void {
     const blocked = new Promise<void>((r) => {
       release = r;
     });
-    jest.spyOn(sessionPolicy, 'processIntents').mockImplementation(async () => {
+    const origProcess = sessionPolicy.processIntents.bind(sessionPolicy);
+    let reachedPostCommit = false;
+    jest.spyOn(sessionPolicy, 'processIntents').mockImplementation(async (ids) => {
+      reachedPostCommit = true;
       await blocked;
-      return [];
+      return origProcess(ids);
     });
 
     const changePromise = account.changePassword(
@@ -266,15 +294,12 @@ function assertDisposableDb(): void {
       },
       {},
     );
-    const bumpDeadlineB02 = Date.now() + 30_000;
-    while (Date.now() < bumpDeadlineB02) {
-      const liveBump = await prisma.user.findUnique({
-        where: { id: ctx.user.id },
-        select: { sessionVersion: true },
-      });
-      if ((liveBump?.sessionVersion ?? 0) > 0) break;
-      await new Promise((r) => setTimeout(r, 50));
+    const bumpedVersion = await waitForSessionBump(ctx.user.id);
+    const postCommitDeadline = Date.now() + 30_000;
+    while (!reachedPostCommit && Date.now() < postCommitDeadline) {
+      await new Promise((r) => setTimeout(r, 25));
     }
+    expect(reachedPostCommit).toBe(true);
 
     const live = await prisma.user.findUnique({
       where: { id: ctx.user.id },
@@ -338,10 +363,11 @@ function assertDisposableDb(): void {
     expect(keys.size).toBeGreaterThanOrEqual(2);
   });
 
-  it('B04 same-operation replay does not re-bump session version', async () => {
-    const ctx = await seedUserWithOrg('Replay1!xx');
+  it('B04 same-operation replay preserves fresh session and metadata', async () => {
+    const ctx = await seedUserWithOrg('Replay1!xx-long');
     const opKey = `p2b-replay:${randomUUID()}`;
-    let firstVersion = 0;
+    const newHash = await bcrypt.hash('Replay-admin1!long', 10);
+    let versionAfter = 0;
     await prisma.$transaction(async (tx) => {
       await acquireCanonicalSecurityMutationLocks(tx, {
         organizationIds: [ctx.orgA.id],
@@ -351,34 +377,52 @@ function assertDisposableDb(): void {
         where: { id: ctx.user.id },
         select: { sessionVersion: true },
       });
-      firstVersion = u!.sessionVersion;
+      await tx.user.update({
+        where: { id: ctx.user.id },
+        data: { passwordHash: newHash, mustChangePassword: true },
+      });
       await sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',
         userId: ctx.user.id,
         organizationId: ctx.orgA.id,
         idempotencyKey: opKey,
-        mutationVersion: firstVersion + 1,
+        mutationVersion: u!.sessionVersion + 1,
       });
     });
     const afterFirst = await prisma.user.findUnique({
       where: { id: ctx.user.id },
-      select: { sessionVersion: true },
+      select: { sessionVersion: true, email: true },
     });
+    versionAfter = afterFirst!.sessionVersion;
+    const fresh = await issueOrgSession(
+      { id: ctx.user.id, email: afterFirst!.email },
+      ctx.orgA.id,
+      ctx.memA.id,
+      versionAfter,
+    );
+    const freshDecoded = jwt.verify(fresh.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    const intentRow = await prisma.iamSessionRevocationIntent.findFirst({
+      where: { idempotencyKey: `${opKey}:USER_ALL_SESSIONS` },
+    });
+    expect(intentRow?.revokedTokenCount).toBeGreaterThanOrEqual(0);
+
     await prisma.$transaction(async (tx) => {
-      const again = await sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+      const replay = await sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',
         userId: ctx.user.id,
         organizationId: ctx.orgA.id,
         idempotencyKey: opKey,
-        mutationVersion: firstVersion + 1,
+        mutationVersion: versionAfter,
       });
-      expect(again.idempotentReplay).toBe(true);
+      expect(replay.idempotentReplay).toBe(true);
     });
     const afterReplay = await prisma.user.findUnique({
       where: { id: ctx.user.id },
       select: { sessionVersion: true },
     });
-    expect(afterReplay!.sessionVersion).toBe(afterFirst!.sessionVersion);
+    expect(afterReplay!.sessionVersion).toBe(versionAfter);
+    await authority.validateAccessJwt(freshDecoded as never);
+    await refreshTokens.rotate(fresh.refreshToken);
   });
 
   it('B06 transaction rollback leaves no partial password mutation', async () => {
@@ -434,13 +478,34 @@ function assertDisposableDb(): void {
       },
     });
 
-    await passwordReset.confirmReset({
+    let releaseReset!: () => void;
+    const resetBlocked = new Promise<void>((r) => {
+      releaseReset = r;
+    });
+    const origResetProcess = sessionPolicy.processIntents.bind(sessionPolicy);
+    jest.spyOn(sessionPolicy, 'processIntents').mockImplementation(async (ids) => {
+      await resetBlocked;
+      return origResetProcess(ids);
+    });
+
+    const resetPromise = passwordReset.confirmReset({
       token: plain,
       newPassword: 'ResetTok2!long',
       confirmPassword: 'ResetTok2!long',
     });
-
+    await waitForSessionBump(ctx.user.id);
     await expect(authority.validateAccessJwt(decoded as never)).rejects.toThrow();
+    await expect(refreshTokens.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+    releaseReset();
+    await resetPromise;
+    await expect(
+      passwordReset.confirmReset({
+        token: plain,
+        newPassword: 'ResetTok2!long',
+        confirmPassword: 'ResetTok2!long',
+      }),
+    ).rejects.toThrow();
+    jest.restoreAllMocks();
     const row = await prisma.passwordResetToken.findFirst({
       where: { userId: ctx.user.id },
       orderBy: { createdAt: 'desc' },
@@ -453,43 +518,75 @@ function assertDisposableDb(): void {
     expect(ok).toBe(true);
   });
 
-  it('B08 MFA reset invalidates sessions and stale MFA pending token', async () => {
-    const ctx = await seedUserWithOrg('MfaReset1!');
+  it('B08 MFA reset invalidates MASTER_ADMIN pending challenge after valid pre-reset context', async () => {
+    const adminEmail = `ma-${randomUUID()}@example.test`;
+    const admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        passwordHash: await bcrypt.hash('MaAdmin1!long-x', 10),
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        status: UserStatus.ACTIVE,
+      },
+    });
     await prisma.userMfaFactor.create({
       data: {
-        userId: ctx.user.id,
+        userId: admin.id,
         factorType: MfaFactorType.TOTP,
-        encryptedSecret: 'enc',
-        label: 'test',
+        encryptedSecret: 'enc-ma',
+        label: 'ma',
         verifiedAt: new Date(),
         enabledAt: new Date(),
       },
     });
-    const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
-    const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    const maIssued = await refreshTokens.issueTokenPair(
+      {
+        id: admin.id,
+        email: adminEmail,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      null,
+    );
+    const maDecoded = jwt.verify(maIssued.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    const maPending = mfaLogin.signMfaPendingToken({
+      userId: admin.id,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    await mfaLogin.completeLoginMfa({ mfaPendingToken: maPending, code: '123456' });
+
     const userRow = await prisma.user.findUnique({
-      where: { id: ctx.user.id },
+      where: { id: admin.id },
       select: { sessionVersion: true, securityVersion: true, platformRole: true },
     });
     const pendingToken = mfaLogin.signMfaPendingToken({
-      userId: ctx.user.id,
+      userId: admin.id,
       sessionVersion: userRow!.sessionVersion,
       securityVersion: userRow!.securityVersion,
-      platformRole: userRow!.platformRole,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
     });
 
     await mfaReset.resetMfaForUser({
-      organizationId: ctx.orgA.id,
-      targetUserId: ctx.user.id,
-      actorUserId: ctx.user.id,
+      organizationId: 'platform',
+      targetUserId: admin.id,
+      actorUserId: admin.id,
       idempotencyKey: `mfa-reset:${randomUUID()}`,
     });
 
-    await expect(authority.validateAccessJwt(decoded as never)).rejects.toThrow();
-    await expect(refreshTokens.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+    await expect(authority.validateAccessJwt(maDecoded as never)).rejects.toThrow();
+    await expect(refreshTokens.rotate(maIssued.refreshToken)).rejects.toThrow(/no longer valid/i);
     await expect(
       mfaLogin.completeLoginMfa({ mfaPendingToken: pendingToken, code: '123456' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+    const factorsLeft = await prisma.userMfaFactor.count({ where: { userId: admin.id } });
+    expect(factorsLeft).toBe(0);
+    const sec = await prisma.user.findUnique({
+      where: { id: admin.id },
+      select: { securityVersion: true },
+    });
+    expect(sec!.securityVersion).toBeGreaterThan(0);
   });
 
   it('B09 membership suspend revokes org A session only', async () => {
@@ -506,10 +603,152 @@ function assertDisposableDb(): void {
       reason: 'p2b-b09',
     });
 
+    await expect(authority.validateAccessJwt(decodedA as never)).rejects.toThrow();
     await expect(refreshTokens.rotate(sessionA.refreshToken)).rejects.toThrow();
     await authority.validateAccessJwt(decodedB as never);
     const rotatedB = await refreshTokens.rotate(sessionB.refreshToken);
     expect(rotatedB.accessToken).toBeTruthy();
     jest.restoreAllMocks();
+  });
+
+  it('B05 concurrent replay applies authoritative mutation once', async () => {
+    const ctx = await seedUserWithOrg('Concurrent1!long-x');
+    const opKey = `p2b-concurrent:${randomUUID()}`;
+    const versionBefore = (
+      await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { sessionVersion: true } })
+    )!.sessionVersion;
+    const sessionPolicyB = new IamSessionPolicyService(
+      prismaB as never,
+      refreshTokens,
+      { record: jest.fn() } as never,
+      new IamSessionNotificationService(),
+    );
+
+    await prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [ctx.orgA.id],
+        userIds: [ctx.user.id],
+      });
+      await sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+        eventType: 'PASSWORD_CHANGED',
+        userId: ctx.user.id,
+        organizationId: ctx.orgA.id,
+        idempotencyKey: opKey,
+        mutationVersion: versionBefore + 1,
+      });
+    });
+
+    const runReplay = (client: PrismaClient, policy: IamSessionPolicyService) =>
+      client.$transaction(async (tx) =>
+        policy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+          eventType: 'PASSWORD_CHANGED',
+          userId: ctx.user.id,
+          organizationId: ctx.orgA.id,
+          idempotencyKey: opKey,
+          mutationVersion: versionBefore + 1,
+        }),
+      );
+
+    const [left, right] = await Promise.all([
+      runReplay(prisma, sessionPolicy),
+      runReplay(prismaB, sessionPolicyB),
+    ]);
+    expect(left.idempotentReplay || right.idempotentReplay).toBe(true);
+    expect([left, right].filter((r) => r.idempotentReplay).length).toBeGreaterThanOrEqual(1);
+    const versionAfter = (
+      await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { sessionVersion: true } })
+    )!.sessionVersion;
+    expect(versionAfter).toBe(versionBefore + 1);
+    const scopedIntents = await prisma.iamSessionRevocationIntent.findMany({
+      where: { idempotencyKey: { startsWith: opKey } },
+    });
+    expect(scopedIntents.length).toBe(1);
+    expect(scopedIntents[0]!.revokedTokenCount).toBeGreaterThanOrEqual(0);
+  });
+
+  it('B10 password mutation serializes against concurrent refresh rotation', async () => {
+    const ctx = await seedUserWithOrg('LockOrd1!long-xy');
+    const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
+    const refreshB = new RefreshTokenService(
+      prismaB as never,
+      config,
+      { recordAndExecute: jest.fn() } as never,
+      new PlatformPermissionService(prismaB as never),
+    );
+    const [rotateResult, changeResult] = await Promise.allSettled([
+      refreshB.rotate(issued.refreshToken),
+      account.changePassword(
+        ctx.user.id,
+        ctx.orgA.id,
+        {
+          currentPassword: ctx.passwordPlain,
+          newPassword: 'LockOrd2!long-xy',
+          confirmPassword: 'LockOrd2!long-xy',
+          revokeOtherSessions: true,
+        },
+        {},
+      ),
+    ]);
+    expect(changeResult.status === 'fulfilled' || rotateResult.status === 'fulfilled').toBe(true);
+    if (changeResult.status === 'rejected' && rotateResult.status === 'rejected') {
+      throw changeResult.reason;
+    }
+    const live = await prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { sessionVersion: true },
+    });
+    expect(live!.sessionVersion).toBeGreaterThan(0);
+  });
+
+  it('ADMIN changePasswordAdmin denies old credentials and persists intent', async () => {
+    const ctx = await seedUserWithOrg('AdminPw1!long-xy');
+    const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
+    const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
+
+    await usersService.changePasswordAdmin(ctx.user.id, 'AdminSet2!long-xy', ctx.user.id);
+
+    await expect(authority.validateAccessJwt(decoded as never)).rejects.toThrow();
+    await expect(refreshTokens.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+    const row = await prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { mustChangePassword: true, passwordHash: true },
+    });
+    expect(row?.mustChangePassword).toBe(true);
+    const ok = await bcrypt.compare('AdminSet2!long-xy', row!.passwordHash!);
+    expect(ok).toBe(true);
+    expect(await bcrypt.compare(ctx.passwordPlain, row!.passwordHash!)).toBe(false);
+    const intent = await prisma.iamSessionRevocationIntent.findFirst({
+      where: { userId: ctx.user.id, eventType: 'PASSWORD_CHANGED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(intent?.idempotencyKey).toContain('USER_ALL_SESSIONS');
+  });
+
+  it('multi-scope high-risk reuse creates distinct scope intents', async () => {
+    const ctx = await seedUserWithOrg('MultiScope1!long');
+    const opKey = `multi-scope:${randomUUID()}`;
+    await prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [ctx.orgA.id],
+        userIds: [ctx.user.id],
+      });
+      await sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+        eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
+        userId: ctx.user.id,
+        organizationId: ctx.orgA.id,
+        idempotencyKey: opKey,
+        highRiskReuse: true,
+        tokenFamily: 'family-test',
+        mutationVersion: 1,
+      });
+    });
+    const rows = await prisma.iamSessionRevocationIntent.findMany({
+      where: { idempotencyKey: { startsWith: opKey } },
+      orderBy: { idempotencyKey: 'asc' },
+    });
+    expect(rows.map((r) => r.idempotencyKey)).toEqual([
+      `${opKey}:TOKEN_FAMILY`,
+      `${opKey}:USER_ALL_SESSIONS`,
+    ]);
   });
 });

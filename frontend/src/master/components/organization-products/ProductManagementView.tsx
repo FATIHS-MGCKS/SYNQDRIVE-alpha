@@ -10,6 +10,7 @@ import type { AdminCatalogProductRow } from '../../organizations/product-managem
 import { ProductRoadmapOverview } from './ProductRoadmapOverview';
 import { ProductCommercialHub } from './ProductCommercialHub';
 import { ProductCommercialScopePanel } from './ProductCommercialScopePanel';
+import { ProductCatalogEditorPanel } from './ProductCatalogEditorPanel';
 import type { MasterBillingSection } from '../billing/master-billing-navigation';
 import type { OrganizationOperationalRowDto } from '../../organizations/types';
 import { fetchProductManagementOrgPage, shouldUpdateOrgListState } from './product-management-org-list';
@@ -43,6 +44,7 @@ export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: Prod
   const [orgLoading, setOrgLoading] = useState(false);
   const [orgError, setOrgError] = useState<string | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [editorSlug, setEditorSlug] = useState<string | null>(null);
   const orgRequestId = useRef(0);
 
   const refreshCatalog = useCallback(async () => {
@@ -103,6 +105,12 @@ export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: Prod
 
   const selectedOrg = orgRows.find((o) => o.id === selectedOrgId) ?? null;
 
+  const mergeCatalogRow = (saved: AdminCatalogProductRow) => {
+    setCatalog((prev) => prev.map((row) => (row.slug === saved.slug ? { ...row, ...saved } : row)));
+  };
+
+  const editorStats = editorSlug ? stats.find((s) => s.slug === editorSlug) : undefined;
+
   return (
     <PageContainer variant="standard">
       <MasterPageHeader
@@ -126,7 +134,12 @@ export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: Prod
           {loading && <MasterLoadingState variant="card" count={3} />}
           {error && <MasterErrorState title="Katalog" error={error} onRetry={() => void refreshCatalog()} />}
           {!loading && !error && (
-            <ProductRoadmapOverview catalog={catalog} stats={stats} loading={loading} />
+            <ProductRoadmapOverview
+              catalog={catalog}
+              stats={stats}
+              loading={loading}
+              onEditProduct={(slug) => setEditorSlug(slug)}
+            />
           )}
         </MasterPageSection>
 
@@ -249,6 +262,20 @@ export function ProductManagementView({ onOpenOrgProducts, onOpenBilling }: Prod
           )}
         </MasterPageSection>
       </div>
+
+      {editorSlug && (
+        <ProductCatalogEditorPanel
+          productSlug={editorSlug}
+          stats={editorStats}
+          selectedOrgId={selectedOrgId}
+          onClose={() => setEditorSlug(null)}
+          onSaved={(row) => {
+            mergeCatalogRow(row);
+          }}
+          onOpenOrgProducts={onOpenOrgProducts}
+          onOpenBilling={onOpenBilling}
+        />
+      )}
     </PageContainer>
   );
 }

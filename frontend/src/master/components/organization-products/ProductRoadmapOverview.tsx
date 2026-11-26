@@ -1,18 +1,15 @@
+import { Pencil } from 'lucide-react';
 import { StatusChip } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/LanguageContext';
 import type { AdminCatalogProductRow } from '../../organizations/product-management.types';
 import {
-  PRODUCT_BUSINESS_STATUS_LABEL_DE,
   businessLaunchStatusForSlug,
   isSelectableProductSlug,
 } from '../../organizations/product-management.policy';
 
 const ROADMAP_SLUG_ORDER = ['RENTAL', 'FLEET', 'VYMOD'] as const;
-
-const PRODUCT_DISPLAY_NAME: Record<string, string> = {
-  RENTAL: 'SYNQDRIVE Rental',
-  FLEET: 'SYNQDRIVE Fleet',
-  VYMOD: 'VYMOD',
-};
 
 type ProductStatRow = {
   slug: string;
@@ -25,9 +22,11 @@ interface ProductRoadmapOverviewProps {
   catalog: AdminCatalogProductRow[];
   stats?: ProductStatRow[];
   loading?: boolean;
+  onEditProduct?: (slug: string) => void;
 }
 
-export function ProductRoadmapOverview({ catalog, stats, loading }: ProductRoadmapOverviewProps) {
+export function ProductRoadmapOverview({ catalog, stats, loading, onEditProduct }: ProductRoadmapOverviewProps) {
+  const { t } = useLanguage();
   const bySlug = Object.fromEntries(catalog.map((c) => [c.slug, c]));
   const statsBySlug = Object.fromEntries((stats ?? []).map((s) => [s.slug, s]));
 
@@ -42,7 +41,7 @@ export function ProductRoadmapOverview({ catalog, stats, loading }: ProductRoadm
         return (
           <div key={slug} className="surface-premium p-4 space-y-2" data-product-slug={slug}>
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-sm">{PRODUCT_DISPLAY_NAME[slug] ?? row?.name ?? slug}</h3>
+              <h3 className="font-semibold text-sm">{row?.name ?? slug}</h3>
               {row?.catalogStatus && (
                 <StatusChip className="!text-xs" tone="neutral">
                   Katalog: {row.catalogStatus}
@@ -52,7 +51,7 @@ export function ProductRoadmapOverview({ catalog, stats, loading }: ProductRoadm
             <p className="text-xs font-mono text-muted-foreground">{slug}</p>
             {business && (
               <StatusChip tone={tone} className="!text-xs">
-                {PRODUCT_BUSINESS_STATUS_LABEL_DE[business]}
+                {t(`master.productCatalog.business.${business}` as TranslationKey)}
               </StatusChip>
             )}
             {!loading && stat && (
@@ -67,6 +66,18 @@ export function ProductRoadmapOverview({ catalog, stats, loading }: ProductRoadm
             )}
             {row && !isSelectableProductSlug(slug) && (
               <p className="text-xs text-muted-foreground">Nicht zur Neuzuweisung verfügbar</p>
+            )}
+            {onEditProduct && row && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full justify-center gap-2 mt-1"
+                onClick={() => onEditProduct(slug)}
+              >
+                <Pencil className="w-3.5 h-3.5" aria-hidden />
+                {t('master.productCatalog.editor.editMetadata')}
+              </Button>
             )}
           </div>
         );

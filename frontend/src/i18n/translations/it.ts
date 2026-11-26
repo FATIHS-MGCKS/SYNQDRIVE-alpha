@@ -16,6 +16,7 @@ import { masterVehicleIdentityIt } from './master.vehicleIdentity.it';
 import { masterOneAutoIt } from './master.oneAuto.it';
 import { masterOrganizationsIt } from './master.organizations.it';
 import { masterProductCommercialIt } from './master.productCommercial.it';
+import { masterProductCatalogIt } from './master.productCatalog.it';
 import { masterCreditManagementIt } from './master.creditManagement.it';
 import { masterBillingInvoicesIt } from './master.billing.invoices.it';
 import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
@@ -221,10 +222,11 @@ export const it = {
   ...masterIntelligenceIt,
   ...masterSidebarV1It,
   ...masterMotionPhysicsIt,
-...masterVehicleIdentityIt,
+  ...masterVehicleIdentityIt,
   ...masterOneAutoIt,
   ...masterOrganizationsIt,
   ...masterProductCommercialIt,
+  ...masterProductCatalogIt,
   ...masterCreditManagementIt,
   ...masterBillingInvoicesIt,
   ...masterCvTechnicalSpecsIt,

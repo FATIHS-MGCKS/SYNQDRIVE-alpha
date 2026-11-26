@@ -8,6 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
 import {
   buildRevocationIdempotencyKey,
+  buildScopedRevocationIdempotencyKey,
   type IamSessionInvalidationTrigger,
   resolveSessionInvalidationScope,
   type SessionInvalidationScope,
@@ -94,7 +95,7 @@ export class IamSessionPolicyService {
     const intentIds: string[] = [];
 
     for (const scope of scopes) {
-      const idempotencyKey =
+      const baseKey =
         input.idempotencyKey ??
         buildRevocationIdempotencyKey({
           eventType: input.eventType,
@@ -104,12 +105,19 @@ export class IamSessionPolicyService {
           refreshTokenId: input.refreshTokenId,
           tokenFamily: input.tokenFamily,
           mutationVersion: input.mutationVersion,
-        }) + `:${scope}`;
+        });
+      const idempotencyKey = buildScopedRevocationIdempotencyKey(baseKey, scope);
 
-      const existing = await tx.iamSessionRevocationIntent.findUnique({
+      let existing = await tx.iamSessionRevocationIntent.findUnique({
         where: { idempotencyKey },
         select: { id: true, status: true },
       });
+      if (!existing && input.idempotencyKey && scopes.length === 1) {
+        existing = await tx.iamSessionRevocationIntent.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          select: { id: true, status: true },
+        });
+      }
       if (existing) {
         intentIds.push(existing.id);
         continue;
@@ -164,30 +172,13 @@ export class IamSessionPolicyService {
       ),
     );
 
-    const allAuthoritative = priorRows.every((row) => {
-      if (!row) return false;
-      const meta =
-        row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
-          ? (row.metadata as Record<string, unknown>)
-          : null;
-      return meta?.authoritativeAppliedInCommit === true;
-    });
-
-    if (allAuthoritative) {
-      const revokedTokenCount = Math.max(
-        0,
-        ...priorRows.map((row) => row?.revokedTokenCount ?? 0),
-      );
-      return { intentIds, scopes, revokedTokenCount, idempotentReplay: true };
-    }
-
-    const revokedTokenCount = await this.applyAuthoritativeScopesInTransaction(tx, scopes, {
+    const ctx = {
       userId: resolved.userId,
       organizationId: resolved.organizationId ?? null,
       membershipId: resolved.membershipId ?? null,
       refreshTokenId: resolved.refreshTokenId ?? null,
       tokenFamily: resolved.tokenFamily ?? null,
-    });
+    };
 
     const operationIdentity =
       resolved.idempotencyKey ??
@@ -201,30 +192,50 @@ export class IamSessionPolicyService {
         mutationVersion: resolved.mutationVersion,
       });
 
-    for (const intentId of intentIds) {
-      const existing = priorRows[intentIds.indexOf(intentId)];
+    let revokedTokenCount = 0;
+    let anyApplied = false;
+    let allScopesReplay = true;
+
+    for (let i = 0; i < scopes.length; i++) {
+      const scope = scopes[i]!;
+      const intentId = intentIds[i]!;
+      const existing = priorRows[i];
       const prior =
         existing?.metadata &&
         typeof existing.metadata === 'object' &&
         !Array.isArray(existing.metadata)
           ? (existing.metadata as Record<string, unknown>)
           : {};
+      if (prior.authoritativeAppliedInCommit === true) {
+        revokedTokenCount += existing?.revokedTokenCount ?? 0;
+        continue;
+      }
+      allScopesReplay = false;
+      const scopeCount = await this.applyRevocationScopeInTransaction(tx, scope, ctx);
+      anyApplied = true;
+      revokedTokenCount += scopeCount;
       await tx.iamSessionRevocationIntent.update({
         where: { id: intentId },
         data: {
-          revokedTokenCount,
+          revokedTokenCount: scopeCount,
           metadata: {
             ...prior,
             ...(resolved.metadata ?? {}),
             authoritativeAppliedInCommit: true,
             operationIdentity,
             mutationVersion: resolved.mutationVersion ?? 0,
+            scope,
           } as Prisma.InputJsonValue,
         },
       });
     }
 
-    return { intentIds, scopes, revokedTokenCount, idempotentReplay: false };
+  return {
+      intentIds,
+      scopes,
+      revokedTokenCount,
+      idempotentReplay: !anyApplied && allScopesReplay && intentIds.length > 0,
+    };
   }
 
   /**

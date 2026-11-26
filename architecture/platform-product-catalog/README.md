@@ -28,15 +28,17 @@
 | Vehicle product access | P2-PR3 — schema + internal `ProductVehicleAccessService`; grants empty until P2-PR4 |
 | Master Admin grants / mode | P2-PR4A — backend APIs + MFA + audit; UI in P2-PR4B |
 
-## `ProductCatalogStatus.DISABLED` (P2-PR1)
+## `ProductCatalogStatus.DISABLED` (P2-PR1 + P2A)
 
-`DISABLED` is **catalog metadata only** for Master Admin / platform inventory. It does **not**:
+**P2A (2026-11-25):** `DISABLED` **blocks new admission** (org product assign/reactivate, vehicle grant/re-grant, vehicle access broaden) via `product-catalog-admission.authority.ts`. See `CHANGE_RECORD_P2A_ADMISSION_2026-11-25.md` and `ADMISSION_ENTRYPOINT_MATRIX_P2A.md`.
 
-- Revoke or block existing `OrganizationProduct` entitlements
+`DISABLED` still does **not**:
+
+- Revoke or delete existing `OrganizationProduct` rows
 - Change `ProductLicenseGuard` (still `OrganizationProduct.status === ACTIVE` only)
-- Prevent `assignProduct` for a disabled catalog product until a future slice explicitly wires enforcement
+- Alter billing, subscriptions, or `core.entitlements.v1` read semantics for existing entitlements
 
-Treat `catalogStatus` as lifecycle visibility in the product catalog, separate from org licensing state.
+**P2B (2026-11-25):** Master Admin catalog status toggle (`ACTIVE` ↔ `DISABLED`) — dedicated API + impact preview + UI. See `STATUS_TRANSITION_MATRIX_P2B.md` and `CHANGE_RECORD_P2B_STATUS_2026-11-25.md`. P2A admission lock ordering preserved.
 
 ## External applications — service client registry (P3-PR1)
 

@@ -7716,6 +7716,24 @@ export const api = {
   },
   products: {
     list: () => get<any[]>('/admin/products'),
+    getCatalogProduct: (productSlug: string) =>
+      get<{
+        id: string;
+        slug: string;
+        name: string;
+        description: string;
+        catalogStatus: string;
+        organizationsCount: number;
+      }>(`/admin/products/${encodeURIComponent(productSlug)}`),
+    patchMetadata: (
+      productSlug: string,
+      body: {
+        name: string;
+        description?: string | null;
+        ifCurrentName: string;
+        ifCurrentDescription: string | null;
+      },
+    ) => patch<typeof body>(`/admin/products/${encodeURIComponent(productSlug)}`, body),
     stats: () => get<any>('/admin/products/stats'),
     listByOrg: (orgId: string) => get<any[]>(`/admin/products/org/${orgId}`),
     assign: (data: {
@@ -7761,6 +7779,58 @@ export const api = {
         `/admin/organizations/${encodeURIComponent(orgId)}/vehicles/${encodeURIComponent(vehicleId)}/product-grants/${encodeURIComponent(productSlug)}`,
       ),
     /** Status-aware mutations for Master Admin UI (409/403 discrimination). */
+    patchMetadataResult: (
+      productSlug: string,
+      body: {
+        name: string;
+        description?: string | null;
+        ifCurrentName: string;
+        ifCurrentDescription: string | null;
+      },
+    ) =>
+      requestResult<{
+        id: string;
+        slug: string;
+        name: string;
+        description: string;
+        catalogStatus: string;
+        organizationsCount: number;
+      }>(`/admin/products/${encodeURIComponent(productSlug)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    getCatalogStatusImpact: (productSlug: string, targetCatalogStatus?: 'ACTIVE' | 'DISABLED') => {
+      const qs =
+        targetCatalogStatus != null
+          ? `?targetCatalogStatus=${encodeURIComponent(targetCatalogStatus)}`
+          : '';
+      return get<Record<string, unknown>>(
+        `/admin/products/${encodeURIComponent(productSlug)}/catalog-status/impact${qs}`,
+      );
+    },
+    patchCatalogStatusResult: (
+      productSlug: string,
+      body: {
+        catalogStatus: 'ACTIVE' | 'DISABLED';
+        ifCurrentCatalogStatus: 'ACTIVE' | 'DISABLED';
+        changeReason: string;
+      },
+    ) =>
+      requestResult<{
+        product: {
+          id: string;
+          slug: string;
+          name: string;
+          description: string;
+          catalogStatus: string;
+          organizationsCount: number;
+        };
+        impact: Record<string, unknown>;
+        noop: boolean;
+      }>(`/admin/products/${encodeURIComponent(productSlug)}/catalog-status`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
     assignResult: (data: {
       orgId: string;
       productSlug: string;

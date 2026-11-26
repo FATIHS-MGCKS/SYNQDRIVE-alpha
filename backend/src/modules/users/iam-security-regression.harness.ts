@@ -93,6 +93,7 @@ export function createUsersServiceHarness() {
     iamAudit as unknown as import('./iam-audit.service').IamAuditService,
     lifecycle as unknown as import('./iam-membership-lifecycle.service').IamMembershipLifecycleService,
     passwordReset as unknown as import('@modules/auth/password-reset.service').PasswordResetService,
+    sessionPolicy as unknown as import('@modules/auth/iam-session-policy.service').IamSessionPolicyService,
   );
   return { prisma, iamAudit, lifecycle, passwordReset, userAudit, sessionPolicy, service };
 }
