@@ -247,7 +247,7 @@ Authoritative matrix: [`ADMISSION_ENTRYPOINT_MATRIX_P2A.md`](../ADMISSION_ENTRYP
 | — | — | No P0/P1 defects identified in repository audit | — |
 | ACC-GAP-01 | P2 | Full Playwright MA catalog journey not executed at `7e0a00b49` in audit session | Open |
 | ACC-GAP-02 | P2 | Disposable PG 28/28 not re-executed on audited SHA in audit session (CI recorded only) | Open |
-| ACC-GAP-03 | P3 | P2B race A lacks `pg_locks` waiter assertion (intentional flake removal) | Accepted |
+| ACC-GAP-03 | P3 | P2B race A lacks `pg_locks` waiter assertion (intentional flake removal) | **Open** (documented limitation; **not** owner-accepted) |
 
 ---
 
@@ -274,6 +274,64 @@ Application revert of P1/P2A/P2B commits returns prior behavior; `catalog_status
 | **Release readiness** | **HOLD** pending `main` CI completion + owner deploy attestation |
 
 This audit does **not** award `FINAL_ACCEPTANCE_GO` per operation rules.
+
+---
+
+## Evidence closure pass (2026-11-26)
+
+**Operation:** `SYNQDRIVE_PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_EVIDENCE_CLOSURE`  
+**Audited runtime SHA:** `7e0a00b49941e0e23553ab568f6e72ddce8da77a`  
+**Current `origin/main`:** `7e0a00b49941e0e23553ab568f6e72ddce8da77a` (no drift)  
+**Audit PR:** [#2538](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2538) head `8036d3b1163b06e86b5b73da4fb7b81e1693696f` (documentation-only delta on audited runtime)
+
+### PostgreSQL certification (`7e0a00b49`)
+
+| Field | Value |
+|-------|-------|
+| Workflow | `.github/workflows/product-catalog-metadata-postgres.yml` |
+| `workflow_dispatch` on `main` | **BLOCKED** — agent token HTTP 403 (`Resource not accessible by integration`) |
+| Runs with `headSha == 7e0a00b49` | **None** (workflow is `pull_request` + `workflow_dispatch` only; merge to `main` does **not** auto-trigger) |
+| Agent local Docker disposable PG | **NOT_EXECUTED** — no Docker on audit VM |
+| **POSTGRES_EXECUTION_SHA** | **N/A** — 28/28 **not executed** on audited runtime SHA |
+
+**ACC-GAP-02 status:** **OPEN** — owner must run `workflow_dispatch` on ref `main` @ `7e0a00b49` (or Docker agent) and append run URL.
+
+**Correction:** Prior references to PR #2537 branch CI (`69d3fb7`) are **historical merge-branch evidence only** and **do not** certify `7e0a00b49`.
+
+### Playwright certification (`7e0a00b49`)
+
+| Coverage | Evidence |
+|----------|----------|
+| Existing spec | `frontend/e2e/master-product-catalog-editor.spec.ts` (2 tests; **mocked** admin product APIs) |
+| Executed 2026-11-26 (agent VM) | `npx playwright test master-product-catalog-editor.spec.ts` @ SHA `7e0a00b49` |
+| `desktop-1280` | **EXECUTED_PASS** 2/2 |
+| `mobile-390` | **EXECUTED_PASS** 2/2 |
+
+**Not covered:** required flows A–E (real MFA, metadata CAS save, status lifecycle, admission checks, security errors, axe, nine-locale E2E, disposable DB).
+
+**ACC-GAP-01 status:** **OPEN**.
+
+### Billing regression snapshot
+
+**NOT_EXECUTED** (no disposable before/after billing tables). Entitlement preservation remains **inspect + prior spec design** only in this pass.
+
+### Security / unit re-check (`7e0a00b49` tree)
+
+| Suite | Result |
+|-------|--------|
+| Catalog Jest (admission, HTTP, parse) | **EXECUTED_PASS** 15/15 |
+| Status dialog Vitest | **EXECUTED_PASS** 7/7 |
+
+### Main canonical CI @ `7e0a00b49`
+
+Vehicle Detail readiness run [`45779674935`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45779674935): **PENDING** at evidence update time.
+
+### Closure verdicts
+
+| Verdict | Value |
+|---------|-------|
+| **FINAL_ACCEPTANCE_VERDICT** | **FINAL_ACCEPTANCE_HOLD** |
+| **PRODUCTION_RELEASE_VERDICT** | **HOLD** |
 
 ---
 
