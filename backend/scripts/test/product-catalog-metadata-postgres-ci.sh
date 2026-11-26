@@ -142,4 +142,22 @@ run_jest_postgres_suite \
   "product-catalog-status.postgres.integration" \
   "14"
 
-echo "Product catalog metadata P1 + P2A admission + P2B status disposable PostgreSQL certification: PASS"
+export PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION=1
+run_jest_postgres_suite \
+  "Product Catalog V2 HTTP acceptance (backend-integrated)" \
+  "product-catalog-v2-acceptance.http.postgres.integration" \
+  "16"
+
+export PRODUCT_CATALOG_V2_BILLING_PRESERVATION_POSTGRES_INTEGRATION=1
+run_jest_postgres_suite \
+  "Product Catalog V2 billing preservation" \
+  "product-catalog-v2-billing-preservation.postgres.integration" \
+  "1"
+
+export VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION=1
+run_jest_postgres_suite \
+  "Vehicle product grant TOCTOU review" \
+  "vehicle-product-grant-toctou.postgres.integration" \
+  "3"
+
+echo "Product catalog metadata P1 + P2A + P2B + V2 acceptance disposable PostgreSQL certification: PASS"
