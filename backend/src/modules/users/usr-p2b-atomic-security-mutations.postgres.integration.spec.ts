@@ -28,7 +28,6 @@ import { AuthMfaLoginService } from '@modules/auth/auth-mfa-login.service';
 import { IamMfaResetService } from '@modules/iam-mfa/iam-mfa-reset.service';
 import { IamAuditService } from '@modules/users/iam-audit.service';
 import { IamMembershipLifecycleService } from '@modules/users/iam-membership-lifecycle.service';
-import { UsersService } from '@modules/users/users.service';
 import { generatePasswordResetToken, passwordResetTokenLookupKey } from '@modules/auth/utils/password-reset-token.util';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 
@@ -54,7 +53,7 @@ function assertDisposableDb(): void {
   let passwordReset: PasswordResetService;
   let mfaReset: IamMfaResetService;
   let lifecycle: IamMembershipLifecycleService;
-  let usersService: UsersService;
+  let iamAudit: IamAuditService;
   let mfaLogin: AuthMfaLoginService;
   let prismaB: PrismaClient;
 
@@ -104,7 +103,7 @@ function assertDisposableDb(): void {
       sessionPolicy,
       userAudit,
     );
-    const iamAudit = {
+    iamAudit = {
       enqueueInTransaction: jest.fn().mockImplementation(async (tx, input) => {
         return { id: randomUUID(), ...input };
       }),
@@ -115,13 +114,6 @@ function assertDisposableDb(): void {
       prisma as never,
       iamAudit,
       { notifyAfterCommit: jest.fn() } as never,
-      sessionPolicy,
-    );
-    usersService = new UsersService(
-      prisma as never,
-      iamAudit,
-      lifecycle,
-      passwordReset,
       sessionPolicy,
     );
     mfaLogin = new AuthMfaLoginService(
@@ -666,15 +658,19 @@ function assertDisposableDb(): void {
     expect(scopedIntents[0]!.revokedTokenCount).toBeGreaterThanOrEqual(0);
   });
 
+  function refreshServiceOn(client: PrismaClient) {
+    return new RefreshTokenService(
+      client as never,
+      config,
+      { recordAndExecute: jest.fn() } as never,
+      new PlatformPermissionService(client as never),
+    );
+  }
+
   it('B10 password mutation serializes against concurrent refresh rotation', async () => {
     const ctx = await seedUserWithOrg('LockOrd1!long-xy');
     const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
-    const refreshB = new RefreshTokenService(
-      prismaB as never,
-      config,
-      { recordAndExecute: jest.fn() } as never,
-      new PlatformPermissionService(prismaB as never),
-    );
+    const refreshB = refreshServiceOn(prismaB);
     const [rotateResult, changeResult] = await Promise.allSettled([
       refreshB.rotate(issued.refreshToken),
       account.changePassword(
@@ -700,7 +696,70 @@ function assertDisposableDb(): void {
     expect(live!.sessionVersion).toBeGreaterThan(0);
   });
 
+  it('B10 MFA reset serializes against concurrent refresh rotation', async () => {
+    const ctx = await seedUserWithOrg('LockMfa1!long-xy');
+    await prisma.userMfaFactor.create({
+      data: {
+        userId: ctx.user.id,
+        factorType: MfaFactorType.TOTP,
+        encryptedSecret: 'enc',
+        label: 'p2b',
+        verifiedAt: new Date(),
+        enabledAt: new Date(),
+      },
+    });
+    const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
+    const refreshB = refreshServiceOn(prismaB);
+    const [rotateResult, resetResult] = await Promise.allSettled([
+      refreshB.rotate(issued.refreshToken),
+      mfaReset.resetMfaForUser({
+        organizationId: ctx.orgA.id,
+        targetUserId: ctx.user.id,
+        actorUserId: ctx.user.id,
+        idempotencyKey: `mfa-b10:${randomUUID()}`,
+      }),
+    ]);
+    expect(resetResult.status === 'fulfilled' || rotateResult.status === 'fulfilled').toBe(true);
+    if (resetResult.status === 'rejected' && rotateResult.status === 'rejected') {
+      throw resetResult.reason;
+    }
+    const sec = await prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { securityVersion: true },
+    });
+    expect(sec!.securityVersion).toBeGreaterThan(0);
+  });
+
+  it('B10 membership mutation serializes against concurrent refresh rotation', async () => {
+    const ctx = await seedUserWithOrg('LockMem1!long-xy');
+    const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
+    const refreshB = refreshServiceOn(prismaB);
+    const [rotateResult, suspendResult] = await Promise.allSettled([
+      refreshB.rotate(issued.refreshToken),
+      lifecycle.suspend({
+        organizationId: ctx.orgA.id,
+        userId: ctx.user.id,
+        idempotencyKey: `suspend-b10:${randomUUID()}`,
+        reason: 'p2b-b10',
+      }),
+    ]);
+    expect(suspendResult.status === 'fulfilled' || rotateResult.status === 'fulfilled').toBe(true);
+    if (suspendResult.status === 'rejected' && rotateResult.status === 'rejected') {
+      throw suspendResult.reason;
+    }
+    const mem = await prisma.organizationMembership.findUnique({ where: { id: ctx.memA.id } });
+    expect(mem?.status).toBe(MembershipStatus.SUSPENDED);
+  });
+
   it('ADMIN changePasswordAdmin denies old credentials and persists intent', async () => {
+    const { UsersService } = await import('@modules/users/users.service');
+    const usersService = new UsersService(
+      prisma as never,
+      iamAudit,
+      lifecycle,
+      passwordReset,
+      sessionPolicy,
+    );
     const ctx = await seedUserWithOrg('AdminPw1!long-xy');
     const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
     const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;

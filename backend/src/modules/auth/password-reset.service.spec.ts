@@ -32,6 +32,7 @@ describe('PasswordResetService (Prompt 6)', () => {
       updateMany: jest.Mock;
     };
     $transaction: jest.Mock;
+    $executeRaw: jest.Mock;
   };
   let rateLimit: { assertWithinLimit: jest.Mock };
   let mail: { sendPasswordReset: jest.Mock; sendPasswordResetCompleted: jest.Mock };

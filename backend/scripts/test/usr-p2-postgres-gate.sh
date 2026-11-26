@@ -76,6 +76,11 @@ run_jest() {
   npx jest "$@" --runInBand --forceExit || fail "jest failed: $*"
 }
 
+run_jest_heavy() {
+  node --max-old-space-size=8192 ./node_modules/jest/bin/jest.js "$@" --runInBand --forceExit \
+    || fail "jest failed: $*"
+}
+
 log 'USR-P2A IAM schema smoke PostgreSQL'
 export USR_P2A_IAM_SCHEMA_SMOKE_PG=1
 run_jest usr-p2a-iam-schema-smoke.postgres.integration.spec.ts
@@ -96,9 +101,29 @@ log 'USR-P2 GATE-1 security mutation atomicity PostgreSQL'
 export USR_P2_GATE1_PG=1
 run_jest usr-p2-gate1-security-mutation.postgres.integration.spec.ts
 
-log 'USR-P2B atomic security mutations PostgreSQL'
+log 'USR-P2B atomic security mutations PostgreSQL (sharded; avoids single-process heap OOM)'
 export USR_P2B_ATOMIC_SECURITY_PG=1
-run_jest usr-p2b-atomic-security-mutations.postgres.integration.spec.ts
+P2B_SPEC=usr-p2b-atomic-security-mutations.postgres.integration.spec.ts
+P2B_SHARDS=(
+  'B01 AccountService'
+  'B02 fresh login'
+  'B03 distinct'
+  'B04 same-operation'
+  'B05 concurrent'
+  'B06 transaction rollback'
+  'B07 password reset'
+  'B08 MFA reset'
+  'B09 membership'
+  'B10 password mutation'
+  'B10 MFA reset'
+  'B10 membership mutation'
+  'ADMIN changePasswordAdmin'
+  'multi-scope high-risk'
+)
+for shard in "${P2B_SHARDS[@]}"; do
+  log "USR-P2B shard: ${shard}"
+  run_jest_heavy "${P2B_SPEC}" -t "${shard}"
+done
 
 log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1
