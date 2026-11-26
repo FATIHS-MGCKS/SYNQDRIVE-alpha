@@ -5,7 +5,7 @@
 | Field | SHA / value |
 |-------|-------------|
 | **RUNTIME_BASELINE_SHA** | `7e0a00b49941e0e23553ab568f6e72ddce8da77a` |
-| **TEST_HARNESS_HEAD_SHA** | _(set at PR merge — branch `cursor/product-catalog-v2-acceptance-harness-90d9`)_ |
+| **TEST_HARNESS_HEAD_SHA** | `77d9f5285` (PR #2539) |
 | **POSTGRES_EXECUTION_SHA** | _(CI `product-catalog-metadata-postgres.yml` on harness PR HEAD)_ |
 | **PLAYWRIGHT_EXECUTION_SHA** | _(CI / agent run on harness PR HEAD)_ |
 
