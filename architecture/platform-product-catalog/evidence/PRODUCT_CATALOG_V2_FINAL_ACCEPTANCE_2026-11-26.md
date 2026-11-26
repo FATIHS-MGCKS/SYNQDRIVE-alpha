@@ -1,0 +1,291 @@
+# Product Catalog V2 — final acceptance & integration audit
+
+**Operation:** `SYNQDRIVE_PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_INTEGRATION_AUDIT`  
+**Date (Europe/Berlin):** 2026-11-26  
+**Repository:** `FATIHS-MGCKS/SYNQDRIVE-alpha`  
+**Audited baseline SHA (`origin/main`):** `7e0a00b49941e0e23553ab568f6e72ddce8da77a`  
+**Expected baseline SHA:** `7e0a00b49941e0e23553ab568f6e72ddce8da77a` (match)  
+**Scope:** P1 metadata editor, P2A catalog admission, P2B catalog status lifecycle (Product Catalog V2)  
+**Production operations:** none (no deploy, no production reads/writes, no live catalog transitions)
+
+## PR lineage (merged)
+
+| Phase | PR | Merge commit on `main` | Parent chain |
+|-------|-----|------------------------|--------------|
+| P1 | [#2531](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2531) | `8016c2ce4` | Post-USR closeout baseline |
+| P2A | [#2535](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2535) | `3650d38bc` | On `8016c2ce4` |
+| P2B | [#2537](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2537) | `7e0a00b49` (tip) | Squash-merge of branch head `69d3fb7b9` |
+
+**Intervening commits between expected baseline and audit:** none — `7e0a00b49` is current `origin/main` tip for this audit window.
+
+**Primary implementation surfaces (non-exhaustive):**
+
+- `backend/src/modules/products/products.service.ts` — metadata PATCH, admission, status lifecycle
+- `backend/src/modules/products/product-catalog-admission.authority.ts` — admission guards + row lock
+- `backend/src/modules/products/parse-product-catalog-status-patch.ts` — P2B request contract
+- `backend/src/modules/products/product-catalog-status-*.ts` — impact, audit, postgres suites
+- `frontend/src/master/components/organization-products/ProductCatalogEditorPanel.tsx`
+- `frontend/src/master/components/organization-products/ProductCatalogStatusChangeDialog.tsx`
+- `architecture/platform-product-catalog/*` — change records, admission matrix, status matrix
+
+**Registry:** Platform catalog module remains `AUDIT_IN_PROGRESS` in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` §2 — **unchanged** by this documentation-only audit.
+
+## Executed commands (audit agent run)
+
+| Command | Result | Notes |
+|---------|--------|-------|
+| `git fetch origin main` + SHA verify | **EXECUTED_PASS** | `7e0a00b49` |
+| `bash architecture/scripts/validate-module-registry.sh` | **EXECUTED_PASS** | 2026-11-26 agent VM |
+| `cd backend && npx prisma validate` | **EXECUTED_PASS** | Pre-existing schema warning only |
+| `npm test` (catalog unit, no PG integration) | **EXECUTED_PASS** | 20 tests (admission + http-security + parse-status + catalog-admission authority) |
+| `cd frontend && vitest` `ProductCatalogStatusChangeDialog.test.ts` | **EXECUTED_PASS** | 7/7 |
+| `bash backend/scripts/test/product-catalog-metadata-postgres-ci.sh` | **NOT_EXECUTED** | Agent VM: no Docker |
+| Full backend Jest / Playwright / i18n authority workflows on `7e0a00b49` | **NOT_EXECUTED** | Main push CI **pending/in progress** at audit time (see § CI evidence) |
+
+## CI evidence (secondary — not substituted for audit-session re-runs)
+
+| Evidence | SHA | Verdict | URL / note |
+|----------|-----|---------|------------|
+| PR #2537 branch CI (38 checks) | `69d3fb7b90f68165e9d1eeaaba6dde426c3ba3e0` | **RECORDED_PASS** | GitHub subscription conclusion success 2026-11-26 ~01:05 UTC+1; includes disposable PG **14/14 P2B** |
+| PR #2537 PostgreSQL workflow | `69d3fb7` | **RECORDED_PASS** | Run `45722969002` (final green after TS + race fixes) |
+| `main` push workflows @ `7e0a00b49` | `7e0a00b49` | **PENDING** at audit | e.g. Vehicle Detail readiness run `45779674935` still running; **do not mark PASS** |
+
+## Traceability matrix (summary)
+
+| Requirement | Implementation | Executed test / evidence | Verdict |
+|-------------|----------------|--------------------------|---------|
+| P1 metadata CAS | `updateProductMetadataForMasterAdmin` | `product-metadata.postgres.integration.spec.ts` (4) — **RECORDED** via PR2537 CI, **NOT** re-run audit | PASS (recorded) |
+| P1 no catalogStatus in metadata PATCH | Service allowlist + tests | `products.http-security` + metadata spec | PASS |
+| P2A DISABLED denies admission | `product-catalog-admission.authority.ts` | P2A spec (10) — **RECORDED** via PR2537 CI | PASS (recorded) |
+| P2B status CAS + audit | `updateProductCatalogStatusForMasterAdmin` | P2B spec (14) — **RECORDED** via PR2537 CI | PASS (recorded) |
+| P2B concurrency disable-first | P2B spec case A | Recorded CI; barrier + settlement (no `pg_locks`) | PASS (recorded) |
+| MFA + 409 UI recovery | `ProductCatalogStatusChangeDialog.tsx` | Vitest 7/7 **audit EXECUTED** | PASS |
+| TAXI retirement | `retired-platform-product-slugs.ts` | P2B + P2A specs | PASS |
+| Billing isolation | No billing writer on catalog status | Code audit + P2A matrix | PASS (inspect) |
+| MA Playwright journey | Playwright config exists | **NOT_EXECUTED** this audit | GAP |
+
+---
+
+## Gate 0 — Source and baseline integrity
+
+**Verdict: PASS**
+
+- `origin/main` at audited SHA matches owner expected SHA.
+- PRs #2531, #2535, #2537 present on `main` history (`git log` order: 7e0a00b → 3650d38 → 8016c2c).
+- Migrations: `ProductCatalogStatus` on `products`; P2B mandatory audit utilities; no new migration required for P2A/P2B admission lock (column pre-existing from P2-PR1).
+- CI workflow: `Product catalog metadata — P1 PostgreSQL integration` (`backend/scripts/test/product-catalog-metadata-postgres-ci.sh`) — P1=4, P2A=10, P2B=14.
+
+---
+
+## Gate 1 — Product catalog integrity
+
+**Verdict: PASS** (repository inspection + recorded PG + unit tests)
+
+| Control | Finding |
+|---------|---------|
+| Slugs immutable | Master Admin metadata PATCH scoped to name/description; slug in path only |
+| Metadata CAS | `ifCurrentName` / `ifCurrentDescription`; stale → `ConflictException` |
+| Dedicated status API | `PATCH` catalog-status + impact `GET`; not via metadata PATCH |
+| `ProductCatalogStatus` enum | `ACTIVE` \| `DISABLED` only (Prisma) |
+| TAXI | Reactivation blocked in P2B; assign blocked per P2-PR4C |
+| P1 cannot mutate `catalogStatus` | Metadata patch DTO excludes status (inspect `products.controller.ts` + service) |
+| P2B cannot mutate unrelated fields | Status patch parse allowlist |
+| No-op under lock | `updateProductCatalogStatusForMasterAdmin` — no audit on genuine no-op |
+| Impact preview | `getProductCatalogStatusImpact`; `previewMayBeStaleBeforeWrite` in UI |
+| Write-time validation | CAS `ifCurrentCatalogStatus` under `FOR UPDATE` |
+
+**Files:** `products.service.ts` (~147–370), `parse-product-catalog-status-patch.ts`, `product-catalog-status-impact.util.ts`
+
+---
+
+## Gate 2 — Organization product admission
+
+**Verdict: PASS** (matrix + writer classification)
+
+Authoritative matrix: [`ADMISSION_ENTRYPOINT_MATRIX_P2A.md`](../ADMISSION_ENTRYPOINT_MATRIX_P2A.md).
+
+### Production `OrganizationProduct` writers (discovered)
+
+| Writer | Classification | P2A/P2B guard |
+|--------|----------------|---------------|
+| `ProductsService.assignProduct` / `assignProductForMasterAdmin` | **GUARDED** | `assertCatalogAdmissionAllowed` + row lock |
+| `ProductsService` upsert/update paths inside assign | **GUARDED** | Same transaction |
+| `ProductsService.removeProduct` | **NOT_ADMISSION** | Removal |
+| `ProductsService.updateProductMetadataForMasterAdmin` | **NOT_ADMISSION** | Metadata only |
+| `ProductsService.updateVehicleAccessMode` (broaden) | **GUARDED** | Admission authority |
+| `VehicleProductGrantService.grantExplicit` | **GUARDED** | Admission for new/re-grant |
+| `VehicleProductGrantService.revokeGrant` | **NOT_ADMISSION** | Revocation |
+| Test harnesses (`*.postgres.integration.spec.ts`, `org-product-test.harness.ts`) | **TEST_ONLY** | Direct Prisma |
+| `core-app-m2m` contract integration spec | **TEST_ONLY** | Fixture bootstrap |
+| Billing modules | **NOT_ADMISSION** | No `organizationProduct.create` in billing tree (grep) |
+| Seeds | **EXCEPTION** | Operational bootstrap; documented deferral |
+
+**Bypass search:** No unexplained production `organizationProduct.create` outside `ProductsService` production paths. Rental/booking harnesses are test-only.
+
+**Behavioral matrix (DISABLED):** Covered by `product-catalog-admission.postgres.integration.spec.ts` + P2B disable-blocks-admission case — **RECORDED_PASS** on PR2537 CI.
+
+---
+
+## Gate 3 — Entitlements and tenant isolation
+
+**Verdict: PASS** (policy + specs)
+
+| Layer | Policy |
+|-------|--------|
+| `Product.catalogStatus` | Platform admission gate (P2A/P2B) |
+| `OrganizationProduct.status` | Operational entitlement; `ProductLicenseGuard` = ACTIVE only |
+| `Organization.status` | Org lifecycle (unchanged) |
+| `VehicleProductGrant.status` | Grant lifecycle + admission when expanding |
+| Launch/readiness labels | Explicitly **not** `catalogStatus` (README) |
+
+- DISABLED does **not** revoke existing ACTIVE org licenses (P2A/P2B specs + README).
+- `core.entitlements.v1` / `entitlements-policy.ts` — TRIAL UI capability vs activation fail-closed unchanged.
+- Re-enable catalog does **not** auto-reactivate suspended org products (P2B spec: re-enable catalog / suspended row).
+- Tenant isolation: existing org scoping guards on MA APIs; not weakened in P1–P2B diffs.
+
+---
+
+## Gate 4 — Vehicle product access
+
+**Verdict: PASS** (recorded PG + code)
+
+- New grant / re-grant from REVOKED: denied when DISABLED (`vehicle-product-grant` + P2A specs).
+- Existing ACTIVE grants preserved on catalog disable (P2B preserve test).
+- Broaden `SELECTED_VEHICLES` → `ORGANIZATION_WIDE`: admission check in `ProductsService.updateVehicleAccessMode`.
+- TOCTOU: admission checks occur after `lockProductCatalogRowBySlug` in the same transaction for assign/grant paths (authority module).
+
+**Race evidence:** P2A/P2B disposable postgres concurrency cases — **RECORDED** on PR2537 CI.
+
+---
+
+## Gate 5 — Billing and commercial safety
+
+**Verdict: PASS** (read-only architecture audit)
+
+- Master Billing / subscriptions: no writers coupling `catalogStatus` transitions to subscription create/cancel (inspect + P2A matrix).
+- Catalog status transition does not mutate `OrganizationProduct` entitlements except admission paths (separate APIs).
+- Pricebooks / invoices / payment records: no hooks added in P2B service transaction beyond product row + mandatory audit.
+- Operations assuming `catalogStatus=ACTIVE`: documented in admission matrix; billing continues to key off `OrganizationProduct.status`.
+
+**Evidence gap:** No before/after billing fixture snapshot executed in this audit session — classified **inspect-only PASS** with **P2** gap for dedicated billing regression snapshot (not required by prior change records).
+
+---
+
+## Gate 6 — Security, MFA, audit, concurrency
+
+**Verdict: PASS** (recorded PG + security specs + UI unit tests)
+
+| Control | Evidence |
+|---------|----------|
+| MASTER_ADMIN + MFA | Controller guards; `products.http-security.integration.spec.ts`; mandatory audit util |
+| Stale CAS 409 | P2B postgres + dialog 409 vitest |
+| Mandatory audit rollback | P2B audit failure rolls back status (spec) |
+| Shared `FOR UPDATE` lock | `lockProductCatalogRowBySlug` in admission + status |
+| Disable-first / admission-first | P2B cases A & B — recorded CI |
+| No unhandled rejection | P2B case A settlement pattern |
+| MFA CAS drift fail-closed | Dialog + vitest |
+
+**P3 note:** P2B case A removed flaky `pg_locks` waiter count; contention proven via barrier + unsettled assignment promise (documented in PR2537 recovery commits).
+
+---
+
+## Gate 7 — Master Admin frontend acceptance
+
+**Verdict: PARTIAL**
+
+| Area | Status |
+|------|--------|
+| Status dialog UX (409, MFA, preview refresh, re-confirm) | **EXECUTED_PASS** — Vitest 7/7 |
+| Full product management Playwright journey (14 steps) | **NOT_EXECUTED** — no audit-session Playwright run on `7e0a00b49` |
+| Responsive / axe | **NOT_EXECUTED** |
+| Nine-locale strings | Inspect: `master.productCatalog.*` keys present for status dialog extensions; **NOT** re-run `i18n:check` on audit branch (would refresh protected inventory) |
+
+**P2 finding:** End-to-end MA Playwright certification not re-executed at audited SHA in this audit.
+
+---
+
+## Gate 8 — PostgreSQL and build certification
+
+**Verdict: PARTIAL — NO_GO for full production certification per operation policy**
+
+| Check | Audit session | PR #2537 recorded | `main` @ `7e0a00b49` |
+|-------|---------------|-------------------|----------------------|
+| P1 PG 4/4 | NOT_EXECUTED | PASS | PENDING workflow |
+| P2A PG 10/10 | NOT_EXECUTED | PASS | PENDING |
+| P2B PG 14/14 | NOT_EXECUTED | PASS | PENDING |
+| Catalog unit Jest (20) | **PASS** | — | — |
+| Dialog Vitest (7) | **PASS** | — | — |
+| Full monorepo CI (38) | NOT_EXECUTED | PASS on `69d3fb7` | PENDING at audit |
+| Playwright | NOT_EXECUTED | Included in branch CI | PENDING |
+| i18n authority / new debt | NOT_EXECUTED on `7e0a00b49` | PASS on branch merges | PENDING |
+
+**Baseline total 28/28 disposable PG:** **RECORDED_PASS** on merge branch CI only.
+
+---
+
+## Gate 9 — Release and rollback readiness
+
+**Verdict: HOLD (documentation)**
+
+| Topic | Assessment |
+|-------|------------|
+| Unexpected migrations | None beyond existing catalog column + audit patterns already on `main` |
+| Rental / M2M flags | Unchanged defaults (`CORE_APP_M2M_*` off) |
+| API backward compatibility | New MA endpoints additive; legacy assign preserved |
+| Production data rewrite | Not required |
+| Rollback | Revert application commit; `catalog_status` values remain; P2A matrix rollback note |
+| Production verification | **Recommend (not executed):** post-deploy spot-check MA status toggle on non-prod; verify admission 403; audit row count=1; no billing mutation |
+
+**Do not infer production readiness from merge or branch CI alone.**
+
+---
+
+## Defect register
+
+| ID | Sev | Summary | Status |
+|----|-----|---------|--------|
+| — | — | No P0/P1 defects identified in repository audit | — |
+| ACC-GAP-01 | P2 | Full Playwright MA catalog journey not executed at `7e0a00b49` in audit session | Open |
+| ACC-GAP-02 | P2 | Disposable PG 28/28 not re-executed on audited SHA in audit session (CI recorded only) | Open |
+| ACC-GAP-03 | P3 | P2B race A lacks `pg_locks` waiter assertion (intentional flake removal) | Accepted |
+
+---
+
+## Owner decisions required
+
+1. Accept **CONDITIONAL_GO** for repository integration vs require audit-session PG+Playwright re-run on `7e0a00b49`.
+2. Authorize future production deploy separately (out of scope).
+3. Promote platform-product-catalog registry beyond `AUDIT_IN_PROGRESS` (optional; not done in this PR).
+
+---
+
+## Rollback assessment
+
+Application revert of P1/P2A/P2B commits returns prior behavior; `catalog_status` data persists. No destructive migration. Admission enforcement removed if P2A reverted independently — owner should revert in reverse order (P2B → P2A → P1) if needed.
+
+---
+
+## Final verdicts
+
+| Verdict | Value |
+|---------|-------|
+| **Integration acceptance (repository)** | **CONDITIONAL_GO** |
+| **Full production certification** | **NO_GO** (mandatory PG + full CI not re-executed on audited SHA in audit session) |
+| **Release readiness** | **HOLD** pending `main` CI completion + owner deploy attestation |
+
+This audit does **not** award `FINAL_ACCEPTANCE_GO` per operation rules.
+
+---
+
+## Architecture governance (audit PR)
+
+```
+ARCHITECTURE_GOVERNANCE
+- substantive_change: NO (documentation-only audit evidence)
+- registry_review:
+  - module: Products (Platform catalog)
+  result: UNCHANGED
+  registry_status_before: AUDIT_IN_PROGRESS
+  registry_status_after: AUDIT_IN_PROGRESS
+  reason: evidence append only; no implementation change
+```

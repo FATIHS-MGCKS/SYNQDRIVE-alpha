@@ -1,7 +1,9 @@
 # Platform product catalog (Alpha central platform)
 
 **Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-17 (P3 complete on `main`; integration certification evidence)
+**Last updated:** 2026-11-26 (P1/P2A/P2B merged; V2 final acceptance evidence — **CONDITIONAL_GO**, not production cert)
+
+**Latest acceptance:** [`evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md`](evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md)
 
 ## Owner architecture decision (2026-11-16)
 
