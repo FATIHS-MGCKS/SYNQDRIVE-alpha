@@ -14,8 +14,20 @@ import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
 import { IamMembershipLifecycleService } from '@modules/users/iam-membership-lifecycle.service';
 import { IamAuditService } from '@modules/users/iam-audit.service';
+import * as bcrypt from 'bcrypt';
+import { MfaFactorType } from '@prisma/client';
+import { AccountService } from '@modules/account/account.service';
+import { PasswordPolicyService } from '@shared/auth/password-policy.service';
+import { AuditService } from '@modules/activity-log/audit.service';
+import { IamMfaResetService } from '@modules/iam-mfa/iam-mfa-reset.service';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
-import { withRaceBarrier } from '@modules/users/testing/usr-p2-deterministic-concurrency.helper';
+import {
+  holdUserSessionWriteLockTransaction,
+  pgBackendPid,
+  waitUntilAdvisoryLockWaiters,
+  waitUntilBackendBlocked,
+  waitUntilUserAdvisoryLockHeld,
+} from '@modules/users/testing/usr-p2-deterministic-concurrency.helper';
 import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
 
 const OPT_IN = 'USR_P2C_DETERMINISTIC_RACE_PG';
@@ -38,6 +50,8 @@ function assertDisposableDb(): void {
   let stackB: ReturnType<typeof createUsrP2PgIamStack>;
   let authorityB: UserAccessAuthorityService;
   let lifecycle: IamMembershipLifecycleService;
+  let accountA: AccountService;
+  let mfaReset: IamMfaResetService;
 
   beforeAll(() => {
     assertDisposableDb();
@@ -60,6 +74,14 @@ function assertDisposableDb(): void {
       { notifyAfterCommit: jest.fn() } as never,
       stackA.sessionPolicy,
     );
+    accountA = new AccountService(
+      prismaA as never,
+      { record: jest.fn() } as unknown as AuditService,
+      stackA.refresh,
+      stackA.sessionPolicy,
+      new PasswordPolicyService(),
+    );
+    mfaReset = new IamMfaResetService(prismaA as never, stackA.sessionPolicy, iamAudit);
   });
 
   afterAll(async () => {
@@ -78,7 +100,7 @@ function assertDisposableDb(): void {
         email,
         platformRole: UserPlatformRole.USER,
         status: UserStatus.ACTIVE,
-        passwordHash: '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUV',
+        passwordHash: await bcrypt.hash('P2cSeed1!long-pass', 10),
         sessionVersion: 0,
         securityVersion: 0,
       },
@@ -106,6 +128,7 @@ function assertDisposableDb(): void {
       email,
       orgId,
       membershipId,
+      passwordPlain: 'P2cSeed1!long-pass',
       membership: {
         organizationId: orgId,
         membershipId,
@@ -144,57 +167,50 @@ function assertDisposableDb(): void {
     });
   }
 
-  it('RACE01 rotation commits before revoke-all; successor credentials denied', async () => {
-    const raceId = `race01-${randomUUID()}`;
+  it('RACE01 rotation-first: revoke observes pg_blocking while rotate holds user fence', async () => {
     const ctx = await seedUserWithOrg();
     const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
-    let successor: { accessToken: string; refreshToken: string } | undefined;
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
 
-    await withRaceBarrier(prismaA, prismaB, raceId, async ({ signal, wait }) => {
-      const rotator = (async () => {
-        await signal(prismaA, 'a_lock_acquired', { role: 'rotate' });
-        successor = await stackB.refresh.rotate(issued.refreshToken);
-        await signal(prismaA, 'a_committed', { role: 'rotate' });
-      })();
-      const revoker = (async () => {
-        await wait(prismaB, 'a_committed');
-        await signal(prismaB, 'b_started', { role: 'revoke' });
-        await stackA.refresh.revokeAllActiveForUser(ctx.userId);
-        await signal(prismaA, 'done');
-      })();
-      await Promise.all([rotator, revoker]);
-    });
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    const blockingPids = await waitUntilBackendBlocked(prismaA, pidRotate);
 
-    expect(successor).toBeDefined();
-    const decoded = jwt.verify(successor!.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    holder.release();
+    await holder.completion;
+    const successor = await rotateP;
+    await stackA.refresh.revokeAllActiveForUser(ctx.userId);
+    expect(blockingPids.length).toBeGreaterThan(0);
+
+    const decoded = jwt.verify(successor.accessToken, JWT_SECRET) as jwt.JwtPayload;
     await expect(stackA.authority.validateAccessJwt(decoded as never)).rejects.toThrow();
-    await expect(stackB.refresh.rotate(successor!.refreshToken)).rejects.toThrow(/no longer valid/i);
+    await expect(stackB.refresh.rotate(successor.refreshToken)).rejects.toThrow(/no longer valid/i);
     expect(await activeHeadCount(ctx.userId)).toBe(0);
   });
 
-  it('RACE02 revoke-all commits before rotate blocks successor', async () => {
-    const raceId = `race02-${randomUUID()}`;
+  it('RACE02 revocation-first: rotate waits on advisory lock then denied', async () => {
     const ctx = await seedUserWithOrg();
     const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
 
-    await withRaceBarrier(prismaA, prismaB, raceId, async ({ signal, wait }) => {
-      const revoker = (async () => {
-        await signal(prismaA, 'a_lock_acquired');
-        await stackA.refresh.revokeAllActiveForUser(ctx.userId);
-        await signal(prismaA, 'a_committed');
-      })();
-      const rotator = (async () => {
-        await wait(prismaB, 'a_committed');
-        await signal(prismaB, 'b_waiting');
-        await expect(stackB.refresh.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
-      })();
-      await Promise.all([revoker, rotator]);
-    });
+    const revokeP = stackA.refresh.revokeAllActiveForUser(ctx.userId);
+    await waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1);
+
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    const blockingPids = await waitUntilBackendBlocked(prismaA, pidRotate);
+
+    holder.release();
+    await holder.completion;
+    await revokeP;
+    await expect(rotateP).rejects.toThrow(/no longer valid/i);
+    expect(blockingPids.length).toBeGreaterThan(0);
     expect(await activeHeadCount(ctx.userId)).toBe(0);
   });
 
   it('RACE03 revoke-all with concurrent refresh on second family', async () => {
-    const raceId = `race03-${randomUUID()}`;
     const ctx = await seedUserWithOrg();
     const bound = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
     const legacy = await stackA.refresh.issueTokenPair(
@@ -208,18 +224,21 @@ function assertDisposableDb(): void {
       null,
     );
 
-    await withRaceBarrier(prismaA, prismaB, raceId, async ({ signal, wait }) => {
-      const revokeAll = (async () => {
-        await stackA.sessionPolicy.recordAndExecute({ eventType: 'PASSWORD_CHANGED', userId: ctx.userId });
-        await signal(prismaA, 'a_committed');
-      })();
-      const rotateRace = (async () => {
-        await signal(prismaB, 'b_started');
-        await Promise.allSettled([stackB.refresh.rotate(bound.refreshToken)]);
-        await wait(prismaB, 'a_committed');
-      })();
-      await Promise.all([revokeAll, rotateRace]);
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
+    const revokeP = stackA.sessionPolicy.recordAndExecute({
+      eventType: 'PASSWORD_CHANGED',
+      userId: ctx.userId,
     });
+    await waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1);
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(bound.refreshToken);
+    await waitUntilBackendBlocked(prismaA, pidRotate);
+    holder.release();
+    await holder.completion;
+    await revokeP;
+    const rotateOutcome = await Promise.allSettled([rotateP]);
+    expect(rotateOutcome[0].status).toBe('rejected');
 
     expect(await activeHeadCount(ctx.userId)).toBe(0);
     await expect(stackB.refresh.rotate(legacy.refreshToken)).rejects.toThrow(/no longer valid/i);
@@ -261,59 +280,35 @@ function assertDisposableDb(): void {
     await expect(stackA.refresh.rotate(rotated.refreshToken)).rejects.toThrow(/no longer valid/i);
   });
 
-  it('RACE08 mutation-first then refresh denied', async () => {
-    const raceId = `race08-mut-${randomUUID()}`;
+  it('RACE08 AccountService password change denies concurrent refresh', async () => {
     const ctx = await seedUserWithOrg();
     const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
     const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
-
-    await withRaceBarrier(prismaA, prismaB, raceId, async ({ signal, wait }) => {
-      const mutation = (async () => {
-        await stackA.sessionPolicy.recordAndExecute({
-          eventType: 'PASSWORD_CHANGED',
-          userId: ctx.userId,
-          organizationId: ctx.orgId,
-        });
-        await signal(prismaA, 'a_committed');
-      })();
-      const rotate = (async () => {
-        await wait(prismaB, 'a_committed');
-        await expect(stackB.refresh.rotate(issued.refreshToken)).rejects.toThrow();
-      })();
-      await Promise.all([mutation, rotate]);
-    });
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
+    const changeP = accountA.changePassword(
+      ctx.userId,
+      ctx.orgId,
+      {
+        currentPassword: ctx.passwordPlain,
+        newPassword: 'Race08!long-pass',
+        confirmPassword: 'Race08!long-pass',
+        revokeOtherSessions: true,
+      },
+      {},
+    );
+    await waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1);
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    await waitUntilBackendBlocked(prismaA, pidRotate);
+    holder.release();
+    await holder.completion;
+    const [, rotateOutcome] = await Promise.allSettled([changeP, rotateP]);
+    expect(rotateOutcome.status).toBe('rejected');
     await expect(stackA.authority.validateAccessJwt(decoded as never)).rejects.toThrow();
   });
 
-  it('RACE08 refresh-first barrier then password change still invalidates', async () => {
-    const raceId = `race08-rot-${randomUUID()}`;
-    const ctx = await seedUserWithOrg();
-    const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
-    let rotated: { accessToken: string; refreshToken: string } | undefined;
-
-    await withRaceBarrier(prismaA, prismaB, raceId, async ({ signal, wait }) => {
-      const rotator = (async () => {
-        rotated = await stackB.refresh.rotate(issued.refreshToken);
-        await signal(prismaB, 'a_committed');
-      })();
-      const mutation = (async () => {
-        await wait(prismaA, 'a_committed');
-        await stackA.sessionPolicy.recordAndExecute({
-          eventType: 'PASSWORD_CHANGED',
-          userId: ctx.userId,
-        });
-      })();
-      await Promise.all([rotator, mutation]);
-    });
-    const oldDecoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
-    await expect(stackA.authority.validateAccessJwt(oldDecoded as never)).rejects.toThrow();
-    if (rotated) {
-      const newDecoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
-      await expect(authorityB.validateAccessJwt(newDecoded as never)).rejects.toThrow();
-    }
-  });
-
-  it('RACE11 organization offboarding revokes bound sessions', async () => {
+  it('RACE11 tenant suspension revokes bound sessions; unrelated org preserved', async () => {
     const ctx = await seedUserWithOrg();
     const bound = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
     const legacy = await stackA.refresh.issueTokenPair(
@@ -352,16 +347,44 @@ function assertDisposableDb(): void {
       membershipVersion: 0,
     });
 
-    await stackA.refresh.revokeAllActiveForOrganization(ctx.orgId);
+    await prismaA.organization.update({
+      where: { id: ctx.orgId },
+      data: { status: 'SUSPENDED' },
+    });
     await expect(stackB.refresh.rotate(bound.refreshToken)).rejects.toThrow();
     const rotatedB = await stackB.refresh.rotate(sessionB.refreshToken);
     expect(rotatedB.accessToken).toBeTruthy();
     await expect(stackA.refresh.rotate(legacy.refreshToken)).rejects.toThrow();
   });
 
+  it('RACE11 legacy unscoped refresh cannot upgrade when home org is suspended', async () => {
+    const ctx = await seedUserWithOrg();
+    await prismaA.user.update({
+      where: { id: ctx.userId },
+      data: { lastSelectedOrganizationId: ctx.orgId },
+    });
+    const legacy = await stackA.refresh.issueTokenPair(
+      {
+        id: ctx.userId,
+        email: ctx.email,
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      null,
+    );
+    await prismaA.organization.update({
+      where: { id: ctx.orgId },
+      data: { status: 'SUSPENDED' },
+    });
+    await expect(stackB.refresh.rotate(legacy.refreshToken)).rejects.toThrow();
+  });
+
   it('B05 concurrent first application applies mutation once', async () => {
     const ctx = await seedUserWithOrg();
     const opKey = `p2c-b05-first:${randomUUID()}`;
+    const preSession = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
+    const preDecoded = jwt.verify(preSession.accessToken, JWT_SECRET) as jwt.JwtPayload;
     const versionBefore = (
       await prismaA.user.findUnique({ where: { id: ctx.userId }, select: { sessionVersion: true } })
     )!.sessionVersion;
@@ -386,6 +409,13 @@ function assertDisposableDb(): void {
       apply(prismaB, stackB.sessionPolicy),
     ]);
     expect(left.idempotentReplay || right.idempotentReplay).toBe(true);
+    expect([left, right].filter((r) => r.idempotentReplay).length).toBe(1);
+    const applied = left.idempotentReplay ? right : left;
+    await stackA.sessionPolicy.processIntents(applied.intentIds);
+    const intentRow = await prismaA.iamSessionRevocationIntent.findFirst({
+      where: { id: { in: applied.intentIds } },
+    });
+    expect(intentRow?.revokedTokenCount ?? 0).toBeGreaterThan(0);
     const versionAfter = (
       await prismaA.user.findUnique({ where: { id: ctx.userId }, select: { sessionVersion: true } })
     )!.sessionVersion;
@@ -415,33 +445,86 @@ function assertDisposableDb(): void {
     await stackA.authority.validateAccessJwt(
       jwt.verify(fresh.accessToken, JWT_SECRET) as never,
     );
+    await expect(stackA.authority.validateAccessJwt(preDecoded as never)).rejects.toThrow();
+    await stackA.refresh.rotate(fresh.refreshToken);
   });
 
-  it('B10 password change waits for advisory path before refresh', async () => {
-    const raceId = `b10-pw-${randomUUID()}`;
+  it('B10 AccountService.changePassword contends with refresh via user advisory lock', async () => {
     const ctx = await seedUserWithOrg();
-    await prismaA.user.update({
-      where: { id: ctx.userId },
-      data: { passwordHash: '$2b$10$zZ5H7wGFsJfH7lwqNxVQeOUdGqPqZqPqZqPqZqPqZqPqZqPqZqPq' },
+    const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
+    const changeP = accountA.changePassword(
+      ctx.userId,
+      ctx.orgId,
+      {
+        currentPassword: ctx.passwordPlain,
+        newPassword: 'P2cNew2!long-pass',
+        confirmPassword: 'P2cNew2!long-pass',
+        revokeOtherSessions: true,
+      },
+      {},
+    );
+    await waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1);
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    await waitUntilBackendBlocked(prismaA, pidRotate);
+    holder.release();
+    await holder.completion;
+    const [, rotateOutcome] = await Promise.allSettled([changeP, rotateP]);
+    expect(rotateOutcome.status).toBe('rejected');
+  });
+
+  it('B10 MFA reset contends with refresh via user advisory lock', async () => {
+    const ctx = await seedUserWithOrg();
+    await prismaA.userMfaFactor.create({
+      data: {
+        userId: ctx.userId,
+        factorType: MfaFactorType.TOTP,
+        encryptedSecret: 'enc',
+        label: 'p2c',
+        verifiedAt: new Date(),
+        enabledAt: new Date(),
+      },
     });
     const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
-
-    await withRaceBarrier(prismaA, prismaB, raceId, async ({ signal, wait }) => {
-      const password = (async () => {
-        await signal(prismaA, 'a_lock_acquired');
-        await stackA.sessionPolicy.recordAndExecute({
-          eventType: 'PASSWORD_CHANGED',
-          userId: ctx.userId,
-          organizationId: ctx.orgId,
-        });
-        await signal(prismaA, 'a_committed');
-      })();
-      const rotate = (async () => {
-        await wait(prismaB, 'a_committed');
-        await expect(stackB.refresh.rotate(issued.refreshToken)).rejects.toThrow();
-      })();
-      await Promise.all([password, rotate]);
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
+    const resetP = mfaReset.resetMfaForUser({
+      organizationId: ctx.orgId,
+      targetUserId: ctx.userId,
+      actorUserId: ctx.userId,
+      idempotencyKey: `b10-mfa:${randomUUID()}`,
     });
+    await waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1);
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    await waitUntilBackendBlocked(prismaA, pidRotate);
+    holder.release();
+    await holder.completion;
+    const [, rotateOutcome] = await Promise.allSettled([resetP, rotateP]);
+    expect(rotateOutcome.status).toBe('rejected');
+  });
+
+  it('B10 membership suspend contends with refresh via user advisory lock', async () => {
+    const ctx = await seedUserWithOrg();
+    const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
+    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
+    const suspendP = lifecycle.suspend({
+      organizationId: ctx.orgId,
+      userId: ctx.userId,
+      idempotencyKey: `b10-mem:${randomUUID()}`,
+      reason: 'p2c-b10',
+    });
+    await waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1);
+    const pidRotate = await pgBackendPid(prismaB);
+    const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    await waitUntilBackendBlocked(prismaA, pidRotate);
+    holder.release();
+    await holder.completion;
+    const [, rotateOutcome] = await Promise.allSettled([suspendP, rotateP]);
+    expect(rotateOutcome.status).toBe('rejected');
   });
 
   it('CROSS_REPLICA revoke on B denies on A authority', async () => {
