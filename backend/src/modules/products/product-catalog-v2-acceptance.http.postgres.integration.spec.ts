@@ -230,12 +230,12 @@ async function countCatalogStatusAuditRows(
       },
       orderBy: { createdAt: 'desc' },
     });
-    expect(latestAudit?.metaJson).toEqual(
+    const meta = latestAudit?.metaJson as Record<string, unknown> | undefined;
+    expect(meta).toEqual(
       expect.objectContaining({
-        metadata: expect.objectContaining({
-          productSlug: slug,
-          changeReason: 'acceptance disable',
-        }),
+        action: 'catalog_status_patch',
+        productSlug: slug,
+        reasonCode: 'acceptance disable',
       }),
     );
   });
