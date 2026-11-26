@@ -5,17 +5,14 @@
  */
 import { randomUUID } from 'node:crypto';
 import { BusinessType, PrismaClient, UserPlatformRole, UserStatus } from '@prisma/client';
-import { ConfigService } from '@nestjs/config';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
-import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import {
   IAM_ORG_SESSION_WRITE_LOCK_CLASS,
   IAM_USER_SESSION_WRITE_LOCK_CLASS,
 } from '@modules/auth/refresh-token-session-concurrency';
-import { IamSessionNotificationService, IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
-import { UserAccessAuditService } from '@modules/users/user-access-audit.service';
 import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
 import * as jwt from 'jsonwebtoken';
+import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
 
 const OPT_IN = 'USR_P2_SESSION_CONCURRENCY_PG';
 const JWT_SECRET = 'usr-p2-concurrency-test-secret';
@@ -37,32 +34,20 @@ function assertDisposableDb(): void {
   let prismaB: PrismaClient;
   let refreshA: RefreshTokenService;
   let refreshB: RefreshTokenService;
-  let sessionPolicyA: IamSessionPolicyService;
+  let sessionPolicyA: ReturnType<typeof createUsrP2PgIamStack>['sessionPolicy'];
   let authorityA: UserAccessAuthorityService;
-
-  const config = {
-    get: (key: string, fallback?: unknown) => {
-      if (key === 'app.jwtSecret') return JWT_SECRET;
-      if (key === 'app.jwtExpiresIn') return '15m';
-      if (key === 'iam.enableOrgBoundRefreshSessions') return true;
-      if (key === 'iam.enableLegacyUnscopedRefreshGrace') return false;
-      return fallback;
-    },
-  } as ConfigService;
 
   beforeAll(() => {
     assertDisposableDb();
     process.env.JWT_SECRET = JWT_SECRET;
-    const userAudit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as UserAccessAuditService;
-    const notifications = new IamSessionNotificationService();
     prismaA = new PrismaClient();
     prismaB = new PrismaClient();
-    const platformA = new PlatformPermissionService(prismaA as never);
-    const platformB = new PlatformPermissionService(prismaB as never);
-    refreshA = new RefreshTokenService(prismaA as never, config, { recordAndExecute: jest.fn() } as never, platformA);
-    refreshB = new RefreshTokenService(prismaB as never, config, { recordAndExecute: jest.fn() } as never, platformB);
-    sessionPolicyA = new IamSessionPolicyService(prismaA as never, refreshA, userAudit, notifications);
-    authorityA = new UserAccessAuthorityService(prismaA as never, platformA);
+    const stackA = createUsrP2PgIamStack(prismaA, JWT_SECRET);
+    const stackB = createUsrP2PgIamStack(prismaB, JWT_SECRET);
+    refreshA = stackA.refresh;
+    refreshB = stackB.refresh;
+    sessionPolicyA = stackA.sessionPolicy;
+    authorityA = stackA.authority;
   });
 
   afterAll(async () => {

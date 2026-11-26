@@ -13,3 +13,4 @@
 | 2026-11-25 | USR-P1A operation identity — server `securityOperationId`, ON CONFLICT enqueue, ambiguous-commit + revoke-all count fixes, PGA–PGF |
 | 2026-11-25 | USR-P2 — request-time access authority (`UserAccessAuthorityService`, JWT `tokenFamily`, AuthGuard binding); P1A outbox read failure must not block revoke |
 | 2026-11-26 | USR-P2B closeout — admin password atomic invalidation, multi-scope idempotency, B01–B10+ADMIN PG (14 shards); gate 66/66 disposable |
+| 2026-11-26 | USR-P2C — deterministic race barriers, pg IAM stack helper, 12-case P2C PG suite; semantic crosswalk P2C refresh |

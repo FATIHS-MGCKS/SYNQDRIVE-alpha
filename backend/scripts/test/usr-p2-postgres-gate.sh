@@ -125,6 +125,27 @@ for shard in "${P2B_SHARDS[@]}"; do
   run_jest_heavy "${P2B_SPEC}" -t "${shard}"
 done
 
+log 'USR-P2C deterministic race PostgreSQL'
+export USR_P2C_DETERMINISTIC_RACE_PG=1
+P2C_SPEC=usr-p2c-deterministic-race.postgres.integration.spec.ts
+P2C_SHARDS=(
+  'RACE01'
+  'RACE02'
+  'RACE03'
+  'RACE04'
+  'RACE05'
+  'RACE07'
+  'RACE08'
+  'RACE11'
+  'B05 concurrent first'
+  'B10 password change waits'
+  'CROSS_REPLICA'
+)
+for shard in "${P2C_SHARDS[@]}"; do
+  log "USR-P2C shard: ${shard}"
+  run_jest_heavy "${P2C_SPEC}" -t "${shard}"
+done
+
 log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1
 run_jest usr-p1a-session-audit-certification.postgres.integration.spec.ts
