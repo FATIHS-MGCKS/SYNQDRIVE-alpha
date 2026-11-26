@@ -319,7 +319,7 @@ export class IamMfaChallengeService {
       where: {
         id: factorId,
         enabledAt: { not: null },
-        OR: [{ lastTotpStep: null }, { lastTotpStep: { not: step } }],
+        OR: [{ lastTotpStep: null }, { lastTotpStep: { lt: step } }],
       },
       data: { lastTotpStep: step, lastUsedAt: new Date() },
     });

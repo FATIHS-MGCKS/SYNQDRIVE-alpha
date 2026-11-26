@@ -333,6 +333,11 @@ function assertDisposableDb(): void {
     const decoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
     expect(Number(decoded.assuranceLevel)).toBeLessThan(ASSURANCE_LEVEL_MFA);
     expect(decoded.mfaAuthenticatedAt ?? null).toBeNull();
+    const successor = await prisma.refreshToken.findFirst({
+      where: { userId, revokedAt: null, replacedBy: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(successor?.assuranceLevel).toBe(SessionAssuranceLevel.PASSWORD);
   });
 
   it('STALE_PENDING denied after admin password change bumps sessionVersion', async () => {

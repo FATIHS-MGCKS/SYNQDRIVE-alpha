@@ -497,6 +497,10 @@ export class RefreshTokenService {
 
       const authenticatedAt = stored.authenticatedAt ?? stored.createdAt;
       const rotationClaims = this.buildSessionClaimsForStored(stored, user.securityVersion);
+      const rotatedAssuranceLevel =
+        rotationClaims.assuranceLevel === ASSURANCE_LEVEL_MFA
+          ? SessionAssuranceLevel.MFA
+          : SessionAssuranceLevel.PASSWORD;
 
       const newPair = await this.issueTokenPairWithFamilyTx(
         tx,
@@ -514,7 +518,7 @@ export class RefreshTokenService {
         {
           scope: binding.scope,
           authenticatedAt,
-          assuranceLevel: stored.assuranceLevel ?? SessionAssuranceLevel.PASSWORD,
+          assuranceLevel: rotatedAssuranceLevel,
           sessionClaims: rotationClaims,
         },
       );

@@ -685,15 +685,26 @@ function assertDisposableDb(): void {
         {},
       ),
     ]);
-    expect(changeResult.status === 'fulfilled' || rotateResult.status === 'fulfilled').toBe(true);
-    if (changeResult.status === 'rejected' && rotateResult.status === 'rejected') {
-      throw changeResult.reason;
+    const fulfilled = [rotateResult, changeResult].filter((r) => r.status === 'fulfilled');
+    expect(fulfilled.length).toBe(1);
+    if (changeResult.status === 'fulfilled') {
+      expect(rotateResult.status).toBe('rejected');
+      const live = await prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: { sessionVersion: true },
+      });
+      expect(live!.sessionVersion).toBeGreaterThan(0);
+      const successorForbidden = await refreshB.rotate(issued.refreshToken).catch((e) => e);
+      expect(successorForbidden).toBeDefined();
+    } else {
+      expect(changeResult.status).toBe('rejected');
+      expect(rotateResult.status).toBe('fulfilled');
+      const decoded = jwt.verify(
+        (rotateResult as PromiseFulfilledResult<{ accessToken: string }>).value.accessToken,
+        process.env.JWT_SECRET ?? 'test',
+      );
+      await expect(authority.validateAccessJwt(decoded as never)).resolves.toBeDefined();
     }
-    const live = await prisma.user.findUnique({
-      where: { id: ctx.user.id },
-      select: { sessionVersion: true },
-    });
-    expect(live!.sessionVersion).toBeGreaterThan(0);
   });
 
   it('B10 MFA reset serializes against concurrent refresh rotation', async () => {

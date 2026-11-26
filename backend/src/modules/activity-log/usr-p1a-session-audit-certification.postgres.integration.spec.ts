@@ -815,9 +815,11 @@ const run = process.env[OPT_IN] === '1';
     const sibling = await createSession(target.id, null);
     const operationId = generateMasterAdminSecurityOperationId();
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
-    const lostAck = jest
-      .spyOn(delivery, 'attemptImmediateDelivery')
-      .mockRejectedValueOnce(new Error('P1A_B_lost_client_ack'));
+    const origTx = prisma.$transaction.bind(prisma);
+    jest.spyOn(prisma, '$transaction').mockImplementationOnce(async (arg: unknown) => {
+      await origTx(arg as never);
+      throw new Error('P1A_B_lost_client_ack_after_commit');
+    });
 
     const first = await sessionAudit.revokeTargetSessionWithAtomicAudit({
       req: reqStub(actor.id),
@@ -825,7 +827,7 @@ const run = process.env[OPT_IN] === '1';
       sessionId: session.id,
       securityOperationId: operationId,
     });
-    lostAck.mockRestore();
+    jest.restoreAllMocks();
     expect(first.revoked).toBe(true);
 
     const revokedRow = await prisma.refreshToken.findUnique({ where: { id: session.id } });
@@ -856,16 +858,18 @@ const run = process.env[OPT_IN] === '1';
     await createSession(target.id, null);
     const operationId = generateMasterAdminSecurityOperationId();
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
-    const lostAck = jest
-      .spyOn(delivery, 'attemptImmediateDelivery')
-      .mockRejectedValueOnce(new Error('P1A_B_lost_ack_revoke_all'));
+    const origTx = prisma.$transaction.bind(prisma);
+    jest.spyOn(prisma, '$transaction').mockImplementationOnce(async (arg: unknown) => {
+      await origTx(arg as never);
+      throw new Error('P1A_B_lost_ack_revoke_all_after_commit');
+    });
 
     const first = await sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
       req: reqStub(actor.id),
       targetUserId: target.id,
       securityOperationId: operationId,
     });
-    lostAck.mockRestore();
+    jest.restoreAllMocks();
     expect(first.revokedSessionCount).toBeGreaterThanOrEqual(2);
 
     const fresh = await createSession(target.id, null);

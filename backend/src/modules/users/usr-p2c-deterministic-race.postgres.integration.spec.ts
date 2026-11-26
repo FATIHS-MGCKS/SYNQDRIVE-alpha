@@ -167,20 +167,17 @@ function assertDisposableDb(): void {
     });
   }
 
-  it('RACE01 rotation-first: revoke observes pg_blocking while rotate holds user fence', async () => {
+  it('RACE01 rotation-first: revoke waits on rotate fence; successor denied after both commit', async () => {
     const ctx = await seedUserWithOrg();
     const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
-    const holder = holdUserSessionWriteLockTransaction(prismaA, ctx.userId);
-    await waitUntilUserAdvisoryLockHeld(prismaB, ctx.userId);
 
-    const pidRotate = await pgBackendPid(prismaB);
     const rotateP = stackB.refresh.rotate(issued.refreshToken);
+    const pidRotate = await pgBackendPid(prismaB);
+    const revokeP = stackA.refresh.revokeAllActiveForUser(ctx.userId);
     const blockingPids = await waitUntilBackendBlocked(prismaA, pidRotate);
 
-    holder.release();
-    await holder.completion;
     const successor = await rotateP;
-    await stackA.refresh.revokeAllActiveForUser(ctx.userId);
+    await revokeP;
     expect(blockingPids.length).toBeGreaterThan(0);
 
     const decoded = jwt.verify(successor.accessToken, JWT_SECRET) as jwt.JwtPayload;

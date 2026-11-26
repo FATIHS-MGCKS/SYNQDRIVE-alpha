@@ -156,6 +156,42 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
       ).rejects.toMatchObject({ response: { code: MFA_ERROR.INVALID_CODE } });
     });
 
+    it('rejects TOTP older than last consumed step (monotonic)', async () => {
+      const encrypted = encryptMfaSecret(secret);
+      const code = authenticator.generate(secret);
+      const step = BigInt(Math.floor(Date.now() / 1000 / 30));
+      const updateMany = jest.fn();
+      const prisma = {
+        userMfaFactor: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'factor-1',
+            enabledAt: new Date(),
+            encryptedSecret: encrypted,
+            lastTotpStep: step + 2n,
+          }),
+          updateMany,
+        },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: userId,
+            email: 'u@example.test',
+            securityVersion: 0,
+            platformRole: 'USER',
+          }),
+        },
+      } as never;
+      const service = new IamMfaChallengeService(
+        prisma,
+        { reissueAccessToken: jest.fn() } as never,
+        { createGrant: jest.fn(), buildClaimsAfterChallenge: jest.fn() } as never,
+      );
+      updateMany.mockResolvedValue({ count: 0 });
+      await expect(
+        service.challengeWithTotp({ userId, code, allowUnboundReissue: true }),
+      ).rejects.toMatchObject({ response: { code: MFA_ERROR.REPLAY } });
+      expect(updateMany).toHaveBeenCalled();
+    });
+
     it('rejects TOTP replay for the same time step', async () => {
       const encrypted = encryptMfaSecret(secret);
       const code = authenticator.generate(secret);

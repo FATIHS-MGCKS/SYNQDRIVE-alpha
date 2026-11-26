@@ -69,11 +69,11 @@ export class IamMfaStepUpService {
     if (grant.actionScope !== 'GLOBAL' && grant.actionScope !== action) {
       return false;
     }
-    await this.prisma.userMfaStepUpGrant.update({
-      where: { id: grant.id },
+    const consumed = await this.prisma.userMfaStepUpGrant.updateMany({
+      where: { id: grant.id, consumedAt: null, expiresAt: { gt: new Date() } },
       data: { consumedAt: new Date() },
     });
-    return true;
+    return consumed.count === 1;
   }
 
   buildClaimsAfterChallenge(input: {
