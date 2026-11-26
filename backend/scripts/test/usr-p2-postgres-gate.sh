@@ -59,11 +59,26 @@ export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT
 log 'migrate deploy (resilient)'
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
+IAM_PARITY_SQL="${ROOT}/scripts/test/sql/ensure-ephemeral-iam-schema-parity.sql"
+if [[ ! -f "${IAM_PARITY_SQL}" ]]; then
+  fail "missing IAM parity SQL: ${IAM_PARITY_SQL}"
+fi
+log 'apply disposable IAM schema parity (TARGETED_SQL; not migration-derived)'
+psql -v ON_ERROR_STOP=1 -U "$PG_USER" -d "$EPHEMERAL_DB" < "${IAM_PARITY_SQL}" >/dev/null
+echo "USR_P2_IAM_SCHEMA_PARITY=TARGETED_SQL"
+
+log 'IAM schema preflight'
+node scripts/test/usr-p2-iam-schema-preflight.mjs || fail 'IAM schema preflight failed'
+
 export JWT_SECRET="${JWT_SECRET:-usr-p2-pg-test-secret}"
 
 run_jest() {
   npx jest "$@" --runInBand --forceExit || fail "jest failed: $*"
 }
+
+log 'USR-P2A IAM schema smoke PostgreSQL'
+export USR_P2A_IAM_SCHEMA_SMOKE_PG=1
+run_jest usr-p2a-iam-schema-smoke.postgres.integration.spec.ts
 
 log 'USR-P2 access revocation PostgreSQL'
 export USR_P2_ACCESS_REVOCATION_PG=1

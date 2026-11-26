@@ -99,67 +99,41 @@ function assertDisposableDb(): void {
     await prisma?.$disconnect();
   });
 
-  async function hasUsersColumn(column: string): Promise<boolean> {
-    const rows = await prisma.$queryRaw<Array<{ column_name: string }>>`
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'users' AND column_name = ${column}
-    `;
-    return rows.length > 0;
-  }
-
-  async function seedUserBasic() {
-    const id = randomUUID();
-    const email = `gate1-${id}@example.test`;
-    const orgId = randomUUID();
-    const membershipId = randomUUID();
-    await prisma.$executeRaw`
-      INSERT INTO users (id, email, platform_role, status, created_at, updated_at, session_version, security_version)
-      VALUES (
-        ${id}, ${email}, ${UserPlatformRole.USER}::"UserPlatformRole", ${UserStatus.ACTIVE}::"UserStatus",
-        NOW(), NOW(), 0, 0
-      )
-    `;
-    await prisma.$executeRaw`
-      INSERT INTO organizations (id, company_name, business_type, status, created_at, updated_at)
-      VALUES (${orgId}, ${`org-${orgId.slice(0, 6)}`}, ${BusinessType.RENTAL}::"BusinessType", 'ACTIVE'::"OrganizationStatus", NOW(), NOW())
-    `;
-    await prisma.$executeRaw`
-      INSERT INTO organization_memberships (id, user_id, organization_id, role, status, created_at, updated_at, membership_version)
-      VALUES (${membershipId}, ${id}, ${orgId}, 'WORKER'::"MembershipRole", 'ACTIVE'::"MembershipStatus", NOW(), NOW(), 0)
-    `;
-    return { id, email, orgId, membershipId };
-  }
-
-  async function seedUserWithPassword(password: string) {
-    const id = randomUUID();
-    const email = `gate1-${id}@example.test`;
-    const hash = await bcrypt.hash(password, 10);
-    const orgId = randomUUID();
-    const membershipId = randomUUID();
-    await prisma.$executeRaw`
-      INSERT INTO users (
-        id, email, platform_role, status, created_at, updated_at,
-        session_version, security_version, password_hash, must_change_password
-      )
-      VALUES (
-        ${id}, ${email}, ${UserPlatformRole.USER}::"UserPlatformRole", ${UserStatus.ACTIVE}::"UserStatus",
-        NOW(), NOW(), 0, 0, ${hash}, false
-      )
-    `;
-    await prisma.$executeRaw`
-      INSERT INTO organizations (id, company_name, business_type, status, created_at, updated_at)
-      VALUES (${orgId}, ${`org-${orgId.slice(0, 6)}`}, ${BusinessType.RENTAL}::"BusinessType", 'ACTIVE'::"OrganizationStatus", NOW(), NOW())
-    `;
-    await prisma.$executeRaw`
-      INSERT INTO organization_memberships (id, user_id, organization_id, role, status, created_at, updated_at, membership_version)
-      VALUES (${membershipId}, ${id}, ${orgId}, 'WORKER'::"MembershipRole", 'ACTIVE'::"MembershipStatus", NOW(), NOW(), 0)
-    `;
-    return { id, email, orgId, membershipId, password };
+  async function seedMembershipUser(passwordPlain?: string) {
+    const email = `gate1-${randomUUID()}@example.test`;
+    const passwordHash = passwordPlain ? await bcrypt.hash(passwordPlain, 10) : null;
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        mustChangePassword: false,
+        platformRole: UserPlatformRole.USER,
+        status: UserStatus.ACTIVE,
+      },
+    });
+    const org = await prisma.organization.create({
+      data: { companyName: `Gate1 Org ${randomUUID().slice(0, 6)}`, businessType: BusinessType.RENTAL },
+    });
+    const membership = await prisma.organizationMembership.create({
+      data: {
+        userId: user.id,
+        organizationId: org.id,
+        role: 'WORKER',
+        roleLabel: 'Worker',
+        status: 'ACTIVE',
+      },
+    });
+    return {
+      id: user.id,
+      email: user.email,
+      orgId: org.id,
+      membershipId: membership.id,
+      password: passwordPlain,
+    };
   }
 
   it('GATE1 authoritative invalidation effective before deferred processIntents', async () => {
-    const user = await seedUserBasic();
+    const user = await seedMembershipUser();
     const issued = await refreshTokens.issueTokenPair(
       {
         id: user.id,
@@ -205,11 +179,8 @@ function assertDisposableDb(): void {
     jest.restoreAllMocks();
   });
 
-  it('GATE1 AccountService.changePassword when password_hash exists', async () => {
-    if (!(await hasUsersColumn('password_hash'))) {
-      return;
-    }
-    const user = await seedUserWithPassword('oldpassword1');
+  it('GATE1 AccountService.changePassword denies tokens before processIntents resumes', async () => {
+    const user = await seedMembershipUser('oldpassword1');
     const issued = await refreshTokens.issueTokenPair(
       {
         id: user.id,

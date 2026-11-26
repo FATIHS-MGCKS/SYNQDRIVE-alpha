@@ -48,6 +48,8 @@ USR_P2_SESSION_CONCURRENCY_PG=1 DATABASE_URL=postgresql://postgres:postgres@127.
   npx jest usr-p2-session-concurrency.postgres.integration.spec --runInBand
 ```
 
+**P2A disposable IAM baseline (2026-11-26 CET):** see [`USR_P2A_DISPOSABLE_DATABASE_BASELINE.md`](USR_P2A_DISPOSABLE_DATABASE_BASELINE.md) — targeted SQL parity + fail-closed preflight; GATE-1 `AccountService.changePassword` PG now executes (no `password_hash` skip).
+
 **Mandatory evidence gate (2026-11-26 CET, branch `cursor/master-users-p2-access-revocation-44c2`):**
 
 ```bash
