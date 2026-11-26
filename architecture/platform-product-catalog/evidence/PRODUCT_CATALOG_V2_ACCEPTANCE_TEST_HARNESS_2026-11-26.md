@@ -74,6 +74,27 @@ cd frontend && npx playwright test -c e2e/playwright.config.ts product-catalog-v
 
 **TOCTOU_REMEDIATION_REQUIRED:** YES — narrow runtime PR to re-validate org-product + vehicle eligibility inside grant transaction. **FINAL_ACCEPTANCE_HOLD** until fixed or owner accepts P2 race.
 
+### TOCTOU runtime remediation (separate PR — not #2539)
+
+Proposed scope for a follow-up runtime change (evidence-only here):
+
+1. Re-validate organization-product entitlement and vehicle eligibility **inside** the grant persistence transaction (after row locks).
+2. Use consistent lock order (`product` / `organization_product` / `vehicle` / `grant`) to avoid deadlocks under concurrent org suspension.
+3. On concurrent org-product **SUSPENDED** during grant: fail closed with a domain error (no silent ACTIVE grant).
+4. Catalog **DISABLED** admission remains enforced inside the transaction (existing path).
+5. **Do not** auto-revoke existing ACTIVE grants when catalog or org-product state changes.
+
+Classification: reproducible **service-level P2 race** (scenario B hook). Full production exploitability not claimed without further evidence.
+
+## P2B race C — concurrent CAS seal (test-only)
+
+| Field | Value |
+|-------|--------|
+| **P2B_RACE_C_ROOT_CAUSE** | Test assumed fixed primary/peer winner; both writers could succeed or peer could win under timing. |
+| **Fix** | `Promise.allSettled`; exactly one fulfill + one `ConflictException`; audit counts `[0,1]` by correlation id; final catalog `DISABLED`; `finally` restores ACTIVE. |
+| **TEST_FIX_ONLY** | YES — no `ProductsService` runtime change on #2539. |
+| **Introduced** | `6014a4d34` (hardened `HEAD` with `snapshotCatalog` assert in race C) |
+
 ## Billing snapshot coverage
 
 **Seeded:** rental `price_books`, `price_tariff_versions`, `billing_subscriptions`, `billing_discounts`, `billing_invoices`, `organization_products`.

@@ -578,40 +578,44 @@ async function countAuditByCorrelationId(prisma: PrismaClient, correlationId: st
       const staleCorrelation = `p2b-stale-concurrent-${Date.now()}`;
       const freshCorrelation = `p2b-fresh-concurrent-${Date.now()}`;
 
-      const [primaryOutcome, peerOutcome] = await Promise.allSettled([
-        products.updateProductCatalogStatusForMasterAdmin({
-          productSlug: slug,
-          patch: {
-            catalogStatus: ProductCatalogStatus.DISABLED,
-            ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
-            changeReason: 'first writer',
-          },
-          actorUserId: adminId,
-          audit: { correlationId: freshCorrelation },
-        }),
-        productsPeer.updateProductCatalogStatusForMasterAdmin({
-          productSlug: slug,
-          patch: {
-            catalogStatus: ProductCatalogStatus.DISABLED,
-            ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
-            changeReason: 'stale concurrent writer',
-          },
-          actorUserId: adminId,
-          audit: { correlationId: staleCorrelation },
-        }),
-      ]);
+      try {
+        const [primaryOutcome, peerOutcome] = await Promise.allSettled([
+          products.updateProductCatalogStatusForMasterAdmin({
+            productSlug: slug,
+            patch: {
+              catalogStatus: ProductCatalogStatus.DISABLED,
+              ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
+              changeReason: 'first writer',
+            },
+            actorUserId: adminId,
+            audit: { correlationId: freshCorrelation },
+          }),
+          productsPeer.updateProductCatalogStatusForMasterAdmin({
+            productSlug: slug,
+            patch: {
+              catalogStatus: ProductCatalogStatus.DISABLED,
+              ifCurrentCatalogStatus: ProductCatalogStatus.ACTIVE,
+              changeReason: 'stale concurrent writer',
+            },
+            actorUserId: adminId,
+            audit: { correlationId: staleCorrelation },
+          }),
+        ]);
 
-      const fulfilled = [primaryOutcome, peerOutcome].filter((o) => o.status === 'fulfilled');
-      const rejected = [primaryOutcome, peerOutcome].filter((o) => o.status === 'rejected');
-      expect(fulfilled).toHaveLength(1);
-      expect(rejected).toHaveLength(1);
-      expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(ConflictException);
+        const fulfilled = [primaryOutcome, peerOutcome].filter((o) => o.status === 'fulfilled');
+        const rejected = [primaryOutcome, peerOutcome].filter((o) => o.status === 'rejected');
+        expect(fulfilled).toHaveLength(1);
+        expect(rejected).toHaveLength(1);
+        expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(ConflictException);
 
-      const auditStale = await countAuditByCorrelationId(prisma, staleCorrelation);
-      const auditFresh = await countAuditByCorrelationId(prisma, freshCorrelation);
-      expect([auditStale, auditFresh].sort()).toEqual([0, 1]);
+        const auditStale = await countAuditByCorrelationId(prisma, staleCorrelation);
+        const auditFresh = await countAuditByCorrelationId(prisma, freshCorrelation);
+        expect([auditStale, auditFresh].sort()).toEqual([0, 1]);
 
-      await ensureActive(slug);
+        expect(await snapshotCatalog(slug)).toBe(ProductCatalogStatus.DISABLED);
+      } finally {
+        await ensureActive(slug);
+      }
     });
   });
 
