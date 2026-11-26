@@ -1048,14 +1048,11 @@ export class RefreshTokenService {
   ): AuthSessionClaims {
     const authenticatedAt = (stored.authenticatedAt ?? stored.createdAt).toISOString();
     if (stored.assuranceLevel === SessionAssuranceLevel.MFA) {
-      // P2-R18: refresh rows do not persist authMethods — keep MFA assurance timestamps
-      // but do not fabricate totp/recovery on rotation (conservative pwd-only methods).
+      // P2D: refresh rows do not persist MFA method evidence — conservative downgrade on
+      // rotation (do not extend MFA freshness or fabricate totp/recovery in authMethods).
       return {
-        assuranceLevel: ASSURANCE_LEVEL_MFA,
+        ...buildPasswordOnlyClaims(securityVersion),
         authenticatedAt,
-        mfaAuthenticatedAt: authenticatedAt,
-        authMethods: ['pwd'],
-        securityVersion,
       };
     }
     return {

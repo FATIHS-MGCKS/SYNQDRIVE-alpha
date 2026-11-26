@@ -45,6 +45,8 @@ export class SecurityGovernanceSessionAuditService {
     sessionId: string;
     targetOrganizationId?: string | null;
     occurredAt?: Date;
+    /** Client-stable id for lost-ack retry (same idempotency envelope). */
+    securityOperationId?: string;
   }): Promise<{ revoked: boolean }> {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
@@ -61,11 +63,18 @@ export class SecurityGovernanceSessionAuditService {
       }
     }
 
-    const operationId = generateMasterAdminSecurityOperationId();
+    const operationId = input.securityOperationId ?? generateMasterAdminSecurityOperationId();
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
+          where: { idempotencyKey },
+        });
+        if (priorOutbox) {
+          const parsed = this.readOutboxRevokedFromSingleSession(priorOutbox);
+          return { ok: parsed.revokedThisOperation, outboxId: priorOutbox.id, outcome: parsed.outcome, record: null };
+        }
         const ok = await this.refreshTokens.revokeSessionByIdInTransaction(
           tx,
           input.targetUserId,
@@ -123,15 +132,26 @@ export class SecurityGovernanceSessionAuditService {
     req: SessionRevocationAuditRequest;
     targetUserId: string;
     occurredAt?: Date;
+    securityOperationId?: string;
   }): Promise<{ revokedSessionCount: number }> {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
     const occurredAt = input.occurredAt ?? new Date();
-    const operationId = generateMasterAdminSecurityOperationId();
+    const operationId = input.securityOperationId ?? generateMasterAdminSecurityOperationId();
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
+          where: { idempotencyKey },
+        });
+        if (priorOutbox) {
+          return {
+            revokedSessionCount: this.readOutboxRevokedSessionCount(priorOutbox),
+            outboxId: priorOutbox.id,
+            record: null,
+          };
+        }
         const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUserInTransaction(
           tx,
           input.targetUserId,

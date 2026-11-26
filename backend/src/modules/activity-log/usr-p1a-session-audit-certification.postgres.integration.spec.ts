@@ -808,30 +808,78 @@ const run = process.env[OPT_IN] === '1';
     record('P1A_A', 'PASS');
   });
 
-  it('P1A_B committed revocation not duplicated after lost acknowledgement', async () => {
+  it('P1A_B single-session committed revocation not duplicated after lost acknowledgement', async () => {
     const actor = await createActor();
     const target = await createActor();
     const session = await createSession(target.id, null);
+    const sibling = await createSession(target.id, null);
+    const operationId = generateMasterAdminSecurityOperationId();
+    const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
+    const lostAck = jest
+      .spyOn(delivery, 'attemptImmediateDelivery')
+      .mockRejectedValueOnce(new Error('P1A_B_lost_client_ack'));
+
     const first = await sessionAudit.revokeTargetSessionWithAtomicAudit({
       req: reqStub(actor.id),
       targetUserId: target.id,
       sessionId: session.id,
+      securityOperationId: operationId,
     });
+    lostAck.mockRestore();
     expect(first.revoked).toBe(true);
-    const before = await prisma.activityLog.count({
-      where: { metaJson: { path: ['targetUserId'], equals: target.id } },
-    });
-    const second = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+
+    const revokedRow = await prisma.refreshToken.findUnique({ where: { id: session.id } });
+    expect(revokedRow?.revokedAt).not.toBeNull();
+    expect(
+      await prisma.masterAdminAuditOutbox.count({ where: { idempotencyKey } }),
+    ).toBe(1);
+
+    const retry = await sessionAudit.revokeTargetSessionWithAtomicAudit({
       req: reqStub(actor.id),
       targetUserId: target.id,
       sessionId: session.id,
+      securityOperationId: operationId,
     });
-    expect(second.revoked).toBe(false);
-    const after = await prisma.activityLog.count({
-      where: { metaJson: { path: ['targetUserId'], equals: target.id } },
-    });
-    expect(after).toBeGreaterThanOrEqual(before);
+    expect(retry.revoked).toBe(false);
+    expect(
+      await prisma.masterAdminAuditOutbox.count({ where: { idempotencyKey } }),
+    ).toBe(1);
+    const siblingAfter = await prisma.refreshToken.findUnique({ where: { id: sibling.id } });
+    expect(siblingAfter?.revokedAt).toBeNull();
     record('P1A_B', 'PASS');
+  });
+
+  it('P1A_B revoke-all committed not duplicated after lost acknowledgement', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    await createSession(target.id, null);
+    await createSession(target.id, null);
+    const operationId = generateMasterAdminSecurityOperationId();
+    const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
+    const lostAck = jest
+      .spyOn(delivery, 'attemptImmediateDelivery')
+      .mockRejectedValueOnce(new Error('P1A_B_lost_ack_revoke_all'));
+
+    const first = await sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      securityOperationId: operationId,
+    });
+    lostAck.mockRestore();
+    expect(first.revokedSessionCount).toBeGreaterThanOrEqual(2);
+
+    const fresh = await createSession(target.id, null);
+    const retry = await sessionAudit.revokeAllTargetSessionsWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      securityOperationId: operationId,
+    });
+    expect(retry.revokedSessionCount).toBe(first.revokedSessionCount);
+    expect(
+      await prisma.masterAdminAuditOutbox.count({ where: { idempotencyKey } }),
+    ).toBe(1);
+    const freshRow = await prisma.refreshToken.findUnique({ where: { id: fresh.id } });
+    expect(freshRow?.revokedAt).toBeNull();
   });
 
   it('P1A_C independent transactions contend on outbox identity', async () => {

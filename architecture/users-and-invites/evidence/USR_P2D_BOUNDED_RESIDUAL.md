@@ -1,19 +1,7 @@
-# USR-P2D — Bounded residual (record-only, not executed in P2C)
+# USR-P2D — Bounded residual (superseded by implementation)
 
-## Audit actor attribution (P2D)
+See [`USR_P2D_MFA_AUDIT_ACCOUNTABILITY.md`](USR_P2D_MFA_AUDIT_ACCOUNTABILITY.md) for executed P2D scope.
 
-**Finding:** `UsersController.adminChangePassword` calls `UsersService.changePasswordAdmin(id, body.password)` without passing the authenticated Master Admin actor id.
+Historical finding (admin actor) **repaired** in P2D on PR #2534.
 
-**Effect:** `changePasswordAdmin` falls back to `actorUserId ?? userId` (target user), so durable revocation intent metadata may attribute the mutation to the target instead of the operator.
-
-**Location:** `backend/src/modules/users/users.controller.ts` (`adminChangePassword`).
-
-**Status:** Recorded for P2D repair — **not** claimed as accepted in P2B/P2C.
-
-## Other P2D scope (unchanged)
-
-- P1A true lost-commit acknowledgement paths
-- Full TOTP and recovery-code login matrix
-- MFA refresh assurance and pending-context replay proofs
-
-No P2D implementation in PR #2534 P2C tranche.
+P2E residuals: [`USR_P2E_FINAL_RESIDUALS.md`](USR_P2E_FINAL_RESIDUALS.md).

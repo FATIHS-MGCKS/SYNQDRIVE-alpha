@@ -17,20 +17,31 @@ export type UsrP2PgIamStack = {
   platformPermissions: PlatformPermissionService;
 };
 
-export function createUsrP2Config(jwtSecret: string): ConfigService {
+export function createUsrP2Config(
+  jwtSecret: string,
+  opts?: { legacyUnscopedGrace?: boolean; orgBoundRefreshSessions?: boolean },
+): ConfigService {
   return {
     get: (key: string, fallback?: unknown) => {
       if (key === 'app.jwtSecret') return jwtSecret;
       if (key === 'app.jwtExpiresIn') return '15m';
-      if (key === 'iam.enableOrgBoundRefreshSessions') return true;
-      if (key === 'iam.enableLegacyUnscopedRefreshGrace') return false;
+      if (key === 'iam.enableOrgBoundRefreshSessions') {
+        return opts?.orgBoundRefreshSessions ?? true;
+      }
+      if (key === 'iam.enableLegacyUnscopedRefreshGrace') {
+        return opts?.legacyUnscopedGrace ?? false;
+      }
       return fallback;
     },
   } as ConfigService;
 }
 
-export function createUsrP2PgIamStack(prisma: PrismaClient, jwtSecret: string): UsrP2PgIamStack {
-  const config = createUsrP2Config(jwtSecret);
+export function createUsrP2PgIamStack(
+  prisma: PrismaClient,
+  jwtSecret: string,
+  opts?: { legacyUnscopedGrace?: boolean; orgBoundRefreshSessions?: boolean },
+): UsrP2PgIamStack {
+  const config = createUsrP2Config(jwtSecret, opts);
   const platformPermissions = new PlatformPermissionService(prisma as never);
   const userAudit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as UserAccessAuditService;
   const notifications = new IamSessionNotificationService();

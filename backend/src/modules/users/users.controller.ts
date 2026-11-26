@@ -10,6 +10,7 @@ import {
   UseGuards,
   GoneException,
   Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -103,8 +104,13 @@ export class UsersController {
   async adminChangePassword(
     @Param('id') id: string,
     @Body() body: AdminChangePasswordDto,
+    @Req() req: AuthedRequest,
   ) {
-    return this.usersService.changePasswordAdmin(id, body.password);
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    return this.usersService.changePasswordAdmin(id, body.password, actorUserId);
   }
 
   // DELETE admin/users/:id lives in MasterAdminUserDeletionController

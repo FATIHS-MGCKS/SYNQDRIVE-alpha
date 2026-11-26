@@ -153,6 +153,30 @@ log 'USR-P2C semantic guards PostgreSQL'
 export USR_P2C_SEMANTIC_GUARD_PG=1
 run_jest usr-p2c-semantic-guard.postgres.integration.spec.ts
 
+log 'USR-P2D MFA and audit accountability PostgreSQL'
+export USR_P2D_MFA_AUDIT_PG=1
+P2D_SPEC=usr-p2d-mfa-audit-accountability.postgres.integration.spec.ts
+P2D_SHARDS=(
+  'D01'
+  'D02'
+  'D03'
+  'D04'
+  'D05'
+  'D06'
+  'D07'
+  'D08'
+  'D09'
+  'D10'
+  'MFA refresh assurance'
+  'STALE_PENDING'
+  'ADMIN_PASSWORD_ACTOR'
+  'MFA_DEVICE_ISOLATION'
+)
+for shard in "${P2D_SHARDS[@]}"; do
+  log "USR-P2D shard: ${shard}"
+  run_jest_heavy "${P2D_SPEC}" -t "${shard}"
+done
+
 log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1
 run_jest usr-p1a-session-audit-certification.postgres.integration.spec.ts

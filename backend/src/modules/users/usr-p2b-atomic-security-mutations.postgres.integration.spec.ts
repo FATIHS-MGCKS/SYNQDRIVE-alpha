@@ -761,10 +761,19 @@ function assertDisposableDb(): void {
       sessionPolicy,
     );
     const ctx = await seedUserWithOrg('AdminPw1!long-xy');
+    const operatorId = randomUUID();
+    await prisma.user.create({
+      data: {
+        id: operatorId,
+        email: `operator-${operatorId}@example.test`,
+        platformRole: 'MASTER_ADMIN',
+        status: 'ACTIVE',
+      },
+    });
     const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
     const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
 
-    await usersService.changePasswordAdmin(ctx.user.id, 'AdminSet2!long-xy', ctx.user.id);
+    await usersService.changePasswordAdmin(ctx.user.id, 'AdminSet2!long-xy', operatorId);
 
     await expect(authority.validateAccessJwt(decoded as never)).rejects.toThrow();
     await expect(refreshTokens.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
@@ -781,6 +790,8 @@ function assertDisposableDb(): void {
       orderBy: { createdAt: 'desc' },
     });
     expect(intent?.idempotencyKey).toContain('USER_ALL_SESSIONS');
+    expect(intent?.actorUserId).toBe(operatorId);
+    expect(intent?.actorUserId).not.toBe(ctx.user.id);
   });
 
   it('multi-scope high-risk reuse creates distinct scope intents', async () => {

@@ -63,12 +63,6 @@ export class IamMfaChallengeService {
     }
 
     const step = BigInt(Math.floor(Date.now() / 1000 / 30));
-    if (factor.lastTotpStep != null && factor.lastTotpStep === step) {
-      throw new UnauthorizedException({
-        code: MFA_ERROR.REPLAY,
-        message: 'MFA code replay detected',
-      });
-    }
 
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
@@ -77,10 +71,7 @@ export class IamMfaChallengeService {
       throw new UnauthorizedException('User not found');
     }
 
-    await this.prisma.userMfaFactor.update({
-      where: { id: factor.id },
-      data: { lastTotpStep: step, lastUsedAt: new Date() },
-    });
+    await this.consumeTotpStepAtomic(factor.id, step);
 
     const membership = await this.loadAuthoritativeMembership(input.userId, input.sessionBinding);
     await this.assertSessionBindingActive(input.userId, input.sessionBinding);
@@ -180,10 +171,7 @@ export class IamMfaChallengeService {
       throw new UnauthorizedException('User not found');
     }
 
-    await this.prisma.userMfaRecoveryCode.update({
-      where: { id: matchedId },
-      data: { usedAt: new Date() },
-    });
+    await this.consumeRecoveryCodeAtomic(matchedId);
 
     const membership = await this.loadAuthoritativeMembership(input.userId, input.sessionBinding);
     await this.assertSessionBindingActive(input.userId, input.sessionBinding);
@@ -264,22 +252,13 @@ export class IamMfaChallengeService {
     }
 
     const step = BigInt(Math.floor(Date.now() / 1000 / 30));
-    if (factor.lastTotpStep != null && factor.lastTotpStep === step) {
-      throw new UnauthorizedException({
-        code: MFA_ERROR.REPLAY,
-        message: 'MFA code replay detected',
-      });
-    }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    await this.prisma.userMfaFactor.update({
-      where: { id: factor.id },
-      data: { lastTotpStep: step, lastUsedAt: new Date() },
-    });
+    await this.consumeTotpStepAtomic(factor.id, step);
 
     const claims = this.stepUp.buildClaimsAfterChallenge({
       authMethods: ['pwd', 'totp'],
@@ -324,10 +303,7 @@ export class IamMfaChallengeService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    await this.prisma.userMfaRecoveryCode.update({
-      where: { id: matchedId },
-      data: { usedAt: new Date() },
-    });
+    await this.consumeRecoveryCodeAtomic(matchedId);
 
     const claims = this.stepUp.buildClaimsAfterChallenge({
       authMethods: ['pwd', 'recovery'],
@@ -335,6 +311,38 @@ export class IamMfaChallengeService {
     });
 
     return { claims };
+  }
+
+  /** Conditional update: only one concurrent consumer wins per TOTP step. */
+  private async consumeTotpStepAtomic(factorId: string, step: bigint): Promise<void> {
+    const updated = await this.prisma.userMfaFactor.updateMany({
+      where: {
+        id: factorId,
+        enabledAt: { not: null },
+        OR: [{ lastTotpStep: null }, { lastTotpStep: { not: step } }],
+      },
+      data: { lastTotpStep: step, lastUsedAt: new Date() },
+    });
+    if (updated.count !== 1) {
+      throw new UnauthorizedException({
+        code: MFA_ERROR.REPLAY,
+        message: 'MFA code replay detected',
+      });
+    }
+  }
+
+  /** Conditional update: only one concurrent consumer marks a recovery code used. */
+  private async consumeRecoveryCodeAtomic(codeId: string): Promise<void> {
+    const updated = await this.prisma.userMfaRecoveryCode.updateMany({
+      where: { id: codeId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (updated.count !== 1) {
+      throw new UnauthorizedException({
+        code: MFA_ERROR.REPLAY,
+        message: 'MFA credential replay detected',
+      });
+    }
   }
 
   private async loadAuthoritativeMembership(

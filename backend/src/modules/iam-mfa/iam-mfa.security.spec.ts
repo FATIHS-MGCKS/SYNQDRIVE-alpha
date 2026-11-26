@@ -169,6 +169,7 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
             lastTotpStep: step,
           }),
           update: jest.fn(),
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         },
         user: {
           findUnique: jest.fn().mockResolvedValue({
@@ -199,6 +200,7 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
         userMfaRecoveryCode: {
           findMany: jest.fn().mockResolvedValue([{ id: 'rc-1', codeHash, usedAt: null }]),
           update: jest.fn().mockResolvedValue({}),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         user: {
           findUnique: jest.fn().mockResolvedValue({
@@ -239,11 +241,12 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
       const result = await service.challengeWithRecoveryCode({
         userId,
         recoveryCode: plainCode,
+        allowUnboundReissue: true,
       });
 
       expect(result.assuranceLevel).toBe(ASSURANCE_LEVEL_MFA);
       expect(result.authMethods).toContain('recovery');
-      expect((prisma as any).userMfaRecoveryCode.update).toHaveBeenCalled();
+      expect((prisma as any).userMfaRecoveryCode.updateMany).toHaveBeenCalled();
     });
   });
 
