@@ -73,7 +73,12 @@ export class SecurityGovernanceSessionAuditService {
         });
         if (priorOutbox) {
           const parsed = this.readOutboxRevokedFromSingleSession(priorOutbox);
-          return { ok: parsed.revokedThisOperation, outboxId: priorOutbox.id, outcome: parsed.outcome, record: null };
+          return {
+            ok: false,
+            outboxId: priorOutbox.id,
+            outcome: parsed.outcome,
+            record: null,
+          };
         }
         const ok = await this.refreshTokens.revokeSessionByIdInTransaction(
           tx,
