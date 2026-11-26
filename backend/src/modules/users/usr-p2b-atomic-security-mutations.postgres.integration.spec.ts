@@ -670,7 +670,9 @@ function assertDisposableDb(): void {
   it('B10 password mutation serializes against concurrent refresh rotation', async () => {
     const ctx = await seedUserWithOrg('LockOrd1!long-xy');
     const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
+    const oldDecoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
     const refreshB = refreshServiceOn(prismaB);
+    const newPassword = 'LockOrd2!long-xy';
     const [rotateResult, changeResult] = await Promise.allSettled([
       refreshB.rotate(issued.refreshToken),
       account.changePassword(
@@ -678,32 +680,31 @@ function assertDisposableDb(): void {
         ctx.orgA.id,
         {
           currentPassword: ctx.passwordPlain,
-          newPassword: 'LockOrd2!long-xy',
-          confirmPassword: 'LockOrd2!long-xy',
+          newPassword,
+          confirmPassword: newPassword,
           revokeOtherSessions: true,
         },
         {},
       ),
     ]);
-    const fulfilled = [rotateResult, changeResult].filter((r) => r.status === 'fulfilled');
-    expect(fulfilled.length).toBe(1);
-    if (changeResult.status === 'fulfilled') {
-      expect(rotateResult.status).toBe('rejected');
-      const live = await prisma.user.findUnique({
-        where: { id: ctx.user.id },
-        select: { sessionVersion: true },
-      });
-      expect(live!.sessionVersion).toBeGreaterThan(0);
-      const successorForbidden = await refreshB.rotate(issued.refreshToken).catch((e) => e);
-      expect(successorForbidden).toBeDefined();
+    expect(changeResult.status).toBe('fulfilled');
+    const userRow = await prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { passwordHash: true, sessionVersion: true },
+    });
+    expect(userRow!.sessionVersion).toBeGreaterThan(0);
+    expect(await bcrypt.compare(newPassword, userRow!.passwordHash!)).toBe(true);
+    await expect(authority.validateAccessJwt(oldDecoded as never)).rejects.toThrow();
+    await expect(refreshB.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+
+    if (rotateResult.status === 'fulfilled') {
+      const successor = (rotateResult as PromiseFulfilledResult<{ accessToken: string; refreshToken: string }>)
+        .value;
+      const succDecoded = jwt.verify(successor.accessToken, JWT_SECRET) as jwt.JwtPayload;
+      await expect(authority.validateAccessJwt(succDecoded as never)).rejects.toThrow();
+      await expect(refreshB.rotate(successor.refreshToken)).rejects.toThrow(/no longer valid/i);
     } else {
-      expect(changeResult.status).toBe('rejected');
-      expect(rotateResult.status).toBe('fulfilled');
-      const decoded = jwt.verify(
-        (rotateResult as PromiseFulfilledResult<{ accessToken: string }>).value.accessToken,
-        process.env.JWT_SECRET ?? 'test',
-      );
-      await expect(authority.validateAccessJwt(decoded as never)).resolves.toBeDefined();
+      expect(rotateResult.reason).toBeInstanceOf(UnauthorizedException);
     }
   });
 
@@ -721,6 +722,7 @@ function assertDisposableDb(): void {
     });
     const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
     const refreshB = refreshServiceOn(prismaB);
+    const oldDecoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
     const [rotateResult, resetResult] = await Promise.allSettled([
       refreshB.rotate(issued.refreshToken),
       mfaReset.resetMfaForUser({
@@ -730,21 +732,30 @@ function assertDisposableDb(): void {
         idempotencyKey: `mfa-b10:${randomUUID()}`,
       }),
     ]);
-    expect(resetResult.status === 'fulfilled' || rotateResult.status === 'fulfilled').toBe(true);
-    if (resetResult.status === 'rejected' && rotateResult.status === 'rejected') {
-      throw resetResult.reason;
-    }
+    expect(resetResult.status).toBe('fulfilled');
     const sec = await prisma.user.findUnique({
       where: { id: ctx.user.id },
       select: { securityVersion: true },
     });
     expect(sec!.securityVersion).toBeGreaterThan(0);
+  await expect(authority.validateAccessJwt(oldDecoded as never)).rejects.toThrow();
+    await expect(refreshB.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+    if (rotateResult.status === 'fulfilled') {
+      const successor = (rotateResult as PromiseFulfilledResult<{ accessToken: string; refreshToken: string }>).value;
+      await expect(
+        authority.validateAccessJwt(jwt.verify(successor.accessToken, JWT_SECRET) as never),
+      ).rejects.toThrow();
+      await expect(refreshB.rotate(successor.refreshToken)).rejects.toThrow(/no longer valid/i);
+    } else {
+      expect(rotateResult.reason).toBeInstanceOf(UnauthorizedException);
+    }
   });
 
   it('B10 membership mutation serializes against concurrent refresh rotation', async () => {
     const ctx = await seedUserWithOrg('LockMem1!long-xy');
     const issued = await issueOrgSession(ctx.user, ctx.orgA.id, ctx.memA.id);
     const refreshB = refreshServiceOn(prismaB);
+    const oldDecoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
     const [rotateResult, suspendResult] = await Promise.allSettled([
       refreshB.rotate(issued.refreshToken),
       lifecycle.suspend({
@@ -754,12 +765,20 @@ function assertDisposableDb(): void {
         reason: 'p2b-b10',
       }),
     ]);
-    expect(suspendResult.status === 'fulfilled' || rotateResult.status === 'fulfilled').toBe(true);
-    if (suspendResult.status === 'rejected' && rotateResult.status === 'rejected') {
-      throw suspendResult.reason;
-    }
+    expect(suspendResult.status).toBe('fulfilled');
     const mem = await prisma.organizationMembership.findUnique({ where: { id: ctx.memA.id } });
     expect(mem?.status).toBe(MembershipStatus.SUSPENDED);
+    await expect(authority.validateAccessJwt(oldDecoded as never)).rejects.toThrow();
+    await expect(refreshB.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
+    if (rotateResult.status === 'fulfilled') {
+      const successor = (rotateResult as PromiseFulfilledResult<{ accessToken: string; refreshToken: string }>).value;
+      await expect(
+        authority.validateAccessJwt(jwt.verify(successor.accessToken, JWT_SECRET) as never),
+      ).rejects.toThrow();
+      await expect(refreshB.rotate(successor.refreshToken)).rejects.toThrow(/no longer valid/i);
+    } else {
+      expect(rotateResult.reason).toBeInstanceOf(UnauthorizedException);
+    }
   });
 
   it('ADMIN changePasswordAdmin denies old credentials and persists intent', async () => {

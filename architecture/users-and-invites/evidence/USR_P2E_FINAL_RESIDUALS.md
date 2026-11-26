@@ -1,16 +1,18 @@
-# USR-P2E — Final repository acceptance residuals (record-only in P2D)
+# USR-P2E — Final repository acceptance residuals (E1 execution slice)
 
-Mandatory P2E scope from P2C seal; **not** re-executed as full P2C cycle in P2D.
+P2E scope items C01–C08; **E1-only** acceptance on PR **#2534** branch `cursor/master-users-p2-access-revocation-44c2`.
 
-| ID | Requirement | Status in P2D | Evidence pointer |
-|----|-------------|---------------|------------------|
-| C01 | True rotation-first revocation contention complete | **OPEN (P2E)** | P2C RACE01 partial; needs production-path rotation vs `revokeAll` ordering proof |
-| C02 | Organization lifecycle offboarding vs bound issuance + legacy upgrade | **OPEN (P2E)** | RACE11 uses org SUSPENDED; not full archival/offboarding lifecycle |
-| C03 | B10 mutation success + exact security denial assertions | **OPEN (P2E)** | B10 PASS with `Promise.allSettled`; tighten denial message contracts in P2E |
-| C04 | SEMANTIC 10 actual role downgrade + RolesGuard | **OPEN (P2E)** | `lifecycle.move` permission PG; not org role enum downgrade + route guard |
-| C05 | SEMANTIC 11 PermissionsGuard after revocation | **OPEN (P2E)** | custom permission PG; not HTTP PermissionsGuard matrix |
-| C06 | SEMANTIC 12 production platform role mutation + RolesGuard | **OPEN (P2E)** | PG transaction demotion; not admin API + RolesGuard |
-| C07 | Legitimate Public/M2M regressions on final HEAD | **OPEN (P2E)** | cited crosswalk; CI execution on release branch |
-| C08 | Representative lifecycle routes + strict session binding | **OPEN (P2E)** | cited HTTP security specs; not usr-p2 gate shard |
+| ID | Requirement | E1 status (2026-11-26) | Evidence |
+|----|-------------|------------------------|----------|
+| C01 | True rotation-first revocation contention | **PASS (E1)** | `usr-p2c-deterministic-race.postgres.integration.spec.ts` — `RACE01 rotation-first: revoke waits on rotate fence; successor denied after both commit` (usr-p2-postgres-gate shard) |
+| C02 | Organization lifecycle offboarding vs bound issuance + legacy upgrade | **PASS (E1)** | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` — `E1_C02 offboarding execution suspends org and revokes org-bound sessions; unrelated org preserved` (`OrganizationOffboardingService.prepare` + `OrganizationOffboardingExecutionService.execute`, real `RefreshTokenService`) |
+| C03 | B10 mutation success + exact security denial assertions | **PASS (E1)** | `usr-p2b-atomic-security-mutations.postgres.integration.spec.ts` — B10 password/MFA/membership shards (mutation must fulfill; old + successor JWT/refresh denied) |
+| C04 | Organization role downgrade + RolesGuard | **PASS (E1)** | `usr-p2c-semantic-guard.postgres.integration.spec.ts` — `E1_C04 organization role downgrade denies RolesGuard for stale membershipRole` (`lifecycle.move` role → WORKER; authority + RolesGuard on persisted role) |
+| C05 | Custom permission revocation + PermissionsGuard | **PASS (E1)** | same file — `E1_C05 custom permission revocation denies PermissionsGuard for stale JWT` (live DB membership in `PermissionsGuard`) |
+| C06 | Platform role downgrade authority | **PASS (E1, documented path)** | same file — `E1_C06 platform role downgrade denies RolesGuard for stale MASTER_ADMIN JWT`. **No dedicated Master Admin HTTP downgrade API** located in repository; evidence uses canonical session invalidation transaction (platformRole → USER + sessionVersion bump) and `RolesGuard` against persisted role. |
+| C07 | Public/M2M authentication regressions | **PASS (E1)** | `usr-p2-postgres-gate.sh` — `core-app-m2m-token.http-security.integration.spec.ts` (in-memory HTTP) |
+| C08 | Lifecycle routes + session binding | **PASS (E1)** | `usr-p2-postgres-gate.sh` — `org-scoping.organization-status.http-security.integration.spec.ts` (PENDING onboarding allow, operational deny, SUSPENDED deny, MASTER_ADMIN bypass). Vehicle-ownership PG spec remains cited crosswalk probe (separate disposable DB name). |
 
-**R-008** remains **OPEN** until P2E closes the above and owner attestation.
+**Gate execution:** `backend/scripts/test/usr-p2-postgres-gate.sh` — **PASS** after semantic-guard + E1 org lifecycle fixes (see agent artifact `usr-p2-postgres-gate-e1-rerun.log` on final push).
+
+**R-008** remains **OPEN** until full P2E (E2–E5) and owner attestation — E1 concurrency/authorization slice **PASS** on executed evidence above.

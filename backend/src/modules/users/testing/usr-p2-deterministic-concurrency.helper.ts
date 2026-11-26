@@ -5,6 +5,7 @@
 import type { PrismaClient } from '@prisma/client';
 import {
   acquireUserSessionWriteLock,
+  IAM_ORG_SESSION_WRITE_LOCK_CLASS,
   IAM_USER_SESSION_WRITE_LOCK_CLASS,
 } from '@modules/auth/refresh-token-session-concurrency';
 
@@ -148,6 +149,29 @@ export async function waitUntilAdvisoryLockWaiters(
   throw new Error(
     `advisory lock waiters for ${userId} did not reach ${minWaiters} within ${timeoutMs}ms`,
   );
+}
+
+export async function waitUntilOrgAdvisoryLockHeld(
+  observer: PrismaClient,
+  organizationId: string,
+  options?: { timeoutMs?: number; pollMs?: number },
+): Promise<void> {
+  const timeoutMs = options?.timeoutMs ?? 30_000;
+  const pollMs = options?.pollMs ?? 10;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const rows = await observer.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM pg_locks
+      WHERE locktype = 'advisory'
+        AND granted = true
+        AND classid = ${IAM_ORG_SESSION_WRITE_LOCK_CLASS}
+        AND objid = hashtext(${organizationId}::text)
+    `;
+    if (Number(rows[0]?.count ?? 0n) > 0) return;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  throw new Error(`organization advisory lock not observed for ${organizationId}`);
 }
 
 export async function waitUntilUserAdvisoryLockHeld(

@@ -153,6 +153,17 @@ log 'USR-P2C semantic guards PostgreSQL'
 export USR_P2C_SEMANTIC_GUARD_PG=1
 run_jest usr-p2c-semantic-guard.postgres.integration.spec.ts
 
+log 'USR-P2E E1 organization offboarding lifecycle PostgreSQL'
+export USR_P2E_E1_ORG_LIFECYCLE_PG=1
+run_jest usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts
+
+log 'USR-P2E E1 C07/C08 route and M2M regressions (in-memory HTTP guards)'
+npx jest \
+  src/shared/auth/org-scoping.organization-status.http-security.integration.spec.ts \
+  src/modules/core-app-m2m/core-app-m2m-token.http-security.integration.spec.ts \
+  --runInBand --forceExit \
+  || fail 'E1 C07/C08 HTTP regression jest failed'
+
 log 'USR-P2D MFA and audit accountability PostgreSQL'
 export USR_P2D_MFA_AUDIT_PG=1
 P2D_SPEC=usr-p2d-mfa-audit-accountability.postgres.integration.spec.ts

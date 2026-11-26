@@ -26,6 +26,7 @@ import {
   pgBackendPid,
   waitUntilAdvisoryLockWaiters,
   waitUntilBackendBlocked,
+  waitUntilOrgAdvisoryLockHeld,
   waitUntilUserAdvisoryLockHeld,
 } from '@modules/users/testing/usr-p2-deterministic-concurrency.helper';
 import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
@@ -170,19 +171,26 @@ function assertDisposableDb(): void {
   it('RACE01 rotation-first: revoke waits on rotate fence; successor denied after both commit', async () => {
     const ctx = await seedUserWithOrg();
     const issued = await issueBound(stackA.refresh, ctx.userId, ctx.email, ctx.membership);
+    const preDecoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
 
     const rotateP = stackB.refresh.rotate(issued.refreshToken);
-    const pidRotate = await pgBackendPid(prismaB);
+    await waitUntilOrgAdvisoryLockHeld(prismaA, ctx.orgId);
+    await waitUntilUserAdvisoryLockHeld(prismaA, ctx.userId);
+
     const revokeP = stackA.refresh.revokeAllActiveForUser(ctx.userId);
-    const blockingPids = await waitUntilBackendBlocked(prismaA, pidRotate);
+    await Promise.all([
+      waitUntilAdvisoryLockWaiters(prismaA, ctx.userId, 1, { timeoutMs: 60_000, pollMs: 5 }),
+    ]);
 
     const successor = await rotateP;
-    await revokeP;
-    expect(blockingPids.length).toBeGreaterThan(0);
+    const revokedCount = await revokeP;
+    expect(revokedCount).toBeGreaterThan(0);
 
     const decoded = jwt.verify(successor.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    await expect(stackA.authority.validateAccessJwt(preDecoded as never)).rejects.toThrow();
     await expect(stackA.authority.validateAccessJwt(decoded as never)).rejects.toThrow();
     await expect(stackB.refresh.rotate(successor.refreshToken)).rejects.toThrow(/no longer valid/i);
+    await expect(stackA.refresh.rotate(issued.refreshToken)).rejects.toThrow(/no longer valid/i);
     expect(await activeHeadCount(ctx.userId)).toBe(0);
   });
 

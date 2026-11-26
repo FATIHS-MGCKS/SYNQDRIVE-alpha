@@ -37,3 +37,20 @@ Maps **USR-OWN-02 acceptance behaviors** to **exact test file + test name** exec
 **P2C concurrency lock observation:** `pg_blocking_pids` + `pg_locks` (class `913104`, user advisory) via `usr-p2-deterministic-concurrency.helper.ts`; holder transaction proves wait before release — not phase-barrier-only.
 
 **Count:** 21 requirements mapped; **20** directly exercised in this PR’s PostgreSQL/HTTP paths; **21** includes cited M2M/user-JWT regression (not re-run in usr-p2 gate shard).
+
+---
+
+## P2E E1 — C01–C08 acceptance crosswalk (2026-11-26)
+
+| ID | Required behavior | Executed test (file — name) | E1 verdict |
+|----|-------------------|----------------------------|------------|
+| C01 | Rotation-first vs `revokeAllActiveForUser` contention | `usr-p2c-deterministic-race.postgres.integration.spec.ts` — `RACE01 rotation-first: revoke waits on rotate fence; successor denied after both commit` | PASS |
+| C02 | Production org offboarding vs org-bound + legacy refresh | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` — `E1_C02 offboarding execution suspends org and revokes org-bound sessions; unrelated org preserved` | PASS |
+| C03 | B10 concurrent mutation invariants | `usr-p2b-atomic-security-mutations.postgres.integration.spec.ts` — `B10 password mutation serializes against concurrent refresh rotation`; `B10 MFA reset serializes…`; `B10 membership mutation serializes…` | PASS |
+| C04 | Role downgrade + RolesGuard | `usr-p2c-semantic-guard.postgres.integration.spec.ts` — `E1_C04 organization role downgrade denies RolesGuard for stale membershipRole` | PASS |
+| C05 | Permission revoke + PermissionsGuard | same — `E1_C05 custom permission revocation denies PermissionsGuard for stale JWT` | PASS |
+| C06 | Platform role authority | same — `E1_C06 platform role downgrade denies RolesGuard for stale MASTER_ADMIN JWT` (no production MA downgrade HTTP path; guard + authority on persisted role) | PASS |
+| C07 | Public/M2M regressions | `core-app-m2m-token.http-security.integration.spec.ts` (gate tail) | PASS |
+| C08 | Lifecycle + binding | `org-scoping.organization-status.http-security.integration.spec.ts` (gate tail) | PASS |
+
+**Full usr-p2 PostgreSQL gate:** `backend/scripts/test/usr-p2-postgres-gate.sh` (includes E1 org lifecycle + C07/C08 HTTP shards).

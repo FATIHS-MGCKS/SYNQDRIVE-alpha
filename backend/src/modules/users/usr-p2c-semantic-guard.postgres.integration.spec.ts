@@ -18,7 +18,12 @@ import { IamMembershipLifecycleService } from '@modules/users/iam-membership-lif
 import { IamAuditService } from '@modules/users/iam-audit.service';
 import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import { MasterBillingGuard } from '@shared/auth/master-billing.guard';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { Reflector } from '@nestjs/core';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
+import { ForbiddenException } from '@nestjs/common';
 import { PLATFORM_PERMISSION_JWT_VALUES } from '@modules/users/platform-permissions/platform-permission.constants';
 import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
 
@@ -341,5 +346,311 @@ function assertDisposableDb(): void {
     await expect(guard.canActivate(ctx)).rejects.toThrow();
     const perms = await platformPermissions.resolveJwtPermissions(delegateId);
     expect(perms.includes(PLATFORM_PERMISSION_JWT_VALUES.MASTER_BILLING)).toBe(false);
+  });
+
+  it('E1_C04 organization role downgrade denies RolesGuard for stale membershipRole', async () => {
+    const userId = randomUUID();
+    const orgId = randomUUID();
+    const memId = randomUUID();
+    const adminId = randomUUID();
+    await prisma.user.createMany({
+      data: [
+        {
+          id: userId,
+          email: `e1c04-${userId}@example.test`,
+          platformRole: UserPlatformRole.USER,
+          status: UserStatus.ACTIVE,
+        },
+        {
+          id: adminId,
+          email: `e1c04-admin-${adminId}@example.test`,
+          platformRole: UserPlatformRole.USER,
+          status: UserStatus.ACTIVE,
+        },
+      ],
+    });
+    await prisma.organization.create({
+      data: { id: orgId, companyName: 'E1C04', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
+    });
+    await prisma.organizationMembership.createMany({
+      data: [
+        {
+          id: memId,
+          userId,
+          organizationId: orgId,
+          role: MembershipRole.ORG_ADMIN,
+          status: MembershipStatus.ACTIVE,
+        },
+        {
+          id: randomUUID(),
+          userId: adminId,
+          organizationId: orgId,
+          role: MembershipRole.ORG_ADMIN,
+          status: MembershipStatus.ACTIVE,
+        },
+      ],
+    });
+    const issued = await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email: `e1c04-${userId}@example.test`,
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      {
+        organizationId: orgId,
+        membershipId: memId,
+        role: 'ORG_ADMIN',
+        membershipVersion: 0,
+      },
+    );
+    const reflector = {
+      getAllAndOverride: jest.fn((key: string) => {
+        if (key === ROLES_KEY) return ['ORG_ADMIN'];
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const rolesGuard = new RolesGuard(reflector);
+    const ctxAdmin = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: userId,
+            platformRole: 'USER',
+            membershipRole: 'ORG_ADMIN',
+          },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    expect(rolesGuard.canActivate(ctxAdmin)).toBe(true);
+
+    await lifecycle.move({
+      organizationId: orgId,
+      userId,
+      role: MembershipRole.WORKER,
+      idempotencyKey: `e1c04:${randomUUID()}`,
+      actor: { userId: adminId },
+    });
+    await expect(
+      stack.authority.validateAccessJwt(jwt.verify(issued.accessToken, JWT_SECRET) as never),
+    ).rejects.toThrow();
+    const memAfter = await prisma.organizationMembership.findUnique({ where: { id: memId } });
+    expect(memAfter?.role).toBe(MembershipRole.WORKER);
+    const ctxWorker = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: userId,
+            platformRole: 'USER',
+            membershipRole: memAfter!.role,
+          },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    expect(() => rolesGuard.canActivate(ctxWorker)).toThrow(ForbiddenException);
+  });
+
+  it('E1_C05 custom permission revocation denies PermissionsGuard for stale JWT', async () => {
+    const userId = randomUUID();
+    const orgId = randomUUID();
+    const memId = randomUUID();
+    const adminId = randomUUID();
+    await prisma.user.createMany({
+      data: [
+        {
+          id: userId,
+          email: `e1c05-${userId}@example.test`,
+          platformRole: UserPlatformRole.USER,
+          status: UserStatus.ACTIVE,
+        },
+        {
+          id: adminId,
+          email: `e1c05-admin-${adminId}@example.test`,
+          platformRole: UserPlatformRole.USER,
+          status: UserStatus.ACTIVE,
+        },
+      ],
+    });
+    await prisma.organization.create({
+      data: { id: orgId, companyName: 'E1C05', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
+    });
+    await prisma.organizationMembership.createMany({
+      data: [
+        {
+          id: memId,
+          userId,
+          organizationId: orgId,
+          role: MembershipRole.WORKER,
+          status: MembershipStatus.ACTIVE,
+          permissions: { fleet: { read: true, write: true, manage: false } },
+        },
+        {
+          id: randomUUID(),
+          userId: adminId,
+          organizationId: orgId,
+          role: MembershipRole.ORG_ADMIN,
+          status: MembershipStatus.ACTIVE,
+        },
+      ],
+    });
+    const issued = await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email: `e1c05-${userId}@example.test`,
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      {
+        organizationId: orgId,
+        membershipId: memId,
+        role: 'WORKER',
+        membershipVersion: 0,
+      },
+    );
+    const reflector = {
+      getAllAndOverride: jest.fn((key: string) => {
+        if (key === PERMISSION_KEY) return { module: 'fleet', level: 'write' as const };
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const permGuard = new PermissionsGuard(reflector, prisma as never);
+    const ctxWrite = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: userId,
+            platformRole: 'USER',
+            organizationId: orgId,
+            membershipId: memId,
+            membershipRole: 'WORKER',
+            membershipPermissions: { fleet: { read: true, write: true, manage: false } },
+          },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    expect(await permGuard.canActivate(ctxWrite)).toBe(true);
+    await lifecycle.move({
+      organizationId: orgId,
+      userId,
+      idempotencyKey: `e1c05:${randomUUID()}`,
+      permissions: { fleet: { read: true, write: false, manage: false } },
+      actor: { userId: adminId },
+    });
+    await expect(
+      stack.authority.validateAccessJwt(jwt.verify(issued.accessToken, JWT_SECRET) as never),
+    ).rejects.toThrow();
+    const memAfter = await prisma.organizationMembership.findUnique({ where: { id: memId } });
+    const ctxNoWrite = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: userId,
+            platformRole: 'USER',
+            organizationId: orgId,
+            membershipId: memId,
+            membershipRole: memAfter!.role,
+            membershipPermissions: memAfter!.permissions,
+          },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    await expect(permGuard.canActivate(ctxNoWrite)).rejects.toThrow();
+  });
+
+  it('E1_C06 platform role downgrade denies RolesGuard for stale MASTER_ADMIN JWT', async () => {
+    const userId = randomUUID();
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: `e1c06-${userId}@example.test`,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        status: UserStatus.ACTIVE,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+    });
+    const issued = await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email: `e1c06-${userId}@example.test`,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      null,
+    );
+    const reflector = {
+      getAllAndOverride: jest.fn((key: string) => {
+        if (key === ROLES_KEY) return ['MASTER_ADMIN'];
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const rolesGuard = new RolesGuard(reflector);
+    const ctxMa = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: userId,
+            platformRole: 'MASTER_ADMIN',
+          },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    expect(rolesGuard.canActivate(ctxMa)).toBe(true);
+    let intentIds: string[] = [];
+    await prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, { userIds: [userId] });
+      const live = await tx.user.findUnique({ where: { id: userId }, select: { sessionVersion: true } });
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          platformRole: UserPlatformRole.USER,
+          sessionVersion: (live?.sessionVersion ?? 0) + 1,
+        },
+      });
+      const enq = await stack.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+        eventType: 'PASSWORD_CHANGED',
+        userId,
+        mutationVersion: (live?.sessionVersion ?? 0) + 1,
+        idempotencyKey: `e1c06:${randomUUID()}`,
+      });
+      intentIds = enq.intentIds;
+    });
+    if (intentIds.length > 0) {
+      await stack.sessionPolicy.processIntents(intentIds);
+    }
+    await expect(
+      stack.authority.validateAccessJwt(jwt.verify(issued.accessToken, JWT_SECRET) as never),
+    ).rejects.toThrow();
+    const userAfter = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { platformRole: true },
+    });
+    expect(userAfter.platformRole).toBe(UserPlatformRole.USER);
+    const ctxDowngraded = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: {
+            id: userId,
+            platformRole: userAfter.platformRole,
+          },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    expect(() => rolesGuard.canActivate(ctxDowngraded)).toThrow(ForbiddenException);
   });
 });
