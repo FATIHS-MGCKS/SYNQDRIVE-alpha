@@ -5,8 +5,10 @@
 | Field | SHA / value |
 |-------|-------------|
 | **RUNTIME_BASELINE_SHA** | `7e0a00b49941e0e23553ab568f6e72ddce8da77a` |
-| **TEST_HARNESS_HEAD_SHA** | _(PR #2539 HEAD after CI recovery push)_ |
-| **POSTGRES_EXECUTION_SHA** | CI `product-catalog-metadata-postgres.yml` on harness PR HEAD |
+| **TEST_HARNESS_HEAD_SHA** | `09952835f3db360150b58d967c67875dc348397c` |
+| **POSTGRES_EXECUTION_SHA** | `09952835f3db360150b58d967c67875dc348397c` — workflow run `45842923193` |
+| **POSTGRES_WORKFLOW_RUN** | `45842923193` (`product-catalog-metadata-postgres.yml`) |
+| **CANONICAL_CI_GATE_RUN** | `45842923114` — **CI gate (all critical jobs)** success |
 | **PLAYWRIGHT_EXECUTION_SHA** | CI / agent CLI on harness PR HEAD |
 
 Runtime catalog implementation on `main` is unchanged by harness PR #2539.
@@ -105,14 +107,52 @@ Classification: reproducible **service-level P2 race** (scenario B hook). Full p
 
 | Gap | Status |
 |-----|--------|
-| ACC-GAP-01 | **OPEN** until 48/48 PG PASS on #2539 HEAD + scope honesty |
+| ACC-GAP-01 | **CLOSED** for 48/48 disposable PG on `09952835f` (run `45842923193`); live browser E2E still excluded |
 | ACC-GAP-02 | **CLOSED** (main 28/28 run `45816331418` on `7e0a00b49`) |
 | ACC-GAP-03 | **OPEN** (P3) |
 
-## CLOSEOUT template
+## CLOSEOUT — SYNQDRIVE_PRODUCT_CATALOG_V2_PR2539_P2B_RACE_CI_SEAL
 
 ```
-FINAL_ACCEPTANCE_VERDICT=HOLD
+OPERATION=SYNQDRIVE_PRODUCT_CATALOG_V2_PR2539_P2B_RACE_CI_SEAL
+PR_NUMBER=2539
+BASE_MAIN_SHA=7e0a00b49941e0e23553ab568f6e72ddce8da77a
+OLD_HEAD_SHA=e44a81b89213715efb5beca7e7eecd4f64b347ba
+NEW_HEAD_SHA=09952835f3db360150b58d967c67875dc348397c
+
+P2B_RACE_C_ROOT_CAUSE=non-deterministic winner in concurrent ACTIVE→DISABLED CAS test (assumed fixed primary writer)
+ONE_SUCCESS_ONE_CONFLICT=YES (Promise.allSettled invariant)
+AUDIT_EXACTLY_ONCE=YES ([0,1] by correlation id)
+TEST_FIX_ONLY=YES
+
+POSTGRES_P1=4/4 PASS
+POSTGRES_P2A=10/10 PASS
+POSTGRES_P2B=14/14 PASS (race C sealed)
+POSTGRES_HTTP=16/16 PASS
+POSTGRES_BILLING=1/1 PASS
+POSTGRES_TOCTOU=3/3 PASS
+POSTGRES_TOTAL=48/48 PASS (run 45842923193)
+
+TOCTOU_VERDICT=service-level P2 race documented; catalog admission in tx OK for new grants
+TOCTOU_RUNTIME_REMEDIATION_PR_REQUIRED=YES
+
+I18N_AUTHORITY=PASS
+I18N_NEW_DEBT=PASS
+TYPECHECK=PASS (canonical CI 45842923114)
+BUILD=PASS
+CANONICAL_CI_GATES=PASS (45842923114)
+CI_NOTE=parallel Vehicle Detail Production Readiness workflow may emit duplicate Backend unit failure (exit 143); canonical CI gate job passed Backend unit on same HEAD
+CI_FAILED=0 on canonical gate run
+CI_PENDING=varies by parallel workflows
+
+MERGEABLE_STATE=MERGEABLE (GitHub may show UNSTABLE until duplicate checks reconcile)
+FINAL_MERGE_VERDICT=OWNER_REVIEW (not auto-merged)
+FINAL_ACCEPTANCE_VERDICT=HOLD (TOCTOU runtime remediation + no live E2E)
+
+ACC_GAP_01=CLOSED (48/48 PG on harness HEAD)
+ACC_GAP_02=CLOSED
+ACC_GAP_03=OPEN
+
 MERGED=NO
 DEPLOYED=NO
 ```
