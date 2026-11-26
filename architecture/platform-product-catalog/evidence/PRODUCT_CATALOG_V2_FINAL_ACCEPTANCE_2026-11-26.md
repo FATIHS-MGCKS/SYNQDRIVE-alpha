@@ -335,6 +335,88 @@ Vehicle Detail readiness run [`45779674935`](https://github.com/FATIHS-MGCKS/SYN
 
 ---
 
+## Authoritative reconciliation (2026-11-26 — post-#2539 / #2540)
+
+**Operation:** `SYNQDRIVE_PRODUCT_CATALOG_V2_PR2538_FINAL_EVIDENCE_RECONCILIATION`  
+**Reconciliation agent date (Europe/Berlin):** 2026-11-26  
+**Prior audit baseline (frozen in § above):** `7e0a00b49941e0e23553ab568f6e72ddce8da77a`  
+**Current `origin/main` tip (post-workstream):** `00912553c9d1455c7eab609f22b30e535760a4fe` (#2540 merge)  
+**Audit PR:** [#2538](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2538) — documentation-only updates  
+**Supplementary harness evidence:** [`PRODUCT_CATALOG_V2_ACCEPTANCE_TEST_HARNESS_2026-11-26.md`](PRODUCT_CATALOG_V2_ACCEPTANCE_TEST_HARNESS_2026-11-26.md)
+
+> Historical gates, defect rows, and closure-pass findings **above are preserved unchanged**. This section is the authoritative status **after** merged acceptance harness and TOCTOU remediation.
+
+### Workstream merge chain (verified on GitHub)
+
+| Slice | PR | Merge commit on `main` |
+|-------|-----|-------------------------|
+| P1 metadata | [#2531](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2531) | `8016c2ce47ca6625b27599e3071af22490ced80b` |
+| P2A admission | [#2535](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2535) | `3650d38bcadcabbf8cf91f55532b0e0d7d5deb99` |
+| P2B status | [#2537](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2537) | `7e0a00b49941e0e23553ab568f6e72ddce8da77a` |
+| V2 acceptance harness | [#2539](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2539) | `245f2aa597717e21f276f30ec2a770c6521f48e6` |
+| Grant TOCTOU (P2 runtime) | [#2540](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2540) | `00912553c9d1455c7eab609f22b30e535760a4fe` |
+
+### PostgreSQL disposable certification
+
+| SHA / context | Workflow run | Total | Breakdown (script) | Verdict |
+|---------------|--------------|-------|-------------------|---------|
+| `7e0a00b49` (pre-harness `main`) | [`45816331418`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45816331418) | **28/28 PASS** | P1 4 + P2A 10 + P2B 14 | **RECORDED_PASS** on audited baseline |
+| #2539 merge `245f2aa59` | [`45842923193`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45842923193) | **48/48 PASS** | + HTTP 16, billing 1, TOCTOU repro 3 | Harness CI seal |
+| #2540 head `c740a247e` | [`45858083141`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45858083141) | **51/51 PASS** | + TOCTOU regression **6/6** (A–F) | **POSTGRES_ACCEPTANCE** authority for harness scope |
+| `00912553c` (`main` after #2540) | Pending canonical push CI | — | Same script expectation 51/51 | See § Main CI |
+
+**Script:** `backend/scripts/test/product-catalog-metadata-postgres-ci.sh`
+
+### #2539 harness scope (merged evidence)
+
+- Backend-integrated HTTP acceptance (`product-catalog-v2-acceptance.http.postgres.integration`) — 16 tests
+- Billing preservation disposable spec — 1 test (**fixture-scoped**; not full commercial billing audit)
+- Playwright UX (`product-catalog-v2-acceptance-ui.spec.ts`) — **mocked** APIs; nine-locale / accessibility within harness scope only
+- Canonical CI on harness head: run `45842923114` — success (38 checks, recorded on harness PR)
+
+### #2540 TOCTOU remediation (merged evidence)
+
+- `vehicle-product-grant.transaction-locks.ts` — transactional `FOR UPDATE` order: **products → organization_products → vehicles → vehicle_product_grants**
+- `VehicleProductGrantService.grantExplicit` — org-product entitlement + vehicle registry lifecycle revalidated **inside** grant transaction (closes org-product eligibility TOCTOU)
+- Preserves P2A catalog admission, idempotent ACTIVE grants, versioning, audit, tenant isolation, TAXI retirement, no auto-revoke of prior valid grants
+- PR head CI: 37 checks success; both canonical **CI gate (all critical jobs)** green on `c740a247e`
+
+### Defect register — reconciled status (does not edit historical § Defect register)
+
+| ID | Prior audit status | **Reconciled status** | Evidence |
+|----|-------------------|----------------------|----------|
+| **ACC-GAP-02** | Open (no PG on audited SHA in audit session) | **CLOSED** | `7e0a00b49` run `45816331418` (28/28); harness 48/48 (`45842923193`); post-remediation **51/51** (`45858083141`) |
+| **ACC-GAP-01** | Open (no full MA Playwright at audited SHA) | **PARTIAL — STILL OPEN for live E2E** | Backend HTTP integration + **mocked** Playwright in harness (#2539); **no** genuine browser→backend auth, **no** real MFA issuance, **no** full live Master Admin lifecycle executed |
+| **ACC-GAP-03** | Open (no `pg_locks` waiter on P2B race A) | **OPEN — documented limitation** | Intentional flake removal; **not** owner-accepted without explicit attestation |
+| *(harness)* TOCTOU runtime | HOLD on #2539 | **REMEDIATED** | **#2540** merged; regression A–F in disposable PG |
+
+**BILLING_PRESERVATION:** **PASS_WITH_DOCUMENTED_FIXTURE_SCOPE** (harness spec + architecture inspect; not production billing certification).
+
+**VEHICLE_GRANT_TOCTOU:** **REMEDIATED_BY_PR2540**
+
+### Main canonical CI @ `00912553c`
+
+Push workflows triggered on merge of #2540 (e.g. Vehicle Detail readiness run `45864188174`). **Reconciliation time (UTC):** checks **in progress** — reconcile pass/fail in audit PR #2538 closeout after terminal CI. Merge of #2539/#2540 PR heads recorded **PASS**; `main` tip must reach terminal green separately before production release claims.
+
+### Reconciled verdicts (supersede § Closure verdicts for planning only)
+
+| Verdict | Value |
+|---------|-------|
+| **Repository integration (P1/P2A/P2B + harness + TOCTOU fix)** | **CONDITIONAL_GO** |
+| **POSTGRES_ACCEPTANCE** | **51/51 PASS** on #2540 PR head (`45858083141`); **28/28 PASS** on original audit baseline (`45816331418`) |
+| **FINAL_ACCEPTANCE_VERDICT** | **FINAL_ACCEPTANCE_HOLD** — live browser E2E + owner production attestation still required |
+| **PRODUCTION_RELEASE_VERDICT** | **HOLD** — no deploy executed; not claimed |
+
+**What remains for strict full live E2E certification (if required):**
+
+1. Authenticated browser session against real staging/prod-like backend (not route mocks)
+2. Real MFA challenge issuance and completion on privileged MA catalog mutations
+3. End-to-end Master Admin catalog journey: metadata CAS save, status lifecycle, admission denial paths, security error surfaces, axe + nine-locale UI pass on **live** stack
+
+**Module registry:** remains **`AUDIT_IN_PROGRESS`** — no automatic promotion in this reconciliation.
+
+---
+
 ## Architecture governance (audit PR)
 
 ```

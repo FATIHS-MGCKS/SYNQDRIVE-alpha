@@ -1,9 +1,11 @@
 # Platform product catalog (Alpha central platform)
 
-**Registry coverage status:** `AUDIT_IN_PROGRESS`  
-**Last updated:** 2026-11-26 (P1/P2A/P2B merged; V2 final acceptance evidence — **CONDITIONAL_GO**, not production cert)
+**Registry coverage status:** `AUDIT_IN_PROGRESS` (unchanged — no auto-promotion)  
+**Last updated:** 2026-11-26 (P1 #2531, P2A #2535, P2B #2537, harness #2539, TOCTOU #2540 on `main` @ `00912553c`)
 
-**Latest acceptance:** [`evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md`](evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md)
+**Latest acceptance:** [`evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md`](evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md) — reconciled **2026-11-26**: disposable PG **51/51** on #2540 CI; **FINAL_ACCEPTANCE_HOLD** (live browser E2E not executed).
+
+**Harness record:** [`evidence/PRODUCT_CATALOG_V2_ACCEPTANCE_TEST_HARNESS_2026-11-26.md`](evidence/PRODUCT_CATALOG_V2_ACCEPTANCE_TEST_HARNESS_2026-11-26.md)
 
 ## Owner architecture decision (2026-11-16)
 
@@ -120,6 +122,17 @@ See `CHANGE_RECORD_P3_PR5_2026-11-17.md`.
 ## P3 integration certification (post–#2421)
 
 Evidence record: [`evidence/P3_FINAL_INTEGRATION_CERTIFICATION_2026-11-17.md`](evidence/P3_FINAL_INTEGRATION_CERTIFICATION_2026-11-17.md) — **PASS_WITH_BLOCKERS** (fresh-DB migration pre-existing blocker; M2M not production-activated).
+
+## Product Catalog V2 acceptance (2026-11-26)
+
+| Evidence | Notes |
+|----------|--------|
+| Final audit + reconciliation | [`PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md`](evidence/PRODUCT_CATALOG_V2_FINAL_ACCEPTANCE_2026-11-26.md) |
+| Disposable PG @ `7e0a00b49` | Workflow [`45816331418`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45816331418) — **28/28** |
+| Harness #2539 | Merge `245f2aa59`; PG **48/48** run [`45842923193`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45842923193) |
+| TOCTOU #2540 | Merge `00912553c`; PG **51/51** run [`45858083141`](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/45858083141) |
+
+**Not claimed:** production deploy, live MFA browser E2E, registry `AUTHORITY_ACTIVE`.
 
 ## Evidence
 
