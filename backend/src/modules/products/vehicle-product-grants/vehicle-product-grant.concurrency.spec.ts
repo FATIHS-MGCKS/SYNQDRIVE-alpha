@@ -1,5 +1,6 @@
 import {
   OrgProductStatus,
+  ProductCatalogStatus,
   ProductSlug,
   VehicleProductGrantStatus,
   VehicleRegistryLifecycle,
@@ -31,7 +32,49 @@ describe('VehicleProductGrantService — concurrency/version (in-memory contract
   function buildService(store: Map<string, Row>) {
     const key = (vehicleId: string, productSlug: ProductSlug) => `${vehicleId}:${productSlug}`;
 
+    const mapGrantRow = (row: Row) => ({
+      id: row.id,
+      organizationId: row.organizationId,
+      vehicleId: row.vehicleId,
+      productSlug: row.productSlug,
+      status: row.status,
+      grantVersion: row.grantVersion,
+      grantedAt: row.grantedAt,
+      grantedByUserId: row.grantedByUserId,
+      revokedAt: row.revokedAt,
+      revokedByUserId: row.revokedByUserId,
+    });
+
     const tx = {
+      $queryRaw: jest.fn(async (query: { strings: readonly string[] }) => {
+        const sql = query.strings.join('?').toLowerCase();
+        if (sql.includes('from products')) {
+          return [
+            {
+              id: 'prod-catalog',
+              slug: ProductSlug.RENTAL,
+              catalogStatus: ProductCatalogStatus.ACTIVE,
+            },
+          ];
+        }
+        if (sql.includes('organization_products')) {
+          return [{ id: 'op', status: OrgProductStatus.ACTIVE }];
+        }
+        if (sql.includes('from vehicles')) {
+          return [
+            {
+              id: VEH,
+              organizationId: ORG,
+              registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+            },
+          ];
+        }
+        if (sql.includes('vehicle_product_grants')) {
+          const row = store.get(key(VEH, ProductSlug.RENTAL));
+          return row ? [mapGrantRow(row)] : [];
+        }
+        return [];
+      }),
       vehicleProductGrant: {
         findUnique: async ({
           where,
@@ -101,6 +144,7 @@ describe('VehicleProductGrantService — concurrency/version (in-memory contract
           registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
         }),
       },
+      vehicleProductGrant: tx.vehicleProductGrant,
       $transaction: async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx),
     };
 
