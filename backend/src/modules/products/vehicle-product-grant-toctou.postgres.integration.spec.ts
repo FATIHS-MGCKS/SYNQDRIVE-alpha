@@ -1,12 +1,9 @@
 /**
- * Vehicle grant TOCTOU review — disposable Postgres concurrency probes.
+ * Vehicle grant TOCTOU — disposable Postgres security regression (post-P2 remediation).
  *
  * VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION=1
- *
- * Test-data lifecycle: orgs/vehicles/grants use isolated ids; `activity_logs` is never
- * deleted (append-only). Disposable CI drops the whole database after the gate.
  */
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   OrgProductPlan,
   OrgProductStatus,
@@ -28,7 +25,7 @@ import { assertProductCatalogV2DisposablePostgres } from './testing/product-cata
 const LIVE = process.env.VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION === '1';
 const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
 
-(LIVE ? describe : describe.skip)('Vehicle product grant TOCTOU — postgres review', () => {
+(LIVE ? describe : describe.skip)('Vehicle product grant TOCTOU — postgres regression', () => {
   const prisma = new PrismaClient();
   const audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as MasterAdminAuditService;
   let grants: VehicleProductGrantService;
@@ -102,32 +99,32 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
     return { orgId: org.id, vehicleId: vehicle.id, slug };
   }
 
-  it('blocks NEW grant when catalog admission is disabled inside the grant transaction', async () => {
-    const slug = ProductSlug.FLEET;
-    await prisma.product.update({
-      where: { slug },
-      data: { catalogStatus: ProductCatalogStatus.DISABLED },
-    });
+  it('A: existing ACTIVE grant preserved when org product is suspended after grant', async () => {
+    const slug = ProductSlug.RENTAL;
     const adminId = await seedMasterAdmin();
     const { orgId, vehicleId } = await seedOrgWithProduct(slug);
 
-    await expect(
-      grants.grantExplicit({
-        organizationId: orgId,
-        vehicleId,
-        productSlug: slug,
-        grantedByUserId: adminId,
-        audit: { correlationId: `toctou-catalog-${Date.now()}` },
-      }),
-    ).rejects.toThrow(/admission|disabled|catalog/i);
-
-    await prisma.product.update({
-      where: { slug },
-      data: { catalogStatus: ProductCatalogStatus.ACTIVE },
+    const grant = await grants.grantExplicit({
+      organizationId: orgId,
+      vehicleId,
+      productSlug: slug,
+      grantedByUserId: adminId,
     });
+    expect(grant.status).toBe(VehicleProductGrantStatus.ACTIVE);
+
+    await prisma.organizationProduct.updateMany({
+      where: { organizationId: orgId, product: { slug } },
+      data: { status: OrgProductStatus.SUSPENDED },
+    });
+
+    const persisted = await prisma.vehicleProductGrant.findFirst({
+      where: { organizationId: orgId, vehicleId, productSlug: slug },
+    });
+    expect(persisted?.status).toBe(VehicleProductGrantStatus.ACTIVE);
+    expect(persisted?.id).toBe(grant.id);
   });
 
-  it('B: org suspension after precheck but before grant tx may persist ACTIVE grant (deterministic)', async () => {
+  it('B: suspension committed before grant mutation denies new grant (no ACTIVE row)', async () => {
     const slug = ProductSlug.RENTAL;
     await prisma.product.update({
       where: { slug },
@@ -151,26 +148,26 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
           where: { organizationId: orgId, product: { slug } },
           data: { status: OrgProductStatus.SUSPENDED },
         });
-        observedLockOrder.push('org_product_suspended_before_grant_mutation');
+        observedLockOrder.push('org_product_suspended_before_inner_tx');
         return originalTransaction(fn as Parameters<typeof originalTransaction>[0], opts);
       }) as typeof prisma.$transaction;
 
-      const grant = await grants.grantExplicit({
-        organizationId: orgId,
-        vehicleId,
-        productSlug: slug,
-        grantedByUserId: adminId,
-        audit: { correlationId: `toctou-b-${Date.now()}` },
-      });
+      await expect(
+        grants.grantExplicit({
+          organizationId: orgId,
+          vehicleId,
+          productSlug: slug,
+          grantedByUserId: adminId,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
 
-      const op = await prisma.organizationProduct.findFirst({
-        where: { organizationId: orgId, product: { slug } },
+      const grantsCount = await prisma.vehicleProductGrant.count({
+        where: { organizationId: orgId, vehicleId, productSlug: slug },
       });
-      expect(op?.status).toBe(OrgProductStatus.SUSPENDED);
-      expect(grant.status).toBe(VehicleProductGrantStatus.ACTIVE);
+      expect(grantsCount).toBe(0);
       expect(observedLockOrder).toEqual([
         'grant_tx_entered',
-        'org_product_suspended_before_grant_mutation',
+        'org_product_suspended_before_inner_tx',
       ]);
     } finally {
       grantPrisma.$transaction = originalTransaction;
@@ -199,5 +196,98 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
       where: { organizationId: orgId, vehicleId, productSlug: slug },
     });
     expect(grantsCount).toBe(0);
+  });
+
+  it('D: vehicle lifecycle change before grant commit denies new grant', async () => {
+    const slug = ProductSlug.FLEET;
+    const adminId = await seedMasterAdmin();
+    const { orgId, vehicleId } = await seedOrgWithProduct(slug);
+
+    const originalTransaction = prisma.$transaction.bind(prisma);
+    const grantPrisma = prisma as PrismaClient & { $transaction: typeof prisma.$transaction };
+    try {
+      grantPrisma.$transaction = (async (
+        fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
+        opts?: Parameters<PrismaClient['$transaction']>[1],
+      ) => {
+        await prisma.vehicle.update({
+          where: { id: vehicleId },
+          data: { registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED },
+        });
+        return originalTransaction(fn as Parameters<typeof originalTransaction>[0], opts);
+      }) as typeof prisma.$transaction;
+
+      await expect(
+        grants.grantExplicit({
+          organizationId: orgId,
+          vehicleId,
+          productSlug: slug,
+          grantedByUserId: adminId,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(
+        await prisma.vehicleProductGrant.count({
+          where: { organizationId: orgId, vehicleId, productSlug: slug },
+        }),
+      ).toBe(0);
+    } finally {
+      grantPrisma.$transaction = originalTransaction;
+    }
+  });
+
+  it('E: catalog DISABLED blocks new grant (P2A admission inside tx)', async () => {
+    const slug = ProductSlug.FLEET;
+    await prisma.product.update({
+      where: { slug },
+      data: { catalogStatus: ProductCatalogStatus.DISABLED },
+    });
+    const adminId = await seedMasterAdmin();
+    const { orgId, vehicleId } = await seedOrgWithProduct(slug);
+
+    await expect(
+      grants.grantExplicit({
+        organizationId: orgId,
+        vehicleId,
+        productSlug: slug,
+        grantedByUserId: adminId,
+        audit: { correlationId: `toctou-catalog-${Date.now()}` },
+      }),
+    ).rejects.toThrow(/admission|disabled|catalog/i);
+
+    await prisma.product.update({
+      where: { slug },
+      data: { catalogStatus: ProductCatalogStatus.ACTIVE },
+    });
+  });
+
+  it('F: concurrent first-time grants yield one ACTIVE row (no duplicate transition)', async () => {
+    const slug = ProductSlug.RENTAL;
+    const adminId = await seedMasterAdmin();
+    const { orgId, vehicleId } = await seedOrgWithProduct(slug);
+
+    const [a, b] = await Promise.all([
+      grants.grantExplicit({
+        organizationId: orgId,
+        vehicleId,
+        productSlug: slug,
+        grantedByUserId: adminId,
+      }),
+      grants.grantExplicit({
+        organizationId: orgId,
+        vehicleId,
+        productSlug: slug,
+        grantedByUserId: adminId,
+      }),
+    ]);
+
+    expect(a.id).toBe(b.id);
+    expect(a.grantVersion).toBe(1);
+    expect(a.status).toBe(VehicleProductGrantStatus.ACTIVE);
+    expect(
+      await prisma.vehicleProductGrant.count({
+        where: { organizationId: orgId, vehicleId, productSlug: slug },
+      }),
+    ).toBe(1);
   });
 });

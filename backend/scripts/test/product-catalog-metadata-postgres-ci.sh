@@ -156,8 +156,8 @@ run_jest_postgres_suite \
 
 export VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION=1
 run_jest_postgres_suite \
-  "Vehicle product grant TOCTOU review" \
+  "Vehicle product grant TOCTOU regression (P2)" \
   "vehicle-product-grant-toctou.postgres.integration" \
-  "3"
+  "6"
 
 echo "Product catalog metadata P1 + P2A + P2B + V2 acceptance disposable PostgreSQL certification: PASS"

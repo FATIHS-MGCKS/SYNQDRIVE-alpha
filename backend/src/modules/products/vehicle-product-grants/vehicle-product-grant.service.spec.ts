@@ -32,16 +32,83 @@ describe('VehicleProductGrantService', () => {
     revokedByUserId: string | null;
   };
 
-  function makePrisma(store: Map<string, Row>) {
+  type PrismaLockMocks = {
+    organizationProduct?: { id: string; status: OrgProductStatus } | null;
+    vehicle?: {
+      id: string;
+      organizationId: string;
+      registryLifecycle: VehicleRegistryLifecycle;
+    } | null;
+  };
+
+  function makeQueryRaw(store: Map<string, Row>, mocks: PrismaLockMocks = {}) {
+    return jest.fn(async (query: { strings: readonly string[]; values: readonly unknown[] }) => {
+      const sql = query.strings.join('?').toLowerCase();
+      if (sql.includes('from products')) {
+        return [
+          {
+            id: 'prod-catalog',
+            slug: ProductSlug.RENTAL,
+            catalogStatus: ProductCatalogStatus.ACTIVE,
+          },
+        ];
+      }
+      if (sql.includes('organization_products')) {
+        if (mocks.organizationProduct === null) {
+          return [];
+        }
+        return [
+          mocks.organizationProduct ?? { id: 'op-1', status: OrgProductStatus.ACTIVE },
+        ];
+      }
+      if (sql.includes('from vehicles')) {
+        if (mocks.vehicle === null) {
+          return [];
+        }
+        return [
+          mocks.vehicle ?? {
+            id: VEH,
+            organizationId: ORG,
+            registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+          },
+        ];
+      }
+      if (sql.includes('vehicle_product_grants')) {
+        const slug =
+          (query.values.find(
+            (v) => typeof v === 'string' && Object.values(ProductSlug).includes(v as ProductSlug),
+          ) as ProductSlug | undefined) ?? ProductSlug.RENTAL;
+        const vehicleId =
+          (query.values.find((v) => typeof v === 'string' && v.length > 0 && v !== slug) as
+            | string
+            | undefined) ?? VEH;
+        const row = store.get(`${vehicleId}:${slug}`);
+        if (!row) {
+          return [];
+        }
+        return [
+          {
+            id: row.id,
+            organizationId: row.organizationId,
+            vehicleId: row.vehicleId,
+            productSlug: row.productSlug,
+            status: row.status,
+            grantVersion: row.grantVersion,
+            grantedAt: row.grantedAt,
+            grantedByUserId: row.grantedByUserId,
+            revokedAt: row.revokedAt,
+            revokedByUserId: row.revokedByUserId,
+          },
+        ];
+      }
+      return [];
+    });
+  }
+
+  function makePrisma(store: Map<string, Row>, mocks: PrismaLockMocks = {}) {
     const key = (vehicleId: string, productSlug: ProductSlug) => `${vehicleId}:${productSlug}`;
     const tx = {
-      $queryRaw: jest.fn().mockResolvedValue([
-        {
-          id: 'prod-catalog',
-          slug: ProductSlug.RENTAL,
-          catalogStatus: ProductCatalogStatus.ACTIVE,
-        },
-      ]),
+      $queryRaw: makeQueryRaw(store, mocks),
       vehicleProductGrant: {
         findUnique: async ({
           where,
@@ -210,11 +277,12 @@ describe('VehicleProductGrantService', () => {
   });
 
   it('rejects foreign-org vehicle binding as not found', async () => {
-    const prisma = makePrisma(store);
-    (prisma.vehicle.findFirst as jest.Mock).mockResolvedValue({
-      id: VEH,
-      organizationId: 'other-org',
-      registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+    const prisma = makePrisma(store, {
+      vehicle: {
+        id: VEH,
+        organizationId: 'other-org',
+        registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
+      },
     });
     service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
     await expect(
@@ -228,8 +296,7 @@ describe('VehicleProductGrantService', () => {
   });
 
   it('rejects grant when organization product is inactive', async () => {
-    const prisma = makePrisma(store);
-    (prisma.organizationProduct.findFirst as jest.Mock).mockResolvedValue(null);
+    const prisma = makePrisma(store, { organizationProduct: null });
     service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
     await expect(
       service.grantExplicit({
@@ -239,18 +306,12 @@ describe('VehicleProductGrantService', () => {
         grantedByUserId: ADMIN,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.organizationProduct.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          status: { in: [OrgProductStatus.ACTIVE] },
-        }),
-      }),
-    );
   });
 
   it('rejects grant when organization product is TRIAL (operational fail-closed)', async () => {
-    const prisma = makePrisma(store);
-    (prisma.organizationProduct.findFirst as jest.Mock).mockResolvedValue(null);
+    const prisma = makePrisma(store, {
+      organizationProduct: { id: 'op-1', status: OrgProductStatus.TRIAL },
+    });
     service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
     await expect(
       service.grantExplicit({
@@ -264,11 +325,12 @@ describe('VehicleProductGrantService', () => {
   });
 
   it('rejects offboarded vehicle', async () => {
-    const prisma = makePrisma(store);
-    (prisma.vehicle.findFirst as jest.Mock).mockResolvedValue({
-      id: VEH,
-      organizationId: ORG,
-      registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+    const prisma = makePrisma(store, {
+      vehicle: {
+        id: VEH,
+        organizationId: ORG,
+        registryLifecycle: VehicleRegistryLifecycle.OFFBOARDED,
+      },
     });
     service = new VehicleProductGrantService(prisma as never, masterAdminAudit as never);
     await expect(
