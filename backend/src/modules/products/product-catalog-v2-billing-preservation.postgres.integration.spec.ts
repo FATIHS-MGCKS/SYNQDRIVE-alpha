@@ -2,6 +2,11 @@
  * Catalog status transitions must not mutate commercial billing subgraph (disposable Postgres).
  *
  * PRODUCT_CATALOG_V2_BILLING_PRESERVATION_POSTGRES_INTEGRATION=1
+ *
+ * Seeded in this gate: rental `price_books`, `price_tariff_versions`, `billing_subscriptions`,
+ * `billing_discounts`, `billing_invoices`, `organization_products`.
+ * Not seeded (reported gap): `billing_price_books`, `billing_price_versions`,
+ * `billing_subscription_items`, `billing_payments`, `org_invoices`, `vehicle_product_grants`.
  */
 import {
   PrismaClient,
@@ -188,8 +193,13 @@ async function snapshotCommercialState(
     });
 
     const before = await snapshotCommercialState(prisma, orgId);
-    expect(before.priceBooks.length).toBeGreaterThan(0);
+    expect(before.priceBooks.length).toBe(1);
+    expect(before.tariffVersions.length).toBe(1);
     expect(before.billingSubscriptions.length).toBe(1);
+    expect(before.billingDiscounts.length).toBe(1);
+    expect(before.billingInvoices.length).toBe(1);
+    expect(before.organizationProducts.length).toBe(1);
+    expect(before.vehicleProductGrants.length).toBe(0);
 
     await products.updateProductCatalogStatusForMasterAdmin({
       productSlug: slug,

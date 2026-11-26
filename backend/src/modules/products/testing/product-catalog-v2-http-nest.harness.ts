@@ -1,5 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { PrismaClient, UserPlatformRole } from '@prisma/client';
 import { RolesGuard } from '@shared/auth/roles.guard';
@@ -11,6 +11,7 @@ import { ProductsController } from '../products.controller';
 import { ProductsService } from '../products.service';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { AuditService } from '@modules/activity-log/audit.service';
+import { GlobalExceptionFilter } from '@shared/filters/global-exception.filter';
 import { createMasterAdminAuthGuard } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 
@@ -41,6 +42,8 @@ export async function createProductCatalogV2HttpHarness(
       { provide: PrismaService, useValue: prisma },
       { provide: IamMfaStepUpService, useValue: { validateGrant } },
       { provide: APP_GUARD, useValue: createMasterAdminAuthGuard() },
+      GlobalExceptionFilter,
+      { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     ],
   })
     .overrideGuard(RolesGuard)

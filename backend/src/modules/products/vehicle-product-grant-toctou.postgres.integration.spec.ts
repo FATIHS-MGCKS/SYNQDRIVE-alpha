@@ -2,16 +2,21 @@
  * Vehicle grant TOCTOU review — disposable Postgres concurrency probes.
  *
  * VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION=1
+ *
+ * Test-data lifecycle: orgs/vehicles/grants use isolated ids; `activity_logs` is never
+ * deleted (append-only). Disposable CI drops the whole database after the gate.
  */
 import { ForbiddenException } from '@nestjs/common';
 import {
   OrgProductPlan,
   OrgProductStatus,
+  Prisma,
   PrismaClient,
   ProductCatalogStatus,
   ProductSlug,
   UserPlatformRole,
   UserStatus,
+  VehicleProductGrantStatus,
   VehicleRegistryLifecycle,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -28,7 +33,7 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
   const audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as MasterAdminAuditService;
   let grants: VehicleProductGrantService;
   const orgIds: string[] = [];
-  let adminId = '';
+  const masterIds: string[] = [];
 
   beforeAll(() => {
     assertProductCatalogV2DisposablePostgres(OPT_IN);
@@ -36,17 +41,34 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
   });
 
   afterAll(async () => {
-    if (orgIds.length) {
-      await prisma.vehicleProductGrant.deleteMany({ where: { organizationId: { in: orgIds } } });
-      await prisma.vehicle.deleteMany({ where: { organizationId: { in: orgIds } } });
-      await prisma.organizationProduct.deleteMany({ where: { organizationId: { in: orgIds } } });
-      await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
+    for (const orgId of orgIds) {
+      await prisma.vehicleProductGrant.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.vehicle.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.organizationProduct.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
     }
-    if (adminId) {
-      await prisma.user.deleteMany({ where: { id: adminId } });
+    if (masterIds.length) {
+      await prisma.user.deleteMany({ where: { id: { in: masterIds } } }).catch(() => undefined);
     }
     await prisma.$disconnect();
   });
+
+  async function seedMasterAdmin(): Promise<string> {
+    const adminId = `toctou-master-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    masterIds.push(adminId);
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${adminId},
+        ${`toctou-${adminId}@test.example`},
+        'TOCTOU Master',
+        ${UserStatus.ACTIVE}::"UserStatus",
+        ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole",
+        NOW(),
+        NOW()
+      )
+    `;
+    return adminId;
+  }
 
   async function seedOrgWithProduct(slug: ProductSlug) {
     const org = await prisma.organization.create({
@@ -80,28 +102,13 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
     return { orgId: org.id, vehicleId: vehicle.id, slug };
   }
 
-  beforeEach(async () => {
-    adminId = `toctou-master-${Date.now()}`;
-    await prisma.$executeRaw`
-      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
-      VALUES (
-        ${adminId},
-        ${`toctou-${Date.now()}@test.example`},
-        'TOCTOU Master',
-        ${UserStatus.ACTIVE}::"UserStatus",
-        ${UserPlatformRole.MASTER_ADMIN}::"UserPlatformRole",
-        NOW(),
-        NOW()
-      )
-    `;
-  });
-
   it('blocks NEW grant when catalog admission is disabled inside the grant transaction', async () => {
     const slug = ProductSlug.FLEET;
     await prisma.product.update({
       where: { slug },
       data: { catalogStatus: ProductCatalogStatus.DISABLED },
     });
+    const adminId = await seedMasterAdmin();
     const { orgId, vehicleId } = await seedOrgWithProduct(slug);
 
     await expect(
@@ -120,37 +127,59 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
     });
   });
 
-  it('documents org-product eligibility TOCTOU under concurrent suspension', async () => {
+  it('B: org suspension after precheck but before grant tx may persist ACTIVE grant (deterministic)', async () => {
     const slug = ProductSlug.RENTAL;
     await prisma.product.update({
       where: { slug },
       data: { catalogStatus: ProductCatalogStatus.ACTIVE },
     });
+    const adminId = await seedMasterAdmin();
     const { orgId, vehicleId } = await seedOrgWithProduct(slug);
 
-    const [grant] = await Promise.all([
-      grants.grantExplicit({
+    const originalTransaction = prisma.$transaction.bind(prisma);
+    const grantPrisma = prisma as PrismaClient & {
+      $transaction: typeof prisma.$transaction;
+    };
+    let observedLockOrder: string[] = [];
+    try {
+      grantPrisma.$transaction = async (
+        fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
+        opts?: Parameters<PrismaClient['$transaction']>[1],
+      ) => {
+        observedLockOrder.push('grant_tx_entered');
+        await prisma.organizationProduct.updateMany({
+          where: { organizationId: orgId, product: { slug } },
+          data: { status: OrgProductStatus.SUSPENDED },
+        });
+        observedLockOrder.push('org_product_suspended_before_grant_mutation');
+        return originalTransaction(fn, opts);
+      };
+
+      const grant = await grants.grantExplicit({
         organizationId: orgId,
         vehicleId,
         productSlug: slug,
         grantedByUserId: adminId,
-        audit: { correlationId: `toctou-org-${Date.now()}` },
-      }),
-      prisma.organizationProduct.updateMany({
-        where: { organizationId: orgId, product: { slug } },
-        data: { status: OrgProductStatus.SUSPENDED },
-      }),
-    ]);
+        audit: { correlationId: `toctou-b-${Date.now()}` },
+      });
 
-    const op = await prisma.organizationProduct.findFirst({
-      where: { organizationId: orgId, product: { slug } },
-    });
-    expect(op?.status).toBe(OrgProductStatus.SUSPENDED);
-    expect(grant.status).toBe('ACTIVE');
+      const op = await prisma.organizationProduct.findFirst({
+        where: { organizationId: orgId, product: { slug } },
+      });
+      expect(op?.status).toBe(OrgProductStatus.SUSPENDED);
+      expect(grant.status).toBe(VehicleProductGrantStatus.ACTIVE);
+      expect(observedLockOrder).toEqual([
+        'grant_tx_entered',
+        'org_product_suspended_before_grant_mutation',
+      ]);
+    } finally {
+      grantPrisma.$transaction = originalTransaction;
+    }
   });
 
-  it('rejects grant when organization product is already suspended before call', async () => {
+  it('C: rejects grant when organization product is suspended before call', async () => {
     const slug = ProductSlug.VYMOD;
+    const adminId = await seedMasterAdmin();
     const { orgId, vehicleId } = await seedOrgWithProduct(slug);
     await prisma.organizationProduct.updateMany({
       where: { organizationId: orgId, product: { slug } },
@@ -165,5 +194,10 @@ const OPT_IN = 'VEHICLE_PRODUCT_GRANT_TOCTOU_POSTGRES_INTEGRATION';
         grantedByUserId: adminId,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+
+    const grantsCount = await prisma.vehicleProductGrant.count({
+      where: { organizationId: orgId, vehicleId, productSlug: slug },
+    });
+    expect(grantsCount).toBe(0);
   });
 });

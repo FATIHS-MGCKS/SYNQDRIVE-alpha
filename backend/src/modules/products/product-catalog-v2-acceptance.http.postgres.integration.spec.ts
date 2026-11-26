@@ -3,8 +3,15 @@
  *
  * PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION=1
  * DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_product_metadata_p1
+ *
+ * Test-data lifecycle:
+ * - Isolated org/user ids per run; catalog rows restored after tests.
+ * - `activity_logs` is append-only — never UPDATE/DELETE audit rows or disable triggers.
+ * - Best-effort cleanup of grants/vehicles/org_products only; org rows and audit evidence may
+ *   remain until CI drops disposable DB `synqdrive_product_metadata_p1`.
  */
 import {
+  ActivityEntity,
   OrgProductPlan,
   OrgProductStatus,
   PrismaClient,
@@ -17,6 +24,7 @@ import { ConflictException } from '@nestjs/common';
 import * as request from 'supertest';
 import { MFA_ERROR } from '@modules/iam-mfa/iam-mfa.policy';
 import { installMfaEnforcedEnvForSuite } from '@shared/auth/testing/master-admin-mfa-http.integration.harness';
+import { PRODUCT_CATALOG_ADMISSION_DENIAL_REASON } from './product-catalog-admission.authority';
 import { defaultVehicleAccessModeForNewAssignment } from './organization-product-vehicle-access-defaults';
 import { assertProductCatalogV2DisposablePostgres } from './testing/product-catalog-v2-disposable-postgres-preflight';
 import {
@@ -29,6 +37,19 @@ import {
 
 const LIVE = process.env.PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION === '1';
 const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
+
+async function countCatalogStatusAuditRows(
+  prisma: PrismaClient,
+  productId: string,
+): Promise<number> {
+  return prisma.activityLog.count({
+    where: {
+      entity: ActivityEntity.ADMIN_OPERATION,
+      entityId: productId,
+      metaJson: { path: ['metadata', 'action'], equals: 'catalog_status_patch' },
+    },
+  });
+}
 
 (LIVE ? describe : describe.skip)('Product Catalog V2 — HTTP acceptance (postgres)', () => {
   const prisma = new PrismaClient();
@@ -78,7 +99,6 @@ const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
       await prisma.vehicleProductGrant.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
       await prisma.vehicle.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
       await prisma.organizationProduct.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
-      await prisma.organization.delete({ where: { id: orgId } }).catch(() => undefined);
     }
     await prisma.userMfaFactor.deleteMany({ where: { userId: seededMasterId } }).catch(() => undefined);
     await prisma.user.deleteMany({ where: { id: seededMasterId } }).catch(() => undefined);
@@ -186,7 +206,8 @@ const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
   it('transitions ACTIVE → DISABLED with mandatory change reason', async () => {
     const slug = ProductSlug.FLEET;
     await ensureActive(slug);
-    const correlationId = `v2-http-disable-${Date.now()}`;
+    const productBefore = await prisma.product.findUniqueOrThrow({ where: { slug } });
+    const auditBefore = await countCatalogStatusAuditRows(prisma, productBefore.id);
     const res = await request(harness.app.getHttpServer())
       .patch(`/api/v1/admin/products/${slug}/catalog-status`)
       .set(authHeaders)
@@ -200,7 +221,23 @@ const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
     expect(res.body.noop).toBe(false);
     const product = await prisma.product.findUniqueOrThrow({ where: { slug } });
     expect(product.catalogStatus).toBe(ProductCatalogStatus.DISABLED);
-    void correlationId;
+    expect(await countCatalogStatusAuditRows(prisma, productBefore.id)).toBe(auditBefore + 1);
+    const latestAudit = await prisma.activityLog.findFirst({
+      where: {
+        entity: ActivityEntity.ADMIN_OPERATION,
+        entityId: productBefore.id,
+        metaJson: { path: ['metadata', 'action'], equals: 'catalog_status_patch' },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(latestAudit?.metaJson).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          productSlug: slug,
+          changeReason: 'acceptance disable',
+        }),
+      }),
+    );
   });
 
   it('denies new organization assignment when catalog DISABLED', async () => {
@@ -215,7 +252,14 @@ const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
       .post('/api/v1/admin/products/assign')
       .set(authHeaders)
       .send({ orgId, productSlug: slug });
-    expect([403, 409]).toContain(res.status);
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        error: 'PRODUCT_CATALOG_ADMISSION_DENIED',
+        reason: PRODUCT_CATALOG_ADMISSION_DENIAL_REASON.CATALOG_DISABLED,
+        productSlug: slug,
+      }),
+    );
     const opCount = await prisma.organizationProduct.count({
       where: { organizationId: orgId, product: { slug } },
     });
