@@ -74,9 +74,11 @@ const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
         data: { catalogStatus: restore.catalogStatus },
       });
     }
-    if (cleanupOrgIds.length) {
-      await prisma.organizationProduct.deleteMany({ where: { organizationId: { in: cleanupOrgIds } } });
-      await prisma.organization.deleteMany({ where: { id: { in: cleanupOrgIds } } });
+    for (const orgId of cleanupOrgIds) {
+      await prisma.vehicleProductGrant.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.vehicle.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.organizationProduct.deleteMany({ where: { organizationId: orgId } }).catch(() => undefined);
+      await prisma.organization.delete({ where: { id: orgId } }).catch(() => undefined);
     }
     await prisma.userMfaFactor.deleteMany({ where: { userId: seededMasterId } }).catch(() => undefined);
     await prisma.user.deleteMany({ where: { id: seededMasterId } }).catch(() => undefined);
@@ -176,7 +178,7 @@ const OPT_IN = 'PRODUCT_CATALOG_V2_ACCEPTANCE_HTTP_POSTGRES_INTEGRATION';
       expect.objectContaining({
         productSlug: ProductSlug.RENTAL,
         currentCatalogStatus: ProductCatalogStatus.ACTIVE,
-        targetCatalogStatus: ProductCatalogStatus.DISABLED,
+        requestedTargetCatalogStatus: ProductCatalogStatus.DISABLED,
       }),
     );
   });
