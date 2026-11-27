@@ -19,6 +19,7 @@ import {
 } from '../security-access.utils';
 import { MasterErrorState } from '../../shell';
 import { PrivilegeActionDialog } from './PrivilegeActionDialog';
+import { GlobalProfileEditPanel } from './GlobalProfileEditPanel';
 
 interface UserDetailDrawerProps {
   userId: string | null;
@@ -186,6 +187,17 @@ export function UserDetailDrawer({
           />
         ) : boundDetail ? (
           <div className="space-y-6 text-sm">
+            {boundDetail && userId && (
+              <GlobalProfileEditPanel
+                userId={userId}
+                detail={boundDetail}
+                onSaved={() => void refresh()}
+                isTargetCurrent={() =>
+                  targetUserIdRef.current === userId && drawerGenerationRef.current > 0
+                }
+              />
+            )}
+
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 {t('master.securityAccess.userDetail.section.identity')}

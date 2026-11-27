@@ -18,12 +18,13 @@ export interface SecurityUsersTabProps {
   variant: 'users' | 'master-admins';
   organizationId?: string | null;
   onOpenUser: (userId: string) => void;
+  onCreateUser?: () => void;
 }
 
 const INPUT =
   'w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-ring';
 
-export function SecurityUsersTab({ variant, organizationId, onOpenUser }: SecurityUsersTabProps) {
+export function SecurityUsersTab({ variant, organizationId, onOpenUser, onCreateUser }: SecurityUsersTabProps) {
   const { t, locale, mfaStateLabel, attentionCodeLabel, accountStateLabel, platformRoleLabel, formatRelative, loadError } =
     useSecurityAccessPresentation();
   const [page, setPage] = useState(1);
@@ -150,6 +151,16 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
               <option value="ENABLED">{t('master.securityAccess.users.mfaFilterActive')}</option>
               <option value="REQUIRED">{t('master.securityAccess.users.mfaFilterRequired')}</option>
             </select>
+          )}
+          {variant === 'users' && onCreateUser && (
+            <button
+              type="button"
+              className="sq-btn-primary rounded-xl px-4 py-2 text-xs font-semibold"
+              data-testid="security-users-create"
+              onClick={onCreateUser}
+            >
+              {t('master.securityAccess.users.createUser')}
+            </button>
           )}
           <button type="button" className="sq-btn-secondary rounded-xl px-4 py-2 text-xs font-semibold" onClick={() => void refresh()}>
             {t('master.securityAccess.users.refresh')}

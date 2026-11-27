@@ -28,6 +28,7 @@ import { IamAccessReviewSnapshotService } from './iam-access-review-snapshot.ser
 import { IamTeamService } from './iam-team.service';
 import { IamAccessReviewController } from './iam-access-review.controller';
 import { IamTeamController } from './iam-team.controller';
+import { MasterGlobalIdentityService } from './master-global-identity.service';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 
@@ -65,9 +66,11 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     IamAccessReviewService,
     IamAccessReviewSnapshotService,
     IamTeamService,
+    MasterGlobalIdentityService,
   ],
   exports: [
     UsersService,
+    MasterGlobalIdentityService,
     OrganizationInviteService,
     OrganizationRoleService,
     CommunicationPermissionBackfillService,

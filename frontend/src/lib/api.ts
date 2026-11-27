@@ -4191,6 +4191,62 @@ export const api = {
       },
       getUser: (userId: string) =>
         get<import('../master/security-access/types').GovernanceUserDetailDto>(`/admin/security/users/${userId}`),
+      createUser: (body: {
+        email: string;
+        firstName?: string;
+        lastName?: string;
+        name?: string;
+        phone?: string;
+        mobile?: string;
+        language?: string;
+        timezone?: string;
+        dateFormat?: string;
+        initialMembership?: {
+          organizationId: string;
+          role: string;
+          inviteByEmail?: boolean;
+          organizationRoleId?: string;
+        };
+        sendCredentialSetup?: boolean;
+        idempotencyKey?: string;
+      }) =>
+        post<{
+          user: {
+            id: string;
+            email: string;
+            name: string | null;
+            firstName: string | null;
+            lastName: string | null;
+            status: string;
+            platformRole: string;
+          };
+          onboarding: {
+            identityCreated: boolean;
+            invitationPersisted: boolean;
+            deliveryRequested: boolean;
+            deliveryConfirmed: boolean;
+            accountReadyForAuthentication: boolean;
+          };
+        }>('/admin/security/users', body),
+      updateUserProfile: (
+        userId: string,
+        body: {
+          name?: string;
+          firstName?: string;
+          lastName?: string;
+          phone?: string;
+          mobile?: string;
+          address?: string;
+          language?: string;
+          timezone?: string;
+          dateFormat?: string;
+          idempotencyKey?: string;
+        },
+      ) =>
+        patch<{ user: { id: string; email: string; name: string | null } }>(
+          `/admin/security/users/${userId}`,
+          body,
+        ),
       listUserSessions: (userId: string) =>
         get<import('../master/security-access/types').GovernanceUserSessionDto[]>(
           `/admin/security/users/${userId}/sessions`,

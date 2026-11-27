@@ -16,3 +16,4 @@
 | 2026-11-26 | USR-P2C — deterministic race barriers, pg IAM stack helper, 12-case P2C PG suite; semantic crosswalk P2C refresh |
 | 2026-11-26 | USR-P2C targeted evidence seal — `pg_blocking_pids` lock wait proofs; semantic guard PG; RACE03 lock-hardening; crosswalk correction |
 | 2026-11-26 | USR-P2D — admin password actor; atomic MFA consumption; P1A_B lost ack; D01–D10 PG matrix; refresh MFA downgrade |
+| 2026-11-27 | USR-P3A — `MasterGlobalIdentityService`; `POST/PATCH admin/security/users`; legacy `admin/users` forward; MA create/profile UI; 9-locale keys |
