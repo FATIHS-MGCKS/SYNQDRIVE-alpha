@@ -93,7 +93,84 @@ describe('auth API transport (E5.1 / E5A)', () => {
     await request('/me');
     expect(refreshCalls).toBe(1);
     await expect(request('/widgets')).rejects.toThrow('Session expired');
-    expect(refreshCalls).toBe(1);
+    expect(refreshCalls).toBe(2);
+  });
+
+  it('allows two successive refresh rotations in one auth session', async () => {
+    let refreshCalls = 0;
+    stubFetch(async (url) => {
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        const next =
+          refreshCalls === 1
+            ? { accessToken: 'access-v2', refreshToken: 'refresh-v2' }
+            : { accessToken: 'access-v3', refreshToken: 'refresh-v3' };
+        return new Response(JSON.stringify({ ...next, user }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      const token = getToken();
+      if (token === 'expired-access') {
+        return new Response('{}', { status: 401 });
+      }
+      if (url.includes('/vehicles') && token === 'access-v2') {
+        return new Response('{}', { status: 401 });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    await request('/me');
+    expect(getToken()).toBe('access-v2');
+    await request('/vehicles');
+    expect(getToken()).toBe('access-v3');
+    expect(refreshCalls).toBe(2);
+  });
+
+  it('old refresh promise finally does not clear newer in-flight refresh', async () => {
+    const { coalescedAuthRefresh } = await import('./auth-session-refresh');
+    const { performBackendTokenRefresh } = await import('./auth-api-transport');
+    let refreshCalls = 0;
+    stubFetch(async (url) => {
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        if (refreshCalls === 1) {
+          await new Promise((r) => setTimeout(r, 40));
+          return new Response(
+            JSON.stringify({ accessToken: 'slow', refreshToken: 'slow-r', user }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        return new Response(
+          JSON.stringify({ accessToken: 'fast', refreshToken: 'fast-r', user }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response('{}', { status: 401 });
+    });
+
+    setAuth('expired-a', user, 'refresh-a');
+    const epoch = getAuthSessionEpoch();
+    const slowP = coalescedAuthRefresh(
+      performBackendTokenRefresh,
+      `${epoch}:expired-a:refresh-a`,
+    );
+    await new Promise((r) => setTimeout(r, 5));
+    setAuth('expired-b', user, 'refresh-b');
+    const fastP = coalescedAuthRefresh(
+      performBackendTokenRefresh,
+      `${epoch}:expired-b:refresh-b`,
+    );
+    const [, fastOutcome] = await Promise.allSettled([slowP, fastP]);
+    expect(fastOutcome.status).toBe('fulfilled');
+    if (fastOutcome.status === 'fulfilled') {
+      expect(fastOutcome.value.ok).toBe(true);
+    }
+    expect(getToken()).toBe('fast');
+    expect(refreshCalls).toBe(2);
   });
 
   it('C: logout during pending refresh cannot restore stale session', async () => {

@@ -379,19 +379,17 @@ export class SecurityGovernanceSessionAuditService {
       typeof meta.actorUserId === 'string' && meta.actorUserId.length > 0
         ? meta.actorUserId
         : this.outboxEnvelopeActor(existing);
-    if (
-      storedActor &&
-      input.actorUserId &&
-      storedActor !== input.actorUserId
-    ) {
+    if (storedActor && input.actorUserId && storedActor !== input.actorUserId) {
+      return false;
+    }
+    if (storedActor && !input.actorUserId) {
       return false;
     }
     const storedOrg = meta.targetOrganizationId;
-    if (
-      storedOrg != null &&
-      input.targetOrganizationId != null &&
-      storedOrg !== input.targetOrganizationId
-    ) {
+    if (storedOrg != null && input.targetOrganizationId != null && storedOrg !== input.targetOrganizationId) {
+      return false;
+    }
+    if (storedOrg != null && input.targetOrganizationId == null) {
       return false;
     }
     return true;
@@ -410,11 +408,10 @@ export class SecurityGovernanceSessionAuditService {
       typeof meta.actorUserId === 'string' && meta.actorUserId.length > 0
         ? meta.actorUserId
         : this.outboxEnvelopeActor(existing);
-    if (
-      storedActor &&
-      input.actorUserId &&
-      storedActor !== input.actorUserId
-    ) {
+    if (storedActor && input.actorUserId && storedActor !== input.actorUserId) {
+      return false;
+    }
+    if (storedActor && !input.actorUserId) {
       return false;
     }
     return true;

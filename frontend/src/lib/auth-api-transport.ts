@@ -1,5 +1,5 @@
 /**
- * Authenticated API transport — 401 refresh wiring (USR-P2E E5.1).
+ * Authenticated API transport — 401 refresh wiring (USR-P2E E5.1 / E5B).
  */
 import {
   getRefreshToken,
@@ -12,9 +12,9 @@ import { setStepUpToken } from './mfa';
 import {
   bumpAuthSessionEpoch,
   coalescedAuthRefresh,
-  getAccessRefreshedAtEpoch,
   getAuthSessionEpoch,
-  markAccessRefreshedForCurrentEpoch,
+  hasAlreadyRefreshedFromAccessToken,
+  markRefreshedFromAccessToken,
   markRefreshSessionTerminated,
   type RefreshOutcome,
 } from './auth-session-refresh';
@@ -52,6 +52,7 @@ export function clearAuthSession(redirectToLogin = false): void {
 
 export async function performBackendTokenRefresh(): Promise<RefreshOutcome> {
   const startedEpoch = getAuthSessionEpoch();
+  const staleAccess = getToken() ?? '';
   const refreshToken = getRefreshToken();
   if (!refreshToken) {
     return { ok: false, reason: 'revoked' };
@@ -88,9 +89,15 @@ export async function performBackendTokenRefresh(): Promise<RefreshOutcome> {
   if (!user) {
     return { ok: false, reason: 'denied' };
   }
+  const accessBeforeApply = getToken() ?? '';
+  if (staleAccess && accessBeforeApply && accessBeforeApply !== staleAccess) {
+    return { ok: false, reason: 'revoked' };
+  }
+  if (staleAccess) {
+    markRefreshedFromAccessToken(staleAccess);
+  }
   setStepUpToken(null);
   setAuth(body.accessToken, user, body.refreshToken ?? refreshToken);
-  markAccessRefreshedForCurrentEpoch();
   return {
     ok: true,
     accessToken: body.accessToken,
@@ -111,13 +118,25 @@ export async function recoverFromUnauthorized<T>(input: {
     throw new Error('Session expired');
   }
   const epochAtStart = getAuthSessionEpoch();
-  if (getAccessRefreshedAtEpoch() === epochAtStart) {
-    if (getAuthSessionEpoch() === epochAtStart) {
-      clearAuthSession(true);
+  const staleAccessAt401 = getToken() ?? '';
+  const coalesceKey = `${epochAtStart}:${staleAccessAt401}:${getRefreshToken() ?? ''}`;
+
+  if (staleAccessAt401 && hasAlreadyRefreshedFromAccessToken(staleAccessAt401)) {
+    if (isIdempotentReadMethod(input.method)) {
+      const result = await input.retry();
+      const maybeRes = result as Response;
+      if (maybeRes instanceof Response && maybeRes.status === 401) {
+        if (getAuthSessionEpoch() === epochAtStart) {
+          clearAuthSession(true);
+        }
+        throw new Error('Session expired');
+      }
+      return result;
     }
-    throw new Error('Session expired');
+    throw new Error('Session refreshed');
   }
-  const refreshed = await coalescedAuthRefresh(performBackendTokenRefresh);
+
+  const refreshed = await coalescedAuthRefresh(performBackendTokenRefresh, coalesceKey);
   if (!refreshed.ok) {
     if (getAuthSessionEpoch() === epochAtStart) {
       clearAuthSession(true);

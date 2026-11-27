@@ -28,3 +28,13 @@ P2E scope items C01–C08; **E1-only** acceptance on PR **#2534** branch `cursor
 Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 
 **R-008** remains **OPEN** until E3–E5 and owner attestation — **E1 PASS**, **E2 PASS** on executed evidence.
+
+## E5B security closeout (2026-11-27)
+
+| Area | Status |
+|------|--------|
+| Frontend refresh lifecycle | **IMPLEMENTED** — per-stale-access coalescing, multi-rotation, identity-safe in-flight cleanup, stale response cannot overwrite newer access |
+| C02 org offboarding concurrency | **IMPLEMENTED** — `C02-A/B/C` on `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` |
+| Strict step-up grant binding | **IMPLEMENTED** — `iam-mfa-step-up.service.ts` exact scope/version; E2 PG proofs added |
+| E3 audit actor/scope replay | **IMPLEMENTED** — missing actor replay denied; org scope binding on outbox match |
+| CI verification | **PENDING** on post-E5B HEAD — prior E5A runs `45985883406`, `45985883689`, `45985883277` were **in_progress** at start of E5B slice |

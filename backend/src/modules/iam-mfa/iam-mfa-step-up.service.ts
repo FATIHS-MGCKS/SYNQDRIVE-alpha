@@ -101,11 +101,15 @@ export class IamMfaStepUpService {
     if (grant.consumedAt && !alreadyConsumedThisRequest) {
       return false;
     }
-    if (grant.actionScope !== 'GLOBAL' && grant.actionScope !== action) {
+    if (!grant.actionScope || (grant.actionScope !== 'GLOBAL' && grant.actionScope !== action)) {
       return false;
     }
 
     if (!grant.tokenFamily) {
+      return false;
+    }
+
+    if (grant.sessionVersion === null || grant.securityVersion === null) {
       return false;
     }
 
@@ -116,10 +120,10 @@ export class IamMfaStepUpService {
     if (!liveUser || liveUser.status !== UserStatus.ACTIVE) {
       return false;
     }
-    if (grant.sessionVersion !== null && grant.sessionVersion !== liveUser.sessionVersion) {
+    if (grant.sessionVersion !== liveUser.sessionVersion) {
       return false;
     }
-    if (grant.securityVersion !== null && grant.securityVersion !== liveUser.securityVersion) {
+    if (grant.securityVersion !== liveUser.securityVersion) {
       return false;
     }
     if (context.sessionVersion !== liveUser.sessionVersion) {
@@ -129,14 +133,29 @@ export class IamMfaStepUpService {
     if (context.tokenFamily !== grant.tokenFamily) {
       return false;
     }
-    if (grant.organizationId !== null && context.organizationId !== grant.organizationId) {
-      return false;
-    }
-    if (grant.membershipId !== null && context.membershipId !== grant.membershipId) {
-      return false;
+
+    const grantIsPlatformOnly =
+      grant.organizationId === null && grant.membershipId === null;
+    const contextIsPlatformOnly =
+      (context.organizationId ?? null) === null && (context.membershipId ?? null) === null;
+
+    if (grantIsPlatformOnly) {
+      if (!contextIsPlatformOnly) {
+        return false;
+      }
+    } else {
+      if (grant.organizationId !== context.organizationId) {
+        return false;
+      }
+      if (grant.membershipId !== context.membershipId) {
+        return false;
+      }
     }
 
     if (grant.membershipId) {
+      if (grant.membershipVersion === null) {
+        return false;
+      }
       const membership = await this.prisma.organizationMembership.findUnique({
         where: { id: grant.membershipId },
         select: { membershipVersion: true, status: true },

@@ -414,6 +414,79 @@ function assertDisposableDb(): void {
     ).toBe(false);
   });
 
+  it('E5B platform grant denied when validation context is org-scoped', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const grant = await stepUp.createGrant({
+      userId,
+      actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
+      claims: mfaGrantClaims(),
+      binding,
+    });
+    const orgScopedCtx: StepUpGrantValidationContext = {
+      ...grantValidationContext(binding),
+      organizationId: randomUUID(),
+      membershipId: randomUUID(),
+    };
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        orgScopedCtx,
+      ),
+    ).toBe(false);
+  });
+
+  it('E5B org-null grant scope does not accept org-bound session context', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const orgId = randomUUID();
+    const memId = randomUUID();
+    await prisma.organization.create({
+      data: { id: orgId, companyName: 'E5B', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
+    });
+    await prisma.organizationMembership.create({
+      data: {
+        id: memId,
+        userId,
+        organizationId: orgId,
+        role: 'WORKER',
+        status: MembershipStatus.ACTIVE,
+      },
+    });
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const raw = 'c'.repeat(64);
+    const { hashStepUpToken } = await import('@modules/iam-mfa/iam-mfa-crypto.util');
+    await prisma.userMfaStepUpGrant.create({
+      data: {
+        userId,
+        tokenHash: hashStepUpToken(raw),
+        actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
+        assuranceLevel: ASSURANCE_LEVEL_MFA,
+        authMethods: ['pwd', 'totp'],
+        authenticatedAt: new Date(),
+        mfaAuthenticatedAt: new Date(),
+        expiresAt: new Date(Date.now() + STEP_UP_TTL_MS),
+        tokenFamily: binding.tokenFamily,
+        organizationId: null,
+        membershipId: null,
+        sessionVersion: binding.sessionVersion,
+        securityVersion: binding.securityVersion,
+        membershipVersion: null,
+      },
+    });
+    const orgCtx: StepUpGrantValidationContext = {
+      tokenFamily: binding.tokenFamily,
+      organizationId: orgId,
+      membershipId: memId,
+      sessionVersion: binding.sessionVersion,
+      membershipVersion: 0,
+    };
+    expect(
+      await stepUp.validateGrant(userId, raw, STEP_UP_ACTION.MASTER_ORGANIZATION, orgCtx),
+    ).toBe(false);
+  });
+
   it('E2-G06 wrong user denied', async () => {
     const { userId, email } = await seedUserWithTotp();
     const other = randomUUID();

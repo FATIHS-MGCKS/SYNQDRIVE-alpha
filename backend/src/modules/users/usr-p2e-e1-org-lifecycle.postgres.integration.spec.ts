@@ -22,6 +22,10 @@ import { OrganizationOffboardingProviderDisconnectService } from '@modules/organ
 import { OrganizationOffboardingService } from '@modules/organizations/offboarding/organization-offboarding.service';
 import { OFFBOARDING_EXECUTION_CONFIRM_VALUE } from '@modules/organizations/offboarding/organization-offboarding-execution.policy';
 import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
+import {
+  waitUntilOrgAdvisoryLockHeld,
+  withRaceBarrier,
+} from '@modules/users/testing/usr-p2-deterministic-concurrency.helper';
 
 const OPT_IN = 'USR_P2E_E1_ORG_LIFECYCLE_PG';
 const JWT_SECRET = 'usr-p2e-e1-org-lifecycle-secret';
@@ -45,7 +49,9 @@ function execReq(idempotencyKey: string) {
 (run ? describe : describe.skip)('USR-P2E E1 organization lifecycle (PostgreSQL)', () => {
   jest.setTimeout(300_000);
   let prisma: PrismaClient;
+  let prismaB: PrismaClient;
   let stack: ReturnType<typeof createUsrP2PgIamStack>;
+  let stackB: ReturnType<typeof createUsrP2PgIamStack>;
   let prepare: OrganizationOffboardingService;
   let execution: OrganizationOffboardingExecutionService;
 
@@ -55,7 +61,9 @@ function execReq(idempotencyKey: string) {
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_ENABLED = '1';
     process.env.ORGANIZATION_OFFBOARDING_EXECUTION_LEASE_MS = '30000';
     prisma = new PrismaClient();
+    prismaB = new PrismaClient();
     stack = createUsrP2PgIamStack(prisma, JWT_SECRET, { legacyUnscopedGrace: true });
+    stackB = createUsrP2PgIamStack(prismaB, JWT_SECRET, { legacyUnscopedGrace: true });
     const prismaService = prisma as unknown as PrismaService;
     const legalHold = { isBlocked: jest.fn().mockResolvedValue(false) } as unknown as IamLegalHoldService;
     const vehiclePreflight = new VehicleOffboardPreflightService(prismaService);
@@ -79,7 +87,10 @@ function execReq(idempotencyKey: string) {
     );
   });
 
-  afterAll(async () => prisma?.$disconnect());
+  afterAll(async () => {
+    await prisma?.$disconnect();
+    await prismaB?.$disconnect();
+  });
 
   async function issueBound(
     userId: string,
@@ -188,5 +199,137 @@ function execReq(idempotencyKey: string) {
     const rotatedB = await stack.refresh.rotate(boundB.refreshToken);
     expect(rotatedB.accessToken).toBeTruthy();
     await expect(stack.refresh.rotate(legacy.refreshToken)).rejects.toThrow();
+  });
+
+  async function seedDualOrgUser() {
+    const userId = randomUUID();
+    const email = `c02-${userId}@example.test`;
+    const orgA = randomUUID();
+    const orgB = randomUUID();
+    const memA = randomUUID();
+    const memB = randomUUID();
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email,
+        platformRole: UserPlatformRole.USER,
+        status: UserStatus.ACTIVE,
+        lastSelectedOrganizationId: orgA,
+      },
+    });
+    await prisma.organization.createMany({
+      data: [
+        {
+          id: orgA,
+          companyName: 'Org A',
+          businessType: BusinessType.RENTAL,
+          status: OrganizationStatus.ACTIVE,
+        },
+        {
+          id: orgB,
+          companyName: 'Org B',
+          businessType: BusinessType.RENTAL,
+          status: OrganizationStatus.ACTIVE,
+        },
+      ],
+    });
+    await prisma.organizationMembership.createMany({
+      data: [
+        {
+          id: memA,
+          userId,
+          organizationId: orgA,
+          role: 'WORKER',
+          status: MembershipStatus.ACTIVE,
+        },
+        {
+          id: memB,
+          userId,
+          organizationId: orgB,
+          role: 'WORKER',
+          status: MembershipStatus.ACTIVE,
+        },
+      ],
+    });
+    return { userId, email, orgA, orgB, memA, memB };
+  }
+
+  it('C02-A concurrent offboarding vs bound issuance observes org session lock', async () => {
+    const { userId, email, orgA, orgB, memA, memB } = await seedDualOrgUser();
+    const raceId = `c02a-${randomUUID()}`;
+    await withRaceBarrier(prisma, prismaB, raceId, async (barrier) => {
+      const execP = (async () => {
+        await prepare.prepare(orgA, { idempotencyKey: `c02a-prep-${orgA}` }, 'ma-c02');
+        await barrier.signal(prisma, 'a_lock_acquired');
+        await barrier.wait(prisma, 'b_waiting');
+        return execution.execute(orgA, execReq(`c02a-exec-${orgA}`), 'ma-c02');
+      })();
+      const issueP = (async () => {
+        await barrier.wait(prismaB, 'a_lock_acquired');
+        await barrier.signal(prismaB, 'b_waiting');
+        await waitUntilOrgAdvisoryLockHeld(prisma, orgA, { timeoutMs: 5000 }).catch(() => undefined);
+        const live = await prismaB.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { sessionVersion: true, securityVersion: true },
+        });
+        return stackB.refresh.issueTokenPair(
+          {
+            id: userId,
+            email,
+            platformRole: UserPlatformRole.USER,
+            sessionVersion: live.sessionVersion,
+            securityVersion: live.securityVersion,
+          },
+          { organizationId: orgA, membershipId: memA, role: 'WORKER', membershipVersion: 0 },
+        );
+      })();
+      const [execOutcome, issueOutcome] = await Promise.allSettled([execP, issueP]);
+      expect(execOutcome.status).toBe('fulfilled');
+      if (issueOutcome.status === 'fulfilled') {
+        await expect(
+          stackB.refresh.rotate((issueOutcome as PromiseFulfilledResult<{ refreshToken: string }>).value.refreshToken),
+        ).rejects.toThrow();
+      }
+    });
+    const boundB = await issueBound(userId, email, orgB, memB);
+    const rotated = await stack.refresh.rotate(boundB.refreshToken);
+    expect(rotated.accessToken).toBeTruthy();
+  });
+
+  it('C02-B concurrent offboarding vs refresh rotation on org-bound family', async () => {
+    const { userId, email, orgA, orgB, memA, memB } = await seedDualOrgUser();
+    await prepare.prepare(orgA, { idempotencyKey: `c02b-prep-${orgA}` }, 'ma-c02');
+    const boundA = await issueBound(userId, email, orgA, memA);
+    const [execOutcome, rotateOutcome] = await Promise.allSettled([
+      execution.execute(orgA, execReq(`c02b-exec-${orgA}`), 'ma-c02'),
+      stackB.refresh.rotate(boundA.refreshToken),
+    ]);
+    expect(execOutcome.status).toBe('fulfilled');
+    expect(rotateOutcome.status).toBe('rejected');
+    const boundB = await issueBound(userId, email, orgB, memB);
+    expect((await stack.refresh.rotate(boundB.refreshToken)).accessToken).toBeTruthy();
+  });
+
+  it('C02-C offboarding vs legacy unscoped upgrade attempt during execute', async () => {
+    const { userId, email, orgA, orgB, memA, memB } = await seedDualOrgUser();
+    const legacy = await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email,
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      null,
+    );
+    await prepare.prepare(orgA, { idempotencyKey: `c02c-prep-${orgA}` }, 'ma-c02');
+    const [execOutcome, legacyOutcome] = await Promise.allSettled([
+      execution.execute(orgA, execReq(`c02c-exec-${orgA}`), 'ma-c02'),
+      stackB.refresh.rotate(legacy.refreshToken),
+    ]);
+    expect(execOutcome.status).toBe('fulfilled');
+    expect(legacyOutcome.status).toBe('rejected');
+    const boundB = await issueBound(userId, email, orgB, memB);
+    await expect(stack.refresh.rotate(boundB.refreshToken)).resolves.toBeDefined();
   });
 });

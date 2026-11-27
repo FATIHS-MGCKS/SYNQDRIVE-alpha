@@ -1,6 +1,7 @@
 /**
- * SPA session refresh coordinator (USR-P2E E4/E5).
- * Coalesces concurrent refresh attempts and prevents unbounded 401 retry loops.
+ * SPA session refresh coordinator (USR-P2E E4/E5/E5B).
+ * Coalesces concurrent refresh for the same stale access credential;
+ * allows multiple legitimate rotations within one authentication session.
  */
 import { clearAuth } from './auth';
 
@@ -18,37 +19,39 @@ export type RefreshFailure = {
 export type RefreshOutcome = RefreshSuccess | RefreshFailure;
 
 let refreshInFlight: Promise<RefreshOutcome> | null = null;
+/** Identity of the in-flight refresh promise (stale completions must not clear a newer flight). */
+let refreshInFlightSerial = 0;
+let refreshInFlightCoalesceKey: string | null = null;
 let refreshTerminated = false;
 let authSessionEpoch = 0;
-/** Access JWT refreshed for this epoch (at most one backend refresh per epoch). */
-let accessRefreshedAtEpoch: number | null = null;
+/** Access tokens we already rotated away from in this auth session (dedupe delayed 401). */
+const refreshedFromAccessTokens = new Set<string>();
 
 export function getAuthSessionEpoch(): number {
   return authSessionEpoch;
 }
 
-export function getAccessRefreshedAtEpoch(): number | null {
-  return accessRefreshedAtEpoch;
-}
-
 export function bumpAuthSessionEpoch(): void {
   authSessionEpoch += 1;
-  accessRefreshedAtEpoch = null;
+  refreshedFromAccessTokens.clear();
 }
 
 /** Production: new login, org switch, or credential replacement. */
 export function beginAuthenticatedSession(): void {
   bumpAuthSessionEpoch();
   refreshInFlight = null;
+  refreshInFlightCoalesceKey = null;
   refreshTerminated = false;
 }
 
 /** Vitest only — never call in production transitions. */
 export function resetAuthRefreshCoordinatorForTests(): void {
   refreshInFlight = null;
+  refreshInFlightCoalesceKey = null;
+  refreshInFlightSerial = 0;
   refreshTerminated = false;
   authSessionEpoch = 0;
-  accessRefreshedAtEpoch = null;
+  refreshedFromAccessTokens.clear();
 }
 
 /** @deprecated Use resetAuthRefreshCoordinatorForTests in specs only. */
@@ -56,33 +59,46 @@ export function resetAuthRefreshCoordinator(): void {
   resetAuthRefreshCoordinatorForTests();
 }
 
-export function markAccessRefreshedForCurrentEpoch(): void {
-  accessRefreshedAtEpoch = authSessionEpoch;
+export function hasAlreadyRefreshedFromAccessToken(accessToken: string): boolean {
+  return refreshedFromAccessTokens.has(accessToken);
+}
+
+export function markRefreshedFromAccessToken(accessToken: string): void {
+  if (accessToken) refreshedFromAccessTokens.add(accessToken);
 }
 
 export function markRefreshSessionTerminated(): void {
   refreshTerminated = true;
   refreshInFlight = null;
+  refreshInFlightCoalesceKey = null;
 }
 
 export function openRefreshCoordinatorAfterLogin(): void {
   refreshTerminated = false;
   refreshInFlight = null;
+  refreshInFlightCoalesceKey = null;
 }
 
 export async function coalescedAuthRefresh(
   performRefresh: () => Promise<RefreshOutcome>,
+  coalesceKey: string,
 ): Promise<RefreshOutcome> {
   if (refreshTerminated) {
     return { ok: false, reason: 'revoked' };
   }
-  if (refreshInFlight) {
+  if (refreshInFlight && refreshInFlightCoalesceKey === coalesceKey) {
     return refreshInFlight;
   }
-  refreshInFlight = performRefresh().finally(() => {
-    refreshInFlight = null;
+  const flightId = ++refreshInFlightSerial;
+  refreshInFlightCoalesceKey = coalesceKey;
+  const promise = performRefresh().finally(() => {
+    if (refreshInFlightSerial === flightId) {
+      refreshInFlight = null;
+      refreshInFlightCoalesceKey = null;
+    }
   });
-  return refreshInFlight;
+  refreshInFlight = promise;
+  return promise;
 }
 
 const SESSION_BINDING_REQUIRED = 'SESSION_BINDING_REQUIRED';
@@ -115,7 +131,7 @@ export async function executeUnauthorizedRecovery<T>(input: {
         throw err;
       }
       attempts += 1;
-      const refreshed = await coalescedAuthRefresh(input.performRefresh);
+      const refreshed = await coalescedAuthRefresh(input.performRefresh, 'legacy-recovery');
       if (!refreshed.ok) {
         markRefreshSessionTerminated();
         clearAuth();

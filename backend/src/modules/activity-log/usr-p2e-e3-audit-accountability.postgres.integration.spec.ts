@@ -412,6 +412,27 @@ const run = process.env[OPT_IN] === '1';
     ).toBe(1);
   });
 
+  it('E3 replay without actor does not reuse admitted single-session operation', async () => {
+    const actor = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id);
+    const operationId = generateMasterAdminSecurityOperationId();
+    const first = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actor.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+      securityOperationId: operationId,
+    });
+    expect(first.revoked).toBe(true);
+    const replay = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: { headers: {} },
+      targetUserId: target.id,
+      sessionId: session.id,
+      securityOperationId: operationId,
+    });
+    expect(replay.revoked).toBe(false);
+  });
+
   it('E3 fallback revokes rotated family via canonical family revocation', async () => {
     const actor = await createActor();
     const target = await createActor();
