@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { acquireUserSessionWriteLock } from '@modules/auth/refresh-token-session-concurrency';
 import type { OwnershipConflict } from './iam-membership-lifecycle.types';
 
 type Tx = Prisma.TransactionClient;
@@ -79,6 +80,7 @@ export async function revokePendingInvitesForEmail(
 }
 
 export async function revokeUserRefreshTokens(tx: Tx, userId: string): Promise<number> {
+  await acquireUserSessionWriteLock(tx, userId);
   const result = await tx.refreshToken.updateMany({
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },

@@ -7,10 +7,16 @@ import * as request from 'supertest';
 import {
   CoreAppServiceClientStatus,
   CoreAppServiceGrantStatus,
+  OrganizationStatus,
   OrgProductStatus,
   ProductSlug,
 } from '@prisma/client';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  authGuardHttpSecurityProviders,
+  signHttpSecurityAccessToken,
+} from '@shared/auth/testing/http-security-jwt.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
 import { CoreAppM2mRateLimitMemoryRedis } from './testing/core-app-m2m-rate-limit.memory-redis';
@@ -30,6 +36,10 @@ const ORG_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const M2M_SECRET = 'http-security-m2m-jwt-secret';
 const USER_JWT_SECRET = 'http-security-user-jwt-secret';
 
+const platformPermissions = {
+  resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+};
+
 async function createHttpSecurityApp(userJwtSecret: string): Promise<{
   app: INestApplication;
   prisma: {
@@ -37,6 +47,7 @@ async function createHttpSecurityApp(userJwtSecret: string): Promise<{
     organizationProduct: { findFirst: jest.Mock; findMany: jest.Mock };
     organization: { findUnique: jest.Mock };
     organizationMembership: { findFirst: jest.Mock };
+    registerHttpSecurityUser?: (uid: string, row?: object) => void;
   };
 }> {
   const prisma = {
@@ -48,12 +59,14 @@ async function createHttpSecurityApp(userJwtSecret: string): Promise<{
       findMany: jest.fn(async () => []),
     },
     organization: {
-      findUnique: jest.fn(async () => ({ id: ORG_ID })),
+      findUnique: jest.fn(async () => ({ id: ORG_ID, status: OrganizationStatus.ACTIVE })),
     },
     organizationMembership: {
       findFirst: jest.fn(),
     },
   };
+
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
 
   const hash = await bcrypt.hash('integration-secret', 4);
   prisma.coreAppServiceClient.findUnique.mockResolvedValue({
@@ -89,6 +102,7 @@ async function createHttpSecurityApp(userJwtSecret: string): Promise<{
         providers: [
           EntitlementsQueryService,
           OrgScopingGuard,
+          ...authGuardHttpSecurityProviders(prisma, platformPermissions),
           { provide: APP_GUARD, useClass: AuthGuard },
         ],
       },
@@ -106,12 +120,13 @@ async function createHttpSecurityApp(userJwtSecret: string): Promise<{
 
 describe('Core app M2M token — HTTP security integration', () => {
   let app: INestApplication;
+  let securityPrisma: Awaited<ReturnType<typeof createHttpSecurityApp>>['prisma'];
   const envBackup = { ...process.env };
 
   beforeAll(async () => {
     process.env.CORE_APP_M2M_ENABLED = 'true';
     process.env.CORE_APP_M2M_JWT_SECRET = M2M_SECRET;
-    ({ app } = await createHttpSecurityApp(USER_JWT_SECRET));
+    ({ app, prisma: securityPrisma } = await createHttpSecurityApp(USER_JWT_SECRET));
   });
 
   afterAll(async () => {
@@ -213,16 +228,16 @@ describe('Core app M2M token — HTTP security integration', () => {
   });
 
   it('accepts valid user JWT on entitlements route', async () => {
-    const userJwt = jwt.sign(
-      {
-        sub: 'user-integration-1',
-        email: 'admin@test.local',
-        platformRole: 'MASTER_ADMIN',
-        organizationId: ORG_ID,
-      },
-      USER_JWT_SECRET,
-      { expiresIn: 300 },
-    );
+    const userId = 'user-integration-1';
+    securityPrisma.registerHttpSecurityUser?.(userId, {
+      platformRole: 'MASTER_ADMIN',
+    });
+    const userJwt = signHttpSecurityAccessToken(USER_JWT_SECRET, {
+      id: userId,
+      email: 'admin@test.local',
+      platformRole: 'MASTER_ADMIN',
+      organizationId: ORG_ID,
+    });
 
     const res = await request(app.getHttpServer())
       .get(entitlementsRoute)
@@ -236,12 +251,14 @@ describe('AuthGuard — identical signing secret (constructor-captured)', () => 
   const SHARED_JWT_SECRET = 'identical-secret-captured-at-guard-construct';
   const entitlementsRoute = `/api/v1/core/entitlements/v1/organizations/${ORG_ID}`;
   let identicalSecretApp: INestApplication;
+  let identicalSecretPrisma: Awaited<ReturnType<typeof createHttpSecurityApp>>['prisma'];
   const envBackup = { ...process.env };
 
   beforeAll(async () => {
     process.env.CORE_APP_M2M_ENABLED = 'true';
     process.env.CORE_APP_M2M_JWT_SECRET = SHARED_JWT_SECRET;
-    ({ app: identicalSecretApp } = await createHttpSecurityApp(SHARED_JWT_SECRET));
+    ({ app: identicalSecretApp, prisma: identicalSecretPrisma } =
+      await createHttpSecurityApp(SHARED_JWT_SECRET));
   });
 
   afterAll(async () => {
@@ -295,16 +312,16 @@ describe('AuthGuard — identical signing secret (constructor-captured)', () => 
   });
 
   it('accepts valid user JWT signed with the same constructor-captured secret', async () => {
-    const userJwt = jwt.sign(
-      {
-        sub: 'user-identical-secret-1',
-        email: 'admin@test.local',
-        platformRole: 'MASTER_ADMIN',
-        organizationId: ORG_ID,
-      },
-      SHARED_JWT_SECRET,
-      { expiresIn: 300 },
-    );
+    const userId = 'user-identical-secret-1';
+    identicalSecretPrisma.registerHttpSecurityUser?.(userId, {
+      platformRole: 'MASTER_ADMIN',
+    });
+    const userJwt = signHttpSecurityAccessToken(SHARED_JWT_SECRET, {
+      id: userId,
+      email: 'admin@test.local',
+      platformRole: 'MASTER_ADMIN',
+      organizationId: ORG_ID,
+    });
 
     const res = await request(identicalSecretApp.getHttpServer())
       .get(entitlementsRoute)

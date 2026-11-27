@@ -2205,11 +2205,18 @@ model UserMfaStepUpGrant {
   mfaAuthenticatedAt DateTime  @map("mfa_authenticated_at")
   expiresAt          DateTime  @map("expires_at")
   consumedAt         DateTime? @map("consumed_at")
+  tokenFamily        String?   @map("token_family")
+  organizationId     String?   @map("organization_id")
+  membershipId       String?   @map("membership_id")
+  sessionVersion     Int?      @map("session_version")
+  securityVersion    Int?      @map("security_version")
+  membershipVersion  Int?      @map("membership_version")
   createdAt          DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, tokenFamily])
   @@map("user_mfa_step_up_grants")
 }
 

@@ -206,6 +206,8 @@ export class AuthController {
     const mfaGate = await this.authMfaLogin.evaluateMasterAdminLoginGate({
       id: user.id,
       platformRole: user.platformRole,
+      sessionVersion: user.sessionVersion,
+      securityVersion: user.securityVersion,
     });
     if (mfaGate.kind === 'mfa_required') {
       void this.audit.record({
@@ -230,6 +232,7 @@ export class AuthController {
         name: user.name,
         platformRole: user.platformRole,
         sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
       },
       membership
         ? {

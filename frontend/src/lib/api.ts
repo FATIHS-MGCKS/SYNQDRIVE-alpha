@@ -1,5 +1,12 @@
-import { getToken, clearAuth } from './auth';
+import { getToken } from './auth';
 import { getStepUpToken } from './mfa';
+import {
+  buildAuthorizedHeaders,
+  captureAuthRequestDispatchIdentity,
+  clearAuthSession,
+  isExcludedAuthTransportPath,
+  recoverFromUnauthorized,
+} from './auth-api-transport';
 import { buildVehiclesOperationalListQuery } from './vehicles-operational-list-query';
 import { classifyOffboardHttpFailure } from './vehicle-offboard-api-error';
 import { buildFinanceInsightsPath } from '../rental/lib/finance-insights.types';
@@ -740,30 +747,30 @@ export function getErrorMessage(err: unknown, fallback = 'An unexpected error oc
   return fallback;
 }
 
-export async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options?.headers as Record<string, string>),
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  const stepUpToken = getStepUpToken();
-  if (stepUpToken) {
-    headers['x-step-up-token'] = stepUpToken;
-  }
-
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function executeFetch(path: string, options?: RequestInit): Promise<Response> {
+  const headers = buildAuthorizedHeaders(
+    options?.headers as Record<string, string> | undefined,
+    getStepUpToken(),
+  );
+  return fetch(`${BASE_URL}${path}`, {
     cache: 'no-store',
     ...options,
     headers,
   });
+}
 
-  if (res.status === 401 && !path.includes('/auth/')) {
-    clearAuth();
-    window.location.href = '/login';
-    throw new Error('Session expired');
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const dispatchIdentity = captureAuthRequestDispatchIdentity();
+  const run = () => executeFetch(path, options);
+  let res = await run();
+
+  if (res.status === 401 && !isExcludedAuthTransportPath(path)) {
+    res = await recoverFromUnauthorized({
+      path,
+      method: options?.method,
+      retry: run,
+      dispatchIdentity,
+    });
   }
 
   if (!res.ok) {
@@ -827,27 +834,31 @@ export async function requestResult<T>(
   options?: RequestInit,
   meta?: RequestResultMeta,
 ): Promise<RequestResult<T>> {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options?.headers as Record<string, string>),
-  };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const stepUpToken = getStepUpToken();
-  if (stepUpToken) headers['x-step-up-token'] = stepUpToken;
+  const dispatchIdentity = captureAuthRequestDispatchIdentity();
+  const run = () => executeFetch(path, options);
 
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${path}`, { cache: 'no-store', ...options, headers });
+    res = await run();
   } catch (e) {
-    // Network/transport failure — distinct from an HTTP error status.
     return { ok: false, status: 0, errorMessage: e instanceof Error ? e.message : 'Network error' };
   }
 
-  if (res.status === 401 && !path.includes('/auth/')) {
-    clearAuth();
-    window.location.href = '/login';
-    throw new Error('Session expired');
+  if (res.status === 401 && !isExcludedAuthTransportPath(path)) {
+    try {
+      res = await recoverFromUnauthorized({
+        path,
+        method: options?.method,
+        retry: run,
+        dispatchIdentity,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Session expired';
+      if (msg === 'Session refreshed' || msg === 'Stale request') {
+        return { ok: false, status: 401, errorMessage: msg };
+      }
+      return { ok: false, status: 401, errorMessage: 'Session expired' };
+    }
   }
 
   if (!res.ok) {
@@ -1295,14 +1306,22 @@ export interface CreateSupportMessagePayload {
 // Bearer token. We fetch them as a Blob and open via an object URL so the
 // browser can preview/download without ever exposing a public file URL.
 async function fetchBlob(path: string): Promise<Blob> {
-  const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const dispatchIdentity = captureAuthRequestDispatchIdentity();
+  const run = () =>
+    fetch(`${BASE_URL}${path}`, {
+      headers: buildAuthorizedHeaders(
+        getToken() ? {} : undefined,
+        getStepUpToken(),
+      ),
+    });
+  let res = await run();
   if (res.status === 401) {
-    clearAuth();
-    window.location.href = '/login';
-    throw new Error('Session expired');
+    res = await recoverFromUnauthorized({
+      path,
+      method: 'GET',
+      retry: run,
+      dispatchIdentity,
+    });
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
 import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 import { IamSessionPolicyService } from './iam-session-policy.service';
+import { acquireCanonicalSecurityMutationLocks } from './iam-security-mutation-concurrency';
 import { TransactionalMailService } from '@modules/users/transactional-mail.service';
 import { UserAccessAuditService, UserAccessAuditAction } from '@modules/users/user-access-audit.service';
 import {
@@ -170,10 +171,32 @@ export class PasswordResetService {
       throw new UnauthorizedException('Invalid or expired password reset token');
     }
 
-    const hash = await bcrypt.hash(input.newPassword, 10);
     let intentIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: record.organizationId ? [record.organizationId] : [],
+        userIds: [record.userId],
+      });
+
+      const freshRecord = await tx.passwordResetToken.findUnique({
+        where: { id: record.id },
+        include: { user: { select: { status: true, sessionVersion: true } } },
+      });
+      if (!freshRecord || freshRecord.revokedAt) {
+        throw new UnauthorizedException('Invalid or expired password reset token');
+      }
+      if (freshRecord.usedAt) {
+        throw new BadRequestException('Password reset token has already been used');
+      }
+      if (freshRecord.expiresAt < new Date()) {
+        throw new UnauthorizedException('Invalid or expired password reset token');
+      }
+      if (freshRecord.user.status !== UserStatus.ACTIVE) {
+        throw new UnauthorizedException('Account is not active');
+      }
+
+      const hash = await bcrypt.hash(input.newPassword, 10);
       await tx.user.update({
         where: { id: record.userId },
         data: {
@@ -187,11 +210,12 @@ export class PasswordResetService {
         data: { usedAt: new Date() },
       });
 
-      const enqueued = await this.sessionPolicy.enqueueInTransaction(tx, {
+      const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',
         userId: record.userId,
         organizationId: record.organizationId,
         actorUserId: record.userId,
+        mutationVersion: freshRecord.user.sessionVersion + 1,
         metadata: { source: 'password_reset_confirm', purpose: record.purpose },
       });
       intentIds = enqueued.intentIds;

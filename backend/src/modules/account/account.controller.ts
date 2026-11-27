@@ -23,7 +23,11 @@ import { RevokeOtherSessionsDto } from './dto/revoke-session.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 
 type AuthedRequest = {
-  user?: { id: string; organizationId?: string | null };
+  user?: {
+    id: string;
+    organizationId?: string | null;
+    tokenFamily?: string | null;
+  };
   ip?: string;
   headers?: Record<string, string | string[] | undefined>;
 };
@@ -46,9 +50,13 @@ export class AccountController {
     return req.user?.organizationId ?? null;
   }
 
+  private tokenFamily(req: AuthedRequest): string | null {
+    return req.user?.tokenFamily ?? null;
+  }
+
   @Get('me')
   async getMe(@Req() req: AuthedRequest) {
-    return this.account.getMe(this.userId(req), this.orgId(req));
+    return this.account.getMe(this.userId(req), this.orgId(req), this.tokenFamily(req));
   }
 
   @Patch('me/profile')
@@ -105,7 +113,7 @@ export class AccountController {
 
   @Get('me/sessions')
   async listSessions(@Req() req: AuthedRequest) {
-    return this.account.listSessions(this.userId(req), this.orgId(req));
+    return this.account.listSessions(this.userId(req), this.orgId(req), this.tokenFamily(req));
   }
 
   @Post('me/sessions/revoke-others')
@@ -117,7 +125,7 @@ export class AccountController {
     return this.account.revokeOtherSessions(
       this.userId(req),
       this.orgId(req),
-      body.keepSessionId,
+      this.tokenFamily(req),
       {
         ip: c.ipAddress,
         userAgent: c.userAgent,
@@ -133,7 +141,7 @@ export class AccountController {
     @Param('sessionId') sessionId: string,
   ) {
     const c = this.ctx(req);
-    return this.account.revokeSession(this.userId(req), this.orgId(req), sessionId, {
+    return this.account.revokeSession(this.userId(req), this.orgId(req), sessionId, this.tokenFamily(req), {
       ip: c.ipAddress,
       userAgent: c.userAgent,
       route: 'POST /account/me/sessions/:sessionId/revoke',

@@ -29,8 +29,12 @@ export async function createProductCatalogV2HttpHarness(
   const masterAdminAudit = new MasterAdminAuditService(audit);
   const products = new ProductsService(prisma as never, masterAdminAudit);
   const validateGrant = jest.fn(
-    async (_userId: string, token: string, _action: typeof STEP_UP_ACTION.MASTER_ORGANIZATION) =>
-      token === 'valid-step-up-token',
+    async (
+      _userId: string,
+      token: string,
+      _action: typeof STEP_UP_ACTION.MASTER_ORGANIZATION,
+      context?: { tokenFamily?: string | null },
+    ) => Boolean(context?.tokenFamily) && token === 'valid-step-up-token',
   );
 
   const moduleRef = await Test.createTestingModule({

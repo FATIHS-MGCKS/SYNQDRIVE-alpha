@@ -9,6 +9,10 @@ import {
 import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import {
+  acquireSecurityOperationAdmissionLock,
+  acquireSessionWriteLocks,
+} from '@modules/auth/refresh-token-session-concurrency';
+import {
   buildPrivilegedRouteLabel,
   resolveCorrelationId,
   resolveMfaAuditFields,
@@ -45,6 +49,8 @@ export class SecurityGovernanceSessionAuditService {
     sessionId: string;
     targetOrganizationId?: string | null;
     occurredAt?: Date;
+    /** Client-stable id for lost-ack retry (same idempotency envelope). */
+    securityOperationId?: string;
   }): Promise<{ revoked: boolean }> {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
@@ -61,11 +67,50 @@ export class SecurityGovernanceSessionAuditService {
       }
     }
 
-    const operationId = generateMasterAdminSecurityOperationId();
+    const operationId = input.securityOperationId ?? generateMasterAdminSecurityOperationId();
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        await acquireSecurityOperationAdmissionLock(tx, operationId);
+        const sessionMeta = await tx.refreshToken.findFirst({
+          where: { id: input.sessionId, userId: input.targetUserId },
+          select: { organizationId: true },
+        });
+        await acquireSessionWriteLocks(tx, {
+          userId: input.targetUserId,
+          organizationId: sessionMeta?.organizationId ?? null,
+        });
+
+        const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
+          where: { idempotencyKey },
+        });
+        if (priorOutbox) {
+          if (
+            !this.outboxSingleSessionMatchesOperation(priorOutbox, {
+              targetUserId: input.targetUserId,
+              sessionId: input.sessionId,
+              actorUserId: input.req.user?.id ?? null,
+              targetOrganizationId: targetOrganizationId ?? null,
+            })
+          ) {
+            return {
+              ok: false,
+              outboxId: priorOutbox.id,
+              outcome: 'NO_OP' as const,
+              record: null,
+              replay: false,
+            };
+          }
+          const parsed = this.readOutboxRevokedFromSingleSession(priorOutbox);
+          return {
+            ok: parsed.revokedThisOperation,
+            outboxId: priorOutbox.id,
+            outcome: parsed.outcome,
+            record: null,
+            replay: true,
+          };
+        }
         const ok = await this.refreshTokens.revokeSessionByIdInTransaction(
           tx,
           input.targetUserId,
@@ -95,13 +140,29 @@ export class SecurityGovernanceSessionAuditService {
           },
           tx,
         );
-        return { ok, outboxId, outcome, record };
+        return { ok, outboxId, outcome, record, replay: false };
       });
 
       try {
         await this.auditDelivery.attemptImmediateDelivery(txn.outboxId);
       } catch {
         /* durable intent committed; scheduler will deliver */
+      }
+      const authoritative = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey },
+      });
+      if (
+        authoritative &&
+        this.outboxSingleSessionMatchesOperation(authoritative, {
+          targetUserId: input.targetUserId,
+          sessionId: input.sessionId,
+          actorUserId: input.req.user?.id ?? null,
+          targetOrganizationId: targetOrganizationId ?? null,
+        })
+      ) {
+        return {
+          revoked: this.readOutboxRevokedFromSingleSession(authoritative).revokedThisOperation,
+        };
       }
       return { revoked: txn.ok };
     } catch {
@@ -123,15 +184,45 @@ export class SecurityGovernanceSessionAuditService {
     req: SessionRevocationAuditRequest;
     targetUserId: string;
     occurredAt?: Date;
+    securityOperationId?: string;
   }): Promise<{ revokedSessionCount: number }> {
     const mfa = resolveMfaAuditFields(input.req as never);
     const correlationId = resolveCorrelationId(input.req as never);
     const occurredAt = input.occurredAt ?? new Date();
-    const operationId = generateMasterAdminSecurityOperationId();
+    const operationId = input.securityOperationId ?? generateMasterAdminSecurityOperationId();
     const idempotencyKey = buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId);
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        await acquireSecurityOperationAdmissionLock(tx, operationId);
+        await acquireSessionWriteLocks(tx, {
+          userId: input.targetUserId,
+          organizationId: null,
+        });
+        const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
+          where: { idempotencyKey },
+        });
+        if (priorOutbox) {
+          if (
+            !this.outboxRevokeAllMatchesOperation(priorOutbox, {
+              targetUserId: input.targetUserId,
+              actorUserId: input.req.user?.id ?? null,
+            })
+          ) {
+            return {
+              revokedSessionCount: 0,
+              outboxId: priorOutbox.id,
+              record: null,
+              replay: false,
+            };
+          }
+          return {
+            revokedSessionCount: this.readOutboxRevokedSessionCount(priorOutbox),
+            outboxId: priorOutbox.id,
+            record: null,
+            replay: true,
+          };
+        }
         const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUserInTransaction(
           tx,
           input.targetUserId,
@@ -154,13 +245,27 @@ export class SecurityGovernanceSessionAuditService {
           },
           tx,
         );
-        return { revokedSessionCount, outboxId, record };
+        return { revokedSessionCount, outboxId, record, replay: false };
       });
 
       try {
         await this.auditDelivery.attemptImmediateDelivery(txn.outboxId);
       } catch {
         /* durable intent committed; scheduler will deliver */
+      }
+      const authoritative = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey },
+      });
+      if (
+        authoritative &&
+        this.outboxRevokeAllMatchesOperation(authoritative, {
+          targetUserId: input.targetUserId,
+          actorUserId: input.req.user?.id ?? null,
+        })
+      ) {
+        return {
+          revokedSessionCount: this.readOutboxRevokedSessionCount(authoritative),
+        };
       }
       return { revokedSessionCount: txn.revokedSessionCount };
     } catch {
@@ -234,6 +339,105 @@ export class SecurityGovernanceSessionAuditService {
     });
   }
 
+  private outboxMetadata(existing: { payload: unknown }): Record<string, unknown> | null {
+    const payload = existing.payload as Record<string, unknown>;
+    const raw = payload.masterAdminAuditEnvelope;
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+    const meta = (raw as { metadata?: Record<string, unknown> }).metadata;
+    return meta && typeof meta === 'object' ? meta : null;
+  }
+
+  private outboxEnvelopeActor(existing: { payload: unknown }): string | null {
+    const payload = existing.payload as Record<string, unknown>;
+    const raw = payload.masterAdminAuditEnvelope;
+    if (!raw || typeof raw !== 'object') return null;
+    const actorUserId = (raw as { actorUserId?: unknown }).actorUserId;
+    return typeof actorUserId === 'string' && actorUserId.length > 0 ? actorUserId : null;
+  }
+
+  private outboxSingleSessionMatchesOperation(
+    existing: { payload: unknown },
+    input: {
+      targetUserId: string;
+      sessionId: string;
+      actorUserId?: string | null;
+      targetOrganizationId?: string | null;
+    },
+  ): boolean {
+    const meta = this.outboxMetadata(existing);
+    if (!meta) return false;
+    if (
+      meta.operation !== 'REVOKE_ONE' ||
+      meta.targetUserId !== input.targetUserId ||
+      meta.sessionId !== input.sessionId
+    ) {
+      return false;
+    }
+    const storedActor =
+      typeof meta.actorUserId === 'string' && meta.actorUserId.length > 0
+        ? meta.actorUserId
+        : this.outboxEnvelopeActor(existing);
+    if (storedActor && input.actorUserId && storedActor !== input.actorUserId) {
+      return false;
+    }
+    if (storedActor && !input.actorUserId) {
+      return false;
+    }
+    const storedOrg = meta.targetOrganizationId;
+    if (storedOrg != null && input.targetOrganizationId != null && storedOrg !== input.targetOrganizationId) {
+      return false;
+    }
+    if (storedOrg != null && input.targetOrganizationId == null) {
+      return false;
+    }
+    return true;
+  }
+
+  private outboxRevokeAllMatchesOperation(
+    existing: { payload: unknown },
+    input: { targetUserId: string; actorUserId?: string | null },
+  ): boolean {
+    const meta = this.outboxMetadata(existing);
+    if (!meta) return false;
+    if (meta.operation !== 'REVOKE_ALL' || meta.targetUserId !== input.targetUserId) {
+      return false;
+    }
+    const storedActor =
+      typeof meta.actorUserId === 'string' && meta.actorUserId.length > 0
+        ? meta.actorUserId
+        : this.outboxEnvelopeActor(existing);
+    if (storedActor && input.actorUserId && storedActor !== input.actorUserId) {
+      return false;
+    }
+    if (storedActor && !input.actorUserId) {
+      return false;
+    }
+    return true;
+  }
+
+  private async sessionFamilyHasActiveHead(userId: string, sessionId: string): Promise<boolean> {
+    const target = await this.prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+      select: { family: true },
+    });
+    if (!target?.family) {
+      return false;
+    }
+    const active = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId,
+        family: target.family,
+        revokedAt: null,
+        replacedBy: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    return Boolean(active);
+  }
+
   private readOutboxRevokedFromSingleSession(existing: {
     payload: unknown;
   }): { outcome: 'SUCCESS' | 'NO_OP'; revokedThisOperation: boolean } {
@@ -270,10 +474,25 @@ export class SecurityGovernanceSessionAuditService {
     operationId: string;
     idempotencyKey: string;
   }): Promise<{ revoked: boolean }> {
-    const existing = await this.prisma.masterAdminAuditOutbox.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
+    let existing = null;
+    try {
+      existing = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+    } catch {
+      /* audit read failure must not block security-critical session revocation */
+    }
     if (existing) {
+      if (
+        !this.outboxSingleSessionMatchesOperation(existing, {
+          targetUserId: input.targetUserId,
+          sessionId: input.sessionId,
+          actorUserId: input.req.user?.id ?? null,
+          targetOrganizationId: input.targetOrganizationId,
+        })
+      ) {
+        return { revoked: false };
+      }
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
         try {
           await this.auditDelivery.attemptImmediateDelivery(existing.id);
@@ -285,13 +504,12 @@ export class SecurityGovernanceSessionAuditService {
       return { revoked: parsed.revokedThisOperation };
     }
 
-    const token = await this.prisma.refreshToken.findFirst({
-      where: { id: input.sessionId, userId: input.targetUserId },
-      select: { revokedAt: true },
-    });
-    const alreadyRevoked = Boolean(token?.revokedAt);
+    const hasActiveFamily = await this.sessionFamilyHasActiveHead(
+      input.targetUserId,
+      input.sessionId,
+    );
     let revokedThisOperation = false;
-    if (token && !alreadyRevoked) {
+    if (hasActiveFamily) {
       revokedThisOperation = await this.refreshTokens.revokeSessionById(
         input.targetUserId,
         input.sessionId,
@@ -325,10 +543,23 @@ export class SecurityGovernanceSessionAuditService {
     operationId: string;
     idempotencyKey: string;
   }): Promise<{ revokedSessionCount: number }> {
-    const existing = await this.prisma.masterAdminAuditOutbox.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
+    let existing = null;
+    try {
+      existing = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+    } catch {
+      /* audit read failure must not block security-critical session revocation */
+    }
     if (existing) {
+      if (
+        !this.outboxRevokeAllMatchesOperation(existing, {
+          targetUserId: input.targetUserId,
+          actorUserId: input.req.user?.id ?? null,
+        })
+      ) {
+        return { revokedSessionCount: 0 };
+      }
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
         try {
           await this.auditDelivery.attemptImmediateDelivery(existing.id);
@@ -395,6 +626,8 @@ export class SecurityGovernanceSessionAuditService {
       outcome: input.outcome,
       targetUserId: input.targetUserId,
       sessionId: input.sessionId,
+      actorUserId: input.req.user?.id ?? null,
+      targetOrganizationId: input.targetOrganizationId,
       securityOperationId: input.operationId,
     },
   };
@@ -432,6 +665,7 @@ export class SecurityGovernanceSessionAuditService {
         operation: 'REVOKE_ALL',
         outcome: input.revokedSessionCount > 0 ? 'SUCCESS' : 'NO_OP',
         targetUserId: input.targetUserId,
+        actorUserId: input.req.user?.id ?? null,
         revokedSessionCount: input.revokedSessionCount,
         auditScope: 'PLATFORM',
         securityOperationId: input.operationId,

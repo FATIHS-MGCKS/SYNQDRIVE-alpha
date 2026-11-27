@@ -32,11 +32,13 @@ describe('PasswordResetService (Prompt 6)', () => {
       updateMany: jest.Mock;
     };
     $transaction: jest.Mock;
+    $executeRaw: jest.Mock;
   };
   let rateLimit: { assertWithinLimit: jest.Mock };
   let mail: { sendPasswordReset: jest.Mock; sendPasswordResetCompleted: jest.Mock };
   let sessionPolicy: {
     enqueueInTransaction: jest.Mock;
+    enqueueInTransactionWithAuthoritativeInvalidation: jest.Mock;
     processIntents: jest.Mock;
   };
   let userAudit: { record: jest.Mock };
@@ -55,6 +57,7 @@ describe('PasswordResetService (Prompt 6)', () => {
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      $executeRaw: jest.fn().mockResolvedValue(undefined),
       $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
         fn(prisma),
       ),
@@ -66,6 +69,9 @@ describe('PasswordResetService (Prompt 6)', () => {
     };
     sessionPolicy = {
       enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
+      enqueueInTransactionWithAuthoritativeInvalidation: jest
+        .fn()
+        .mockResolvedValue({ intentIds: ['intent-1'], scopes: [], revokedTokenCount: 1 }),
       processIntents: jest.fn().mockResolvedValue([]),
     };
     userAudit = { record: jest.fn().mockResolvedValue(undefined) };
@@ -162,7 +168,7 @@ describe('PasswordResetService (Prompt 6)', () => {
       expiresAt: new Date(Date.now() + 60_000),
       usedAt: null,
       revokedAt: null,
-      user: { id: userId, email, status: UserStatus.ACTIVE },
+      user: { id: userId, email, status: UserStatus.ACTIVE, sessionVersion: 0 },
     });
     prisma.passwordResetToken.update.mockResolvedValue({});
     prisma.user.update.mockResolvedValue({});

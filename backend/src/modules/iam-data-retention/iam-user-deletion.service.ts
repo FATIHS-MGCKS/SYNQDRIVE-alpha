@@ -8,6 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { IamAuditService } from '@modules/users/iam-audit.service';
 import { UserAccessAuditAction } from '@modules/users/user-access-audit.service';
 import { IamLegalHoldService } from './iam-legal-hold.service';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 import { randomUUID } from 'crypto';
 
 export interface GlobalUserDeletionAssessment {
@@ -81,6 +82,8 @@ export class IamUserDeletionService {
     const outboxIds: string[] = [];
 
     const user = await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, { userIds: [input.userId] });
+
       const updated = await tx.user.update({
         where: { id: input.userId },
         data: {

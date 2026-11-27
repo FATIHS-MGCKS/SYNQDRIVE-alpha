@@ -11,3 +11,8 @@
 | 2026-11-25 | USR-P1A runtime wiring — outbox scheduler, atomic revoke+intent txn, tenant audit isolation, PG01–PG13 re-executed (13/13) |
 | 2026-11-25 | USR-P1A merge gate — outbox CAS recovery, authoritative immediate delivery, tenant null-safe scope filter, PG08/10/12 hardening |
 | 2026-11-25 | USR-P1A operation identity — server `securityOperationId`, ON CONFLICT enqueue, ambiguous-commit + revoke-all count fixes, PGA–PGF |
+| 2026-11-25 | USR-P2 — request-time access authority (`UserAccessAuthorityService`, JWT `tokenFamily`, AuthGuard binding); P1A outbox read failure must not block revoke |
+| 2026-11-26 | USR-P2B closeout — admin password atomic invalidation, multi-scope idempotency, B01–B10+ADMIN PG (14 shards); gate 66/66 disposable |
+| 2026-11-26 | USR-P2C — deterministic race barriers, pg IAM stack helper, 12-case P2C PG suite; semantic crosswalk P2C refresh |
+| 2026-11-26 | USR-P2C targeted evidence seal — `pg_blocking_pids` lock wait proofs; semantic guard PG; RACE03 lock-hardening; crosswalk correction |
+| 2026-11-26 | USR-P2D — admin password actor; atomic MFA consumption; P1A_B lost ack; D01–D10 PG matrix; refresh MFA downgrade |

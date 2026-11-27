@@ -8,11 +8,17 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
 import {
   buildRevocationIdempotencyKey,
+  buildScopedRevocationIdempotencyKey,
   type IamSessionInvalidationTrigger,
   resolveSessionInvalidationScope,
   type SessionInvalidationScope,
 } from '@modules/users/policies/iam-session-invalidation.policy';
 import { UserAccessAuditService, UserAccessAuditAction } from '@modules/users/user-access-audit.service';
+import {
+  acquireSessionWriteLocks,
+  acquireUserSessionWriteLock,
+} from './refresh-token-session-concurrency';
+import { acquireCanonicalSecurityMutationLocks } from './iam-security-mutation-concurrency';
 
 export interface IamSessionRevocationIntentInput {
   eventType: IamSessionInvalidationTrigger;
@@ -30,6 +36,13 @@ export interface IamSessionRevocationIntentInput {
 
 export interface IamSessionRevocationResult {
   intentId: string;
+  scopes: SessionInvalidationScope[];
+  revokedTokenCount: number;
+  idempotentReplay: boolean;
+}
+
+export interface IamSessionRevocationEnqueueResult {
+  intentIds: string[];
   scopes: SessionInvalidationScope[];
   revokedTokenCount: number;
   idempotentReplay: boolean;
@@ -82,7 +95,7 @@ export class IamSessionPolicyService {
     const intentIds: string[] = [];
 
     for (const scope of scopes) {
-      const idempotencyKey =
+      const baseKey =
         input.idempotencyKey ??
         buildRevocationIdempotencyKey({
           eventType: input.eventType,
@@ -92,12 +105,19 @@ export class IamSessionPolicyService {
           refreshTokenId: input.refreshTokenId,
           tokenFamily: input.tokenFamily,
           mutationVersion: input.mutationVersion,
-        }) + `:${scope}`;
+        });
+      const idempotencyKey = buildScopedRevocationIdempotencyKey(baseKey, scope);
 
-      const existing = await tx.iamSessionRevocationIntent.findUnique({
+      let existing = await tx.iamSessionRevocationIntent.findUnique({
         where: { idempotencyKey },
         select: { id: true, status: true },
       });
+      if (!existing && input.idempotencyKey && scopes.length === 1) {
+        existing = await tx.iamSessionRevocationIntent.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          select: { id: true, status: true },
+        });
+      }
       if (existing) {
         intentIds.push(existing.id);
         continue;
@@ -126,6 +146,139 @@ export class IamSessionPolicyService {
     return { intentIds, scopes };
   }
 
+  /**
+   * Enqueue intent and apply authoritative session invalidation in the same DB transaction
+   * as the IAM mutation (USR-OWN-02 / GATE-1). Post-commit `processIntents` finalizes audit
+   * state without re-applying revocation when `authoritativeAppliedInCommit` is set.
+   */
+  async enqueueInTransactionWithAuthoritativeInvalidation(
+    tx: TxClient,
+    input: IamSessionRevocationIntentInput,
+  ): Promise<IamSessionRevocationEnqueueResult> {
+    await acquireCanonicalSecurityMutationLocks(tx, {
+      organizationIds: input.organizationId ? [input.organizationId] : [],
+      userIds: [input.userId],
+    });
+
+    const resolved = await this.resolveSecurityMutationIdentity(tx, input);
+    const { intentIds, scopes } = await this.enqueueInTransaction(tx, resolved);
+
+    const priorRows = await Promise.all(
+      intentIds.map((intentId) =>
+        tx.iamSessionRevocationIntent.findUnique({
+          where: { id: intentId },
+          select: { metadata: true, revokedTokenCount: true, status: true },
+        }),
+      ),
+    );
+
+    const ctx = {
+      userId: resolved.userId,
+      organizationId: resolved.organizationId ?? null,
+      membershipId: resolved.membershipId ?? null,
+      refreshTokenId: resolved.refreshTokenId ?? null,
+      tokenFamily: resolved.tokenFamily ?? null,
+    };
+
+    const operationIdentity =
+      resolved.idempotencyKey ??
+      buildRevocationIdempotencyKey({
+        eventType: resolved.eventType,
+        userId: resolved.userId,
+        organizationId: resolved.organizationId,
+        membershipId: resolved.membershipId,
+        refreshTokenId: resolved.refreshTokenId,
+        tokenFamily: resolved.tokenFamily,
+        mutationVersion: resolved.mutationVersion,
+      });
+
+    let revokedTokenCount = 0;
+    let anyApplied = false;
+    let allScopesReplay = true;
+
+    for (let i = 0; i < scopes.length; i++) {
+      const scope = scopes[i]!;
+      const intentId = intentIds[i]!;
+      const existing = priorRows[i];
+      const prior =
+        existing?.metadata &&
+        typeof existing.metadata === 'object' &&
+        !Array.isArray(existing.metadata)
+          ? (existing.metadata as Record<string, unknown>)
+          : {};
+      if (prior.authoritativeAppliedInCommit === true) {
+        revokedTokenCount += existing?.revokedTokenCount ?? 0;
+        continue;
+      }
+      allScopesReplay = false;
+      const scopeCount = await this.applyRevocationScopeInTransaction(tx, scope, ctx);
+      anyApplied = true;
+      revokedTokenCount += scopeCount;
+      await tx.iamSessionRevocationIntent.update({
+        where: { id: intentId },
+        data: {
+          revokedTokenCount: scopeCount,
+          metadata: {
+            ...prior,
+            ...(resolved.metadata ?? {}),
+            authoritativeAppliedInCommit: true,
+            operationIdentity,
+            mutationVersion: resolved.mutationVersion ?? 0,
+            scope,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+  return {
+      intentIds,
+      scopes,
+      revokedTokenCount,
+      idempotentReplay: !anyApplied && allScopesReplay && intentIds.length > 0,
+    };
+  }
+
+  /**
+   * Stable server-side operation identity for idempotency keys when callers omit explicit keys.
+   * Distinct legitimate mutations must not share mutationVersion=0 forever (P2-R21).
+   */
+  private async resolveSecurityMutationIdentity(
+    tx: TxClient,
+    input: IamSessionRevocationIntentInput,
+  ): Promise<IamSessionRevocationIntentInput> {
+    if (input.idempotencyKey || (input.mutationVersion ?? 0) > 0) {
+      return input;
+    }
+
+    const userRow = await tx.user.findUnique({
+      where: { id: input.userId },
+      select: { sessionVersion: true, securityVersion: true },
+    });
+    if (!userRow) {
+      return input;
+    }
+
+    let mutationVersion = 0;
+    if (input.eventType === 'MFA_RESET') {
+      mutationVersion = userRow.securityVersion + 1;
+    } else if (
+      input.eventType === 'PASSWORD_CHANGED' ||
+      input.eventType === 'PASSWORD_COMPROMISED'
+    ) {
+      mutationVersion = userRow.sessionVersion + 1;
+    } else if (input.membershipId) {
+      const membership = await tx.organizationMembership.findUnique({
+        where: { id: input.membershipId },
+        select: { membershipVersion: true },
+      });
+      mutationVersion = (membership?.membershipVersion ?? 0) + 1;
+    } else {
+      mutationVersion = userRow.sessionVersion + 1;
+    }
+
+    return { ...input, mutationVersion };
+  }
+
   /** Process intents created in a transaction (call after commit). */
   async processIntents(intentIds: string[]): Promise<IamSessionRevocationResult[]> {
     const results: IamSessionRevocationResult[] = [];
@@ -142,7 +295,7 @@ export class IamSessionPolicyService {
     input: IamSessionRevocationIntentInput,
   ): Promise<IamSessionRevocationResult> {
     const { intentIds } = await this.prisma.$transaction(async (tx) =>
-      this.enqueueInTransaction(tx, input),
+      this.enqueueInTransactionWithAuthoritativeInvalidation(tx, input),
     );
     const results = await this.processIntents(intentIds);
     return results[results.length - 1]!;
@@ -191,16 +344,21 @@ export class IamSessionPolicyService {
     }
 
     try {
-      const revokedTokenCount = await this.applyRevocationScope(
-        intent.scope as SessionInvalidationScope,
-        {
-          userId: intent.userId,
-          organizationId: intent.organizationId,
-          membershipId: intent.membershipId,
-          refreshTokenId: intent.refreshTokenId,
-          tokenFamily: intent.tokenFamily,
-        },
-      );
+      const metadata =
+        intent.metadata && typeof intent.metadata === 'object' && !Array.isArray(intent.metadata)
+          ? (intent.metadata as Record<string, unknown>)
+          : null;
+      const ctx = {
+        userId: intent.userId,
+        organizationId: intent.organizationId,
+        membershipId: intent.membershipId,
+        refreshTokenId: intent.refreshTokenId,
+        tokenFamily: intent.tokenFamily,
+      };
+      const revokedTokenCount =
+        metadata?.authoritativeAppliedInCommit === true
+          ? intent.revokedTokenCount
+          : await this.applyRevocationScope(intent.scope as SessionInvalidationScope, ctx);
 
       await this.prisma.iamSessionRevocationIntent.update({
         where: { id: intentId },
@@ -250,6 +408,141 @@ export class IamSessionPolicyService {
         },
       });
       throw error;
+    }
+  }
+
+  private async applyAuthoritativeScopesInTransaction(
+    tx: TxClient,
+    scopes: SessionInvalidationScope[],
+    ctx: {
+      userId: string;
+      organizationId: string | null;
+      membershipId: string | null;
+      refreshTokenId: string | null;
+      tokenFamily: string | null;
+    },
+  ): Promise<number> {
+    let total = 0;
+    for (const scope of scopes) {
+      total += await this.applyRevocationScopeInTransaction(tx, scope, ctx);
+    }
+    return total;
+  }
+
+  private async applyRevocationScopeInTransaction(
+    tx: TxClient,
+    scope: SessionInvalidationScope,
+    ctx: {
+      userId: string;
+      organizationId: string | null;
+      membershipId: string | null;
+      refreshTokenId: string | null;
+      tokenFamily: string | null;
+    },
+  ): Promise<number> {
+    const now = new Date();
+    switch (scope) {
+      case 'NO_IMMEDIATE_REVOCATION':
+        return 0;
+      case 'CURRENT_SESSION':
+        if (!ctx.refreshTokenId) return 0;
+        return (await this.refreshTokens.revokeSessionByIdInTransaction(
+          tx,
+          ctx.userId,
+          ctx.refreshTokenId,
+        ))
+          ? 1
+          : 0;
+      case 'USER_ALL_SESSIONS':
+        await acquireUserSessionWriteLock(tx, ctx.userId);
+        await tx.$executeRaw`
+          UPDATE users SET session_version = session_version + 1, updated_at = NOW()
+          WHERE id = ${ctx.userId}
+        `;
+        return (
+          await tx.refreshToken.updateMany({
+            where: {
+              userId: ctx.userId,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: {
+              revokedAt: now,
+              revocationReason: 'USER_ALL_SESSIONS_REVOKED',
+            },
+          })
+        ).count;
+      case 'ORGANIZATION_MEMBERSHIP_SESSIONS':
+        if (ctx.membershipId) {
+          await tx.$executeRaw`
+            UPDATE organization_memberships
+            SET membership_version = membership_version + 1, updated_at = NOW()
+            WHERE id = ${ctx.membershipId}
+          `;
+        }
+        if (!ctx.organizationId) return 0;
+        await acquireSessionWriteLocks(tx, {
+          userId: ctx.userId,
+          organizationId: ctx.organizationId,
+        });
+        return (
+          await tx.refreshToken.updateMany({
+            where: {
+              userId: ctx.userId,
+              organizationId: ctx.organizationId,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: {
+              revokedAt: now,
+              revocationReason: 'ORG_MEMBERSHIP_SESSIONS_REVOKED',
+            },
+          })
+        ).count;
+      case 'TOKEN_FAMILY': {
+        if (!ctx.tokenFamily) return 0;
+        const anchor = await tx.refreshToken.findFirst({
+          where: { family: ctx.tokenFamily },
+          select: { userId: true, organizationId: true },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (!anchor) return 0;
+        await acquireSessionWriteLocks(tx, {
+          userId: anchor.userId,
+          organizationId: anchor.organizationId,
+        });
+        return (
+          await tx.refreshToken.updateMany({
+            where: { family: ctx.tokenFamily, revokedAt: null },
+            data: {
+              revokedAt: now,
+              revocationReason: 'TOKEN_FAMILY_REVOKED',
+            },
+          })
+        ).count;
+      }
+      case 'PRIVILEGED_SESSIONS':
+        await acquireUserSessionWriteLock(tx, ctx.userId);
+        await tx.$executeRaw`
+          UPDATE users SET session_version = session_version + 1, updated_at = NOW()
+          WHERE id = ${ctx.userId}
+        `;
+        return (
+          await tx.refreshToken.updateMany({
+            where: {
+              userId: ctx.userId,
+              privilegedSession: true,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: {
+              revokedAt: now,
+              revocationReason: 'PRIVILEGED_SESSIONS_REVOKED',
+            },
+          })
+        ).count;
+      default:
+        return 0;
     }
   }
 

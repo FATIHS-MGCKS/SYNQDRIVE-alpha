@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserPlatformRole } from '@prisma/client';
+import { SessionAssuranceLevel, UserPlatformRole } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
@@ -11,6 +11,13 @@ import { MFA_ERROR } from '@modules/iam-mfa/iam-mfa.policy';
 import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 
 const MFA_PENDING_TTL_SEC = 5 * 60;
+
+export type MfaPendingLoginContext = {
+  userId: string;
+  sessionVersion: number;
+  securityVersion: number;
+  platformRole: UserPlatformRole;
+};
 
 export type MasterAdminLoginMfaGateResult =
   | { kind: 'none' }
@@ -38,6 +45,8 @@ export class AuthMfaLoginService {
   async evaluateMasterAdminLoginGate(user: {
     id: string;
     platformRole: string;
+    sessionVersion: number;
+    securityVersion: number;
   }): Promise<MasterAdminLoginMfaGateResult> {
     if (user.platformRole !== UserPlatformRole.MASTER_ADMIN) {
       return { kind: 'none' };
@@ -59,7 +68,12 @@ export class AuthMfaLoginService {
 
     return {
       kind: 'mfa_required',
-      mfaPendingToken: this.signMfaPendingToken(user.id),
+      mfaPendingToken: this.signMfaPendingToken({
+        userId: user.id,
+        sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
+        platformRole: user.platformRole as UserPlatformRole,
+      }),
       enrollmentRequired: false,
     };
   }
@@ -71,16 +85,17 @@ export class AuthMfaLoginService {
     userAgent?: string;
     ipAddress?: string;
   }) {
-    const userId = this.verifyMfaPendingToken(input.mfaPendingToken);
+    const pending = this.verifyMfaPendingToken(input.mfaPendingToken);
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        memberships: {
-          where: { status: 'ACTIVE' },
-          include: { organization: true },
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-        },
+      where: { id: pending.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        status: true,
+        platformRole: true,
+        sessionVersion: true,
+        securityVersion: true,
       },
     });
     if (!user || user.status !== 'ACTIVE') {
@@ -88,6 +103,13 @@ export class AuthMfaLoginService {
     }
     if (user.platformRole !== UserPlatformRole.MASTER_ADMIN) {
       throw new UnauthorizedException('Invalid MFA login context');
+    }
+    if (
+      user.sessionVersion !== pending.sessionVersion ||
+      user.securityVersion !== pending.securityVersion ||
+      user.platformRole !== pending.platformRole
+    ) {
+      throw new UnauthorizedException('MFA login session is no longer valid');
     }
 
     const enrolled = await this.enrollment.isMfaEnrolled(user.id);
@@ -98,40 +120,32 @@ export class AuthMfaLoginService {
       });
     }
 
-    const challengeResult = input.recoveryCode
-      ? await this.challenge.challengeWithRecoveryCode({
-          userId: user.id,
-          recoveryCode: input.recoveryCode,
-        })
-      : await this.challenge.challengeWithTotp({
-          userId: user.id,
-          code: input.code ?? '',
-        });
+    const { claims } = input.recoveryCode
+      ? await this.challenge.verifyLoginMfaRecoveryCode(user.id, input.recoveryCode)
+      : await this.challenge.verifyLoginMfaTotp(user.id, input.code ?? '');
 
-    const membership = user.memberships[0] ?? null;
     const tokens = await this.refreshTokens.issueTokenPair(
       {
         id: user.id,
         email: user.email,
         name: user.name,
         platformRole: user.platformRole,
-        sessionVersion: user.securityVersion,
+        sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
       },
-      membership
-        ? {
-            role: membership.role,
-            organizationId: membership.organizationId,
-            organizationName: membership.organization?.companyName ?? null,
-            organizationLogoUrl: membership.organization?.logoUrl ?? null,
-            permissions: membership.permissions,
-            membershipId: membership.id,
-            membershipVersion: membership.membershipVersion,
-            organizationRoleId: membership.organizationRoleId,
-          }
-        : null,
+      null,
       {
         userAgent: input.userAgent,
         ipAddress: input.ipAddress,
+      },
+      {
+        assuranceLevel: SessionAssuranceLevel.MFA,
+        sessionClaims: claims,
+        expectedAuth: {
+          sessionVersion: pending.sessionVersion,
+          securityVersion: pending.securityVersion,
+          platformRole: pending.platformRole,
+        },
       },
     );
 
@@ -139,37 +153,57 @@ export class AuthMfaLoginService {
 
     return {
       ...tokens,
-      accessToken: challengeResult.accessToken ?? tokens.accessToken,
-      assuranceLevel: challengeResult.assuranceLevel,
+      assuranceLevel: claims.assuranceLevel,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         platformRole: user.platformRole,
         platformPermissions: platformPermissionsList,
-        membershipRole: membership?.role ?? null,
-        organizationId: membership?.organizationId ?? null,
-        organizationName: membership?.organization?.companyName ?? null,
-        permissions: membership?.permissions ?? null,
+        membershipRole: null,
+        organizationId: null,
+        organizationName: null,
+        permissions: null,
       },
     };
   }
 
-  signMfaPendingToken(userId: string): string {
+  signMfaPendingToken(ctx: MfaPendingLoginContext): string {
     return jwt.sign(
-      { sub: userId, purpose: 'mfa_login' },
+      {
+        sub: ctx.userId,
+        purpose: 'mfa_login',
+        sessionVersion: ctx.sessionVersion,
+        securityVersion: ctx.securityVersion,
+        platformRole: ctx.platformRole,
+      },
       this.jwtSecret,
       { expiresIn: MFA_PENDING_TTL_SEC },
     );
   }
 
-  verifyMfaPendingToken(token: string): string {
+  verifyMfaPendingToken(token: string): MfaPendingLoginContext {
     try {
       const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
       if (decoded.purpose !== 'mfa_login' || typeof decoded.sub !== 'string') {
         throw new Error('invalid purpose');
       }
-      return decoded.sub;
+      const sessionVersion = Number(decoded.sessionVersion ?? NaN);
+      const securityVersion = Number(decoded.securityVersion ?? NaN);
+      const platformRole = decoded.platformRole as UserPlatformRole;
+      if (
+        !Number.isFinite(sessionVersion) ||
+        !Number.isFinite(securityVersion) ||
+        !platformRole
+      ) {
+        throw new Error('missing bound context');
+      }
+      return {
+        userId: decoded.sub,
+        sessionVersion,
+        securityVersion,
+        platformRole,
+      };
     } catch {
       throw new UnauthorizedException('MFA login session expired or invalid');
     }

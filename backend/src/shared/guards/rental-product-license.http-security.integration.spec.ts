@@ -1,10 +1,15 @@
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { OrgProductStatus, ProductSlug } from '@prisma/client';
-import * as jwt from 'jsonwebtoken';
+import { OrganizationStatus, OrgProductStatus, ProductSlug } from '@prisma/client';
 import * as request from 'supertest';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  signHttpSecurityAccessToken,
+} from '@shared/auth/testing/http-security-jwt.util';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -32,10 +37,16 @@ describe('Rental product license — HTTP enforcement (CustomersController sampl
 
   let orgProducts: ProductRow[] = [];
 
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
+
   const prisma = {
     organization: {
       findUnique: jest.fn(async (args: { where: { id: string } }) =>
-        args.where.id === ORG_A || args.where.id === ORG_B ? { id: args.where.id } : null,
+        args.where.id === ORG_A || args.where.id === ORG_B
+          ? { id: args.where.id, status: OrganizationStatus.ACTIVE }
+          : null,
       ),
     },
     organizationMembership: {
@@ -43,10 +54,18 @@ describe('Rental product license — HTTP enforcement (CustomersController sampl
         async (args: { where: { userId: string; organizationId: string; status?: string } }) => {
           if (args.where.status && args.where.status !== 'ACTIVE') return null;
           if (args.where.organizationId === ORG_A && args.where.userId === 'worker-a') {
-            return { id: 'mem-1', role: 'WORKER' };
+            return {
+              id: 'mem-1',
+              role: 'WORKER',
+              organization: { status: OrganizationStatus.ACTIVE },
+            };
           }
           if (args.where.organizationId === ORG_B && args.where.userId === 'worker-b') {
-            return { id: 'mem-2', role: 'WORKER' };
+            return {
+              id: 'mem-2',
+              role: 'WORKER',
+              organization: { status: OrganizationStatus.ACTIVE },
+            };
           }
           return null;
         },
@@ -75,34 +94,37 @@ describe('Rental product license — HTTP enforcement (CustomersController sampl
     },
   };
 
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
+
   function signMasterAdmin(orgId: string): string {
-    return jwt.sign(
-      {
-        sub: 'ma-1',
-        email: 'ma@test.local',
-        name: 'MA',
-        platformRole: 'MASTER_ADMIN',
-        membershipRole: 'MASTER_ADMIN',
-        organizationId: orgId,
-      },
-      jwtSecret,
-      { expiresIn: '1h' },
+    const id = 'ma-1';
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      id,
+      { platformRole: 'MASTER_ADMIN' },
     );
+    return signHttpSecurityAccessToken(jwtSecret, {
+      id,
+      email: 'ma@test.local',
+      name: 'MA',
+      platformRole: 'MASTER_ADMIN',
+      membershipRole: 'MASTER_ADMIN',
+      organizationId: orgId,
+    });
   }
 
   function signWorker(orgId: string, userId: string): string {
-    return jwt.sign(
-      {
-        sub: userId,
-        email: `${userId}@test.local`,
-        name: userId,
-        platformRole: 'USER',
-        membershipRole: 'WORKER',
-        organizationId: orgId,
-      },
-      jwtSecret,
-      { expiresIn: '1h' },
+    (prisma as { registerHttpSecurityUser?: (uid: string, row?: object) => void }).registerHttpSecurityUser?.(
+      userId,
+      { platformRole: 'USER' },
     );
+    return signHttpSecurityAccessToken(jwtSecret, {
+      id: userId,
+      email: `${userId}@test.local`,
+      name: userId,
+      platformRole: 'USER',
+      membershipRole: 'WORKER',
+      organizationId: orgId,
+    });
   }
 
   const route = `/api/v1/organizations/${ORG_A}/customers`;
@@ -121,6 +143,8 @@ describe('Rental product license — HTTP enforcement (CustomersController sampl
         { provide: CustomerDocumentsService, useValue: {} },
         { provide: CustomerTimelineService, useValue: {} },
         { provide: StorageService, useValue: {} },
+        UserAccessAuthorityService,
+        { provide: PlatformPermissionService, useValue: platformPermissions },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
     }).compile();

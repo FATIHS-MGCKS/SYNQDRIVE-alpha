@@ -10,6 +10,10 @@ import {
   ProductSlug,
 } from '@prisma/client';
 import { AuthGuard } from '@shared/auth/auth.guard';
+import {
+  attachHttpSecurityAuthorityPrismaMocks,
+  authGuardHttpSecurityProviders,
+} from '@shared/auth/testing/http-security-jwt.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
 import { createCoreAppM2mIntegrationModule } from './testing/core-app-m2m-module.testing';
@@ -24,10 +28,16 @@ describe('Core app M2M token — rate limit HTTP integration', () => {
   const envBackup = { ...process.env };
   const memoryRedis = new CoreAppM2mRateLimitMemoryRedis();
 
+  const platformPermissions = {
+    resolveJwtPermissions: jest.fn().mockResolvedValue([]),
+  };
+
   const prisma = {
     coreAppServiceClient: { findUnique: jest.fn() },
     organizationProduct: { findFirst: jest.fn() },
   };
+
+  attachHttpSecurityAuthorityPrismaMocks(prisma as never);
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'rate-limit-http-user-jwt';
@@ -63,7 +73,12 @@ describe('Core app M2M token — rate limit HTTP integration', () => {
           .useValue(prisma)
           .overrideProvider(RedisService)
           .useValue(memoryRedis),
-      { providers: [{ provide: APP_GUARD, useClass: AuthGuard }] },
+      {
+        providers: [
+          ...authGuardHttpSecurityProviders(prisma, platformPermissions),
+          { provide: APP_GUARD, useClass: AuthGuard },
+        ],
+      },
     ).compile();
 
     app = moduleRef.createNestApplication();

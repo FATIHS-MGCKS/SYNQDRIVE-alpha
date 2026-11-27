@@ -30,6 +30,7 @@ describe('AccountService', () => {
     timezone: 'Europe/Berlin',
     dateFormat: 'DD.MM.YYYY',
     passwordHash: '$2b$10$hash',
+    sessionVersion: 0,
     status: 'ACTIVE',
     lastLoginAt: new Date('2026-06-01T10:00:00Z'),
     lastLoginIp: '127.0.0.1',
@@ -77,6 +78,7 @@ describe('AccountService', () => {
       findFirst: jest.fn(),
       count: jest.fn(),
     },
+    $executeRaw: jest.fn().mockResolvedValue(undefined),
     $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
       fn(prisma),
     ),
@@ -87,12 +89,16 @@ describe('AccountService', () => {
   const refreshTokens = {
     listSessionsForUser: jest.fn().mockResolvedValue([]),
     resolveCurrentSessionId: jest.fn().mockReturnValue(null),
+    resolveActiveHeadSessionIdForFamily: jest.fn().mockReturnValue(null),
     revokeOtherSessionsForUser: jest.fn().mockResolvedValue({ revoked: 2, keptSessionId: 's1' }),
     revokeSessionById: jest.fn().mockResolvedValue(true),
   } as unknown as RefreshTokenService;
 
   const sessionPolicy = {
     enqueueInTransaction: jest.fn().mockResolvedValue({ intentIds: ['intent-1'], scopes: [] }),
+    enqueueInTransactionWithAuthoritativeInvalidation: jest
+      .fn()
+      .mockResolvedValue({ intentIds: ['intent-1'], scopes: [], revokedTokenCount: 1 }),
     processIntents: jest.fn().mockResolvedValue([]),
   } as unknown as IamSessionPolicyService;
 
@@ -285,7 +291,7 @@ describe('AccountService', () => {
     );
 
     expect(result.message).toContain('success');
-    expect(sessionPolicy.enqueueInTransaction).toHaveBeenCalledWith(
+    expect(sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ eventType: 'PASSWORD_CHANGED', userId }),
     );
@@ -308,9 +314,9 @@ describe('AccountService', () => {
   });
 
   it('revokeOtherSessions only affects own user context', async () => {
-    const result = await service.revokeOtherSessions(userId, orgId, 's1', {});
+    const result = await service.revokeOtherSessions(userId, orgId, 'family-1', {});
 
-    expect(refreshTokens.revokeOtherSessionsForUser).toHaveBeenCalledWith(userId, 's1');
+    expect(refreshTokens.revokeOtherSessionsForUser).toHaveBeenCalledWith(userId, 'family-1');
     expect(result.revoked).toBe(2);
   });
 

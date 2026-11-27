@@ -71,7 +71,10 @@ export class ActivityLogExportService {
       where,
       take: limit,
       orderBy: { createdAt: 'asc' },
-      include: { user: true, organization: true },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        organization: { select: { id: true, companyName: true } },
+      },
     });
 
     const rows = entries.map((entry) => normalizeActivityLogForExport(entry));

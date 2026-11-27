@@ -53,7 +53,7 @@ export const IAM_SESSION_INVALIDATION_POLICY: Record<
   ROLE_UPGRADED: 'ORGANIZATION_MEMBERSHIP_SESSIONS',
   PERMISSION_REVOKED: 'ORGANIZATION_MEMBERSHIP_SESSIONS',
   STATION_SCOPE_REDUCED: 'ORGANIZATION_MEMBERSHIP_SESSIONS',
-  MFA_RESET: 'PRIVILEGED_SESSIONS',
+  MFA_RESET: 'USER_ALL_SESSIONS',
   REFRESH_TOKEN_REUSE_DETECTED: 'TOKEN_FAMILY',
 };
 
@@ -186,6 +186,18 @@ export function stationScopeWasReduced(
     return false;
   }
   return true;
+}
+
+/** Scope suffix for durable intent rows (explicit caller keys included). */
+export function buildScopedRevocationIdempotencyKey(
+  baseKey: string,
+  scope: SessionInvalidationScope,
+): string {
+  const suffix = `:${scope}`;
+  if (baseKey.endsWith(suffix)) {
+    return baseKey;
+  }
+  return `${baseKey}${suffix}`;
 }
 
 export function buildRevocationIdempotencyKey(input: {

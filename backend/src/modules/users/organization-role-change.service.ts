@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 import type { IamSessionInvalidationTrigger } from './policies/iam-session-invalidation.policy';
 import { listEffectiveOrgAdmins } from './org-admin-protection.util';
 import { OrganizationRoleVersionService } from './organization-role-version.service';
@@ -258,6 +259,13 @@ export class OrganizationRoleChangeService {
 
     const intentIds: string[] = [];
     const result = await this.prisma.$transaction(async (tx) => {
+      const followLatestMemberships = preview.memberships.filter((m) => m.willReceiveUpdate);
+      const affectedUserIds = [...new Set(followLatestMemberships.map((m) => m.userId))].sort();
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [orgId],
+        userIds: affectedUserIds,
+      });
+
       const versions = await tx.organizationRoleVersion.findMany({
         where: { organizationRoleId: roleId },
         select: { version: true },
@@ -311,7 +319,6 @@ export class OrganizationRoleChangeService {
         },
       });
 
-      const followLatestMemberships = preview.memberships.filter((m) => m.willReceiveUpdate);
       for (const impact of followLatestMemberships) {
         const updated = await tx.organizationMembership.update({
           where: { id: impact.membershipId },
@@ -330,21 +337,22 @@ export class OrganizationRoleChangeService {
         });
 
         for (const eventType of impact.sessionInvalidationTriggers) {
-          const { intentIds: created } = await this.sessionPolicy.enqueueInTransaction(tx, {
-            eventType: eventType as IamSessionInvalidationTrigger,
-            userId: updated.userId,
-            organizationId: orgId,
-            membershipId: updated.id,
-            actorUserId,
-            mutationVersion: updated.membershipVersion,
-            idempotencyKey: `${input.idempotencyKey}:${updated.id}:${eventType}`,
-            metadata: {
-              roleId,
-              roleVersionId: newVersion.id,
-              roleVersionNumber: newVersion.version,
-              reason: input.reason,
-            },
-          });
+          const { intentIds: created } =
+            await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+              eventType: eventType as IamSessionInvalidationTrigger,
+              userId: updated.userId,
+              organizationId: orgId,
+              membershipId: updated.id,
+              actorUserId,
+              mutationVersion: updated.membershipVersion,
+              idempotencyKey: `${input.idempotencyKey}:${updated.id}:${eventType}`,
+              metadata: {
+                roleId,
+                roleVersionId: newVersion.id,
+                roleVersionNumber: newVersion.version,
+                reason: input.reason,
+              },
+            });
           intentIds.push(...created);
         }
       }

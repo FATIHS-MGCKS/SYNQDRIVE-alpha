@@ -123,6 +123,8 @@ describe('MasterBillingDelegateMfaGuard', () => {
         id: 'd1',
         platformRole: UserPlatformRole.USER,
         platformPermissions: ['master-billing'],
+        tokenFamily: 'family-billing',
+        sessionVersion: 0,
         sessionClaims: buildPasswordOnlyClaims(),
       },
       headers: { 'x-step-up-token': 'grant-1' },
@@ -133,6 +135,7 @@ describe('MasterBillingDelegateMfaGuard', () => {
       'd1',
       'grant-1',
       STEP_UP_ACTION.MASTER_SUBSCRIPTION,
+      expect.objectContaining({ tokenFamily: 'family-billing' }),
     );
   });
 

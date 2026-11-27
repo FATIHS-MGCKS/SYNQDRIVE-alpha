@@ -29,6 +29,8 @@ import {
   revokePendingInvitesForEmail,
   revokeUserRefreshTokens,
 } from './iam-membership-lifecycle.side-effects';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
+import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
 import { IamMembershipLifecycleNotificationService } from './iam-membership-lifecycle-notification.service';
 import type {
   JoinMembershipInput,
@@ -52,6 +54,7 @@ export class IamMembershipLifecycleService {
     private readonly prisma: PrismaService,
     private readonly iamAudit: IamAuditService,
     private readonly notifications: IamMembershipLifecycleNotificationService,
+    private readonly sessionPolicy: IamSessionPolicyService,
   ) {}
 
   async previewMove(
@@ -234,9 +237,15 @@ export class IamMembershipLifecycleService {
     }
 
     const outboxIds: string[] = [];
+    const sessionIntentIds: string[] = [];
     let sessionsRevoked = 0;
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [input.organizationId],
+        userIds: [input.userId],
+      });
+
       const row = await tx.organizationMembership.update({
         where: { id: membership.id },
         data: {
@@ -271,7 +280,22 @@ export class IamMembershipLifecycleService {
       });
 
       if (preview.sessionInvalidationRequired) {
-        sessionsRevoked = await revokeUserRefreshTokens(tx, input.userId);
+        const eventType =
+          preview.permissionChanges.lost.length > 0 ? 'PERMISSION_REVOKED' : 'ROLE_UPGRADED';
+        const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(
+          tx,
+          {
+            eventType,
+            userId: input.userId,
+            organizationId: input.organizationId,
+            membershipId: row.id,
+            actorUserId: input.actor?.userId,
+            idempotencyKey: `${input.idempotencyKey}:session`,
+            mutationVersion: row.membershipVersion,
+          },
+        );
+        sessionIntentIds.push(...enqueued.intentIds);
+        sessionsRevoked = enqueued.revokedTokenCount;
       }
 
       const outbox = await this.iamAudit.enqueueInTransaction(tx, {
@@ -307,6 +331,9 @@ export class IamMembershipLifecycleService {
       return row;
     });
 
+    if (sessionIntentIds.length > 0) {
+      await this.sessionPolicy.processIntents(sessionIntentIds);
+    }
     await this.iamAudit.processOutboxIds(outboxIds);
     const result: LifecycleMutationResult = {
       membershipId: updated.id,
@@ -375,11 +402,17 @@ export class IamMembershipLifecycleService {
     }
 
     const outboxIds: string[] = [];
+    const sessionIntentIds: string[] = [];
     let sessionsRevoked = 0;
     let invitesRevoked = 0;
     let overridesCleared = 0;
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [input.organizationId],
+        userIds: [input.userId],
+      });
+
       const row = await tx.organizationMembership.update({
         where: { id: membership.id },
         data: {
@@ -388,7 +421,17 @@ export class IamMembershipLifecycleService {
         },
       });
 
-      sessionsRevoked = await revokeUserRefreshTokens(tx, input.userId);
+      const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+        eventType: 'MEMBERSHIP_REMOVED',
+        userId: input.userId,
+        organizationId: input.organizationId,
+        membershipId: row.id,
+        actorUserId: input.actor?.userId,
+        idempotencyKey: `${input.idempotencyKey}:session`,
+        mutationVersion: row.membershipVersion,
+      });
+      sessionIntentIds.push(...enqueued.intentIds);
+      sessionsRevoked = enqueued.revokedTokenCount;
       invitesRevoked = await revokePendingInvitesForEmail(
         tx,
         input.organizationId,
@@ -431,6 +474,9 @@ export class IamMembershipLifecycleService {
       return row;
     });
 
+    if (sessionIntentIds.length > 0) {
+      await this.sessionPolicy.processIntents(sessionIntentIds);
+    }
     await this.iamAudit.processOutboxIds(outboxIds);
     const result: LifecycleMutationResult = {
       membershipId: updated.id,
@@ -567,11 +613,17 @@ export class IamMembershipLifecycleService {
     );
 
     const outboxIds: string[] = [];
+    const sessionIntentIds: string[] = [];
     let sessionsRevoked = 0;
     let invitesRevoked = 0;
     let overridesCleared = 0;
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, {
+        organizationIds: [input.organizationId],
+        userIds: [input.userId],
+      });
+
       const row = await tx.organizationMembership.update({
         where: { id: membership.id },
         data: {
@@ -580,7 +632,21 @@ export class IamMembershipLifecycleService {
         },
       });
 
-      sessionsRevoked = await revokeUserRefreshTokens(tx, input.userId);
+      const eventType =
+        input.targetStatus === MembershipStatus.SUSPENDED
+          ? 'MEMBERSHIP_SUSPENDED'
+          : 'MEMBERSHIP_REMOVED';
+      const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+        eventType,
+        userId: input.userId,
+        organizationId: input.organizationId,
+        membershipId: row.id,
+        actorUserId: input.actor?.userId,
+        idempotencyKey: `${input.idempotencyKey}:session`,
+        mutationVersion: row.membershipVersion,
+      });
+      sessionIntentIds.push(...enqueued.intentIds);
+      sessionsRevoked = enqueued.revokedTokenCount;
       invitesRevoked = await revokePendingInvitesForEmail(
         tx,
         input.organizationId,
@@ -622,6 +688,9 @@ export class IamMembershipLifecycleService {
       return row;
     });
 
+    if (sessionIntentIds.length > 0) {
+      await this.sessionPolicy.processIntents(sessionIntentIds);
+    }
     await this.iamAudit.processOutboxIds(outboxIds);
     const result: LifecycleMutationResult = {
       membershipId: updated.id,

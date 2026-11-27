@@ -7,6 +7,7 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
 import type { StepUpActionCode } from '@modules/iam-mfa/iam-mfa.policy';
+import { buildPasswordOnlyClaims } from '@shared/auth/auth-session-claims.types';
 
 export const MFA_HTTP_MASTER = 'master-admin-1';
 export const MFA_HTTP_ORG = '11111111-1111-1111-1111-111111111111';
@@ -37,11 +38,29 @@ export function createMasterAdminAuthGuard() {
     canActivate: (ctx: { switchToHttp: () => { getRequest: () => Record<string, unknown> } }) => {
       const req = ctx.switchToHttp().getRequest() as {
         headers?: { authorization?: string };
-        user?: { id: string; platformRole: UserPlatformRole; sessionClaims?: unknown };
+        user?: {
+          id: string;
+          platformRole: UserPlatformRole;
+          tokenFamily?: string | null;
+          organizationId?: string | null;
+          membershipId?: string | null;
+          sessionVersion?: number;
+          membershipVersion?: number | null;
+          sessionClaims?: unknown;
+        };
       };
       const auth = String(req.headers?.authorization ?? '');
       if (auth.startsWith('Bearer master-')) {
-        req.user = { id: MFA_HTTP_MASTER, platformRole: UserPlatformRole.MASTER_ADMIN };
+        req.user = {
+          id: MFA_HTTP_MASTER,
+          platformRole: UserPlatformRole.MASTER_ADMIN,
+          tokenFamily: 'mfa-http-harness-family',
+          organizationId: null,
+          membershipId: null,
+          sessionVersion: 1,
+          membershipVersion: null,
+          sessionClaims: buildPasswordOnlyClaims(0),
+        };
         return true;
       }
       if (auth.startsWith('Bearer member-')) {
@@ -104,5 +123,11 @@ export function expectStepUpValidation(
   expectedAction: StepUpActionCode,
   token = 'step-up-token-valid',
 ): void {
-  expect(validateGrant).toHaveBeenCalledWith(MFA_HTTP_MASTER, token, expectedAction);
+  expect(validateGrant).toHaveBeenCalledWith(
+    MFA_HTTP_MASTER,
+    token,
+    expectedAction,
+    expect.objectContaining({ tokenFamily: 'mfa-http-harness-family' }),
+    expect.anything(),
+  );
 }

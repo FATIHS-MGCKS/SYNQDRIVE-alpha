@@ -37,6 +37,8 @@ import {
   assertOrgAdminUpdateDoesNotTouchGlobalIdentity,
 } from './policies/org-membership-admin.policy';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
+import { IamSessionPolicyService } from '@modules/auth/iam-session-policy.service';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 
 const ROLE_DISPLAY: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -98,6 +100,7 @@ export class UsersService {
     private readonly iamAudit: IamAuditService,
     private readonly lifecycle: IamMembershipLifecycleService,
     private readonly passwordReset: PasswordResetService,
+    private readonly sessionPolicy: IamSessionPolicyService,
   ) {}
 
   private assertPasswordStrength(password: string): void {
@@ -297,13 +300,45 @@ export class UsersService {
     return this.mapUser(user, undefined);
   }
 
-  async changePasswordAdmin(userId: string, password: string) {
+  async changePasswordAdmin(userId: string, password: string, actorUserId?: string) {
     this.assertPasswordStrength(password);
     const hash = await bcrypt.hash(password, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: hash, mustChangePassword: true },
+    let intentIds: string[] = [];
+
+    await this.prisma.$transaction(async (tx) => {
+      await acquireCanonicalSecurityMutationLocks(tx, { userIds: [userId] });
+
+      const locked = await tx.user.findUnique({
+        where: { id: userId },
+        select: { sessionVersion: true },
+      });
+      if (!locked) {
+        throw new NotFoundException('User not found');
+      }
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: hash, mustChangePassword: true },
+      });
+
+      await tx.userMfaStepUpGrant.deleteMany({
+        where: { userId, consumedAt: null },
+      });
+
+      const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
+        eventType: 'PASSWORD_CHANGED',
+        userId,
+        actorUserId: actorUserId ?? userId,
+        mutationVersion: locked.sessionVersion + 1,
+        metadata: { source: 'admin_password_change' },
+      });
+      intentIds = enqueued.intentIds;
     });
+
+    if (intentIds.length > 0) {
+      await this.sessionPolicy.processIntents(intentIds);
+    }
+
     return { message: 'Password updated successfully' };
   }
 

@@ -156,6 +156,42 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
       ).rejects.toMatchObject({ response: { code: MFA_ERROR.INVALID_CODE } });
     });
 
+    it('rejects TOTP older than last consumed step (monotonic)', async () => {
+      const encrypted = encryptMfaSecret(secret);
+      const code = authenticator.generate(secret);
+      const step = BigInt(Math.floor(Date.now() / 1000 / 30));
+      const updateMany = jest.fn();
+      const prisma = {
+        userMfaFactor: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'factor-1',
+            enabledAt: new Date(),
+            encryptedSecret: encrypted,
+            lastTotpStep: step + 2n,
+          }),
+          updateMany,
+        },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: userId,
+            email: 'u@example.test',
+            securityVersion: 0,
+            platformRole: 'USER',
+          }),
+        },
+      } as never;
+      const service = new IamMfaChallengeService(
+        prisma,
+        { reissueAccessToken: jest.fn() } as never,
+        { createGrant: jest.fn(), buildClaimsAfterChallenge: jest.fn() } as never,
+      );
+      updateMany.mockResolvedValue({ count: 0 });
+      await expect(
+        service.challengeWithTotp({ userId, code, allowUnboundReissue: true }),
+      ).rejects.toMatchObject({ response: { code: MFA_ERROR.REPLAY } });
+      expect(updateMany).toHaveBeenCalled();
+    });
+
     it('rejects TOTP replay for the same time step', async () => {
       const encrypted = encryptMfaSecret(secret);
       const code = authenticator.generate(secret);
@@ -169,6 +205,7 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
             lastTotpStep: step,
           }),
           update: jest.fn(),
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         },
         user: {
           findUnique: jest.fn().mockResolvedValue({
@@ -199,6 +236,7 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
         userMfaRecoveryCode: {
           findMany: jest.fn().mockResolvedValue([{ id: 'rc-1', codeHash, usedAt: null }]),
           update: jest.fn().mockResolvedValue({}),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         user: {
           findUnique: jest.fn().mockResolvedValue({
@@ -239,11 +277,46 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
       const result = await service.challengeWithRecoveryCode({
         userId,
         recoveryCode: plainCode,
+        allowUnboundReissue: true,
       });
 
       expect(result.assuranceLevel).toBe(ASSURANCE_LEVEL_MFA);
       expect(result.authMethods).toContain('recovery');
-      expect((prisma as any).userMfaRecoveryCode.update).toHaveBeenCalled();
+      expect((prisma as any).userMfaRecoveryCode.updateMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('step-up grants', () => {
+    it('rejects idempotent replay with conflict instead of unusable token', async () => {
+      const existing = {
+        id: 'grant-1',
+        expiresAt: new Date(Date.now() + 60_000),
+        consumedAt: null,
+      };
+      const prisma = {
+        userMfaStepUpGrant: {
+          findUnique: jest.fn().mockResolvedValue(existing),
+          create: jest.fn(),
+        },
+      } as never;
+      const service = new IamMfaStepUpService(prisma);
+      await expect(
+        service.createGrant({
+          userId,
+          actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
+          claims: buildMfaClaims(),
+          idempotencyKey: 'idem-1',
+          binding: {
+            tokenFamily: 'family-test',
+            organizationId: null,
+            membershipId: null,
+            sessionVersion: 0,
+            securityVersion: 0,
+            membershipVersion: null,
+          },
+        }),
+      ).rejects.toMatchObject({ response: { code: MFA_ERROR.STEP_UP_IDEMPOTENCY_REPLAY } });
+      expect((prisma as { userMfaStepUpGrant: { create: jest.Mock } }).userMfaStepUpGrant.create).not.toHaveBeenCalled();
     });
   });
 
@@ -330,22 +403,33 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
         processOutboxIds: jest.fn().mockResolvedValue(undefined),
       };
       const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(undefined),
         userMfaFactor: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
         userMfaRecoveryCode: { deleteMany: jest.fn().mockResolvedValue({ count: 10 }) },
         userMfaStepUpGrant: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
-        user: { update: jest.fn().mockResolvedValue({}) },
+        user: {
+          update: jest.fn().mockResolvedValue({}),
+          findUnique: jest.fn().mockResolvedValue({ securityVersion: 0 }),
+        },
         refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) },
         organizationMembership: { findFirst: jest.fn().mockResolvedValue({ organizationId: orgId }) },
+        iamSessionRevocationIntent: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({ id: 'intent-1' }),
+          update: jest.fn().mockResolvedValue({}),
+        },
       };
       const prisma = {
         user: { findUnique: jest.fn().mockResolvedValue({ id: userId }) },
         $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
       } as never;
-      const service = new IamMfaResetService(
-        prisma,
-        { revokeAllForUser: jest.fn() } as never,
-        iamAudit as never,
-      );
+      const sessionPolicy = {
+        enqueueInTransactionWithAuthoritativeInvalidation: jest
+          .fn()
+          .mockResolvedValue({ intentIds: ['intent-1'], revokedTokenCount: 2 }),
+        processIntents: jest.fn().mockResolvedValue([]),
+      };
+      const service = new IamMfaResetService(prisma, sessionPolicy as never, iamAudit as never);
 
       const result = await service.resetMfaForUser({
         organizationId: orgId,

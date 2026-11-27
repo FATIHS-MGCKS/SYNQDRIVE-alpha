@@ -160,6 +160,97 @@ describe('IamSessionPolicyService', () => {
     expect(refreshTokens.revokeAllActiveForUser).not.toHaveBeenCalled();
   });
 
+  it('executeIntent does not re-revoke when authoritativeAppliedInCommit', async () => {
+    prisma.iamSessionRevocationIntent.findUnique.mockResolvedValue({
+      id: 'intent-auth',
+      eventType: 'PASSWORD_CHANGED',
+      scope: IamSessionRevocationScope.USER_ALL_SESSIONS,
+      userId: 'user-1',
+      organizationId: null,
+      membershipId: null,
+      refreshTokenId: null,
+      tokenFamily: null,
+      actorUserId: 'user-1',
+      status: IamSessionRevocationStatus.PENDING,
+      revokedTokenCount: 2,
+      metadata: { authoritativeAppliedInCommit: true },
+    });
+    prisma.iamSessionRevocationIntent.updateMany.mockResolvedValue({ count: 1 });
+    prisma.iamSessionRevocationIntent.update.mockResolvedValue({});
+
+    const result = await service.executeIntent('intent-auth');
+
+    expect(refreshTokens.revokeAllActiveForUser).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(result.revokedTokenCount).toBe(2);
+  });
+
+  it('enqueueInTransaction uses distinct scope suffixes for explicit idempotency keys', async () => {
+    prisma.iamSessionRevocationIntent.findUnique.mockResolvedValue(null);
+    prisma.iamSessionRevocationIntent.create
+      .mockResolvedValueOnce({ id: 'intent-family' })
+      .mockResolvedValueOnce({ id: 'intent-user' });
+
+    const tx = {
+      ...prisma,
+      user: { findUnique: jest.fn() },
+      organizationMembership: { findUnique: jest.fn() },
+    };
+
+    const result = await service.enqueueInTransaction(tx as never, {
+      eventType: 'REFRESH_TOKEN_REUSE_DETECTED',
+      userId: 'user-1',
+      idempotencyKey: 'op-reuse-1',
+      highRiskReuse: true,
+    });
+
+    expect(result.intentIds).toEqual(['intent-family', 'intent-user']);
+    expect(prisma.iamSessionRevocationIntent.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({ idempotencyKey: 'op-reuse-1:TOKEN_FAMILY' }),
+      }),
+    );
+    expect(prisma.iamSessionRevocationIntent.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({ idempotencyKey: 'op-reuse-1:USER_ALL_SESSIONS' }),
+      }),
+    );
+  });
+
+  it('authoritative enqueue skips re-invalidation when intent already applied in commit', async () => {
+    prisma.iamSessionRevocationIntent.findUnique
+      .mockResolvedValueOnce({
+        id: 'intent-1',
+        status: IamSessionRevocationStatus.PENDING,
+        metadata: { authoritativeAppliedInCommit: true },
+        revokedTokenCount: 4,
+      })
+      .mockResolvedValue({
+        id: 'intent-1',
+        metadata: { authoritativeAppliedInCommit: true },
+        revokedTokenCount: 4,
+      });
+
+    const tx = {
+      ...prisma,
+      user: { findUnique: jest.fn().mockResolvedValue({ sessionVersion: 2, securityVersion: 0 }) },
+      organizationMembership: { findUnique: jest.fn() },
+      $executeRaw: jest.fn(),
+      refreshToken: { updateMany: jest.fn() },
+    };
+
+    const result = await service.enqueueInTransactionWithAuthoritativeInvalidation(tx as never, {
+      eventType: 'PASSWORD_CHANGED',
+      userId: 'user-1',
+    });
+
+    expect(result.idempotentReplay).toBe(true);
+    expect(result.revokedTokenCount).toBe(4);
+    expect(refreshTokens.revokeAllActiveForUser).not.toHaveBeenCalled();
+  });
+
   it('executeIntent is idempotent when already completed', async () => {
     prisma.iamSessionRevocationIntent.findUnique.mockResolvedValue({
       id: 'intent-done',
