@@ -73,6 +73,21 @@ describe('SecurityGovernance identity provisioning — HTTP guard security', () 
       }
     });
 
+    it('A02b — unauthenticated PATCH profile denied', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: SecurityGovernanceController,
+        providers: sharedProviders,
+      });
+      try {
+        await request(harness.app.getHttpServer())
+          .patch('/admin/security/users/some-user-id')
+          .send({ firstName: 'X' })
+          .expect(403);
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
     it('A03 — non-master role denied', async () => {
       const moduleRef = await Test.createTestingModule({
         controllers: [SecurityGovernanceController],
@@ -106,6 +121,23 @@ describe('SecurityGovernance identity provisioning — HTTP guard security', () 
           .expect(403);
       } finally {
         await app.close();
+      }
+    });
+
+    it('A03b — master without MFA factor denied when MFA enforced', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: SecurityGovernanceController,
+        providers: sharedProviders,
+      });
+      harness.prismaMfaFactorFindFirst.mockResolvedValue(null);
+      try {
+        await request(harness.app.getHttpServer())
+          .post('/admin/security/users')
+          .set('Authorization', 'Bearer master-token')
+          .send({ email: 'x@test.de', firstName: 'X', lastName: 'Y' })
+          .expect(403);
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
       }
     });
   });

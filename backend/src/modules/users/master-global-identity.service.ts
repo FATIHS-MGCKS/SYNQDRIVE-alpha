@@ -7,6 +7,7 @@ import {
 import {
   MasterAdminAuditScope,
   MembershipStatus,
+  OrganizationInviteStatus,
   OrganizationStatus,
   Prisma,
   UserPlatformRole,
@@ -351,20 +352,6 @@ export class MasterGlobalIdentityService {
     email: string,
   ): Promise<MasterGlobalIdentityProvisionResult> {
     const mem = dto.initialMembership!;
-    const org = await this.prisma.organization.findUnique({
-      where: { id: mem.organizationId },
-      select: { id: true, status: true },
-    });
-    if (!org) {
-      throw new NotFoundException('Organization not found');
-    }
-    if (org.status !== OrganizationStatus.ACTIVE) {
-      throw new BadRequestException({
-        code: 'ORGANIZATION_NOT_ACTIVE',
-        message: 'Organization is not active for provisioning.',
-      });
-    }
-
     const actorUserId = actor.id!;
     const securityOperationId = resolveSecurityOperationId(dto.idempotencyKey);
     const auditIdempotencyKey = buildMasterIdentityAuditIdempotencyKey(securityOperationId);
@@ -379,17 +366,27 @@ export class MasterGlobalIdentityService {
       securityOperationId,
     };
 
-    const firstName =
-      assertOptionalStringField('firstName', dto.firstName) ||
-      (dto.name?.trim().split(/\s+/)[0] ?? 'User');
-    const lastName =
-      assertOptionalStringField('lastName', dto.lastName) ||
-      (dto.name?.trim().split(/\s+/).slice(1).join(' ') || '.');
+    const trimmedFirst = assertOptionalStringField('firstName', dto.firstName);
+    const trimmedLast = assertOptionalStringField('lastName', dto.lastName);
+    const trimmedName = assertOptionalStringField('name', dto.name);
+    let orgFirst = trimmedFirst;
+    let orgLast = trimmedLast;
+    if (!orgFirst && !orgLast) {
+      if (!trimmedName) {
+        throw new BadRequestException({
+          code: 'IDENTITY_DISPLAY_NAME_REQUIRED',
+          message: 'Provide firstName and lastName, or name, for the new identity.',
+        });
+      }
+      const parts = trimmedName.split(/\s+/).filter(Boolean);
+      orgFirst = parts[0];
+      orgLast = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
+    }
 
     const orgDto: CreateOrgUserDto = {
       email,
-      firstName,
-      lastName,
+      firstName: orgFirst!,
+      lastName: orgLast!,
       role: mem.role,
       organizationRoleId: mem.organizationRoleId,
       inviteByEmail: mem.inviteByEmail ?? true,
@@ -420,6 +417,20 @@ export class MasterGlobalIdentityService {
         organizationIds: [mem.organizationId],
         userIds: [],
       });
+
+      const orgRow = await tx.organization.findUnique({
+        where: { id: mem.organizationId },
+        select: { id: true, status: true },
+      });
+      if (!orgRow) {
+        throw new NotFoundException('Organization not found');
+      }
+      if (orgRow.status !== OrganizationStatus.ACTIVE) {
+        throw new BadRequestException({
+          code: 'ORGANIZATION_NOT_ACTIVE',
+          message: 'Organization is not active for provisioning.',
+        });
+      }
 
       const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
         where: { idempotencyKey: auditIdempotencyKey },
@@ -473,6 +484,8 @@ export class MasterGlobalIdentityService {
             organizationRoleId: mem.organizationRoleId,
           },
           actorUserId,
+          actor,
+          { skipManagePermissionCheck: true },
         );
         inviteId = persisted.inviteId;
         invitePlain = persisted.plainToken;
@@ -514,15 +527,46 @@ export class MasterGlobalIdentityService {
     let deliveryRequested = false;
     let deliveryConfirmed = false;
 
-    if (inviteId && invitePlain && !idempotentReplay) {
-      const delivery = await this.inviteService.enqueueDeliveryForPersistedInvite({
-        organizationId: mem.organizationId,
-        inviteId,
-        plainToken: invitePlain,
-        sentByUserId: actorUserId,
+    if (idempotentReplay && inviteByEmail) {
+      const pendingInvite = await this.prisma.organizationUserInvite.findFirst({
+        where: {
+          organizationId: mem.organizationId,
+          email,
+          status: OrganizationInviteStatus.PENDING,
+        },
+        orderBy: { createdAt: 'desc' },
       });
-      deliveryRequested = delivery.deliveryRequested;
-      deliveryConfirmed = delivery.deliveryConfirmed;
+      if (pendingInvite) {
+        inviteId = pendingInvite.id;
+        invitationPersisted = true;
+        const continuity = await this.inviteService.ensureInviteDeliveryContinuity(
+          mem.organizationId,
+          pendingInvite.id,
+          actorUserId,
+        );
+        deliveryRequested = continuity.deliveryRequested;
+        deliveryConfirmed = continuity.deliveryConfirmed;
+      }
+    } else if (inviteId && invitePlain) {
+      try {
+        const delivery = await this.inviteService.enqueueDeliveryForPersistedInvite({
+          organizationId: mem.organizationId,
+          inviteId,
+          plainToken: invitePlain,
+          sentByUserId: actorUserId,
+        });
+        deliveryRequested = delivery.deliveryRequested;
+        deliveryConfirmed = delivery.deliveryConfirmed;
+      } catch {
+        const continuity = await this.inviteService.ensureInviteDeliveryContinuity(
+          mem.organizationId,
+          inviteId,
+          actorUserId,
+        );
+        deliveryRequested = continuity.deliveryRequested;
+        deliveryConfirmed = continuity.deliveryConfirmed;
+        invitationPersisted = continuity.invitePending;
+      }
     }
 
     if (

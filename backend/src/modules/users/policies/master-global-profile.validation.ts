@@ -1,7 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
 
 const PRODUCT_LOCALES = new Set(['de', 'en', 'pl', 'fr', 'cs', 'nl', 'es', 'tr', 'it']);
-const IANA_TZ_RE = /^[A-Za-z_]+\/[A-Za-z0-9_+-]+$/;
+function isValidIanaTimezone(timezone: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
 const DATE_FORMATS = new Set(['DD.MM.YYYY', 'YYYY-MM-DD']);
 
 export function assertOptionalStringField(
@@ -44,7 +51,7 @@ export function validateGlobalProfilePatchValues(input: {
       message: 'language must be a supported product locale',
     });
   }
-  if (input.timezone !== undefined && !IANA_TZ_RE.test(input.timezone)) {
+  if (input.timezone !== undefined && !isValidIanaTimezone(input.timezone)) {
     throw new BadRequestException({
       code: 'PROFILE_TIMEZONE_INVALID',
       message: 'timezone must be a valid IANA timezone (e.g. Europe/Berlin)',

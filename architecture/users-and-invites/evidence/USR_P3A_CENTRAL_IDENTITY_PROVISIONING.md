@@ -33,10 +33,11 @@
 **Date:** 2026-11-27 (agent)  
 **Governance:** Restored `frontend/src/i18n/hardcoded-copy-inventory.json` to PR base `3de62a177` (no authority change; fixes i18n PR gate EXIT_CODE=3).
 
-### P3A-01 audit operation binding
+### P3A-01 audit operation binding (P3A.1 closeout)
 
-- `MasterIdentityOperationBinding` + server-derived audit idempotency keys in `policies/master-global-identity-operation.policy.ts`
-- Client `idempotencyKey` → `securityOperationId` only; audit outbox key binds actor, action, target, org, normalized email, payload fingerprint
+- Recursive canonical payload fingerprint (`canonicalizeForFingerprint`); all provision profile scalars + nested `initialMembership` bound
+- Creation replay: provision operations match when client binding omits `targetUserId` and stored outbox carries persisted user id
+- Profile replay: strict `targetUserId` equality unchanged
 - Pre-mutation admission + outbox replay check; `OPERATION_IDEMPOTENCY_CONFLICT` on binding mismatch
 - Audit descriptions reference user id (not full email)
 
@@ -45,10 +46,12 @@
 - `UsersService.createOrgUser({ transactionClient, requireNewGlobalIdentity: true })` for master path — no silent attach on `IDENTITY_ALREADY_EXISTS`
 - `acquireIdentityEmailProvisionLock` (advisory class `913_107`)
 
-### P3A-03 provisioning atomicity
+### P3A-03 provisioning atomicity + delivery recovery
 
 - Org onboarding: single Prisma transaction — identity, membership, invite persist (`persistNewInviteInTransaction`), master audit in-tx; delivery enqueue post-commit only
-- `OrganizationStatus.ACTIVE` gate; credential setup without org → `CREDENTIAL_SETUP_REQUIRES_ORG`
+- `OrganizationStatus.ACTIVE` validated inside authoritative transaction (under org lock)
+- `ensureInviteDeliveryContinuity` reuses invite outbox / token rotation (no plaintext in logs) when enqueue missed or on idempotent replay
+- `resolveInviteCreateFields` shared with `createInvite` (roles, permissions, station scope parity)
 
 ### Profile (P3A-05)
 
@@ -59,7 +62,7 @@
 
 | Command | Result |
 |---------|--------|
-| `jest --testPathPatterns='master-global\|usr-p3a1\|security-governance-identity'` | **4 passed**, 1 skipped (PG opt-in) |
+| `jest --testPathPatterns='master-global\|usr-p3a1\|security-governance-identity'` | **14 passed**, PG suite skipped without opt-in |
 | `jest master-global-identity.policy` | **1 passed** |
 | `backend npm run build` + `tsc --noEmit` | **passed** |
 | `frontend npm run i18n:check` | **passed** (inventory at base) |

@@ -1,7 +1,8 @@
 /**
- * USR-P3A.1 — disposable PostgreSQL proofs (identity email uniqueness + audit idempotency).
+ * USR-P3A.1 — disposable PostgreSQL proofs (policy + locks + optional service replay).
  *
- * RUN: USR_P3A1_MASTER_IDENTITY_PG=1 DATABASE_URL=postgresql://...@127.0.0.1/...usr... npx jest usr-p3a1-master-identity.postgres.integration.spec --runInBand
+ * RUN: USR_P3A1_MASTER_IDENTITY_PG=1 DATABASE_URL=postgresql://...@127.0.0.1/...usr... \
+ *   npx jest usr-p3a1-master-identity.postgres.integration.spec --runInBand
  */
 import { randomUUID } from 'node:crypto';
 import {
@@ -14,17 +15,38 @@ import {
   acquireIdentityEmailProvisionLock,
   acquireSecurityOperationAdmissionLock,
 } from '@modules/auth/refresh-token-session-concurrency';
-import { buildMasterIdentityAuditIdempotencyKey } from './policies/master-global-identity-operation.policy';
+import {
+  buildMasterIdentityAuditIdempotencyKey,
+  buildProvisionPayloadFingerprint,
+  outboxMatchesIdentityOperation,
+  type MasterIdentityOperationBinding,
+  MASTER_IDENTITY_OPERATION_DOMAIN,
+} from './policies/master-global-identity-operation.policy';
 import { MasterAdminAuditOutboxRepository } from '@modules/activity-log/master-admin-audit-outbox.repository';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
+import {
+  ensureRaceBarrierTable,
+  pgBackendPid,
+  resetRaceBarrier,
+  setRacePhase,
+  waitRacePhaseAtLeast,
+  waitUntilBackendBlocked,
+} from './testing/usr-p2-deterministic-concurrency.helper';
 
 const OPT_IN = 'USR_P3A1_MASTER_IDENTITY_PG';
 const run = process.env[OPT_IN] === '1';
 
 function assertDisposableDb(): void {
   const url = process.env.DATABASE_URL ?? '';
-  if (!/localhost|127\.0\.0\.1/.test(url) || !/usr/i.test(url)) {
-    throw new Error('DATABASE_URL must target disposable localhost usr test DB');
+  let host = '';
+  try {
+    host = new URL(url.replace(/^postgres:/, 'postgresql:')).hostname;
+  } catch {
+    throw new Error('DATABASE_URL must be a valid postgres URL');
+  }
+  const dbName = url.split('/').pop()?.split('?')[0] ?? '';
+  if (!['127.0.0.1', 'localhost'].includes(host) || !/usr/i.test(dbName)) {
+    throw new Error('DATABASE_URL must target disposable loopback usr test DB');
   }
 }
 
@@ -102,22 +124,68 @@ function assertDisposableDb(): void {
     expect(count).toBe(1);
   });
 
-  it('identity email provision advisory lock serializes concurrent transactions', async () => {
+  it('provision replay binding accepts stored targetUserId when client binding omits it', async () => {
+    const securityOperationId = randomUUID();
+    const email = `replay-${randomUUID()}@example.test`;
+    const dto = { email, firstName: 'A', lastName: 'B' };
+    const fingerprint = buildProvisionPayloadFingerprint(email, dto as never, false);
+    const storedUserId = randomUUID();
+    const storedBinding: MasterIdentityOperationBinding = {
+      domain: MASTER_IDENTITY_OPERATION_DOMAIN,
+      action: 'PROVISION_IDENTITY',
+      actorUserId: randomUUID(),
+      normalizedEmail: email,
+      organizationId: null,
+      payloadFingerprint: fingerprint,
+      securityOperationId,
+      targetUserId: storedUserId,
+    };
+    const expectedBinding: MasterIdentityOperationBinding = {
+      ...storedBinding,
+      targetUserId: undefined,
+    };
+    const row = {
+      id: randomUUID(),
+      subjectUserId: storedUserId,
+      idempotencyKey: buildMasterIdentityAuditIdempotencyKey(securityOperationId),
+      payload: {
+        masterAdminAuditEnvelope: {
+          entityId: storedUserId,
+          metadata: { operationBinding: storedBinding },
+        },
+      },
+    };
+    expect(outboxMatchesIdentityOperation(row as never, expectedBinding)).toBe(true);
+  });
+
+  it('identity email provision lock shows pg lock wait on independent connections', async () => {
     const email = `lock-${randomUUID()}@example.test`;
-    let secondStarted = false;
-    await prismaA.$transaction(async (tx) => {
-      await acquireIdentityEmailProvisionLock(tx, email);
-      const delayed = prismaB.$transaction(async (txB) => {
+    const raceId = randomUUID();
+    await ensureRaceBarrierTable(prismaA);
+    await resetRaceBarrier(prismaA, raceId);
+
+    let blockedBackendPid = 0;
+    const connectionBPromise = (async () => {
+      await waitRacePhaseAtLeast(prismaB, raceId, 'a_lock_acquired');
+      return prismaB.$transaction(async (txB) => {
+        blockedBackendPid = await pgBackendPid(prismaB);
+        await setRacePhase(prismaA, raceId, 'b_waiting', { pid: blockedBackendPid });
         await acquireIdentityEmailProvisionLock(txB, email);
-        secondStarted = true;
+        await setRacePhase(prismaA, raceId, 'done');
       });
-      await new Promise((r) => setTimeout(r, 50));
-      await tx.user.create({
-        data: { email, platformRole: UserPlatformRole.USER, status: UserStatus.ACTIVE },
+    })();
+
+    await prismaA.$transaction(async (txA) => {
+      await acquireIdentityEmailProvisionLock(txA, email);
+      await setRacePhase(prismaA, raceId, 'a_lock_acquired');
+      await waitRacePhaseAtLeast(prismaA, raceId, 'b_waiting');
+      const blockingPids = await waitUntilBackendBlocked(prismaA, blockedBackendPid, {
+        timeoutMs: 20_000,
       });
-      await delayed;
+      expect(blockingPids.length).toBeGreaterThan(0);
     });
-    expect(secondStarted).toBe(true);
-    expect(await prismaA.user.count({ where: { email } })).toBe(1);
+
+    await connectionBPromise;
+    expect(await prismaA.user.count({ where: { email } })).toBe(0);
   });
 });

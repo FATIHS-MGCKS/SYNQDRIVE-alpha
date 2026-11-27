@@ -35,6 +35,20 @@ import {
 } from './utils/invite-admin-response.util';
 import { normalizeIdentityEmail } from './utils/identity-email.util';
 import type { CreateOrganizationInviteDto } from './dto/organization-invite.dto';
+import type { Prisma as PrismaNamespace } from '@prisma/client';
+
+type ResolvedInviteCreateFields = {
+  email: string;
+  membershipRole: MembershipRole;
+  permissions: ReturnType<typeof normalizeMembershipPermissions> | null;
+  stationScope: string | null;
+  stationIds: string[] | null;
+  fieldAgentAccess: boolean;
+  roleLabel: string | null;
+  organizationRoleId: string | null;
+  department: string | null;
+  position: string | null;
+};
 
 @Injectable()
 export class OrganizationInviteService {
@@ -55,7 +69,8 @@ export class OrganizationInviteService {
   ) {
     await this.roleService.ensureDefaultRoles(orgId, invitedByUserId);
 
-    const email = normalizeIdentityEmail(dto.email);
+    const fields = await this.resolveInviteCreateFields(orgId, dto, actor);
+    const email = fields.email;
     await this.inviteRateLimit.assertCreateAllowed(orgId, invitedByUserId, email);
 
     const org = await this.prisma.organization.findUnique({
@@ -95,45 +110,6 @@ export class OrganizationInviteService {
       await this.revokeInvite(orgId, existingPending.id, invitedByUserId, false);
     }
 
-    let membershipRole = dto.membershipRole ?? MembershipRole.WORKER;
-    let permissions = normalizeMembershipPermissions(dto.permissions);
-    let stationScope = dto.stationScope?.trim() || null;
-    let stationIds = dto.stationIds?.length ? dto.stationIds : null;
-    let fieldAgentAccess = dto.fieldAgentAccess ?? false;
-    let roleLabel = dto.roleLabel?.trim() || null;
-    let organizationRoleId: string | null = dto.organizationRoleId ?? null;
-
-    if (dto.organizationRoleId) {
-      const template = await this.roleService.resolveRoleForInvite(
-        orgId,
-        dto.organizationRoleId,
-      );
-      if (template) {
-        membershipRole = template.membershipRole;
-        permissions = normalizeMembershipPermissions(template.permissions);
-        stationScope = template.stationScopeDefault;
-        stationIds = Array.isArray(template.defaultStationIds)
-          ? (template.defaultStationIds as string[])
-          : null;
-        fieldAgentAccess = template.fieldAgentAccessDefault;
-        roleLabel = template.name;
-        organizationRoleId = template.id;
-      }
-    }
-
-    if (
-      membershipRole === MembershipRole.ORG_ADMIN ||
-      dto.permissions !== undefined
-    ) {
-      await assertMembershipPermission(
-        this.prisma,
-        actor,
-        orgId,
-        USERS_ROLES_MODULE,
-        'manage',
-      );
-    }
-
     const { plain, hash } = generateInviteToken();
     const tokenLookup = inviteTokenLookupKey(plain);
     const expiresAt = new Date();
@@ -145,17 +121,17 @@ export class OrganizationInviteService {
         data: {
           organizationId: orgId,
           email,
-          membershipRole,
-          organizationRoleId,
-          permissions: permissions
-            ? (permissions as unknown as Prisma.InputJsonValue)
+          membershipRole: fields.membershipRole,
+          organizationRoleId: fields.organizationRoleId,
+          permissions: fields.permissions
+            ? (fields.permissions as unknown as Prisma.InputJsonValue)
             : Prisma.JsonNull,
-          stationScope,
-          stationIds: stationIds ? stationIds : Prisma.JsonNull,
-          fieldAgentAccess,
-          department: dto.department?.trim() || null,
-          position: dto.position?.trim() || null,
-          roleLabel,
+          stationScope: fields.stationScope,
+          stationIds: fields.stationIds ? fields.stationIds : Prisma.JsonNull,
+          fieldAgentAccess: fields.fieldAgentAccess,
+          department: fields.department,
+          position: fields.position,
+          roleLabel: fields.roleLabel,
           tokenHash: hash,
           tokenLookup,
           status: OrganizationInviteStatus.PENDING,
@@ -178,8 +154,8 @@ export class OrganizationInviteService {
         after: this.toAdminViewFromInvite(created, null),
         metadata: {
           recipientMasked: maskRecipientEmail(email),
-          membershipRole,
-          organizationRoleId,
+          membershipRole: fields.membershipRole,
+          organizationRoleId: fields.organizationRoleId,
         },
       });
       outboxIds.push(outbox.id);
@@ -209,8 +185,15 @@ export class OrganizationInviteService {
     orgId: string,
     dto: CreateOrganizationInviteDto,
     invitedByUserId: string,
+    actor: PermissionActor = {},
+    options?: { skipManagePermissionCheck?: boolean },
   ): Promise<{ inviteId: string; plainToken: string; iamAuditOutboxId?: string }> {
-    const email = normalizeIdentityEmail(dto.email);
+    await this.roleService.ensureDefaultRoles(orgId, invitedByUserId, tx as never);
+    const fields = await this.resolveInviteCreateFields(orgId, dto, actor, {
+      skipManagePermissionCheck: options?.skipManagePermissionCheck,
+      db: tx,
+    });
+    const email = fields.email;
     const existingPending = await tx.organizationUserInvite.findFirst({
       where: {
         organizationId: orgId,
@@ -225,16 +208,6 @@ export class OrganizationInviteService {
       });
     }
 
-    let membershipRole = dto.membershipRole ?? MembershipRole.WORKER;
-    let organizationRoleId: string | null = dto.organizationRoleId ?? null;
-    if (dto.organizationRoleId) {
-      const template = await this.roleService.resolveRoleForInvite(orgId, dto.organizationRoleId);
-      if (template) {
-        membershipRole = template.membershipRole;
-        organizationRoleId = template.id;
-      }
-    }
-
     const { plain, hash } = generateInviteToken();
     const tokenLookup = inviteTokenLookupKey(plain);
     const expiresAt = new Date();
@@ -244,8 +217,17 @@ export class OrganizationInviteService {
       data: {
         organizationId: orgId,
         email,
-        membershipRole,
-        organizationRoleId,
+        membershipRole: fields.membershipRole,
+        organizationRoleId: fields.organizationRoleId,
+        permissions: fields.permissions
+          ? (fields.permissions as unknown as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        stationScope: fields.stationScope,
+        stationIds: fields.stationIds ? fields.stationIds : Prisma.JsonNull,
+        fieldAgentAccess: fields.fieldAgentAccess,
+        department: fields.department,
+        position: fields.position,
+        roleLabel: fields.roleLabel,
         status: OrganizationInviteStatus.PENDING,
         tokenHash: hash,
         tokenLookup,
@@ -263,12 +245,90 @@ export class OrganizationInviteService {
       description: `Einladung an ${maskRecipientEmail(email)} angelegt`,
       metadata: {
         recipientMasked: maskRecipientEmail(email),
-        membershipRole,
-        organizationRoleId,
+        membershipRole: fields.membershipRole,
+        organizationRoleId: fields.organizationRoleId,
       },
     });
 
     return { inviteId: created.id, plainToken: plain, iamAuditOutboxId: outbox.id };
+  }
+
+  /**
+   * Recover or continue invite email delivery after commit (never logs plaintext tokens).
+   */
+  async ensureInviteDeliveryContinuity(
+    orgId: string,
+    inviteId: string,
+    sentByUserId: string,
+  ): Promise<{
+    deliveryRequested: boolean;
+    deliveryConfirmed: boolean;
+    invitePending: boolean;
+  }> {
+    const invite = await this.findInviteOrThrow(orgId, inviteId);
+    if (invite.status !== OrganizationInviteStatus.PENDING) {
+      return { deliveryRequested: false, deliveryConfirmed: false, invitePending: false };
+    }
+    const latestMap = await this.inviteOutbox.findLatestByInviteIds([inviteId]);
+    const existing = latestMap.get(inviteId);
+    if (existing && existing.status !== 'DEAD_LETTER') {
+      await this.inviteDelivery.processOutboxIds([existing.id]);
+      const refreshed = await this.inviteOutbox.findById(existing.id);
+      const status = mapOutboxToDeliveryStatus(refreshed?.status ?? null);
+      return {
+        deliveryRequested: true,
+        deliveryConfirmed: status === 'SENT',
+        invitePending: true,
+      };
+    }
+    return this.enqueueDeliveryAfterInviteTokenRotation(orgId, inviteId, sentByUserId);
+  }
+
+  private async enqueueDeliveryAfterInviteTokenRotation(
+    orgId: string,
+    inviteId: string,
+    sentByUserId: string,
+  ): Promise<{
+    deliveryRequested: boolean;
+    deliveryConfirmed: boolean;
+    invitePending: boolean;
+  }> {
+    await this.findInviteOrThrow(orgId, inviteId);
+    const { plain, hash } = generateInviteToken();
+    const tokenLookup = inviteTokenLookupKey(plain);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.organizationUserInvite.update({
+        where: { id: inviteId },
+        data: {
+          tokenHash: hash,
+          tokenLookup,
+          expiresAt,
+          revokedAt: null,
+        },
+      });
+    });
+
+    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
+      organizationId: orgId,
+      inviteId,
+      plainToken: plain,
+      sentByUserId,
+      idempotencyKey: `invite:recovery:${inviteId}:${tokenLookup}`,
+    });
+    if (!outboxId) {
+      return { deliveryRequested: false, deliveryConfirmed: false, invitePending: true };
+    }
+    await this.inviteDelivery.processOutboxIds([outboxId]);
+    const deliveryRow = await this.inviteOutbox.findById(outboxId);
+    const status = mapOutboxToDeliveryStatus(deliveryRow?.status ?? null);
+    return {
+      deliveryRequested: status === 'QUEUED' || status === 'SENDING' || status === 'SENT',
+      deliveryConfirmed: status === 'SENT',
+      invitePending: true,
+    };
   }
 
   async enqueueDeliveryForPersistedInvite(input: {
@@ -488,6 +548,71 @@ export class OrganizationInviteService {
         createdAt: row.createdAt.toISOString(),
         level: row.level,
       })),
+    };
+  }
+
+  private async resolveInviteCreateFields(
+    orgId: string,
+    dto: CreateOrganizationInviteDto,
+    actor: PermissionActor,
+    opts?: {
+      skipManagePermissionCheck?: boolean;
+      db?: PrismaNamespace.TransactionClient | PrismaService;
+    },
+  ): Promise<ResolvedInviteCreateFields> {
+    const db = opts?.db ?? this.prisma;
+    const email = normalizeIdentityEmail(dto.email);
+
+    let membershipRole = dto.membershipRole ?? MembershipRole.WORKER;
+    let permissions = normalizeMembershipPermissions(dto.permissions);
+    let stationScope = dto.stationScope?.trim() || null;
+    let stationIds = dto.stationIds?.length ? dto.stationIds : null;
+    let fieldAgentAccess = dto.fieldAgentAccess ?? false;
+    let roleLabel = dto.roleLabel?.trim() || null;
+    let organizationRoleId: string | null = dto.organizationRoleId ?? null;
+
+    if (dto.organizationRoleId) {
+      const template = await this.roleService.resolveRoleForInvite(
+        orgId,
+        dto.organizationRoleId,
+      );
+      if (template) {
+        membershipRole = template.membershipRole;
+        permissions = normalizeMembershipPermissions(template.permissions);
+        stationScope = template.stationScopeDefault;
+        stationIds = Array.isArray(template.defaultStationIds)
+          ? (template.defaultStationIds as string[])
+          : null;
+        fieldAgentAccess = template.fieldAgentAccessDefault;
+        roleLabel = template.name;
+        organizationRoleId = template.id;
+      }
+    }
+
+    if (
+      !opts?.skipManagePermissionCheck &&
+      (membershipRole === MembershipRole.ORG_ADMIN || dto.permissions !== undefined)
+    ) {
+      await assertMembershipPermission(
+        db as PrismaService,
+        actor,
+        orgId,
+        USERS_ROLES_MODULE,
+        'manage',
+      );
+    }
+
+    return {
+      email,
+      membershipRole,
+      permissions: permissions ? permissions : null,
+      stationScope,
+      stationIds,
+      fieldAgentAccess,
+      roleLabel,
+      organizationRoleId,
+      department: dto.department?.trim() || null,
+      position: dto.position?.trim() || null,
     };
   }
 

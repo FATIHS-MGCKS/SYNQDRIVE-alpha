@@ -18,3 +18,4 @@
 | 2026-11-26 | USR-P2D — admin password actor; atomic MFA consumption; P1A_B lost ack; D01–D10 PG matrix; refresh MFA downgrade |
 | 2026-11-27 | USR-P3A — `MasterGlobalIdentityService`; `POST/PATCH admin/security/users`; legacy `admin/users` forward; MA create/profile UI; 9-locale keys |
 | 2026-11-27 | USR-P3A.1 — audit operation binding + org tx atomicity; `requireNewGlobalIdentity`; profile null/validation; inventory restore to PR base; opt-in PG race/idempotency |
+| 2026-11-27 | USR-P3A.1 closeout — recursive fingerprint; creation replay target semantics; invite field parity + delivery continuity; IANA timezone; pg lock-wait proof |
