@@ -8,7 +8,10 @@ import {
 } from '@modules/activity-log/master-admin-audit-delivery.contract';
 import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
-import { acquireSessionWriteLocks } from '@modules/auth/refresh-token-session-concurrency';
+import {
+  acquireSecurityOperationAdmissionLock,
+  acquireSessionWriteLocks,
+} from '@modules/auth/refresh-token-session-concurrency';
 import {
   buildPrivilegedRouteLabel,
   resolveCorrelationId,
@@ -69,6 +72,7 @@ export class SecurityGovernanceSessionAuditService {
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        await acquireSecurityOperationAdmissionLock(tx, operationId);
         const sessionMeta = await tx.refreshToken.findFirst({
           where: { id: input.sessionId, userId: input.targetUserId },
           select: { organizationId: true },
@@ -82,7 +86,14 @@ export class SecurityGovernanceSessionAuditService {
           where: { idempotencyKey },
         });
         if (priorOutbox) {
-          if (!this.outboxSingleSessionMatchesOperation(priorOutbox, input)) {
+          if (
+            !this.outboxSingleSessionMatchesOperation(priorOutbox, {
+              targetUserId: input.targetUserId,
+              sessionId: input.sessionId,
+              actorUserId: input.req.user?.id ?? null,
+              targetOrganizationId: targetOrganizationId ?? null,
+            })
+          ) {
             return {
               ok: false,
               outboxId: priorOutbox.id,
@@ -140,7 +151,15 @@ export class SecurityGovernanceSessionAuditService {
       const authoritative = await this.prisma.masterAdminAuditOutbox.findUnique({
         where: { idempotencyKey },
       });
-      if (authoritative && this.outboxSingleSessionMatchesOperation(authoritative, input)) {
+      if (
+        authoritative &&
+        this.outboxSingleSessionMatchesOperation(authoritative, {
+          targetUserId: input.targetUserId,
+          sessionId: input.sessionId,
+          actorUserId: input.req.user?.id ?? null,
+          targetOrganizationId: targetOrganizationId ?? null,
+        })
+      ) {
         return {
           revoked: this.readOutboxRevokedFromSingleSession(authoritative).revokedThisOperation,
         };
@@ -175,6 +194,7 @@ export class SecurityGovernanceSessionAuditService {
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        await acquireSecurityOperationAdmissionLock(tx, operationId);
         await acquireSessionWriteLocks(tx, {
           userId: input.targetUserId,
           organizationId: null,
@@ -183,7 +203,12 @@ export class SecurityGovernanceSessionAuditService {
           where: { idempotencyKey },
         });
         if (priorOutbox) {
-          if (!this.outboxRevokeAllMatchesOperation(priorOutbox, input)) {
+          if (
+            !this.outboxRevokeAllMatchesOperation(priorOutbox, {
+              targetUserId: input.targetUserId,
+              actorUserId: input.req.user?.id ?? null,
+            })
+          ) {
             return {
               revokedSessionCount: 0,
               outboxId: priorOutbox.id,
@@ -231,7 +256,13 @@ export class SecurityGovernanceSessionAuditService {
       const authoritative = await this.prisma.masterAdminAuditOutbox.findUnique({
         where: { idempotencyKey },
       });
-      if (authoritative && this.outboxRevokeAllMatchesOperation(authoritative, input)) {
+      if (
+        authoritative &&
+        this.outboxRevokeAllMatchesOperation(authoritative, {
+          targetUserId: input.targetUserId,
+          actorUserId: input.req.user?.id ?? null,
+        })
+      ) {
         return {
           revokedSessionCount: this.readOutboxRevokedSessionCount(authoritative),
         };
@@ -318,26 +349,75 @@ export class SecurityGovernanceSessionAuditService {
     return meta && typeof meta === 'object' ? meta : null;
   }
 
+  private outboxEnvelopeActor(existing: { payload: unknown }): string | null {
+    const payload = existing.payload as Record<string, unknown>;
+    const raw = payload.masterAdminAuditEnvelope;
+    if (!raw || typeof raw !== 'object') return null;
+    const actorUserId = (raw as { actorUserId?: unknown }).actorUserId;
+    return typeof actorUserId === 'string' && actorUserId.length > 0 ? actorUserId : null;
+  }
+
   private outboxSingleSessionMatchesOperation(
     existing: { payload: unknown },
-    input: { targetUserId: string; sessionId: string },
+    input: {
+      targetUserId: string;
+      sessionId: string;
+      actorUserId?: string | null;
+      targetOrganizationId?: string | null;
+    },
   ): boolean {
     const meta = this.outboxMetadata(existing);
     if (!meta) return false;
-    return (
-      meta.operation === 'REVOKE_ONE' &&
-      meta.targetUserId === input.targetUserId &&
-      meta.sessionId === input.sessionId
-    );
+    if (
+      meta.operation !== 'REVOKE_ONE' ||
+      meta.targetUserId !== input.targetUserId ||
+      meta.sessionId !== input.sessionId
+    ) {
+      return false;
+    }
+    const storedActor =
+      typeof meta.actorUserId === 'string' && meta.actorUserId.length > 0
+        ? meta.actorUserId
+        : this.outboxEnvelopeActor(existing);
+    if (
+      storedActor &&
+      input.actorUserId &&
+      storedActor !== input.actorUserId
+    ) {
+      return false;
+    }
+    const storedOrg = meta.targetOrganizationId;
+    if (
+      storedOrg != null &&
+      input.targetOrganizationId != null &&
+      storedOrg !== input.targetOrganizationId
+    ) {
+      return false;
+    }
+    return true;
   }
 
   private outboxRevokeAllMatchesOperation(
     existing: { payload: unknown },
-    input: { targetUserId: string },
+    input: { targetUserId: string; actorUserId?: string | null },
   ): boolean {
     const meta = this.outboxMetadata(existing);
     if (!meta) return false;
-    return meta.operation === 'REVOKE_ALL' && meta.targetUserId === input.targetUserId;
+    if (meta.operation !== 'REVOKE_ALL' || meta.targetUserId !== input.targetUserId) {
+      return false;
+    }
+    const storedActor =
+      typeof meta.actorUserId === 'string' && meta.actorUserId.length > 0
+        ? meta.actorUserId
+        : this.outboxEnvelopeActor(existing);
+    if (
+      storedActor &&
+      input.actorUserId &&
+      storedActor !== input.actorUserId
+    ) {
+      return false;
+    }
+    return true;
   }
 
   private async sessionFamilyHasActiveHead(userId: string, sessionId: string): Promise<boolean> {
@@ -410,6 +490,8 @@ export class SecurityGovernanceSessionAuditService {
         !this.outboxSingleSessionMatchesOperation(existing, {
           targetUserId: input.targetUserId,
           sessionId: input.sessionId,
+          actorUserId: input.req.user?.id ?? null,
+          targetOrganizationId: input.targetOrganizationId,
         })
       ) {
         return { revoked: false };
@@ -473,7 +555,12 @@ export class SecurityGovernanceSessionAuditService {
       /* audit read failure must not block security-critical session revocation */
     }
     if (existing) {
-      if (!this.outboxRevokeAllMatchesOperation(existing, { targetUserId: input.targetUserId })) {
+      if (
+        !this.outboxRevokeAllMatchesOperation(existing, {
+          targetUserId: input.targetUserId,
+          actorUserId: input.req.user?.id ?? null,
+        })
+      ) {
         return { revokedSessionCount: 0 };
       }
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
@@ -542,6 +629,8 @@ export class SecurityGovernanceSessionAuditService {
       outcome: input.outcome,
       targetUserId: input.targetUserId,
       sessionId: input.sessionId,
+      actorUserId: input.req.user?.id ?? null,
+      targetOrganizationId: input.targetOrganizationId,
       securityOperationId: input.operationId,
     },
   };
@@ -579,6 +668,7 @@ export class SecurityGovernanceSessionAuditService {
         operation: 'REVOKE_ALL',
         outcome: input.revokedSessionCount > 0 ? 'SUCCESS' : 'NO_OP',
         targetUserId: input.targetUserId,
+        actorUserId: input.req.user?.id ?? null,
         revokedSessionCount: input.revokedSessionCount,
         auditScope: 'PLATFORM',
         securityOperationId: input.operationId,

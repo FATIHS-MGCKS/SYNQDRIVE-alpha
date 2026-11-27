@@ -144,12 +144,18 @@ const run = process.env[OPT_IN] === '1';
     await delivery.attemptImmediateDelivery(
       (await prisma.masterAdminAuditOutbox.findUniqueOrThrow({ where: { idempotencyKey: key } })).id,
     );
-    const logs = await prisma.activityLog.count({
+    const logs = await prisma.activityLog.findMany({
       where: {
         metaJson: { path: ['securityOperationId'], equals: operationId },
       },
     });
-    expect(logs).toBeGreaterThanOrEqual(1);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]?.userId).toBe(actor.id);
+    const meta = logs[0]?.metaJson as Record<string, unknown> | null;
+    expect(meta?.auditAction).toBe('MASTER_USER_SESSION_REVOKED');
+    expect(meta?.targetUserId).toBe(target.id);
+    expect(meta?.operation).toBe('REVOKE_ONE');
+    expect(meta?.outcome).toBe('SUCCESS');
   });
 
   it('E3-A02 revoke-all commit with lost ack recovers original count', async () => {
@@ -333,6 +339,77 @@ const run = process.env[OPT_IN] === '1';
     expect(cross.revoked).toBe(false);
     const rowB = await prisma.refreshToken.findUnique({ where: { id: sessionB.id } });
     expect(rowB?.revokedAt).toBeNull();
+  });
+
+  it('E3 actor mismatch does not disclose original operation result', async () => {
+    const actorA = await createActor();
+    const actorB = await createActor();
+    const target = await createActor();
+    const session = await createSession(target.id);
+    const operationId = generateMasterAdminSecurityOperationId();
+    const first = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actorA.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+      securityOperationId: operationId,
+    });
+    expect(first.revoked).toBe(true);
+    const crossActor = await sessionAudit.revokeTargetSessionWithAtomicAudit({
+      req: reqStub(actorB.id),
+      targetUserId: target.id,
+      sessionId: session.id,
+      securityOperationId: operationId,
+    });
+    expect(crossActor.revoked).toBe(false);
+    expect(
+      await prisma.masterAdminAuditOutbox.count({
+        where: { idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId) },
+      }),
+    ).toBe(1);
+  });
+
+  it('E3 cross-target operation identity does not mutate unrelated user', async () => {
+    const actor = await createActor();
+    const targetA = await createActor();
+    const targetB = await createActor();
+    const sessionA = await createSession(targetA.id);
+    const sessionB = await createSession(targetB.id);
+    const operationId = generateMasterAdminSecurityOperationId();
+    const outboxRepoB = new MasterAdminAuditOutboxRepository(prismaB as never);
+    const processorB = new MasterAdminAuditOutboxProcessorService(prismaB as never, outboxRepoB);
+    const deliveryB = new MasterAdminAuditDeliveryService(prismaB as never, outboxRepoB, processorB);
+    const refreshB = new RefreshTokenService(
+      prismaB as never,
+      { get: (k: string) => (k === 'app.jwtSecret' ? 'e3-audit-secret' : '15m') } as never,
+      { enforceSessionPolicy: jest.fn() } as never,
+      { listGrantsForUser: jest.fn().mockResolvedValue([]) } as never,
+    );
+    const sessionAuditB = new SecurityGovernanceSessionAuditService(
+      prismaB as never,
+      deliveryB,
+      refreshB,
+    );
+    await Promise.all([
+      sessionAudit.revokeTargetSessionWithAtomicAudit({
+        req: reqStub(actor.id),
+        targetUserId: targetA.id,
+        sessionId: sessionA.id,
+        securityOperationId: operationId,
+      }),
+      sessionAuditB.revokeTargetSessionWithAtomicAudit({
+        req: reqStub(actor.id),
+        targetUserId: targetB.id,
+        sessionId: sessionB.id,
+        securityOperationId: operationId,
+      }),
+    ]);
+    const rowB = await prisma.refreshToken.findUnique({ where: { id: sessionB.id } });
+    expect(rowB?.revokedAt).toBeNull();
+    expect(
+      await prisma.masterAdminAuditOutbox.count({
+        where: { idempotencyKey: buildMasterAdminSessionRevocationAuditIdempotencyKey(operationId) },
+      }),
+    ).toBe(1);
   });
 
   it('E3 fallback revokes rotated family via canonical family revocation', async () => {

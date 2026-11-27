@@ -44,6 +44,17 @@ const REQUIRED = [
     table: 'master_admin_audit_outbox',
     columns: ['idempotency_key', 'payload'],
   },
+  {
+    table: 'user_mfa_step_up_grants',
+    columns: [
+      'token_family',
+      'organization_id',
+      'membership_id',
+      'session_version',
+      'security_version',
+      'membership_version',
+    ],
+  },
 ];
 
 async function main() {

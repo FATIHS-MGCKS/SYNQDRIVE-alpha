@@ -5,6 +5,8 @@ import type { PrismaService } from '@shared/database/prisma.service';
 export const IAM_USER_SESSION_WRITE_LOCK_CLASS = 913_104;
 /** Advisory lock class: organization-scoped session writes. */
 export const IAM_ORG_SESSION_WRITE_LOCK_CLASS = 913_105;
+/** Advisory lock class: master-admin security operation id admission. */
+export const IAM_SECURITY_OPERATION_ADMISSION_LOCK_CLASS = 913_106;
 
 /**
  * Canonical lock hierarchy (P2-R12 / P2-R13):
@@ -14,6 +16,19 @@ export const IAM_ORG_SESSION_WRITE_LOCK_CLASS = 913_105;
  *
  * Never acquire FOR UPDATE on refresh_tokens before advisory locks.
  */
+/** Serialize first admission for one server-side securityOperationId across targets. */
+export async function acquireSecurityOperationAdmissionLock(
+  tx: Prisma.TransactionClient,
+  securityOperationId: string,
+): Promise<void> {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(
+      ${IAM_SECURITY_OPERATION_ADMISSION_LOCK_CLASS}::integer,
+      hashtext(${securityOperationId}::text)
+    )
+  `;
+}
+
 export async function acquireSessionWriteLocks(
   tx: Prisma.TransactionClient,
   scope: { userId: string; organizationId?: string | null },

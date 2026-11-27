@@ -10,7 +10,9 @@
 | Replay same id after NO_OP | Return `revoked: false` |
 | New operation on already-revoked session | Distinct id → NO_OP + durable audit |
 | Revoke-all replay | Return stored `revokedSessionCount`, not fresh-session count |
-| Operation id bound to actor/target/session via outbox metadata | Mismatch → no replay, no cross-target mutation |
+| Operation id bound to actor/target/session/org via outbox metadata | Mismatch → no replay, no cross-target mutation; actor mismatch withholds replay |
+| Gate preflight | `USR_P1A_SESSION_AUDIT_PG=1` set before E3 suite |
+| Semantic ActivityLog | E3-A01 expects exactly one log per operation |
 
 ## Implementation notes
 
