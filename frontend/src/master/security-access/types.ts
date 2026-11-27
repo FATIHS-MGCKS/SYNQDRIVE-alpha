@@ -58,6 +58,42 @@ export interface GovernanceUserListItemDto {
   activeSessionCount: number;
 }
 
+export interface GovernanceGlobalProfileDto {
+  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  mobile: string | null;
+  address: string | null;
+  language: string | null;
+  timezone: string | null;
+  dateFormat: string | null;
+}
+
+export interface GovernanceGlobalIdentityOnboardingDto {
+  identityCreated: boolean;
+  invitationPersisted: boolean;
+  deliveryRequested: boolean;
+  deliveryConfirmed: boolean;
+  accountReadyForAuthentication: boolean;
+}
+
+export interface GovernanceGlobalIdentityProvisionResult {
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    status: string;
+    platformRole: string;
+  };
+  onboarding: GovernanceGlobalIdentityOnboardingDto;
+  membership?: { organizationId: string; status: string; membershipId: string };
+  idempotentReplay?: boolean;
+  securityOperationId?: string;
+}
+
 export interface GovernanceUserMembershipDto {
   organizationId: string;
   organizationName: string;
@@ -68,6 +104,7 @@ export interface GovernanceUserMembershipDto {
 
 export interface GovernanceUserDetailDto extends GovernanceUserListItemDto {
   createdAt: string;
+  globalProfile: GovernanceGlobalProfileDto;
   memberships: GovernanceUserMembershipDto[];
   mfa: {
     enrolled: boolean;

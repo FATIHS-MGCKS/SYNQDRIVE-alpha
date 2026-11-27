@@ -35,8 +35,25 @@ function userDetail(id: string, name: string, email: string) {
   return {
     ...listItem(id, name, email),
     createdAt: '2024-01-01T00:00:00Z',
+    globalProfile: {
+      name,
+      firstName: name.split(' ')[0] ?? null,
+      lastName: name.split(' ').slice(1).join(' ') || null,
+      phone: null,
+      mobile: null,
+      address: null,
+      language: 'en',
+      timezone: 'Europe/Berlin',
+      dateFormat: 'DD.MM.YYYY',
+    },
     memberships: [],
-    mfa: { enrolled: true, state: 'ENABLED', factorTypes: ['totp'], recoveryCodesRemaining: 2 },
+    mfa: {
+      enrolled: true,
+      factorTypes: ['totp'],
+      recoveryCodesRemaining: 2,
+      enrollmentRequired: false,
+      stepUpEnforced: true,
+    },
     recentPrivilegedActivity: [],
   };
 }
@@ -68,6 +85,18 @@ function sessionRows(userId: string) {
 
 export async function installSecurityAccessMocks(page: Page) {
   await installMasterSidebarMocks(page);
+  await page.route('**/api/v1/admin/organizations/operational**', async (route) => {
+    return json(route, {
+      data: [{ id: 'org-fixture-1', companyName: 'Fixture Org', orgStatus: 'ACTIVE' }],
+      meta: { total: 1, page: 1, limit: 100, totalPages: 1 },
+    });
+  });
+  await page.route('**/api/v1/admin/security/org-roles**', async (route) =>
+    json(route, {
+      data: [{ id: 'role-fixture-1', name: 'Worker template', organizationId: 'org-fixture-1' }],
+      meta: { total: 1, page: 1, limit: 100, totalPages: 1 },
+    }),
+  );
   await page.route('**/api/v1/admin/security/**', async (route) => {
     const url = route.request().url();
     const method = route.request().method();
@@ -76,6 +105,31 @@ export async function installSecurityAccessMocks(page: Page) {
     }
     if (url.includes('/admin/security/attention-summary')) {
       return json(route, { total: 0, topItems: [], byCode: {}, generatedAt: new Date().toISOString() });
+    }
+    if (url.match(/\/admin\/security\/users\/?$/) && method === 'POST') {
+      const body = route.request().postDataJSON() as { email?: string; firstName?: string; lastName?: string };
+      return json(
+        route,
+        {
+          user: {
+            id: '00000000-0000-4000-8000-0000000000c3',
+            email: body.email ?? 'new@fixture.test',
+            name: [body.firstName, body.lastName].filter(Boolean).join(' ') || null,
+            firstName: body.firstName ?? null,
+            lastName: body.lastName ?? null,
+            status: 'ACTIVE',
+            platformRole: 'USER',
+          },
+          onboarding: {
+            identityCreated: true,
+            invitationPersisted: false,
+            deliveryRequested: false,
+            deliveryConfirmed: false,
+            accountReadyForAuthentication: false,
+          },
+        },
+        201,
+      );
     }
     if (url.includes('/admin/security/users') && method === 'GET' && !url.match(/\/users\/[^/?]+/)) {
       const parsed = new URL(url);

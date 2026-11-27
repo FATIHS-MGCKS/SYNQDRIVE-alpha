@@ -76,7 +76,24 @@ export function userDetailFixture(id: string, name: string) {
     mfaState: 'ENABLED',
     attentionCodes: [],
     memberships: [],
-    mfa: { enrolled: true, state: 'ENABLED', factorTypes: ['totp'], recoveryCodesRemaining: 3 },
+    globalProfile: {
+      name,
+      firstName: name.split(' ')[0] ?? null,
+      lastName: name.split(' ').slice(1).join(' ') || null,
+      phone: null,
+      mobile: null,
+      address: null,
+      language: 'de',
+      timezone: 'Europe/Berlin',
+      dateFormat: 'DD.MM.YYYY',
+    },
+    mfa: {
+      enrolled: true,
+      factorTypes: ['totp'],
+      recoveryCodesRemaining: 3,
+      enrollmentRequired: false,
+      stepUpEnforced: false,
+    },
     recentPrivilegedActivity: [],
   };
 }

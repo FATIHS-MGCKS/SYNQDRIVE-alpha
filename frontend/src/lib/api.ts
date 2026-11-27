@@ -4198,6 +4198,7 @@ export const api = {
         name?: string;
         phone?: string;
         mobile?: string;
+        address?: string;
         language?: string;
         timezone?: string;
         dateFormat?: string;
@@ -4210,24 +4211,10 @@ export const api = {
         sendCredentialSetup?: boolean;
         idempotencyKey?: string;
       }) =>
-        post<{
-          user: {
-            id: string;
-            email: string;
-            name: string | null;
-            firstName: string | null;
-            lastName: string | null;
-            status: string;
-            platformRole: string;
-          };
-          onboarding: {
-            identityCreated: boolean;
-            invitationPersisted: boolean;
-            deliveryRequested: boolean;
-            deliveryConfirmed: boolean;
-            accountReadyForAuthentication: boolean;
-          };
-        }>('/admin/security/users', body),
+        post<import('../master/security-access/types').GovernanceGlobalIdentityProvisionResult>(
+          '/admin/security/users',
+          body,
+        ),
       updateUserProfile: (
         userId: string,
         body: {

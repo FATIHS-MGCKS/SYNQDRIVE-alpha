@@ -73,6 +73,27 @@
 
 `USR_P3A1_MASTER_IDENTITY_PG=1` + loopback disposable DB — email uniqueness race, audit idempotency dedup, advisory lock serialization (`usr-p3a1-master-identity.postgres.integration.spec.ts`).
 
+## USR-P3A.2 frontend provisioning + profile (PR #2544)
+
+- **Read contract:** `GET /admin/security/users/:userId` includes `globalProfile` (safe persisted fields, null preserved)
+- **Create dialog:** org/role selectors, onboarding modes, authoritative result step (no silent toast-only success)
+- **Profile editor:** hydrates from `globalProfile`, changed-fields-only PATCH, generation-bound saves
+- **i18n:** new `master.securityAccess.users.create.*` + profile keys in all 9 locales (pl–it rows still English placeholders — native review debt)
+- **Tests:** vitest `master-security-access-p3a2`, `global-profile-patch.util`; playwright `master-security-access-p3a2-provisioning.spec.ts`
+
+## P3A.3 backend security acceptance (OPEN — do not mark closed)
+
+| ID | Remaining |
+|----|-----------|
+| P3A-R01 | Normalized effective fingerprints, omitted-value encoding, conflicting replay PG proof |
+| P3A-R02 | Authoritative target + invite identity on lost-ack replay |
+| P3A-R03 | Concurrent invitation recovery, token rotation dedup |
+| P3A-R04 | Credential setup continuation after lost acknowledgement |
+| P3A-R05 | Service-level PG, real HTTP guard matrix, semantic audit counts, lock contention |
+| P3A-R06 | Org/identity validation parity, org lifecycle fencing, invite acceptance E2E |
+
+**P3A.1_SECURITY_ACCEPTANCE=PENDING_P3A3** — frontend completion does not close backend acceptance.
+
 ## Remaining matrix (not executed this PR)
 
-Full A01–A24 with **real** AuthGuard/MFA/step-up on disposable Postgres (current HTTP spec mocks identity service), commit-then-lost-ack replay E2E, Playwright responsive flows (P3A.2), and CI green on pushed HEAD.
+Full A01–A24 with **real** AuthGuard/MFA/step-up on disposable Postgres, commit-then-lost-ack replay E2E, expanded F01–F24 coverage, and CI green on pushed HEAD.

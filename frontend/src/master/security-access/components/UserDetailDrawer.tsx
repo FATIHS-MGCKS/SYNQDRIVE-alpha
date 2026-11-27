@@ -49,9 +49,11 @@ export function UserDetailDrawer({
   const targetUserIdRef = useRef<string | null>(userId);
   targetUserIdRef.current = userId;
   const drawerGenerationRef = useRef(0);
+  const [drawerGeneration, setDrawerGeneration] = useState(0);
 
   useEffect(() => {
     drawerGenerationRef.current += 1;
+    setDrawerGeneration(drawerGenerationRef.current);
     setMfaResetOpen(false);
     setDeleteOpen(false);
     setRevokeAllOpen(false);
@@ -191,10 +193,9 @@ export function UserDetailDrawer({
               <GlobalProfileEditPanel
                 userId={userId}
                 detail={boundDetail}
+                drawerGeneration={drawerGeneration}
                 onSaved={() => void refresh()}
-                isTargetCurrent={() =>
-                  targetUserIdRef.current === userId && drawerGenerationRef.current > 0
-                }
+                isMutationTargetCurrent={isMutationTargetCurrent}
               />
             )}
 

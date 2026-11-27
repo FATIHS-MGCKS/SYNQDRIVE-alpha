@@ -189,9 +189,11 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
       <CreateGlobalUserDialog
         open={createUserOpen}
         onOpenChange={setCreateUserOpen}
-        onCreated={(userId) => {
+        onListRefresh={() => setUsersListGeneration((g) => g + 1)}
+        onOpenCreatedUser={(userId) => {
           setUsersListGeneration((g) => g + 1);
           navigate({ userId });
+          setCreateUserOpen(false);
         }}
       />
     </div>
