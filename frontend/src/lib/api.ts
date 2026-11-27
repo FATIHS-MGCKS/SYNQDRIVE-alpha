@@ -2,6 +2,7 @@ import { getToken } from './auth';
 import { getStepUpToken } from './mfa';
 import {
   buildAuthorizedHeaders,
+  captureAuthRequestDispatchIdentity,
   clearAuthSession,
   isExcludedAuthTransportPath,
   recoverFromUnauthorized,
@@ -759,6 +760,7 @@ async function executeFetch(path: string, options?: RequestInit): Promise<Respon
 }
 
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const dispatchIdentity = captureAuthRequestDispatchIdentity();
   const run = () => executeFetch(path, options);
   let res = await run();
 
@@ -767,6 +769,7 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
       path,
       method: options?.method,
       retry: run,
+      dispatchIdentity,
     });
   }
 
@@ -831,6 +834,7 @@ export async function requestResult<T>(
   options?: RequestInit,
   meta?: RequestResultMeta,
 ): Promise<RequestResult<T>> {
+  const dispatchIdentity = captureAuthRequestDispatchIdentity();
   const run = () => executeFetch(path, options);
 
   let res: Response;
@@ -846,10 +850,11 @@ export async function requestResult<T>(
         path,
         method: options?.method,
         retry: run,
+        dispatchIdentity,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Session expired';
-      if (msg === 'Session refreshed') {
+      if (msg === 'Session refreshed' || msg === 'Stale request') {
         return { ok: false, status: 401, errorMessage: msg };
       }
       return { ok: false, status: 401, errorMessage: 'Session expired' };
@@ -1301,6 +1306,7 @@ export interface CreateSupportMessagePayload {
 // Bearer token. We fetch them as a Blob and open via an object URL so the
 // browser can preview/download without ever exposing a public file URL.
 async function fetchBlob(path: string): Promise<Blob> {
+  const dispatchIdentity = captureAuthRequestDispatchIdentity();
   const run = () =>
     fetch(`${BASE_URL}${path}`, {
       headers: buildAuthorizedHeaders(
@@ -1310,7 +1316,12 @@ async function fetchBlob(path: string): Promise<Blob> {
     });
   let res = await run();
   if (res.status === 401) {
-    res = await recoverFromUnauthorized({ path, method: 'GET', retry: run });
+    res = await recoverFromUnauthorized({
+      path,
+      method: 'GET',
+      retry: run,
+      dispatchIdentity,
+    });
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

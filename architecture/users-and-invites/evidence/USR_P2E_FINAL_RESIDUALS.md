@@ -37,4 +37,14 @@ Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 | C02 org offboarding concurrency | **IMPLEMENTED** — `C02-A/B/C` on `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` |
 | Strict step-up grant binding | **IMPLEMENTED** — `iam-mfa-step-up.service.ts` exact scope/version; E2 PG proofs added |
 | E3 audit actor/scope replay | **IMPLEMENTED** — missing actor replay denied; org scope binding on outbox match |
-| CI verification | **PENDING** on post-E5B HEAD — prior E5A runs `45985883406`, `45985883689`, `45985883277` were **in_progress** at start of E5B slice |
+| CI verification | **PENDING** — exact-HEAD runs `45987101336` (USR-P2), `45987101532` (Product Catalog), `45987101448` (VO-5B) on `421f19f932500c9cdb7e91442b7ec3d925b3639b` were **not terminal** at E5C implementation start |
+
+## E5C final closeout (2026-11-27)
+
+| Area | Status |
+|------|--------|
+| Frontend dispatch identity | **IMPLEMENTED** — `captureAuthRequestDispatchIdentity()` wired through `request` / `requestResult` / `fetchBlob`; stale epoch → `Stale request`; delayed old-token 401 without second refresh |
+| Active refresh head binding | **IMPLEMENTED** — grant validation checks live refresh head org/membership/session versions |
+| C02 offboarding races | **CORRECTED** — execute advisory lock witness; post-offboard denial for issued/rotated credentials regardless of race winner |
+| Reset/challenge contention | **IMPLEMENTED** — `E5C concurrent reset-first holds MFA login challenge behind user session lock` (E2 PG) |
+| Repository acceptance | **PENDING_CI** on new E5C commit — **R-008 OPEN** until green exact-HEAD gates |

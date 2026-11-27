@@ -68,32 +68,38 @@ describe('auth API transport (E5.1 / E5A)', () => {
     expect(getToken()).toBe('new-access');
   });
 
-  it('B: delayed 401 after successful refresh does not rotate again', async () => {
+  it('B: delayed 401 with original expired token does not rotate again', async () => {
     let refreshCalls = 0;
-    stubFetch(async (url) => {
+    const authHeaders = (init?: RequestInit) => {
+      const h = init?.headers as Record<string, string> | undefined;
+      return h?.Authorization ?? '';
+    };
+    stubFetch(async (url, init) => {
       if (url.includes('/auth/refresh')) {
         refreshCalls += 1;
+        await new Promise((r) => setTimeout(r, 15));
         return new Response(
           JSON.stringify({ accessToken: 'new-access', refreshToken: 'new-refresh', user }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
-      if (url.includes('/widgets')) {
+      if (authHeaders(init).includes('expired-access')) {
+        await new Promise((r) => setTimeout(r, 40));
         return new Response('{}', { status: 401 });
       }
-      if (getToken() === 'new-access') {
-        return new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response('{}', { status: 401 });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     });
 
-    await request('/me');
+    const slow = request('/me');
+    await new Promise((r) => setTimeout(r, 5));
+    const fast = request('/widgets');
+    await slow;
+    await fast;
     expect(refreshCalls).toBe(1);
-    await expect(request('/widgets')).rejects.toThrow('Session expired');
-    expect(refreshCalls).toBe(2);
+    expect(getToken()).toBe('new-access');
   });
 
   it('allows two successive refresh rotations in one auth session', async () => {
@@ -182,13 +188,14 @@ describe('auth API transport (E5.1 / E5A)', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
+      await new Promise((r) => setTimeout(r, 40));
       return new Response('{}', { status: 401 });
     });
 
     const pending = request('/me');
     await new Promise((r) => setTimeout(r, 5));
     clearAuthSession(false);
-    await expect(pending).rejects.toThrow('Session expired');
+    await expect(pending).rejects.toThrow('Stale request');
     expect(getToken()).toBeNull();
   });
 
@@ -201,6 +208,7 @@ describe('auth API transport (E5.1 / E5A)', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
+      await new Promise((r) => setTimeout(r, 40));
       return new Response('{}', { status: 401 });
     });
 
@@ -208,7 +216,7 @@ describe('auth API transport (E5.1 / E5A)', () => {
     await new Promise((r) => setTimeout(r, 5));
     beginAuthenticatedSession();
     setAuth('org-switch-access', user, 'org-switch-refresh');
-    await expect(pending).rejects.toThrow('Session expired');
+    await expect(pending).rejects.toThrow('Stale request');
     expect(getToken()).toBe('org-switch-access');
     expect(getRefreshToken()).toBe('org-switch-refresh');
   });
@@ -222,6 +230,7 @@ describe('auth API transport (E5.1 / E5A)', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
+      await new Promise((r) => setTimeout(r, 40));
       return new Response('{}', { status: 401 });
     });
 
@@ -229,8 +238,41 @@ describe('auth API transport (E5.1 / E5A)', () => {
     await new Promise((r) => setTimeout(r, 5));
     beginAuthenticatedSession();
     setAuth('login-access', { ...user, organizationId: 'org-2' }, 'login-refresh');
-    await expect(pending).rejects.toThrow('Session expired');
+    await expect(pending).rejects.toThrow('Stale request');
     expect(getToken()).toBe('login-access');
+  });
+
+  it('stale delayed 401 after organization switch does not refresh new session', async () => {
+    let refreshCalls = 0;
+    const authHeaders = (init?: RequestInit) => {
+      const h = init?.headers as Record<string, string> | undefined;
+      return h?.Authorization ?? '';
+    };
+    stubFetch(async (url, init) => {
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        return new Response(
+          JSON.stringify({ accessToken: 'new-access', refreshToken: 'new-refresh', user }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (authHeaders(init).includes('expired-access')) {
+        await new Promise((r) => setTimeout(r, 50));
+        return new Response('{}', { status: 401 });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const pending = request('/me');
+    await new Promise((r) => setTimeout(r, 5));
+    beginAuthenticatedSession();
+    setAuth('org-b-access', user, 'org-b-refresh');
+    await expect(pending).rejects.toThrow('Stale request');
+    expect(refreshCalls).toBe(0);
+    expect(getToken()).toBe('org-b-access');
   });
 
   it('F: refresh revoked clears only current session', async () => {

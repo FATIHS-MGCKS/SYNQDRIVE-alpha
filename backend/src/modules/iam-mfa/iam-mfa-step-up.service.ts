@@ -185,10 +185,45 @@ export class IamMfaStepUpService {
         expiresAt: { gt: new Date() },
         replacedBy: null,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        organizationId: true,
+        membershipId: true,
+        sessionVersion: true,
+        membershipVersion: true,
+      },
     });
     if (!activeRefresh) {
       return false;
+    }
+    if (activeRefresh.sessionVersion !== liveUser.sessionVersion) {
+      return false;
+    }
+    if (grantIsPlatformOnly) {
+      if (activeRefresh.organizationId !== null || activeRefresh.membershipId !== null) {
+        return false;
+      }
+    } else {
+      if (activeRefresh.organizationId !== grant.organizationId) {
+        return false;
+      }
+      if (activeRefresh.membershipId !== grant.membershipId) {
+        return false;
+      }
+      if (
+        grant.membershipId &&
+        grant.membershipVersion !== null &&
+        activeRefresh.membershipVersion !== grant.membershipVersion
+      ) {
+        return false;
+      }
+      if (
+        context.membershipVersion !== null &&
+        activeRefresh.membershipVersion !== null &&
+        context.membershipVersion !== activeRefresh.membershipVersion
+      ) {
+        return false;
+      }
     }
 
     if (alreadyConsumedThisRequest) {

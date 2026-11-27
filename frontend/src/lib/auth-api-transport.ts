@@ -1,5 +1,5 @@
 /**
- * Authenticated API transport — 401 refresh wiring (USR-P2E E5.1 / E5B).
+ * Authenticated API transport — 401 refresh wiring (USR-P2E E5C).
  */
 import {
   getRefreshToken,
@@ -20,6 +20,18 @@ import {
 } from './auth-session-refresh';
 
 const API_V1 = '/api/v1';
+
+export type AuthRequestDispatchIdentity = {
+  sessionEpoch: number;
+  accessToken: string;
+};
+
+export function captureAuthRequestDispatchIdentity(): AuthRequestDispatchIdentity {
+  return {
+    sessionEpoch: getAuthSessionEpoch(),
+    accessToken: getToken() ?? '',
+  };
+}
 
 /** Paths that must not trigger refresh recovery (prevents recursive auth loops). */
 export function isExcludedAuthTransportPath(path: string): boolean {
@@ -105,6 +117,25 @@ export async function performBackendTokenRefresh(): Promise<RefreshOutcome> {
   };
 }
 
+async function retryAfterRefreshWithoutMutation<T>(input: {
+  method: string | undefined;
+  originEpoch: number;
+  retry: () => Promise<T>;
+}): Promise<T> {
+  if (isIdempotentReadMethod(input.method)) {
+    const result = await input.retry();
+    const maybeRes = result as Response;
+    if (maybeRes instanceof Response && maybeRes.status === 401) {
+      if (getAuthSessionEpoch() === input.originEpoch) {
+        clearAuthSession(true);
+      }
+      throw new Error('Session expired');
+    }
+    return result;
+  }
+  throw new Error('Session refreshed');
+}
+
 /**
  * After a 401 on a non-auth path: refresh once, optionally retry read-only calls.
  */
@@ -112,42 +143,55 @@ export async function recoverFromUnauthorized<T>(input: {
   path: string;
   method: string | undefined;
   retry: () => Promise<T>;
+  dispatchIdentity: AuthRequestDispatchIdentity;
 }): Promise<T> {
   if (isExcludedAuthTransportPath(input.path)) {
     clearAuthSession(true);
     throw new Error('Session expired');
   }
-  const epochAtStart = getAuthSessionEpoch();
-  const staleAccessAt401 = getToken() ?? '';
-  const coalesceKey = `${epochAtStart}:${staleAccessAt401}:${getRefreshToken() ?? ''}`;
 
-  if (staleAccessAt401 && hasAlreadyRefreshedFromAccessToken(staleAccessAt401)) {
-    if (isIdempotentReadMethod(input.method)) {
-      const result = await input.retry();
-      const maybeRes = result as Response;
-      if (maybeRes instanceof Response && maybeRes.status === 401) {
-        if (getAuthSessionEpoch() === epochAtStart) {
-          clearAuthSession(true);
-        }
-        throw new Error('Session expired');
-      }
-      return result;
-    }
-    throw new Error('Session refreshed');
+  const { sessionEpoch: originEpoch, accessToken: originAccess } = input.dispatchIdentity;
+
+  if (getAuthSessionEpoch() !== originEpoch) {
+    throw new Error('Stale request');
+  }
+
+  const currentAccess = getToken() ?? '';
+  const coalesceKey = `${originEpoch}:${originAccess}:${getRefreshToken() ?? ''}`;
+
+  if (originAccess && currentAccess && originAccess !== currentAccess) {
+    return retryAfterRefreshWithoutMutation({
+      method: input.method,
+      originEpoch,
+      retry: input.retry,
+    });
+  }
+
+  if (originAccess && hasAlreadyRefreshedFromAccessToken(originAccess)) {
+    return retryAfterRefreshWithoutMutation({
+      method: input.method,
+      originEpoch,
+      retry: input.retry,
+    });
   }
 
   const refreshed = await coalescedAuthRefresh(performBackendTokenRefresh, coalesceKey);
   if (!refreshed.ok) {
-    if (getAuthSessionEpoch() === epochAtStart) {
+    if (getAuthSessionEpoch() === originEpoch) {
       clearAuthSession(true);
     }
     throw new Error('Session expired');
   }
+
+  if (getAuthSessionEpoch() !== originEpoch) {
+    throw new Error('Stale request');
+  }
+
   if (isIdempotentReadMethod(input.method)) {
     const result = await input.retry();
     const maybeRes = result as Response;
     if (maybeRes instanceof Response && maybeRes.status === 401) {
-      if (getAuthSessionEpoch() === epochAtStart) {
+      if (getAuthSessionEpoch() === originEpoch) {
         clearAuthSession(true);
       }
       throw new Error('Session expired');

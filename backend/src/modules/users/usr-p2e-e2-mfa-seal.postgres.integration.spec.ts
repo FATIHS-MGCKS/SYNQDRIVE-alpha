@@ -62,6 +62,13 @@ import { PrismaService } from '@shared/database/prisma.service';
 import * as request from 'supertest';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
+import {
+  holdUserSessionWriteLockTransaction,
+  pgBackendPid,
+  waitUntilAdvisoryLockWaiters,
+  waitUntilBackendBlocked,
+  waitUntilUserAdvisoryLockHeld,
+} from '@modules/users/testing/usr-p2-deterministic-concurrency.helper';
 
 const OPT_IN = 'USR_P2E_E2_MFA_PG';
 const JWT_SECRET = 'usr-p2e-e2-mfa-secret';
@@ -1349,6 +1356,119 @@ function assertDisposableDb(): void {
     await expect(
       authMfaLogin.completeLoginMfa({ mfaPendingToken: pending, code: authenticator.generate(secret) }),
     ).rejects.toMatchObject({ response: { code: MFA_ERROR.ENROLLMENT_REQUIRED } });
+  });
+
+  it('E5C active refresh head org mismatch denies bound grant', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const orgA = randomUUID();
+    const orgB = randomUUID();
+    const memA = randomUUID();
+    const memB = randomUUID();
+    await prisma.organization.createMany({
+      data: [
+        { id: orgA, companyName: 'A', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
+        { id: orgB, companyName: 'B', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
+      ],
+    });
+    await prisma.organizationMembership.createMany({
+      data: [
+        {
+          id: memA,
+          userId,
+          organizationId: orgA,
+          role: 'WORKER',
+          status: MembershipStatus.ACTIVE,
+        },
+        {
+          id: memB,
+          userId,
+          organizationId: orgB,
+          role: 'WORKER',
+          status: MembershipStatus.ACTIVE,
+        },
+      ],
+    });
+    const userCtx = {
+      id: userId,
+      email,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+      sessionVersion: 0,
+      securityVersion: 0,
+    };
+    await stack.refresh.issueTokenPair(userCtx, {
+      organizationId: orgA,
+      membershipId: memA,
+      role: 'WORKER',
+      membershipVersion: 0,
+    });
+    const family = (
+      await prisma.refreshToken.findFirstOrThrow({ where: { userId }, orderBy: { createdAt: 'desc' } })
+    ).family;
+    const binding: StepUpGrantBinding = {
+      tokenFamily: family,
+      organizationId: orgA,
+      membershipId: memA,
+      sessionVersion: 0,
+      securityVersion: 0,
+      membershipVersion: 0,
+    };
+    const grant = await stepUp.createGrant({
+      userId,
+      actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
+      claims: mfaGrantClaims(),
+      binding,
+    });
+    await stack.refresh.issueTokenPair(userCtx, {
+      organizationId: orgB,
+      membershipId: memB,
+      role: 'WORKER',
+      membershipVersion: 0,
+    });
+    const wrongOrgCtx: StepUpGrantValidationContext = {
+      tokenFamily: family,
+      organizationId: orgB,
+      membershipId: memB,
+      sessionVersion: 0,
+      membershipVersion: 0,
+    };
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        wrongOrgCtx,
+      ),
+    ).toBe(false);
+  });
+
+  it('E5C concurrent reset-first holds MFA login challenge behind user session lock', async () => {
+    const { userId, secret } = await seedUserWithTotp();
+    const pending = authMfaLogin.signMfaPendingToken({
+      userId,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    const holder = holdUserSessionWriteLockTransaction(prisma, userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, userId);
+    const resetP = mfaReset.resetMfaForUser({
+      organizationId: 'platform',
+      targetUserId: userId,
+      actorUserId: userId,
+      idempotencyKey: `e5c-reset:${randomUUID()}`,
+    });
+    await waitUntilAdvisoryLockWaiters(prisma, userId, 1);
+    const loginP = authMfaLogin.completeLoginMfa({
+      mfaPendingToken: pending,
+      code: authenticator.generate(secret),
+    });
+    const blockedPid = await pgBackendPid(prismaB);
+    await waitUntilBackendBlocked(prisma, blockedPid);
+    holder.release();
+    await holder.completion;
+    const [resetOutcome, loginOutcome] = await Promise.allSettled([resetP, loginP]);
+    expect(resetOutcome.status).toBe('fulfilled');
+    expect(loginOutcome.status).toBe('rejected');
   });
 
   it('CONCURRENT_RESET_MFA reset after MFA login blocks stale completion', async () => {
