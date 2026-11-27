@@ -1,5 +1,5 @@
 import { ChevronDown, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { StatusChip } from '../../../components/patterns';
 import { SkeletonCard } from '../../../components/patterns/states';
@@ -35,71 +35,76 @@ function DiffBlock({ label, value }: { label: string; value: unknown }) {
 export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDetailDrawerProps) {
   const { t, auditResultLabel, formatRelative } = useSecurityAccessPresentation();
   const { detail, loading } = useAuditDetail(auditId);
+  const boundDetail = detail && auditId && detail.id === auditId ? detail : null;
   const [techOpen, setTechOpen] = useState(false);
+
+  useEffect(() => {
+    setTechOpen(false);
+  }, [auditId]);
 
   return (
     <DetailDrawer
       open={!!auditId}
       onOpenChange={(open) => !open && onClose()}
-      title={detail?.action ?? t('master.securityAccess.auditDetail.titleFallback')}
-      description={detail?.createdAt ? formatRelative(detail.createdAt) : undefined}
+      title={boundDetail?.action ?? t('master.securityAccess.auditDetail.titleFallback')}
+      description={boundDetail?.createdAt ? formatRelative(boundDetail.createdAt) : undefined}
       status={
-        detail ? (
-          <StatusChip tone={auditResultTone(detail.result)} dot>
-            {auditResultLabel(detail.result)}
+        boundDetail ? (
+          <StatusChip tone={auditResultTone(boundDetail.result)} dot>
+            {auditResultLabel(boundDetail.result)}
           </StatusChip>
         ) : undefined
       }
       widthClassName="sm:max-w-xl"
     >
-      {loading && !detail ? (
+      {auditId && loading && !boundDetail ? (
         <SkeletonCard className="h-40" />
-      ) : detail ? (
+      ) : boundDetail ? (
         <div className="space-y-5 text-sm">
           <section>
             <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
               {t('master.securityAccess.auditDetail.section.summary')}
             </h3>
-            <p className="text-sm text-foreground">{detail.summary ?? detail.description}</p>
+            <p className="text-sm text-foreground">{boundDetail.summary ?? boundDetail.description}</p>
           </section>
 
           <section className="grid grid-cols-2 gap-3 text-xs">
             <div>
               <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.actor')}</p>
               <p className="font-medium">
-                {detail.userName ?? detail.actor?.name ?? t('master.securityAccess.common.system')}
+                {boundDetail.userName ?? boundDetail.actor?.name ?? t('master.securityAccess.common.system')}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.organization')}</p>
-              <p className="font-medium">{detail.organizationName ?? t('master.securityAccess.common.platform')}</p>
+              <p className="font-medium">{boundDetail.organizationName ?? t('master.securityAccess.common.platform')}</p>
             </div>
             <div>
               <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.target')}</p>
               <p className="font-medium">
-                {detail.entity}
-                {detail.entityId ? ` · ${detail.entityId.slice(0, 8)}` : ''}
+                {boundDetail.entity}
+                {boundDetail.entityId ? ` · ${boundDetail.entityId.slice(0, 8)}` : ''}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.reason')}</p>
-              <p className="font-medium">{truncateReason(detail.reason, 200)}</p>
+              <p className="font-medium">{truncateReason(boundDetail.reason, 200)}</p>
             </div>
           </section>
 
-          {(detail.diff?.before != null || detail.diff?.after != null) && (
+          {(boundDetail.diff?.before != null || boundDetail.diff?.after != null) && (
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 {t('master.securityAccess.auditDetail.section.diff')}
               </h3>
               <div className="space-y-3">
-                <DiffBlock label={t('master.securityAccess.auditDetail.diff.before')} value={detail.diff?.before} />
-                <DiffBlock label={t('master.securityAccess.auditDetail.diff.after')} value={detail.diff?.after} />
+                <DiffBlock label={t('master.securityAccess.auditDetail.diff.before')} value={boundDetail.diff?.before} />
+                <DiffBlock label={t('master.securityAccess.auditDetail.diff.after')} value={boundDetail.diff?.after} />
               </div>
             </section>
           )}
 
-          {detail.immutable && (
+          {boundDetail.immutable && (
             <p className="text-[10px] text-muted-foreground">{t('master.securityAccess.auditDetail.immutableNotice')}</p>
           )}
 
@@ -107,7 +112,7 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
             <button
               type="button"
               className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-              onClick={() => onOpenFullAudit(detail.id)}
+              onClick={() => onOpenFullAudit(boundDetail.id)}
             >
               {t('master.securityAccess.auditDetail.fullEntryLink')}
               <ExternalLink className="h-3 w-3" />
@@ -125,14 +130,14 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
 
           {techOpen && (
             <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3 text-[10px] font-mono">
-              <p>ID: {detail.id}</p>
-              {detail.trace?.correlationId && <p>Correlation: {detail.trace.correlationId}</p>}
-              {detail.trace?.requestId && <p>Request: {detail.trace.requestId}</p>}
-              {detail.network?.ipAddress && <p>IP: {maskIpDisplay(detail.network.ipAddress)}</p>}
-              {detail.auditDomain && <p>Domain: {detail.auditDomain}</p>}
-              {detail.auditAction && (
+              <p>ID: {boundDetail.id}</p>
+              {boundDetail.trace?.correlationId && <p>Correlation: {boundDetail.trace.correlationId}</p>}
+              {boundDetail.trace?.requestId && <p>Request: {boundDetail.trace.requestId}</p>}
+              {boundDetail.network?.ipAddress && <p>IP: {maskIpDisplay(boundDetail.network.ipAddress)}</p>}
+              {boundDetail.auditDomain && <p>Domain: {boundDetail.auditDomain}</p>}
+              {boundDetail.auditAction && (
                 <p>
-                  {t('master.securityAccess.audit.columns.action')}: {detail.auditAction}
+                  {t('master.securityAccess.audit.columns.action')}: {boundDetail.auditAction}
                 </p>
               )}
             </div>

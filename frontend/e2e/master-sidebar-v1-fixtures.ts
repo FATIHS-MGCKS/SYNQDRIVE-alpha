@@ -48,7 +48,7 @@ export async function installMasterSidebarMocks(page: Page) {
         stepUpEnforced: false,
       });
     }
-    if (url.includes('/admin/users') && method === 'GET') {
+    if (url.includes('/admin/users') && method === 'GET' && !url.includes('/admin/security/')) {
       return json(route, []);
     }
     if (url.includes('/admin/organizations/operational') && method === 'GET') {

@@ -24,7 +24,7 @@ const INPUT =
   'w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-ring';
 
 export function SecurityUsersTab({ variant, organizationId, onOpenUser }: SecurityUsersTabProps) {
-  const { t, locale, mfaStateLabel, attentionCodeLabel, formatRelative, loadError } =
+  const { t, locale, mfaStateLabel, attentionCodeLabel, accountStateLabel, platformRoleLabel, formatRelative, loadError } =
     useSecurityAccessPresentation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -67,11 +67,7 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
         header: t('master.securityAccess.users.columns.role'),
         cell: (u) => (
           <span className="text-xs font-medium">
-            {u.platformRole === 'MASTER_ADMIN'
-              ? t('master.securityAccess.users.roleMasterAdmin')
-              : u.platformRole === 'master-billing'
-                ? t('master.securityAccess.users.roleMasterBilling')
-                : u.role}
+            {u.platformRole ? platformRoleLabel(u.platformRole) : u.role}
           </span>
         ),
       },
@@ -80,7 +76,7 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
         header: t('master.securityAccess.users.columns.accountState'),
         cell: (u) => (
           <StatusChip tone="neutral" className="text-xs">
-            {u.accountState}
+            {accountStateLabel(u.accountState)}
           </StatusChip>
         ),
       },
@@ -124,7 +120,7 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
         cell: (u) => <span className="text-xs text-muted-foreground">{formatRelative(u.lastActive)}</span>,
       },
     ],
-    [attentionCodeLabel, formatRelative, locale, mfaStateLabel, t],
+    [accountStateLabel, attentionCodeLabel, formatRelative, locale, mfaStateLabel, platformRoleLabel, t],
   );
 
   const totalPages = result?.meta.totalPages ?? 1;

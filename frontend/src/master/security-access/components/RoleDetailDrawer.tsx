@@ -17,8 +17,10 @@ interface RoleDetailDrawerProps {
 export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }: RoleDetailDrawerProps) {
   const { t, formatRelative } = useSecurityAccessPresentation();
   const { detail, loading } = useRoleDetail(roleId, roleScope, organizationId);
+  const boundDetail =
+    detail && roleId && roleScope && detail.id === roleId && detail.scope === roleScope ? detail : null;
 
-  const criticalCaps = useMemo(() => detail?.criticalCapabilities ?? [], [detail]);
+  const criticalCaps = useMemo(() => boundDetail?.criticalCapabilities ?? [], [boundDetail]);
 
   const eyebrow =
     roleScope === 'platform'
@@ -30,23 +32,29 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
       open={!!roleId && !!roleScope}
       onOpenChange={(open) => !open && onClose()}
       eyebrow={eyebrow}
-      title={detail?.name ?? t('master.securityAccess.roleDetail.titleFallback')}
-      description={detail?.organizationName ?? (roleScope === 'platform' ? t('master.securityAccess.common.platform') : undefined)}
+      title={boundDetail?.name ?? t('master.securityAccess.roleDetail.titleFallback')}
+      description={
+        boundDetail?.organizationName ?? (roleScope === 'platform' ? t('master.securityAccess.common.platform') : undefined)
+      }
       widthClassName="sm:max-w-xl"
     >
-      {loading && !detail ? (
+      {roleId && loading && !boundDetail ? (
         <SkeletonCard className="h-48" />
-      ) : detail ? (
+      ) : boundDetail ? (
         <div className="space-y-5 text-sm">
           <section>
-            <p className="text-sm text-foreground">{detail.description}</p>
+            <p className="text-sm text-foreground">{boundDetail.description}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>{t('master.securityAccess.roleDetail.userCount', { count: String(detail.userCount) })}</span>
-              {detail.lastModified && (
-                <span>{t('master.securityAccess.roleDetail.modifiedRelative', { relative: formatRelative(detail.lastModified) })}</span>
+              <span>{t('master.securityAccess.roleDetail.userCount', { count: String(boundDetail.userCount) })}</span>
+              {boundDetail.lastModified && (
+                <span>
+                  {t('master.securityAccess.roleDetail.modifiedRelative', {
+                    relative: formatRelative(boundDetail.lastModified),
+                  })}
+                </span>
               )}
               <StatusChip tone="neutral">
-                {detail.type === 'system'
+                {boundDetail.type === 'system'
                   ? t('master.securityAccess.roles.typeSystem')
                   : t('master.securityAccess.roles.typeCustom')}
               </StatusChip>
@@ -77,7 +85,7 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
               {t('master.securityAccess.roleDetail.permissionGroups')}
             </h3>
             <div className="space-y-3">
-              {detail.permissionGroups.map((group) => (
+              {boundDetail.permissionGroups.map((group) => (
                 <details key={group.domain} className="rounded-xl border border-border/60">
                   <summary className="cursor-pointer px-3 py-2 text-xs font-semibold">{group.domain}</summary>
                   <ul className="border-t border-border/50 px-3 py-2 space-y-1">
@@ -99,9 +107,9 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
             {t('master.securityAccess.roleDetail.matrixDesktopOnly')}
           </p>
 
-          {detail.scope === 'organization' && detail.organizationId && (
+          {boundDetail.scope === 'organization' && boundDetail.organizationId && (
             <a
-              href={`/organizations/${detail.organizationId}/settings/users-roles`}
+              href={`/organizations/${boundDetail.organizationId}/settings/users-roles`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"

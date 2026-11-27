@@ -32,9 +32,21 @@
 | `auth-release-compatibility.test.ts` (USR-P2 E4) | PASS |
 | `auth.session-behavior.test.ts` (USR-P2 GATE-5) | PASS |
 
+## Target identity isolation (P1B closeout)
+
+- `useLayoutEffect` clears user/role/audit detail on target change before async effects run.
+- `UserDetailDrawer` binds UI to `detail.id === userId`; dialogs keyed/closed on target change; mutation callbacks verify `targetUserIdRef`.
+- Component tests: `UserDetailDrawer.target-isolation.ui.test.tsx` + extended hook stale tests.
+
 ## Localization debt
 
 - `pl`, `fr`, `cs`, `nl`, `es`, `tr`, `it` strings for the **161** keys added in P1B are machine-assisted — native review recommended before production certification.
+- Enum presentation: `accountState.*`, `platformRole.*`, unknown fallbacks for MFA/attention/audit.
+
+## Responsive evidence
+
+Playwright `master-security-access-responsive.spec.ts` — hub snapshots:
+`/opt/cursor/artifacts/master-security-access-{desktop,tablet,mobile}-{light,dark}.png`
 
 ## Non-goals (preserved)
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, RefreshCw, ShieldOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
@@ -37,17 +37,29 @@ export function UserDetailDrawer({
   onOpenOrganization,
   onUserDeleted,
 }: UserDetailDrawerProps) {
-  const { t, mfaStateLabel, attentionCodeLabel, formatRelative, loadError } = useSecurityAccessPresentation();
-  const { detail, sessions, loading, sessionsLoading, sessionsError, refresh, refreshSessions } = useSecurityUserDetail(
-    userId,
-    loadError,
-  );
+  const { t, mfaStateLabel, attentionCodeLabel, accountStateLabel, platformRoleLabel, formatRelative, loadError } =
+    useSecurityAccessPresentation();
+  const { detail, sessions, loading, sessionsLoading, sessionsError, error, refresh, refreshSessions } =
+    useSecurityUserDetail(userId, loadError);
   const [mfaResetOpen, setMfaResetOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [revokeAllOpen, setRevokeAllOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const targetUserIdRef = useRef<string | null>(userId);
+  targetUserIdRef.current = userId;
 
-  const MfaIcon = detail ? mfaStateIcon(detail.mfaState) : ShieldOff;
+  useEffect(() => {
+    setMfaResetOpen(false);
+    setDeleteOpen(false);
+    setRevokeAllOpen(false);
+    setActionLoading(false);
+  }, [userId]);
+
+  const boundDetail = detail && userId && detail.id === userId ? detail : null;
+  const boundSessions = userId && boundDetail ? sessions : [];
+  const targetReady = Boolean(userId && boundDetail && !loading);
+
+  const MfaIcon = boundDetail ? mfaStateIcon(boundDetail.mfaState) : ShieldOff;
 
   const sessionColumns = useMemo<DataTableColumn<GovernanceUserSessionDto>[]>(
     () => [
@@ -83,16 +95,18 @@ export function UserDetailDrawer({
               variant="ghost"
               size="sm"
               className="text-xs"
+              disabled={!targetReady}
               onClick={async () => {
-                if (!userId) return;
+                const targetId = targetUserIdRef.current;
+                if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
                 try {
-                  await api.admin.securityAccess.revokeSession(userId, s.id);
+                  await api.admin.securityAccess.revokeSession(targetId, s.id);
+                  if (targetUserIdRef.current !== targetId) return;
                   toast.success(t('master.securityAccess.userDetail.toast.sessionEnded'));
                   void refreshSessions();
-                } catch (e: unknown) {
-                  toast.error(
-                    e instanceof Error ? e.message : t('master.securityAccess.userDetail.toast.sessionEndFailed'),
-                  );
+                } catch {
+                  if (targetUserIdRef.current !== targetId) return;
+                  toast.error(t('master.securityAccess.userDetail.toast.sessionEndFailed'));
                 }
               }}
             >
@@ -101,7 +115,7 @@ export function UserDetailDrawer({
           ) : null,
       },
     ],
-    [formatRelative, refreshSessions, t, userId],
+    [boundDetail, formatRelative, refreshSessions, t, targetReady],
   );
 
   return (
@@ -110,15 +124,15 @@ export function UserDetailDrawer({
         open={!!userId}
         onOpenChange={(open) => !open && onClose()}
         eyebrow={contextLabel ?? t('master.securityAccess.userDetail.defaultEyebrow')}
-        title={detail?.name ?? t('master.securityAccess.userDetail.defaultTitle')}
-        description={detail?.email}
+        title={boundDetail?.name ?? t('master.securityAccess.userDetail.defaultTitle')}
+        description={boundDetail?.email}
         status={
-          detail ? (
+          boundDetail ? (
             <div className="flex flex-wrap gap-1.5">
-              <StatusChip tone={mfaStateTone(detail.mfaState)} icon={<MfaIcon className="h-3 w-3" />}>
-                {t('master.securityAccess.userDetail.mfaChip', { state: mfaStateLabel(detail.mfaState) })}
+              <StatusChip tone={mfaStateTone(boundDetail.mfaState)} icon={<MfaIcon className="h-3 w-3" />}>
+                {t('master.securityAccess.userDetail.mfaChip', { state: mfaStateLabel(boundDetail.mfaState) })}
               </StatusChip>
-              {detail.attentionCodes.slice(0, 2).map((code) => {
+              {boundDetail.attentionCodes.slice(0, 2).map((code) => {
                 const Icon = attentionCodeIcon(code);
                 return (
                   <StatusChip key={code} tone={attentionCodeTone(code)} icon={<Icon className="h-3 w-3" />}>
@@ -131,18 +145,24 @@ export function UserDetailDrawer({
         }
         widthClassName="sm:max-w-xl"
         footer={
-          detail && (
+          targetReady && boundDetail && (
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                 {t('master.securityAccess.userDetail.refresh')}
               </Button>
-              {detail.mfa.enrolled && (
+              {boundDetail.mfa.enrolled && (
                 <Button type="button" variant="destructive" size="sm" onClick={() => setMfaResetOpen(true)}>
                   {t('master.securityAccess.userDetail.resetMfa')}
                 </Button>
               )}
-              <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                data-testid="user-detail-delete"
+                onClick={() => setDeleteOpen(true)}
+              >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 {t('master.securityAccess.userDetail.deleteUser')}
               </Button>
@@ -150,9 +170,15 @@ export function UserDetailDrawer({
           )
         }
       >
-        {loading && !detail ? (
+        {userId && loading && !boundDetail ? (
           <SkeletonCard className="h-48" />
-        ) : detail ? (
+        ) : userId && error && !boundDetail ? (
+          <MasterErrorState
+            title={t('master.securityAccess.userDetail.errorTitle')}
+            error={error}
+            onRetry={() => void refresh()}
+          />
+        ) : boundDetail ? (
           <div className="space-y-6 text-sm">
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
@@ -161,19 +187,19 @@ export function UserDetailDrawer({
               <dl className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <dt className="text-muted-foreground">{t('master.securityAccess.userDetail.field.status')}</dt>
-                  <dd className="font-medium">{detail.accountState}</dd>
+                  <dd className="font-medium">{accountStateLabel(boundDetail.accountState)}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t('master.securityAccess.userDetail.field.created')}</dt>
-                  <dd className="font-medium">{formatRelative(detail.createdAt)}</dd>
+                  <dd className="font-medium">{formatRelative(boundDetail.createdAt)}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t('master.securityAccess.userDetail.field.platformRole')}</dt>
-                  <dd className="font-medium">{detail.platformRole ?? t('master.securityAccess.common.emDash')}</dd>
+                  <dd className="font-medium">{platformRoleLabel(boundDetail.platformRole)}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t('master.securityAccess.userDetail.field.lastActive')}</dt>
-                  <dd className="font-medium">{formatRelative(detail.lastActive)}</dd>
+                  <dd className="font-medium">{formatRelative(boundDetail.lastActive)}</dd>
                 </div>
               </dl>
             </section>
@@ -182,11 +208,11 @@ export function UserDetailDrawer({
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 {t('master.securityAccess.userDetail.section.access')}
               </h3>
-              {detail.memberships.length === 0 ? (
+              {boundDetail.memberships.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t('master.securityAccess.userDetail.noMemberships')}</p>
               ) : (
                 <ul className="space-y-2">
-                  {detail.memberships.map((m) => (
+                  {boundDetail.memberships.map((m) => (
                     <li
                       key={m.organizationId}
                       className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-xs"
@@ -228,13 +254,13 @@ export function UserDetailDrawer({
               <dl className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <dt className="text-muted-foreground">{t('master.securityAccess.userDetail.field.mfaFactors')}</dt>
-                  <dd>{detail.mfa.factorTypes.join(', ') || t('master.securityAccess.common.none')}</dd>
+                  <dd>{boundDetail.mfa.factorTypes.join(', ') || t('master.securityAccess.common.none')}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t('master.securityAccess.userDetail.field.recoveryCodes')}</dt>
                   <dd>
                     {t('master.securityAccess.userDetail.recoveryRemaining', {
-                      count: String(detail.mfa.recoveryCodesRemaining),
+                      count: String(boundDetail.mfa.recoveryCodesRemaining),
                     })}
                   </dd>
                 </div>
@@ -246,7 +272,7 @@ export function UserDetailDrawer({
                 <h3 className="text-xs font-semibold uppercase text-muted-foreground">
                   {t('master.securityAccess.userDetail.section.sessions')}
                 </h3>
-                {sessions.length > 1 && (
+                {boundSessions.length > 1 && (
                   <Button type="button" variant="outline" size="sm" onClick={() => setRevokeAllOpen(true)}>
                     {t('master.securityAccess.userDetail.revokeOtherSessions')}
                   </Button>
@@ -263,7 +289,7 @@ export function UserDetailDrawer({
               ) : (
                 <DataTable
                   columns={sessionColumns}
-                  rows={sessions}
+                  rows={boundSessions}
                   getRowKey={(s) => s.id}
                   empty={t('master.securityAccess.userDetail.sessionsEmpty')}
                   dense
@@ -271,13 +297,13 @@ export function UserDetailDrawer({
               )}
             </section>
 
-            {detail.recentPrivilegedActivity.length > 0 && (
+            {boundDetail.recentPrivilegedActivity.length > 0 && (
               <section>
                 <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                   {t('master.securityAccess.userDetail.section.privilegedActivity')}
                 </h3>
                 <ul className="space-y-1.5">
-                  {detail.recentPrivilegedActivity.map((a) => (
+                  {boundDetail.recentPrivilegedActivity.map((a) => (
                     <li key={a.id}>
                       <button
                         type="button"
@@ -298,17 +324,18 @@ export function UserDetailDrawer({
                 {t('master.securityAccess.userDetail.techDetails')}
               </summary>
               <p className="mt-2 font-mono">
-                {t('master.securityAccess.userDetail.techUserId', { id: detail.id })}
+                {t('master.securityAccess.userDetail.techUserId', { id: boundDetail.id })}
               </p>
             </details>
           </div>
-        ) : (
+        ) : userId && !loading && !error ? (
           <p className="text-sm text-muted-foreground">{t('master.securityAccess.userDetail.notFound')}</p>
-        )}
+        ) : null}
       </DetailDrawer>
 
       <PrivilegeActionDialog
-        open={mfaResetOpen}
+        key={`mfa-reset-${userId ?? 'closed'}`}
+        open={mfaResetOpen && targetReady}
         onOpenChange={setMfaResetOpen}
         title={t('master.securityAccess.userDetail.mfaReset.title')}
         description={t('master.securityAccess.userDetail.mfaReset.description')}
@@ -318,34 +345,38 @@ export function UserDetailDrawer({
         confirmLabel={t('master.securityAccess.userDetail.mfaReset.confirm')}
         loading={actionLoading}
         targetSummary={
-          detail ? (
+          boundDetail ? (
             <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
-              <p className="font-semibold">{detail.name}</p>
-              <p className="text-muted-foreground">{detail.email}</p>
+              <p className="font-semibold">{boundDetail.name}</p>
+              <p className="text-muted-foreground">{boundDetail.email}</p>
             </div>
           ) : undefined
         }
         onConfirm={async (reason) => {
-          if (!userId) return;
+          const targetId = targetUserIdRef.current;
+          if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
           setActionLoading(true);
           try {
-            await api.admin.securityAccess.resetUserMfa(userId, {
+            await api.admin.securityAccess.resetUserMfa(targetId, {
               reason,
               idempotencyKey: newIdempotencyKey('mfa-reset'),
             });
+            if (targetUserIdRef.current !== targetId) return;
             toast.success(t('master.securityAccess.userDetail.mfaReset.success'));
             setMfaResetOpen(false);
             void refresh();
-          } catch (e: unknown) {
-            toast.error(e instanceof Error ? e.message : t('master.securityAccess.userDetail.mfaReset.failed'));
+          } catch {
+            if (targetUserIdRef.current !== targetId) return;
+            toast.error(t('master.securityAccess.userDetail.mfaReset.failed'));
           } finally {
-            setActionLoading(false);
+            if (targetUserIdRef.current === targetId) setActionLoading(false);
           }
         }}
       />
 
       <PrivilegeActionDialog
-        open={deleteOpen}
+        key={`delete-${userId ?? 'closed'}`}
+        open={deleteOpen && targetReady}
         onOpenChange={setDeleteOpen}
         title={t('master.securityAccess.userDetail.delete.title')}
         description={t('master.securityAccess.userDetail.delete.description')}
@@ -355,24 +386,28 @@ export function UserDetailDrawer({
         confirmLabel={t('master.securityAccess.userDetail.delete.confirm')}
         loading={actionLoading}
         onConfirm={async (reason) => {
-          if (!userId) return;
+          const targetId = targetUserIdRef.current;
+          if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
           setActionLoading(true);
           try {
-            await api.users.delete(userId, reason);
+            await api.users.delete(targetId, reason);
+            if (targetUserIdRef.current !== targetId) return;
             toast.success(t('master.securityAccess.userDetail.delete.success'));
             setDeleteOpen(false);
             onClose();
             onUserDeleted?.();
-          } catch (e: unknown) {
-            toast.error(e instanceof Error ? e.message : t('master.securityAccess.userDetail.delete.failed'));
+          } catch {
+            if (targetUserIdRef.current !== targetId) return;
+            toast.error(t('master.securityAccess.userDetail.delete.failed'));
           } finally {
-            setActionLoading(false);
+            if (targetUserIdRef.current === targetId) setActionLoading(false);
           }
         }}
       />
 
       <PrivilegeActionDialog
-        open={revokeAllOpen}
+        key={`revoke-all-${userId ?? 'closed'}`}
+        open={revokeAllOpen && targetReady}
         onOpenChange={setRevokeAllOpen}
         title={t('master.securityAccess.userDetail.revokeAll.title')}
         description={t('master.securityAccess.userDetail.revokeAll.description')}
@@ -380,17 +415,20 @@ export function UserDetailDrawer({
         confirmLabel={t('master.securityAccess.userDetail.revokeAll.confirm')}
         loading={actionLoading}
         onConfirm={async () => {
-          if (!userId) return;
+          const targetId = targetUserIdRef.current;
+          if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
           setActionLoading(true);
           try {
-            await api.admin.securityAccess.revokeAllSessions(userId);
+            await api.admin.securityAccess.revokeAllSessions(targetId);
+            if (targetUserIdRef.current !== targetId) return;
             toast.success(t('master.securityAccess.userDetail.revokeAll.success'));
             setRevokeAllOpen(false);
             void refreshSessions();
-          } catch (e: unknown) {
-            toast.error(e instanceof Error ? e.message : t('master.securityAccess.userDetail.revokeAll.failed'));
+          } catch {
+            if (targetUserIdRef.current !== targetId) return;
+            toast.error(t('master.securityAccess.userDetail.revokeAll.failed'));
           } finally {
-            setActionLoading(false);
+            if (targetUserIdRef.current === targetId) setActionLoading(false);
           }
         }}
       />

@@ -26,24 +26,45 @@ export function useSecurityAccessPresentation() {
     [sectionLabel],
   );
 
-  const mfaStateLabel = useCallback(
-    (state: GovernanceMfaState) => t(`master.securityAccess.mfaState.${state}` as TranslationKey),
+  const localizeEnum = useCallback(
+    (prefix: string, value: string, unknownKey: TranslationKey) => {
+      const key = `${prefix}.${value}` as TranslationKey;
+      const translated = t(key);
+      return translated === key ? t(unknownKey) : translated;
+    },
     [t],
   );
 
+  const mfaStateLabel = useCallback(
+    (state: GovernanceMfaState) =>
+      localizeEnum('master.securityAccess.mfaState', state, 'master.securityAccess.mfaState.unknown'),
+    [localizeEnum],
+  );
+
   const attentionCodeLabel = useCallback(
-    (code: SecurityAttentionCode) => t(`master.securityAccess.attention.${code}` as TranslationKey),
-    [t],
+    (code: SecurityAttentionCode) =>
+      localizeEnum('master.securityAccess.attention', code, 'master.securityAccess.attention.unknown'),
+    [localizeEnum],
   );
 
   const auditResultLabel = useCallback(
     (result: string) =>
-      result === 'success'
-        ? t('master.securityAccess.auditResult.success')
-        : result === 'failure'
-          ? t('master.securityAccess.auditResult.failure')
-          : result,
-    [t],
+      localizeEnum('master.securityAccess.auditResult', result, 'master.securityAccess.auditResult.unknown'),
+    [localizeEnum],
+  );
+
+  const accountStateLabel = useCallback(
+    (state: string) =>
+      localizeEnum('master.securityAccess.accountState', state, 'master.securityAccess.accountState.unknown'),
+    [localizeEnum],
+  );
+
+  const platformRoleLabel = useCallback(
+    (role: string | null | undefined) => {
+      if (!role) return t('master.securityAccess.common.emDash');
+      return localizeEnum('master.securityAccess.platformRole', role, 'master.securityAccess.platformRole.unknown');
+    },
+    [localizeEnum, t],
   );
 
   const loadError = useCallback(
@@ -65,6 +86,8 @@ export function useSecurityAccessPresentation() {
     mfaStateLabel,
     attentionCodeLabel,
     auditResultLabel,
+    accountStateLabel,
+    platformRoleLabel,
     loadError,
     formatRelative,
   };

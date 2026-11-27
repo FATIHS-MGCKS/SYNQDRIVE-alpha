@@ -233,4 +233,14 @@ export const masterSecurityAccessV1En = {
   'master.securityAccess.privilege.escalation.confirm': 'Assign platform administrator',
   'master.securityAccess.privilege.escalation.fullAccessWarning':
     'Full access to all tenants and privileged control-plane actions.',
+  'master.securityAccess.accountState.ACTIVE': 'Active',
+  'master.securityAccess.accountState.INACTIVE': 'Inactive',
+  'master.securityAccess.accountState.SUSPENDED': 'Suspended',
+  'master.securityAccess.accountState.unknown': 'Unknown status',
+  'master.securityAccess.platformRole.MASTER_ADMIN': 'Platform administrator',
+  'master.securityAccess.platformRole.master-billing': 'Billing (restricted)',
+  'master.securityAccess.platformRole.unknown': 'Unknown role',
+  'master.securityAccess.attention.unknown': 'Unknown attention',
+  'master.securityAccess.auditResult.unknown': 'Unknown result',
+  'master.securityAccess.userDetail.errorTitle': 'User details',
 } as const;

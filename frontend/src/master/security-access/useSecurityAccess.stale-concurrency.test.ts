@@ -123,6 +123,36 @@ describe('useSecurityAccess stale concurrency (USR-P1B)', () => {
     expect(result.current.detail?.id).toBe('user-b');
   });
 
+  it('clears bound detail synchronously when switching from loaded A to B', async () => {
+    getUser.mockImplementation((id: string) => {
+      if (id === 'user-a') {
+        return Promise.resolve({
+          id: 'user-a',
+          name: 'A',
+          email: 'a@test.com',
+          createdAt: '2020-01-01T00:00:00Z',
+          memberships: [],
+          mfa: { state: 'ENABLED' },
+        });
+      }
+      return new Promise(() => {});
+    });
+    listUserSessions.mockResolvedValue([]);
+
+    const { result, rerender } = renderHook(
+      ({ userId }) => useSecurityUserDetail(userId, loadError),
+      { initialProps: { userId: 'user-a' as string | null } },
+    );
+
+    await waitForHook(() => result.current.detail?.id === 'user-a');
+    await act(async () => {
+      rerender({ userId: 'user-b' });
+      await Promise.resolve();
+    });
+    expect(result.current.detail).toBeNull();
+    expect(result.current.sessions).toEqual([]);
+  });
+
   it('sets sessionsError instead of implying empty sessions on failure', async () => {
     getUser.mockResolvedValue({
       id: 'u1',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, getErrorMessage } from '../../lib/api';
 import { SECURITY_ACCESS_REFRESH_MS, SECURITY_ACCESS_STALE_MS } from './security-access.utils';
 import type {
@@ -103,11 +103,24 @@ export function useSecurityUserDetail(userId: string | null, loadError: (k: Load
   const detailRequestRef = useRef(0);
   const sessionsRequestRef = useRef(0);
 
+  useLayoutEffect(() => {
+    detailRequestRef.current += 1;
+    sessionsRequestRef.current += 1;
+    setDetail(null);
+    setSessions([]);
+    setError(null);
+    setSessionsError(null);
+    setLoading(!!userId);
+    setSessionsLoading(!!userId);
+  }, [userId]);
+
   const load = useCallback(async () => {
     if (!userId) {
       setDetail(null);
       setSessions([]);
       setSessionsError(null);
+      setLoading(false);
+      setSessionsLoading(false);
       return;
     }
     const requestId = ++detailRequestRef.current;
@@ -145,17 +158,11 @@ export function useSecurityUserDetail(userId: string | null, loadError: (k: Load
   }, [userId, loadError]);
 
   useEffect(() => {
-    detailRequestRef.current += 1;
-    sessionsRequestRef.current += 1;
     void load();
   }, [load]);
 
   useEffect(() => {
     if (userId) void loadSessions();
-    else {
-      setSessions([]);
-      setSessionsError(null);
-    }
   }, [userId, loadSessions]);
 
   return {
@@ -246,9 +253,16 @@ export function useRoleDetail(
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
+  useLayoutEffect(() => {
+    requestIdRef.current += 1;
+    setDetail(null);
+    setLoading(!!roleId && !!scope);
+  }, [roleId, scope, organizationId]);
+
   useEffect(() => {
     if (!roleId || !scope) {
       setDetail(null);
+      setLoading(false);
       return;
     }
     const requestId = ++requestIdRef.current;
@@ -321,9 +335,16 @@ export function useAuditDetail(auditId: string | null) {
   const [loading, setLoading] = useState(false);
   const requestIdRef = useRef(0);
 
+  useLayoutEffect(() => {
+    requestIdRef.current += 1;
+    setDetail(null);
+    setLoading(!!auditId);
+  }, [auditId]);
+
   useEffect(() => {
     if (!auditId) {
       setDetail(null);
+      setLoading(false);
       return;
     }
     const requestId = ++requestIdRef.current;
