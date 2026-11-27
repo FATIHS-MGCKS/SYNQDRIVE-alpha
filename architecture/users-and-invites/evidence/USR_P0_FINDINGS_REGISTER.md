@@ -218,7 +218,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **SOURCE** | `auth.guard.ts`; `ACCESS_TOKEN_RESIDUAL_LIFETIME_NOTE`; `platform-permission-jwt.integration.spec.ts` |
 | **EVIDENCE** | [USR_P0_FINAL_EVIDENCE_SEAL.md](USR_P0_FINAL_EVIDENCE_SEAL.md) |
 | **OWNER_DECISION** | **OWNER_APPROVED_REMEDIATION_REQUIRED** (USR-OWN-02) |
-| **USR-P2_STATUS** | **OPEN (acceptance incomplete)** — E5C implementation on PR **#2534** @ `e2119608d`; mandatory exact-HEAD CI **PENDING** (USR-P2 `45989019705`, Product Catalog `45989020760`, VO-5B `45989020278`); prior Product Catalog **16/16** on `421f19f93` run `45987101532`. **REMEDIATED_REPO** only after green gates; **NOT DEPLOYED / NOT PRODUCTION_VERIFIED** |
+| **USR-P2_STATUS** | **REMEDIATED_REPO** — accepted product HEAD **`7da011d72c806d3bc17aa0c81fc1f5c397febf6f`** (PR **#2534**); mandatory CI **PASS** (USR-P2 `46006709524` / job `140535127725`, authority `46006706168`, Product Catalog `46006709629` **16/16**, VO-5B `46006709496` **20/20**). Authority workflow **#2541** merged @ `ffa732998`. **USR_P2_REPOSITORY_ACCEPTANCE=PASS**. **NOT DEPLOYED / NOT PRODUCTION_VERIFIED / NOT CERTIFIED** — **USR-P5** cutover gate applies |
 | **POLICY_BIND** | USR-OWN-02 |
 
 ---

@@ -27,7 +27,7 @@ P2E scope items C01–C08; **E1-only** acceptance on PR **#2534** branch `cursor
 
 Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 
-**R-008** remains **OPEN** until E3–E5 and owner attestation — **E1 PASS**, **E2 PASS** on executed evidence.
+**Historical (pre-acceptance):** R-008 remained **OPEN** until E3–E5 and owner attestation — **E1 PASS**, **E2 PASS** on executed evidence (frozen).
 
 ## E5B security closeout (2026-11-27)
 
@@ -37,7 +37,7 @@ Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 | C02 org offboarding concurrency | **IMPLEMENTED** — `C02-A/B/C` on `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` |
 | Strict step-up grant binding | **IMPLEMENTED** — `iam-mfa-step-up.service.ts` exact scope/version; E2 PG proofs added |
 | E3 audit actor/scope replay | **IMPLEMENTED** — missing actor replay denied; org scope binding on outbox match |
-| CI verification | **PENDING** — exact-HEAD runs `45987101336` (USR-P2), `45987101532` (Product Catalog), `45987101448` (VO-5B) on `421f19f932500c9cdb7e91442b7ec3d925b3639b` were **not terminal** at E5C implementation start |
+| CI verification | **SUPERSEDED** — prior queued runs on older SHAs; see **Accepted product HEAD** below |
 
 ## E5C final closeout (2026-11-27)
 
@@ -50,5 +50,35 @@ Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 | i18n PR gate | **FIXED** on `bded2167d` — restored `hardcoded-copy-inventory.json` (accidental regen in E5C); `GOVERNANCE_AUTHORITY_CHANGED` cleared |
 | E5C CI stabilization | **PUSHED** `bded2167d` — C02 infra guards; step-up `membershipVersion`; MFA reset/login cross-connection contention |
 | C02-A remediation | **IMPLEMENTED** — org fence in `completeSessionsUnderActiveLease`; C02-A uses `IAM_ORG_SESSION_WRITE_LOCK_CLASS` holder (not execute hashtext lock) |
-| Authority split | **PLAN ONLY** — see `/opt/cursor/artifacts/usr-p2-authority-split-plan.md`; owner auth required before separate PR |
-| Repository acceptance | **PENDING_CI** after blocker push — **R-008 OPEN** |
+| Authority split | **MERGED** — Authority PR **#2541** → `main` @ `ffa732998ac9dd366147508537e254c301c8b993`; product PR excludes workflow diff |
+| Repository acceptance | **PASS** — see § Accepted product HEAD (runtime frozen @ `7da011d72`) |
+
+## Accepted product HEAD — repository acceptance seal (2026-11-27)
+
+**Frozen implementation SHA (product/runtime):** `7da011d72c806d3bc17aa0c81fc1f5c397febf6f`  
+**PR base after authority merge:** `ffa732998ac9dd366147508537e254c301c8b993`  
+**Owner authorization:** conditional governance closeout + merge (this seal).  
+**Documentation-only commits after this SHA do not re-run or re-claim the evidence below.**
+
+| Gate | Run / job | Result |
+|------|-----------|--------|
+| USR-P2 PostgreSQL | workflow `46006709524`, certification job `140535127725` | **PASS**, `USR_P2_PG_EXECUTED=1`, gate exit **0** |
+| i18n authority protection | `46006706168` | **PASS** |
+| Product Catalog disposable | `46006709629` | **PASS**, HTTP **16/16** |
+| Vehicle Onboarding VO-5B | `46006709496` | **PASS**, offboard HTTP **20/20** |
+| i18n new debt | `46006709571` | **PASS** |
+| Bootstrap on product PR | classify | **BOOTSTRAP_ELIGIBLE=NO**, validation **NOT_APPLICABLE** (skipped) |
+
+| Slice | Evidence @ `7da011d72` |
+|-------|-------------------------|
+| C02-A/B/C | **PASS** (CI log, org session write lock class) |
+| E2 MFA seal | **38/38** |
+| E3 audit | **23/23** |
+| Reset-first / MFA-first contention | **PASS** |
+| Strict step-up grant binding | **PASS** (E2-G + E5B/C shards in gate log) |
+| Cross-replica authority | **PASS** (P2C + E4 shards) |
+
+**R-008_STATUS=REMEDIATED_REPO** | **USR_P2_REPOSITORY_ACCEPTANCE=PASS**  
+**PRODUCTION_VERIFIED=NO** | **COMPLIANCE_REVIEWED=NO** | **CERTIFIED=NO** | **DEPLOYED=NO** | **FLAGS_ARMED=NO**
+
+**Next controlled work:** **USR-P5** production schema preflight + owner-authorized release/cutover per [`USR_P2E_E4_RELEASE_COMPATIBILITY.md`](USR_P2E_E4_RELEASE_COMPATIBILITY.md) — not authorized by this seal.

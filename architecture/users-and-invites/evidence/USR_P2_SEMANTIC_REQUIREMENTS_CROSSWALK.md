@@ -45,7 +45,7 @@ Maps **USR-OWN-02 acceptance behaviors** to **exact test file + test name** exec
 | ID | Required behavior | Executed test (file — name) | E1 verdict |
 |----|-------------------|----------------------------|------------|
 | C01 | Rotation-first vs `revokeAllActiveForUser` contention | `usr-p2c-deterministic-race.postgres.integration.spec.ts` — `RACE01 rotation-first: revoke waits on rotate fence; successor denied after both commit` | PASS |
-| C02 | Production org offboarding vs org-bound + legacy refresh | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` — `E1_C02` baseline + **E5C** `C02-A/B/C` (execute lock witness; post-offboard denial for issued/rotated credentials in either race order; unrelated org preserved) | PASS (E1+E5C implemented; **PENDING_CI** on `e2119608d`) |
+| C02 | Production org offboarding vs org-bound + legacy refresh | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` — `E1_C02` baseline + **E5C** `C02-A/B/C` (canonical IAM org session write lock; post-offboard denial) | **PASS** @ accepted product HEAD `7da011d72` (USR-P2 run `46006709524`) |
 | C03 | B10 concurrent mutation invariants | `usr-p2b-atomic-security-mutations.postgres.integration.spec.ts` — `B10 password mutation serializes against concurrent refresh rotation`; `B10 MFA reset serializes…`; `B10 membership mutation serializes…` | PASS |
 | C04 | Role downgrade + RolesGuard | `usr-p2c-semantic-guard.postgres.integration.spec.ts` — `E1_C04 organization role downgrade denies RolesGuard for stale membershipRole` | PASS |
 | C05 | Permission revoke + PermissionsGuard | same — `E1_C05 custom permission revocation denies PermissionsGuard for stale JWT` | PASS |
@@ -54,3 +54,7 @@ Maps **USR-OWN-02 acceptance behaviors** to **exact test file + test name** exec
 | C08 | Lifecycle + binding | `org-scoping.organization-status.http-security.integration.spec.ts` (gate tail) | PASS |
 
 **Full usr-p2 PostgreSQL gate:** `backend/scripts/test/usr-p2-postgres-gate.sh` (includes E1 org lifecycle + C07/C08 HTTP shards).
+
+## Repository acceptance crosswalk (frozen)
+
+**Accepted product HEAD:** `7da011d72c806d3bc17aa0c81fc1f5c397febf6f` — disposable gate **`46006709524`** (certification job **`140535127725`**), exit **0**, `USR_P2_PG_EXECUTED=1`. Cross-domain: Product Catalog **`46006709629`** **16/16**; VO-5B offboard HTTP **`46006709496`** **20/20**. **R-008=REMEDIATED_REPO**; runtime evidence not claimed on later documentation-only SHAs.

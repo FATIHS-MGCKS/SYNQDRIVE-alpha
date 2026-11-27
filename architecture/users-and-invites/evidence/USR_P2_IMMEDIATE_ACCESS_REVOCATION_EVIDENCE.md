@@ -94,13 +94,25 @@ Prisma `User.firstName` exists in schema; disposable DB after full migrate lacks
 | C02 race correction | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` C02-A/B/C |
 | Reset vs MFA contention | `usr-p2e-e2-mfa-seal.postgres.integration.spec.ts` E5C barrier reset-first |
 
-**Prior exact-HEAD CI (`421f19f93`):** Product Catalog run `45987101532` — **16/16** HTTP PASS (job log). USR-P2 `45987101336` and VO-5B `45987101448` were **in_progress** when superseded by `e2119608d`.
+**Historical CI (superseded SHAs):** Earlier queued runs on `421f19f93` / `e2119608d` — replaced by accepted product HEAD below.
 
-**New exact-HEAD CI (`e2119608d531c39735a9b537022c93726565fbc4`):** USR-P2 `45989019705`, Product Catalog `45989020760`, VO-5B `45989020278` — **pending/queued** at closeout.
+## Accepted product HEAD — mandatory CI (frozen evidence)
+
+**Implementation SHA:** `7da011d72c806d3bc17aa0c81fc1f5c397febf6f` (PR **#2534**). Authority merge base: `ffa732998` (PR **#2541**).
+
+| Check | Run | Verdict |
+|-------|-----|---------|
+| USR-P2 disposable PostgreSQL gate | `46006709524` (job `140535127725`) | **PASS**, exit **0**, `USR_P2_PG_EXECUTED=1` |
+| i18n authority protection | `46006706168` | **PASS** |
+| Product Catalog P1 + V2 HTTP | `46006709629` | **16/16** |
+| VO-5B / VO5C-P4A offboard HTTP | `46006709496` | **20/20** |
+| Commit rollup | 65 checks @ `7da011d72` | **64 success**, **1 skipped** (bootstrap N/A), **0 failure** |
+
+Documentation-only governance commits after `7da011d72` **do not** extend this runtime attestation.
 
 ## R-008 status
 
-**OPEN (P1)** — repository remediation **complete on branch** pending **exact-HEAD** disposable PostgreSQL gate + cross-domain regressions. **REMEDIATED_REPO** not claimed until mandatory CI is terminal **success**. **NOT DEPLOYED / NOT PRODUCTION_VERIFIED / NOT CERTIFIED.**
+**REMEDIATED_REPO (2026-11-27)** — **USR_P2_REPOSITORY_ACCEPTANCE=PASS** on frozen product HEAD above. **NOT DEPLOYED / NOT PRODUCTION_VERIFIED / NOT COMPLIANCE_REVIEWED / NOT CERTIFIED.** Production release requires **USR-P5** owner authorization.
 
 ## Non-goals preserved
 

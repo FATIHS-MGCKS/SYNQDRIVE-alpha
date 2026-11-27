@@ -30,4 +30,4 @@ Gate: `usr-p2-postgres-gate.sh` P2D shards (14) before P1A.
 
 **P2E_READY=PARTIAL** — see [`USR_P2E_FINAL_RESIDUALS.md`](USR_P2E_FINAL_RESIDUALS.md).
 
-**R-008 OPEN** until P2E repository acceptance.
+**R-008=REMEDIATED_REPO** — P2D scope **PASS**; full repository acceptance on product HEAD `7da011d72` (USR-P2 gate run `46006709524`).

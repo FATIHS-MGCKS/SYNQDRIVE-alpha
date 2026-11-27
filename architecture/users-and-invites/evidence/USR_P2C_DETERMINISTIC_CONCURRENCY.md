@@ -2,7 +2,7 @@
 
 **Operation:** `SYNQDRIVE_MASTER_USERS_P2C_CONCURRENCY_AUTHORIZATION`  
 **PR:** #2534  
-**Target:** USR-P0-R-008 (partial — concurrency + semantics; R008 stays OPEN for P2D/P2E)
+**Target:** USR-P0-R-008 — P2C scope **PASS**; repository **REMEDIATED_REPO** @ product HEAD `7da011d72` (see [`USR_P2E_FINAL_RESIDUALS.md`](USR_P2E_FINAL_RESIDUALS.md))
 
 ## Infrastructure
 
@@ -39,4 +39,4 @@ Gate: `usr-p2-postgres-gate.sh` P2C shards (14) + semantic guard spec after P2B.
 
 **P2C_VERDICT=PASS** for deterministic disposable-PostgreSQL concurrency scope defined above.
 
-**R-008** remains **OPEN** pending P2D audit attribution, MFA login matrix, and release-level P2E evidence.
+**Historical:** R-008 was **OPEN** until P2E acceptance — **P2C_VERDICT=PASS** retained; **R-008=REMEDIATED_REPO** at repository level on frozen HEAD `7da011d72`.
