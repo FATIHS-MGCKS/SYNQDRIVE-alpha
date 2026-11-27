@@ -87,6 +87,8 @@ function assertDisposableDb(): void {
   let prisma: PrismaClient;
   let prismaB: PrismaClient;
   let stack: ReturnType<typeof createUsrP2PgIamStack>;
+  let stackB: ReturnType<typeof createUsrP2PgIamStack>;
+  let authMfaLoginB: AuthMfaLoginService;
   let stepUp: IamMfaStepUpService;
   let challenge: IamMfaChallengeService;
   let authMfaLogin: AuthMfaLoginService;
@@ -107,8 +109,13 @@ function assertDisposableDb(): void {
       legacyUnscopedGrace: true,
       orgBoundRefreshSessions: false,
     });
+    stackB = createUsrP2PgIamStack(prismaB, JWT_SECRET, {
+      legacyUnscopedGrace: true,
+      orgBoundRefreshSessions: false,
+    });
     stepUp = new IamMfaStepUpService(prisma as never);
     challenge = new IamMfaChallengeService(prisma as never, stack.refresh, stepUp);
+    const challengeB = new IamMfaChallengeService(prismaB as never, stackB.refresh, stepUp);
     const config = {
       get: (key: string, fallback?: unknown) => {
         if (key === 'app.jwtSecret') return JWT_SECRET;
@@ -125,6 +132,16 @@ function assertDisposableDb(): void {
       enrollment,
       challenge,
       platformPermissions,
+    );
+    const platformPermissionsB = new PlatformPermissionService(prismaB as never);
+    const enrollmentB = new IamMfaEnrollmentService(prismaB as never, platformPermissionsB);
+    authMfaLoginB = new AuthMfaLoginService(
+      config,
+      prismaB as never,
+      stackB.refresh,
+      enrollmentB,
+      challengeB,
+      platformPermissionsB,
     );
     const iamAudit = {
       enqueueInTransaction: jest.fn().mockImplementation(async (_tx, input) => ({
@@ -1443,7 +1460,7 @@ function assertDisposableDb(): void {
 
   it('E5C concurrent reset-first holds MFA login challenge behind user session lock', async () => {
     const { userId, secret } = await seedUserWithTotp();
-    const pending = authMfaLogin.signMfaPendingToken({
+    const pending = authMfaLoginB.signMfaPendingToken({
       userId,
       sessionVersion: 0,
       securityVersion: 0,
@@ -1458,17 +1475,58 @@ function assertDisposableDb(): void {
       idempotencyKey: `e5c-reset:${randomUUID()}`,
     });
     await waitUntilAdvisoryLockWaiters(prisma, userId, 1);
-    const loginP = authMfaLogin.completeLoginMfa({
+    const pidLogin = await pgBackendPid(prismaB);
+    const loginP = authMfaLoginB.completeLoginMfa({
       mfaPendingToken: pending,
       code: authenticator.generate(secret),
     });
-    const blockedPid = await pgBackendPid(prismaB);
-    await waitUntilBackendBlocked(prisma, blockedPid);
+    const blockingPids = await waitUntilBackendBlocked(prisma, pidLogin);
     holder.release();
     await holder.completion;
     const [resetOutcome, loginOutcome] = await Promise.allSettled([resetP, loginP]);
+    expect(blockingPids.length).toBeGreaterThan(0);
     expect(resetOutcome.status).toBe('fulfilled');
     expect(loginOutcome.status).toBe('rejected');
+  });
+
+  it('E5C concurrent MFA-first overlaps reset behind user session lock', async () => {
+    const { userId, secret } = await seedUserWithTotp();
+    const pending = authMfaLoginB.signMfaPendingToken({
+      userId,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    const holder = holdUserSessionWriteLockTransaction(prisma, userId);
+    await waitUntilUserAdvisoryLockHeld(prismaB, userId);
+    const pidLogin = await pgBackendPid(prismaB);
+    const loginP = authMfaLoginB.completeLoginMfa({
+      mfaPendingToken: pending,
+      code: authenticator.generate(secret),
+    });
+    await waitUntilAdvisoryLockWaiters(prisma, userId, 1);
+    const resetP = mfaReset.resetMfaForUser({
+      organizationId: 'platform',
+      targetUserId: userId,
+      actorUserId: userId,
+      idempotencyKey: `e5c-mfa-first:${randomUUID()}`,
+    });
+    const blockingPids = await waitUntilBackendBlocked(prisma, pidLogin);
+    holder.release();
+    await holder.completion;
+    const [loginOutcome, resetOutcome] = await Promise.allSettled([loginP, resetP]);
+    expect(blockingPids.length).toBeGreaterThan(0);
+    expect(loginOutcome.status).toBe('fulfilled');
+    expect(resetOutcome.status).toBe('fulfilled');
+    if (loginOutcome.status === 'fulfilled') {
+      const loginValue = loginOutcome.value;
+      await expect(
+        stack.authority.validateAccessJwt(
+          jwt.verify(loginValue.accessToken, JWT_SECRET) as never,
+        ),
+      ).rejects.toThrow();
+      await expect(stack.refresh.rotate(loginValue.refreshToken)).rejects.toThrow();
+    }
   });
 
   it('CONCURRENT_RESET_MFA reset after MFA login blocks stale completion', async () => {

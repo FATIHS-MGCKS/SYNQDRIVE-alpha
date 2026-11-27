@@ -227,6 +227,14 @@ function execReq(idempotencyKey: string) {
     throw new Error(`hashtext advisory lock not held: ${lockKey}`);
   }
 
+  function assertNotInfrastructureRejection(reason: unknown): void {
+    const text =
+      reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason ?? '');
+    expect(text).not.toMatch(
+      /hashtext advisory lock not held|deadlock|timeout|ECONNRESET|connection terminated/i,
+    );
+  }
+
   async function assertOrgCredentialsDenied(issued: { accessToken: string; refreshToken: string }) {
     const decoded = jwt.verify(issued.accessToken, JWT_SECRET) as jwt.JwtPayload;
     await expect(stack.authority.validateAccessJwt(decoded as never)).rejects.toThrow();
@@ -317,6 +325,8 @@ function execReq(idempotencyKey: string) {
     expect(orgRow.status).toBe(OrganizationStatus.SUSPENDED);
     if (issueOutcome.status === 'fulfilled') {
       await assertOrgCredentialsDenied(issueOutcome.value);
+    } else {
+      assertNotInfrastructureRejection(issueOutcome.reason);
     }
     const boundB = await issueBound(userId, email, orgB, memB);
     expect((await stack.refresh.rotate(boundB.refreshToken)).accessToken).toBeTruthy();
@@ -336,6 +346,7 @@ function execReq(idempotencyKey: string) {
     if (rotateOutcome.status === 'fulfilled') {
       await assertOrgCredentialsDenied(rotateOutcome.value);
     } else {
+      assertNotInfrastructureRejection(rotateOutcome.reason);
       await assertOrgCredentialsDenied(boundA);
     }
     const boundB = await issueBound(userId, email, orgB, memB);
@@ -365,6 +376,7 @@ function execReq(idempotencyKey: string) {
     if (legacyOutcome.status === 'fulfilled') {
       await assertOrgCredentialsDenied(legacyOutcome.value);
     } else {
+      assertNotInfrastructureRejection(legacyOutcome.reason);
       await expect(stack.refresh.rotate(legacy.refreshToken)).rejects.toThrow();
     }
     const boundB = await issueBound(userId, email, orgB, memB);

@@ -163,16 +163,16 @@ export class IamMfaStepUpService {
       if (!membership || membership.status !== MembershipStatus.ACTIVE) {
         return false;
       }
-      if (
-        grant.membershipVersion !== null &&
-        grant.membershipVersion !== membership.membershipVersion
-      ) {
+      if (grant.membershipVersion !== membership.membershipVersion) {
         return false;
       }
       if (
-        context.membershipVersion !== null &&
-        context.membershipVersion !== membership.membershipVersion
+        context.membershipVersion === null ||
+        context.membershipVersion === undefined
       ) {
+        return false;
+      }
+      if (context.membershipVersion !== membership.membershipVersion) {
         return false;
       }
     }
@@ -210,19 +210,22 @@ export class IamMfaStepUpService {
       if (activeRefresh.membershipId !== grant.membershipId) {
         return false;
       }
-      if (
-        grant.membershipId &&
-        grant.membershipVersion !== null &&
-        activeRefresh.membershipVersion !== grant.membershipVersion
-      ) {
-        return false;
-      }
-      if (
-        context.membershipVersion !== null &&
-        activeRefresh.membershipVersion !== null &&
-        context.membershipVersion !== activeRefresh.membershipVersion
-      ) {
-        return false;
+      if (grant.membershipId) {
+        if (
+          activeRefresh.membershipVersion === null ||
+          activeRefresh.membershipVersion !== grant.membershipVersion
+        ) {
+          return false;
+        }
+        if (
+          context.membershipVersion === null ||
+          context.membershipVersion === undefined
+        ) {
+          return false;
+        }
+        if (context.membershipVersion !== activeRefresh.membershipVersion) {
+          return false;
+        }
       }
     }
 
