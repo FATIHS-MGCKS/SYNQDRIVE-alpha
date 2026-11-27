@@ -10,6 +10,7 @@ import {
   VehicleRegistryLifecycle,
 } from '@prisma/client';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { acquireOrgSessionWriteLock } from '@modules/auth/refresh-token-session-concurrency';
 import { MasterAdminAuditAction } from '@modules/activity-log/master-admin-audit.contract';
 import { MasterAdminAuditService } from '@modules/activity-log/master-admin-audit.service';
 import { VehicleOnboardingError } from '@modules/vehicle-onboarding/errors/vehicle-onboarding.errors';
@@ -300,6 +301,8 @@ export class OrganizationOffboardingExecutionService {
       if (stored.sessions?.completedAt) {
         return { ...workingProgress, sessions: stored.sessions };
       }
+
+      await acquireOrgSessionWriteLock(tx, organizationId);
 
       const revokedRefreshTokenCount = await tx.refreshToken
         .updateMany({

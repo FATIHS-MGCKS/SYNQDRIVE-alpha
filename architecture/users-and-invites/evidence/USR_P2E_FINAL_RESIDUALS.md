@@ -49,4 +49,6 @@ Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 | Reset/challenge contention | **IMPLEMENTED** — `E5C concurrent reset-first holds MFA login challenge behind user session lock` (E2 PG) |
 | i18n PR gate | **FIXED** on `bded2167d` — restored `hardcoded-copy-inventory.json` (accidental regen in E5C); `GOVERNANCE_AUTHORITY_CHANGED` cleared |
 | E5C CI stabilization | **PUSHED** `bded2167d` — C02 infra guards; step-up `membershipVersion`; MFA reset/login cross-connection contention |
-| Repository acceptance | **PENDING_CI** on `bded2167d` — **R-008 OPEN** until green exact-HEAD gates |
+| C02-A remediation | **IMPLEMENTED** — org fence in `completeSessionsUnderActiveLease`; C02-A uses `IAM_ORG_SESSION_WRITE_LOCK_CLASS` holder (not execute hashtext lock) |
+| Authority split | **PLAN ONLY** — see `/opt/cursor/artifacts/usr-p2-authority-split-plan.md`; owner auth required before separate PR |
+| Repository acceptance | **PENDING_CI** after blocker push — **R-008 OPEN** |

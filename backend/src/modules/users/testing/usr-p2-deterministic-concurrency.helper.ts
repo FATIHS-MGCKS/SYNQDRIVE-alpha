@@ -4,6 +4,7 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import {
+  acquireOrgSessionWriteLock,
   acquireUserSessionWriteLock,
   IAM_ORG_SESSION_WRITE_LOCK_CLASS,
   IAM_USER_SESSION_WRITE_LOCK_CLASS,
@@ -151,6 +152,39 @@ export async function waitUntilAdvisoryLockWaiters(
   );
 }
 
+export async function countOrgAdvisoryLockWaiters(
+  observer: PrismaClient,
+  organizationId: string,
+): Promise<number> {
+  const rows = await observer.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM pg_locks
+    WHERE locktype = 'advisory'
+      AND granted = false
+      AND classid = ${IAM_ORG_SESSION_WRITE_LOCK_CLASS}
+      AND objid = hashtext(${organizationId}::text)
+  `;
+  return Number(rows[0]?.count ?? 0n);
+}
+
+export async function waitUntilOrgAdvisoryLockWaiters(
+  observer: PrismaClient,
+  organizationId: string,
+  minWaiters: number,
+  options?: { timeoutMs?: number; pollMs?: number },
+): Promise<void> {
+  const timeoutMs = options?.timeoutMs ?? 45_000;
+  const pollMs = options?.pollMs ?? 10;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if ((await countOrgAdvisoryLockWaiters(observer, organizationId)) >= minWaiters) return;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  throw new Error(
+    `organization advisory lock waiters for ${organizationId} did not reach ${minWaiters} within ${timeoutMs}ms`,
+  );
+}
+
 export async function waitUntilOrgAdvisoryLockHeld(
   observer: PrismaClient,
   organizationId: string,
@@ -200,6 +234,24 @@ export async function waitUntilUserAdvisoryLockHeld(
 /**
  * Holds user session advisory lock until `release()` is called (open transaction).
  */
+export function holdOrgSessionWriteLockTransaction(
+  prisma: PrismaClient,
+  organizationId: string,
+): { completion: Promise<void>; release: () => void } {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const completion = prisma.$transaction(
+    async (tx) => {
+      await acquireOrgSessionWriteLock(tx, organizationId);
+      await released;
+    },
+    { maxWait: 120_000, timeout: 120_000 },
+  );
+  return { completion, release };
+}
+
 export function holdUserSessionWriteLockTransaction(
   prisma: PrismaClient,
   userId: string,

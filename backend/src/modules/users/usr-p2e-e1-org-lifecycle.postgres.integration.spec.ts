@@ -23,10 +23,12 @@ import { OrganizationOffboardingService } from '@modules/organizations/offboardi
 import { OFFBOARDING_EXECUTION_CONFIRM_VALUE } from '@modules/organizations/offboarding/organization-offboarding-execution.policy';
 import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
 import * as jwt from 'jsonwebtoken';
-import { organizationOffboardingExecuteLockKey } from '@shared/database/pg-advisory-lock.util';
 import {
+  holdOrgSessionWriteLockTransaction,
   pgBackendPid,
   waitUntilBackendBlocked,
+  waitUntilOrgAdvisoryLockHeld,
+  waitUntilOrgAdvisoryLockWaiters,
 } from '@modules/users/testing/usr-p2-deterministic-concurrency.helper';
 
 const OPT_IN = 'USR_P2E_E1_ORG_LIFECYCLE_PG';
@@ -203,30 +205,6 @@ function execReq(idempotencyKey: string) {
     await expect(stack.refresh.rotate(legacy.refreshToken)).rejects.toThrow();
   });
 
-  async function waitUntilHashtextAdvisoryLockHeld(
-    observer: PrismaClient,
-    lockKey: string,
-    options?: { timeoutMs?: number },
-  ): Promise<void> {
-    const timeoutMs = options?.timeoutMs ?? 45_000;
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      const rows = await observer.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*)::bigint AS count
-        FROM pg_locks
-        WHERE locktype = 'advisory'
-          AND granted = true
-          AND classid = 0
-          AND objid = hashtext(${lockKey}::text)
-      `;
-      if (Number(rows[0]?.count ?? 0n) > 0) {
-        return;
-      }
-      await new Promise((r) => setTimeout(r, 10));
-    }
-    throw new Error(`hashtext advisory lock not held: ${lockKey}`);
-  }
-
   function assertNotInfrastructureRejection(reason: unknown): void {
     const text =
       reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason ?? '');
@@ -294,19 +272,19 @@ function execReq(idempotencyKey: string) {
     return { userId, email, orgA, orgB, memA, memB };
   }
 
-  it('C02-A concurrent offboarding vs bound issuance observes execute advisory lock', async () => {
+  it('C02-A concurrent offboarding vs bound issuance contends on canonical IAM org session lock', async () => {
     const { userId, email, orgA, orgB, memA, memB } = await seedDualOrgUser();
-    const execLock = organizationOffboardingExecuteLockKey(orgA);
     await prepare.prepare(orgA, { idempotencyKey: `c02a-prep-${orgA}` }, 'ma-c02');
+    const holder = holdOrgSessionWriteLockTransaction(prisma, orgA);
+    await waitUntilOrgAdvisoryLockHeld(prismaB, orgA);
     const execP = execution.execute(orgA, execReq(`c02a-exec-${orgA}`), 'ma-c02');
+    const pidIssue = await pgBackendPid(prismaB);
     const issueP = (async () => {
-      await waitUntilHashtextAdvisoryLockHeld(prismaB, execLock);
-      const pid = await pgBackendPid(prismaB);
       const live = await prismaB.user.findUniqueOrThrow({
         where: { id: userId },
         select: { sessionVersion: true, securityVersion: true },
       });
-      const pending = stackB.refresh.issueTokenPair(
+      return stackB.refresh.issueTokenPair(
         {
           id: userId,
           email,
@@ -316,10 +294,13 @@ function execReq(idempotencyKey: string) {
         },
         { organizationId: orgA, membershipId: memA, role: 'WORKER', membershipVersion: 0 },
       );
-      await waitUntilBackendBlocked(prisma, pid);
-      return pending;
     })();
+    await waitUntilOrgAdvisoryLockWaiters(prisma, orgA, 1);
+    const blockingPids = await waitUntilBackendBlocked(prisma, pidIssue);
+    holder.release();
+    await holder.completion;
     const [execOutcome, issueOutcome] = await Promise.allSettled([execP, issueP]);
+    expect(blockingPids.length).toBeGreaterThan(0);
     expect(execOutcome.status).toBe('fulfilled');
     const orgRow = await prisma.organization.findUniqueOrThrow({ where: { id: orgA } });
     expect(orgRow.status).toBe(OrganizationStatus.SUSPENDED);
