@@ -68,7 +68,7 @@ function sessionRows(userId: string) {
 
 export async function installSecurityAccessMocks(page: Page) {
   await installMasterSidebarMocks(page);
-  await page.route('**/api/admin/security/**', async (route) => {
+  await page.route('**/api/v1/admin/security/**', async (route) => {
     const url = route.request().url();
     const method = route.request().method();
     if (method === 'OPTIONS') {

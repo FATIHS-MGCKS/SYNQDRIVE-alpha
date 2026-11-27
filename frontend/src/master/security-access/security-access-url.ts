@@ -36,6 +36,62 @@ const VALID_SECTIONS: SecurityAccessSection[] = [
 
 const VALID_OWN_TABS: OwnSecurityTab[] = ['mfa', 'sessions', 'recovery'];
 
+/** Scoped keys exclusive to Security Access (excludes shared `orgId` used by organizations/billing). */
+export const SECURITY_ACCESS_NAV_QUERY_KEYS = [
+  'securityAccess',
+  'ownSecurityTab',
+  'userId',
+  'roleId',
+  'roleScope',
+  'organizationId',
+  'auditId',
+  'eventId',
+] as const;
+
+export function stripSecurityAccessNavParams(params: URLSearchParams): void {
+  for (const key of SECURITY_ACCESS_NAV_QUERY_KEYS) {
+    params.delete(key);
+  }
+}
+
+/** Write canonical Security Access query keys from a search string into target params. */
+export function appendSecurityAccessNavParamsFromSearch(
+  target: URLSearchParams,
+  search: string,
+): void {
+  const normalizedSearch = search.startsWith('?') ? search : `?${search}`;
+  const next = readSecurityAccessLocation(normalizedSearch);
+
+  target.set('securityAccess', next.section);
+
+  if (next.section === 'own-security') {
+    target.set('ownSecurityTab', next.ownSecurityTab);
+  } else {
+    target.delete('ownSecurityTab');
+  }
+
+  if (next.userId) target.set('userId', next.userId);
+  else target.delete('userId');
+
+  if (next.roleId) target.set('roleId', next.roleId);
+  else target.delete('roleId');
+
+  if (next.roleScope) target.set('roleScope', next.roleScope);
+  else target.delete('roleScope');
+
+  if (next.orgId) target.set('orgId', next.orgId);
+  else target.delete('orgId');
+
+  if (next.auditId) target.set('auditId', next.auditId);
+  else target.delete('auditId');
+
+  if (next.eventId) target.set('eventId', next.eventId);
+  else target.delete('eventId');
+
+  if (next.organizationId) target.set('organizationId', next.organizationId);
+  else target.delete('organizationId');
+}
+
 export function readSecurityAccessLocation(search: string): SecurityAccessLocation {
   const p = new URLSearchParams(search);
   const section = (p.get('securityAccess') as SecurityAccessSection) ?? DEFAULT.section;

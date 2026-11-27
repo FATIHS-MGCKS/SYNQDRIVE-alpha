@@ -216,7 +216,7 @@ function MasterAppInner() {
       );
       pushMasterIntelligenceUrl(normalized.view, intelligenceContext, { replace: true });
     } else {
-      pushMasterNavState(normalized, true);
+      pushMasterNavState(normalized, true, search);
     }
   }, []);
 

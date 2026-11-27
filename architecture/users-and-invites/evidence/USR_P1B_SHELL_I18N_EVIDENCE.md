@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Operation** | `SYNQDRIVE_MASTER_USERS_P1B_FINAL_ACCEPTANCE_SEAL` |
+| **Operation** | `SYNQDRIVE_MASTER_USERS_P1B_FINAL_NAVIGATION_FIX` (supersedes seal evidence row below) |
 | **Base** | `87e2172a3b1cae6b84595b6070359b910239114b` (`main` post USR-P2 #2534) |
 | **Scope** | Frontend Master Admin shell + `frontend/src/master/security-access/*` |
 | **Backend** | **UNCHANGED** (no IAM policy edits) |
@@ -38,10 +38,23 @@
 
 | Run | Count | Result |
 |-----|-------|--------|
-| Project `desktop-1280`, serial | **6/6** | PASS |
-| Artifacts | 6 | `master-security-access-{desktop,tablet,mobile}-{light,dark}.png` under `/opt/cursor/artifacts/` |
+| Projects `desktop-1280`, `tablet-768`, `mobile-375`, serial | **18/18** | PASS |
+| Artifacts | 9 | hub matrix + users-flow PNGs under `/opt/cursor/artifacts/` |
+| E2E mock path | `/api/v1/admin/security/**` | aligned with runtime `BASE_URL` |
 
-Hub smoke + viewport/theme screenshots. Users tab / drawer / privilege dialog depth covered by Vitest UI proofs (synthetic API); Playwright synthetic list remains limited by master nav URL sync (section query not preserved on `pushMasterNavState`).
+End-to-end users list, search, pagination, user drawer, MFA privilege dialog (cancel), overflow checks. Screenshots: hub theme matrix + `master-security-access-users-flow-{desktop,tablet,mobile}.png`.
+
+## Navigation defect fix (final blocker)
+
+**Root cause:** `buildMasterNavSearch` rebuilt query strings without Security Access keys; `App.tsx` bootstrap `pushMasterNavState(normalized, true)` dropped `securityAccess`, `userId`, and related params.
+
+**Fix:** `appendSecurityAccessNavParamsFromSearch` / `stripSecurityAccessNavParams` in `security-access-url.ts`; `buildMasterNavSearch` + `pushMasterNavState` accept optional `searchSource`; bootstrap passes post-migration search. Non–security-access views strip scoped params (shared `orgId` preserved for organizations/billing).
+
+| Vitest | Tests | Result |
+|--------|-------|--------|
+| `security-access-nav-parity.test.ts` | 9 | PASS |
+| `master-nav-url.test.ts` (SA preserve) | +1 | PASS |
+| `security-access-url.test.ts` | baseline | PASS |
 
 ## Validation (local)
 
@@ -62,6 +75,7 @@ Hub smoke + viewport/theme screenshots. Users tab / drawer / privilege dialog de
 | HEAD | Result |
 |------|--------|
 | `f633356aed79e49094bb438d95a2ed1fa8390858` | **37/37 success** |
+| `18b2e972fddc29092e593cd6f9c89952388a0c0c` (nav fix) | CI pending — mandatory gate on exact HEAD |
 
 ## Non-goals (preserved)
 
