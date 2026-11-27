@@ -22,6 +22,7 @@ import { masterBillingInvoicesIt } from './master.billing.invoices.it';
 import { masterCvTechnicalSpecsIt } from './master.cv.technicalSpecs.it';
 import { masterCvDimoPrivilegeIt } from './master.cv.dimoPrivilege.it';
 import { masterCvOemSpecsIt } from './master.cv.oemSpecs.it';
+import { masterSecurityAccessV1It } from './master.security-access.v1.it';
 import { rentalMisuseStressStressGateIt } from './rental.misuseStress.stressGate.i18n';
 import { operatorTodayIt } from './operator.today.it';
 
@@ -232,6 +233,7 @@ export const it = {
   ...masterCvTechnicalSpecsIt,
   ...masterCvDimoPrivilegeIt,
   ...masterCvOemSpecsIt,
+  ...masterSecurityAccessV1It,
   ...batteryV2HvInspectionIT,
   ...tireWearV3It,
   ...serviceIntelligenceIt,

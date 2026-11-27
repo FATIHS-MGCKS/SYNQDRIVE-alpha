@@ -76,6 +76,7 @@ import { masterRegistrationBrakeEn } from './master.registration.brake.en';
 import { masterCvTechnicalSpecsEn } from './master.cv.technicalSpecs.en';
 import { masterCvDimoPrivilegeEn } from './master.cv.dimoPrivilege.en';
 import { masterCvOemSpecsEn } from './master.cv.oemSpecs.en';
+import { masterSecurityAccessV1En } from './master.security-access.v1.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -6041,6 +6042,7 @@ export const en = {
   ...masterCvTechnicalSpecsEn,
   ...masterCvDimoPrivilegeEn,
   ...masterCvOemSpecsEn,
+  ...masterSecurityAccessV1En,
   ...batteryV2HvInspectionEN,
   ...tireWearV3En,
   ...serviceIntelligenceEn,

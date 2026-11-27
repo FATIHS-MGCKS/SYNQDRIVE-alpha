@@ -1,16 +1,11 @@
 import { ChevronDown, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { StatusChip } from '../../../components/patterns';
 import { SkeletonCard } from '../../../components/patterns/states';
 import { useAuditDetail } from '../useSecurityAccess';
-import {
-  auditResultLabel,
-  auditResultTone,
-  formatRelativeDe,
-  maskIpDisplay,
-  truncateReason,
-} from '../security-access.utils';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
+import { auditResultTone, maskIpDisplay, truncateReason } from '../security-access.utils';
 
 interface AuditDetailDrawerProps {
   auditId: string | null;
@@ -19,9 +14,10 @@ interface AuditDetailDrawerProps {
 }
 
 function DiffBlock({ label, value }: { label: string; value: unknown }) {
+  const { t } = useSecurityAccessPresentation();
   const text =
     value == null
-      ? '—'
+      ? t('master.securityAccess.common.emDash')
       : typeof value === 'string'
         ? value
         : JSON.stringify(value, null, 2);
@@ -37,76 +33,88 @@ function DiffBlock({ label, value }: { label: string; value: unknown }) {
 }
 
 export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDetailDrawerProps) {
+  const { t, auditResultLabel, formatRelative } = useSecurityAccessPresentation();
   const { detail, loading } = useAuditDetail(auditId);
+  const boundDetail = detail && auditId && detail.id === auditId ? detail : null;
   const [techOpen, setTechOpen] = useState(false);
+
+  useEffect(() => {
+    setTechOpen(false);
+  }, [auditId]);
 
   return (
     <DetailDrawer
       open={!!auditId}
       onOpenChange={(open) => !open && onClose()}
-      title={detail?.action ?? 'Audit-Eintrag'}
-      description={detail?.createdAt ? formatRelativeDe(detail.createdAt) : undefined}
+      title={boundDetail?.action ?? t('master.securityAccess.auditDetail.titleFallback')}
+      description={boundDetail?.createdAt ? formatRelative(boundDetail.createdAt) : undefined}
       status={
-        detail ? (
-          <StatusChip tone={auditResultTone(detail.result)} dot>
-            {auditResultLabel(detail.result)}
+        boundDetail ? (
+          <StatusChip tone={auditResultTone(boundDetail.result)} dot>
+            {auditResultLabel(boundDetail.result)}
           </StatusChip>
         ) : undefined
       }
       widthClassName="sm:max-w-xl"
     >
-      {loading && !detail ? (
+      {auditId && loading && !boundDetail ? (
         <SkeletonCard className="h-40" />
-      ) : detail ? (
+      ) : boundDetail ? (
         <div className="space-y-5 text-sm">
           <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Zusammenfassung</h3>
-            <p className="text-sm text-foreground">{detail.summary ?? detail.description}</p>
+            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              {t('master.securityAccess.auditDetail.section.summary')}
+            </h3>
+            <p className="text-sm text-foreground">{boundDetail.summary ?? boundDetail.description}</p>
           </section>
 
           <section className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <p className="text-muted-foreground">Akteur</p>
-              <p className="font-medium">{detail.userName ?? detail.actor?.name ?? 'System'}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Organisation</p>
-              <p className="font-medium">{detail.organizationName ?? 'Plattform'}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Ziel</p>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.actor')}</p>
               <p className="font-medium">
-                {detail.entity}
-                {detail.entityId ? ` · ${detail.entityId.slice(0, 8)}` : ''}
+                {boundDetail.userName ?? boundDetail.actor?.name ?? t('master.securityAccess.common.system')}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Grund</p>
-              <p className="font-medium">{truncateReason(detail.reason, 200)}</p>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.organization')}</p>
+              <p className="font-medium">{boundDetail.organizationName ?? t('master.securityAccess.common.platform')}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.target')}</p>
+              <p className="font-medium">
+                {boundDetail.entity}
+                {boundDetail.entityId ? ` · ${boundDetail.entityId.slice(0, 8)}` : ''}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.reason')}</p>
+              <p className="font-medium">{truncateReason(boundDetail.reason, 200)}</p>
             </div>
           </section>
 
-          {(detail.diff?.before != null || detail.diff?.after != null) && (
+          {(boundDetail.diff?.before != null || boundDetail.diff?.after != null) && (
             <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Vorher / Nachher</h3>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                {t('master.securityAccess.auditDetail.section.diff')}
+              </h3>
               <div className="space-y-3">
-                <DiffBlock label="Vorher" value={detail.diff?.before} />
-                <DiffBlock label="Nachher" value={detail.diff?.after} />
+                <DiffBlock label={t('master.securityAccess.auditDetail.diff.before')} value={boundDetail.diff?.before} />
+                <DiffBlock label={t('master.securityAccess.auditDetail.diff.after')} value={boundDetail.diff?.after} />
               </div>
             </section>
           )}
 
-          {detail.immutable && (
-            <p className="text-[10px] text-muted-foreground">Revisionssicher — nicht bearbeitbar.</p>
+          {boundDetail.immutable && (
+            <p className="text-[10px] text-muted-foreground">{t('master.securityAccess.auditDetail.immutableNotice')}</p>
           )}
 
           {onOpenFullAudit && (
             <button
               type="button"
               className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-              onClick={() => onOpenFullAudit(detail.id)}
+              onClick={() => onOpenFullAudit(boundDetail.id)}
             >
-              Vollständiger Audit-Eintrag
+              {t('master.securityAccess.auditDetail.fullEntryLink')}
               <ExternalLink className="h-3 w-3" />
             </button>
           )}
@@ -116,23 +124,27 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
             className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-xs font-semibold"
             onClick={() => setTechOpen((v) => !v)}
           >
-            Technische Details
+            {t('master.securityAccess.auditDetail.techDetails')}
             <ChevronDown className={`h-4 w-4 transition-transform ${techOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {techOpen && (
             <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3 text-[10px] font-mono">
-              <p>ID: {detail.id}</p>
-              {detail.trace?.correlationId && <p>Correlation: {detail.trace.correlationId}</p>}
-              {detail.trace?.requestId && <p>Request: {detail.trace.requestId}</p>}
-              {detail.network?.ipAddress && <p>IP: {maskIpDisplay(detail.network.ipAddress)}</p>}
-              {detail.auditDomain && <p>Domain: {detail.auditDomain}</p>}
-              {detail.auditAction && <p>Aktion: {detail.auditAction}</p>}
+              <p>ID: {boundDetail.id}</p>
+              {boundDetail.trace?.correlationId && <p>Correlation: {boundDetail.trace.correlationId}</p>}
+              {boundDetail.trace?.requestId && <p>Request: {boundDetail.trace.requestId}</p>}
+              {boundDetail.network?.ipAddress && <p>IP: {maskIpDisplay(boundDetail.network.ipAddress)}</p>}
+              {boundDetail.auditDomain && <p>Domain: {boundDetail.auditDomain}</p>}
+              {boundDetail.auditAction && (
+                <p>
+                  {t('master.securityAccess.audit.columns.action')}: {boundDetail.auditAction}
+                </p>
+              )}
             </div>
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Eintrag nicht gefunden.</p>
+        <p className="text-sm text-muted-foreground">{t('master.securityAccess.auditDetail.notFound')}</p>
       )}
     </DetailDrawer>
   );
