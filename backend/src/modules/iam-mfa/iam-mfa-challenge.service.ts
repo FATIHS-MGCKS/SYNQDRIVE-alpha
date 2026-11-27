@@ -11,6 +11,7 @@ import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { decryptMfaSecret } from './iam-mfa-crypto.util';
 import { MFA_ERROR } from './iam-mfa.policy';
 import { IamMfaStepUpService } from './iam-mfa-step-up.service';
+import { resolveAcceptedTotpStep } from './iam-mfa-totp-step.util';
 import type { MfaChallengeResult } from './iam-mfa.types';
 import { AuthMethod, type AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
 
@@ -54,15 +55,14 @@ export class IamMfaChallengeService {
 
     const secret = decryptMfaSecret(factor.encryptedSecret);
     const normalized = input.code.replace(/\s+/g, '').trim();
-    const valid = authenticator.check(normalized, secret);
-    if (!valid) {
+    if (!authenticator.check(normalized, secret)) {
       throw new UnauthorizedException({
         code: MFA_ERROR.INVALID_CODE,
         message: 'Invalid MFA code',
       });
     }
 
-    const step = BigInt(Math.floor(Date.now() / 1000 / 30));
+    const step = resolveAcceptedTotpStep(normalized, secret);
 
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
@@ -251,7 +251,7 @@ export class IamMfaChallengeService {
       });
     }
 
-    const step = BigInt(Math.floor(Date.now() / 1000 / 30));
+    const step = resolveAcceptedTotpStep(normalized, secret);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVE') {

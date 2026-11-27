@@ -303,6 +303,9 @@ export class AccountService {
         where: { id: userId },
         data: { passwordHash: hash, mustChangePassword: false },
       });
+      await tx.userMfaStepUpGrant.deleteMany({
+        where: { userId, consumedAt: null },
+      });
       const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',
         userId,

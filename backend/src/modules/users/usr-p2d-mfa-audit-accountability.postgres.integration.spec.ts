@@ -291,6 +291,24 @@ function assertDisposableDb(): void {
 
   it('D10 platform-only admin login does not bind arbitrary membership', async () => {
     const { userId, secret } = await seedMasterAdminTotp();
+    const orgId = randomUUID();
+    await prisma.organization.create({
+      data: {
+        id: orgId,
+        companyName: 'MA still platform',
+        businessType: 'RENTAL',
+        status: 'ACTIVE',
+      },
+    });
+    await prisma.organizationMembership.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        organizationId: orgId,
+        role: 'ORG_ADMIN',
+        status: 'ACTIVE',
+      },
+    });
     const pending = authMfaLogin.signMfaPendingToken({
       userId,
       sessionVersion: 0,
@@ -383,6 +401,94 @@ function assertDisposableDb(): void {
         code: authenticator.generate(secret),
       }),
     ).rejects.toThrow();
+  });
+
+  it('MFA_ORG_ISOLATION challenge in org A does not elevate org B session', async () => {
+    const userId = randomUUID();
+    const secret = authenticator.generateSecret();
+    const email = `org-iso-${userId}@example.test`;
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email,
+        platformRole: UserPlatformRole.USER,
+        status: UserStatus.ACTIVE,
+        passwordHash: await bcrypt.hash('OrgIso1!long-xy', 10),
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+    });
+    await prisma.userMfaFactor.create({
+      data: {
+        userId,
+        factorType: MfaFactorType.TOTP,
+        encryptedSecret: encryptMfaSecret(secret),
+        label: 'p2d-org',
+        verifiedAt: new Date(),
+        enabledAt: new Date(),
+      },
+    });
+    const orgA = randomUUID();
+    const orgB = randomUUID();
+    const memA = randomUUID();
+    const memB = randomUUID();
+    await prisma.organization.createMany({
+      data: [
+        { id: orgA, companyName: 'A', businessType: 'RENTAL', status: 'ACTIVE' },
+        { id: orgB, companyName: 'B', businessType: 'RENTAL', status: 'ACTIVE' },
+      ],
+    });
+    await prisma.organizationMembership.createMany({
+      data: [
+        { id: memA, userId, organizationId: orgA, role: 'WORKER', status: 'ACTIVE' },
+        { id: memB, userId, organizationId: orgB, role: 'WORKER', status: 'ACTIVE' },
+      ],
+    });
+    const userCtx = {
+      id: userId,
+      email,
+      platformRole: UserPlatformRole.USER,
+      sessionVersion: 0,
+      securityVersion: 0,
+    };
+    const sessionB = await stack.refresh.issueTokenPair(userCtx, {
+      organizationId: orgB,
+      membershipId: memB,
+      role: 'WORKER',
+      membershipVersion: 0,
+    });
+    const familyB = (
+      await prisma.refreshToken.findFirstOrThrow({ where: { userId }, orderBy: { createdAt: 'desc' } })
+    ).family;
+    const sessionA = await stack.refresh.issueTokenPair(userCtx, {
+      organizationId: orgA,
+      membershipId: memA,
+      role: 'WORKER',
+      membershipVersion: 0,
+    });
+    const familyA = (
+      await prisma.refreshToken.findFirstOrThrow({
+        where: { userId, family: { not: familyB } },
+        orderBy: { createdAt: 'desc' },
+      })
+    ).family;
+    const challengeResult = await challenge.challengeWithTotp({
+      userId,
+      code: authenticator.generate(secret),
+      sessionBinding: { tokenFamily: familyA, organizationId: orgA, membershipId: memA },
+    });
+    const elevated = jwt.verify(challengeResult.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    expect(elevated.organizationId).toBe(orgA);
+    const decodedB = jwt.verify(sessionB.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    expect(Number(decodedB.assuranceLevel ?? 0)).toBeLessThan(ASSURANCE_LEVEL_MFA);
+    const headB = await prisma.refreshToken.findUniqueOrThrow({
+      where: { id: (await prisma.refreshToken.findFirstOrThrow({ where: { userId, family: familyB } })).id },
+    });
+    expect(headB.revokedAt).toBeNull();
+    expect(Number(elevated.assuranceLevel)).toBe(ASSURANCE_LEVEL_MFA);
+    const headBAfter = await prisma.refreshToken.findFirstOrThrow({ where: { userId, family: familyB } });
+    expect(headBAfter.assuranceLevel).toBe(SessionAssuranceLevel.PASSWORD);
+    void sessionA;
   });
 
   it('MFA_DEVICE_ISOLATION challenge for one family does not reissue another family', async () => {

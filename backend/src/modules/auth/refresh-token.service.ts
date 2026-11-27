@@ -627,14 +627,18 @@ export class RefreshTokenService {
   async revokeAllActiveForUser(userId: string): Promise<number> {
     const result = await this.withSessionWriteFence(
       { userId, organizationId: null },
-      async (tx) =>
-        tx.refreshToken.updateMany({
+      async (tx) => {
+        await tx.userMfaStepUpGrant.deleteMany({
+          where: { userId, consumedAt: null },
+        });
+        return tx.refreshToken.updateMany({
           where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
           data: {
             revokedAt: new Date(),
             revocationReason: 'USER_ALL_SESSIONS_REVOKED',
           },
-        }),
+        });
+      },
     );
     if (result.count > 0) {
       this.iamMetrics?.recordSessionRevoked('all');

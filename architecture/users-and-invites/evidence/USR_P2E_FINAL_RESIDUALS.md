@@ -15,4 +15,16 @@ P2E scope items C01–C08; **E1-only** acceptance on PR **#2534** branch `cursor
 
 **Gate execution:** `backend/scripts/test/usr-p2-postgres-gate.sh` — **PASS** (artifact `usr-p2-postgres-gate-e1-final.log`, exit 0, `USR_P2_PG_EXECUTED=1`).
 
-**R-008** remains **OPEN** until full P2E (E2–E5) and owner attestation — E1 concurrency/authorization slice **PASS** on executed evidence above.
+## E2 MFA seal (2026-11-27)
+
+| Area | E2 status |
+|------|-----------|
+| P2-R22 monotonic TOTP | **PASS** — `resolveAcceptedTotpStep` + PG proofs |
+| P2-R23 refresh assurance | **PASS** — TOTP + recovery rotate downgrade |
+| P2-R25 step-up grants | **PASS** — E2-G01–G11 + idempotency fix |
+| D09 / guards | **PASS** — MasterAdminMfaGuard + StepUpGuard PG |
+| Isolation / stale / concurrent | **PASS** — P2D extensions + E2 spec |
+
+Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
+
+**R-008** remains **OPEN** until E3–E5 and owner attestation — **E1 PASS**, **E2 PASS** on executed evidence.

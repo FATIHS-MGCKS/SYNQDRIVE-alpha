@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import * as crypto from 'crypto';
 import {
@@ -6,6 +6,7 @@ import {
   AuthSessionClaims,
 } from '@shared/auth/auth-session-claims.types';
 import {
+  MFA_ERROR,
   STEP_UP_TTL_MS,
   StepUpActionCode,
 } from './iam-mfa.policy';
@@ -30,7 +31,12 @@ export class IamMfaStepUpService {
         where: { idempotencyKey: input.idempotencyKey },
       });
       if (existing && existing.expiresAt > new Date() && !existing.consumedAt) {
-        return { stepUpToken: rawToken, expiresAt: existing.expiresAt };
+        throw new ConflictException({
+          code: MFA_ERROR.STEP_UP_IDEMPOTENCY_REPLAY,
+          message:
+            'An unconsumed step-up grant already exists for this idempotency key; reuse the original token',
+          expiresAt: existing.expiresAt.toISOString(),
+        });
       }
     }
 
