@@ -16,6 +16,8 @@ import {
 } from '@modules/iam-mfa/iam-mfa.policy';
 import { resolveIamMfaFeatureFlagsForPrincipal } from '@modules/iam-mfa/iam-mfa-feature-flags.resolver';
 import { IamMfaStepUpService } from '@modules/iam-mfa/iam-mfa-step-up.service';
+import { resolveStepUpGrantValidationContext } from '@modules/iam-mfa/iam-mfa-step-up-validation-context.util';
+import type { StepUpGrantRequestCache } from '@modules/iam-mfa/iam-mfa-step-up-binding.types';
 import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
@@ -54,6 +56,10 @@ export class MasterAdminMfaGuard implements CanActivate {
           id?: string;
           platformRole?: string;
           organizationId?: string | null;
+          membershipId?: string | null;
+          tokenFamily?: string | null;
+          sessionVersion?: number;
+          membershipVersion?: number | null;
           sessionClaims?: AuthSessionClaims;
         }
       | undefined;
@@ -102,7 +108,33 @@ export class MasterAdminMfaGuard implements CanActivate {
 
     const headerToken = this.extractStepUpToken(request);
     if (headerToken) {
-      const valid = await this.stepUp.validateGrant(user.id, headerToken, action);
+      const grantContext = resolveStepUpGrantValidationContext(user);
+      if (!grantContext) {
+        this.iamMetrics?.recordStepUpDenied('invalid');
+        void this.masterAdminAudit?.recordMfaStepUp({
+          granted: false,
+          actorUserId: user.id,
+          stepUpAction: action,
+          correlationId: resolveCorrelationId(request),
+          route: buildPrivilegedRouteLabel(request),
+          ipAddress: request.ip ?? request.connection?.remoteAddress,
+          userAgent: request.headers?.['user-agent'],
+          reasonCode: resolvePrivilegedReason(request),
+        });
+        throw new ForbiddenException({
+          code: MFA_ERROR.STEP_UP_EXPIRED,
+          message: 'Step-up authentication expired or invalid',
+          action,
+        });
+      }
+      const cache = this.resolveRequestGrantCache(request);
+      const valid = await this.stepUp.validateGrant(
+        user.id,
+        headerToken,
+        action,
+        grantContext,
+        cache,
+      );
       if (valid) {
         request.masterAdminMfaStepUpUsed = true;
         request.masterAdminMfaStepUpAction = action;
@@ -152,6 +184,14 @@ export class MasterAdminMfaGuard implements CanActivate {
       message: 'Fresh MFA step-up required for this master admin action',
       action,
     });
+  }
+
+  private resolveRequestGrantCache(request: Record<string, unknown>): StepUpGrantRequestCache {
+    const existing = request.__stepUpGrantRequestCache as StepUpGrantRequestCache | undefined;
+    if (existing) return existing;
+    const created: StepUpGrantRequestCache = {};
+    request.__stepUpGrantRequestCache = created;
+    return created;
   }
 
   private extractStepUpToken(request: {

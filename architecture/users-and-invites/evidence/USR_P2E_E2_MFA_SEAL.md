@@ -1,32 +1,44 @@
-# USR-P2E E2 — MFA final seal (PR #2534)
+# USR-P2E E2 — MFA session-bound step-up grants (PR #2534)
 
-**Status:** E2 **PASS** on disposable PostgreSQL (gate + targeted E2 spec).  
-**HEAD evidence:** post-commit `usr-p2e-e2-mfa-seal` + gate run.
+**Status:** E2 session-binding closeout **PASS** on disposable PostgreSQL (33/33 E2 spec + full `usr-p2-postgres-gate.sh`).
 
-## Code corrections (preserved)
+## Grant binding (Step 1)
 
-| Requirement | Change |
-|-------------|--------|
-| P2-R22 | `resolveAcceptedTotpStep()` uses `authenticator.checkDelta` so `lastTotpStep` matches the verified window (not wall-clock step alone). |
-| P2-R25 | `createGrant` idempotency replay throws `STEP_UP_IDEMPOTENCY_REPLAY` — never returns a new raw token without persisted hash. |
-| Grant invalidation | Unconsumed step-up grants cleared on admin/self-service password change and `revokeAllActiveForUser`. |
+- Extended `UserMfaStepUpGrant` with `token_family`, org/membership scope, `session_version`, `security_version`, `membership_version` (migration `20261127140000_iam_step_up_grant_session_binding`).
+- `createGrant` requires trusted `StepUpGrantBinding`; MFA challenge derives binding from authoritative session + membership rows.
+- `validateGrant` enforces user, action, binding, live user versions, active refresh head, and atomic single consumption.
+- **Legacy policy:** rows with null `token_family` fail closed at validation (no silent promotion).
+- Guards pass `StepUpGrantValidationContext` from AuthGuard-validated JWT user only.
 
-## Executed PostgreSQL evidence
+## Session invalidation (Step 2)
 
-| ID | Test file — name |
-|----|------------------|
-| P2-R22 | `usr-p2e-e2-mfa-seal.postgres.integration.spec.ts` — monotonic TOTP step persistence / subsequent step / older step rejection |
-| P2-R23 | same — `P2-R23 recovery login refresh assurance downgrades conservatively`; P2D — `MFA refresh assurance downgrades MFA claims after rotation` |
-| P2-R25 / E2-G01–G11 | `usr-p2e-e2-mfa-seal.postgres.integration.spec.ts` — step-up grant matrix |
-| D09 / guards | same — `D09 MasterAdminMfaGuard accepts fresh MFA JWT`; `COMBINED StepUpGuard accepts fresh MFA without consuming grant header` |
-| Isolation | P2D — `MFA_DEVICE_ISOLATION`, `MFA_ORG_ISOLATION`; extended `D10` with org memberships |
-| Stale pending | P2D — admin password + MFA reset; E2 — self-service password, platform downgrade authority |
-| Concurrent | E2 — `CONCURRENT_RESET_MFA`; P2D — D05/D06 |
+- `revokeSessionByIdInTransaction` deletes unconsumed grants for the revoked family.
+- `revokeAllActiveForUser` / `revokeAllActiveForUserInTransaction` delete all unconsumed user grants.
+- `revokeOtherSessionsForUser` deletes grants per revoked family.
+- Existing password change / MFA reset `deleteMany` paths preserved.
 
-**Gate:** `backend/scripts/test/usr-p2-postgres-gate.sh` includes `usr-p2e-e2-mfa-seal.postgres.integration.spec.ts`.
+## Request-local combined guard reuse
 
-## E5 residuals (unchanged)
+- `StepUpGrantRequestCache` on the HTTP request prevents double consumption when MasterAdmin + StepUp guards both honor the same header grant in one request (action scope still checked per guard).
 
-- Org offboarding contention vs issuance/refresh/legacy (E1 bounded note).
-- Vehicle lifecycle + Vehicle Detail CI workflows (no changes in E2).
-- **R-008 OPEN** until full P2E closeout.
+## Evidence matrix (`usr-p2e-e2-mfa-seal.postgres.integration.spec.ts`)
+
+| Area | Coverage |
+|------|----------|
+| G07–G09 | Cross-family, cross-org, per-session revoke + revoke-all grant purge |
+| G10 | Password admin change + MFA reset grant denial |
+| D09 / HTTP | Real `AuthGuard` + `MasterAdminMfaGuard` on `/api/v1/...` probe routes |
+| Combined | HTTP grant single consume + procedural dual-guard reuse |
+| Password reset | `PasswordResetService.confirmReset` stale pending + fresh MFA login + concurrent orders |
+
+**Gate artifact:** `/opt/cursor/artifacts/usr-p2-postgres-gate-e2-binding-r5.log` (`Tests: 33 passed`; `USR_P2_PG_EXECUTED=1`).
+
+## Preserved corrections
+
+- P2-R22 monotonic TOTP via `resolveAcceptedTotpStep`
+- P2-R23 conservative MFA downgrade on refresh rotation
+- P2-R25 idempotency conflict + atomic consumption
+
+## Out of scope (unchanged)
+
+- E3–E5, production migration deploy, R-008 remains OPEN until full P2E program closeout.

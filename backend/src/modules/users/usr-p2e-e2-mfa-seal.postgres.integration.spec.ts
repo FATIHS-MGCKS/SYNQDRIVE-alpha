@@ -27,7 +27,10 @@ import { MFA_ERROR, STEP_UP_ACTION, STEP_UP_TTL_MS } from '@modules/iam-mfa/iam-
 import { encryptMfaSecret } from '@modules/iam-mfa/iam-mfa-crypto.util';
 import { resolveAcceptedTotpStep } from '@modules/iam-mfa/iam-mfa-totp-step.util';
 import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
-import { createUsrP2PgIamStack } from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
+import {
+  createUsrP2Config,
+  createUsrP2PgIamStack,
+} from '@modules/users/testing/usr-p2-pg-iam-stack.helper';
 import {
   ASSURANCE_LEVEL_MFA,
   buildMfaClaims,
@@ -41,8 +44,22 @@ import { UsersService } from '@modules/users/users.service';
 import { IamAuditService } from '@modules/users/iam-audit.service';
 import { IamMembershipLifecycleService } from '@modules/users/iam-membership-lifecycle.service';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
+import { PasswordResetRateLimitService } from '@modules/auth/password-reset-rate-limit.service';
+import {
+  generatePasswordResetToken,
+  passwordResetTokenLookupKey,
+} from '@modules/auth/utils/password-reset-token.util';
 import { AccountService } from '@modules/account/account.service';
 import { PasswordPolicyService } from '@shared/auth/password-policy.service';
+import type { StepUpGrantBinding, StepUpGrantValidationContext } from '@modules/iam-mfa/iam-mfa-step-up-binding.types';
+import { AuthGuard } from '@shared/auth/auth.guard';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { Controller, HttpCode, INestApplication, Post } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { PrismaService } from '@shared/database/prisma.service';
+import * as request from 'supertest';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 
@@ -69,6 +86,8 @@ function assertDisposableDb(): void {
   let mfaReset: IamMfaResetService;
   let usersService: UsersService;
   let account: AccountService;
+  let passwordReset: PasswordResetService;
+  let authority: UserAccessAuthorityService;
 
   beforeAll(() => {
     assertDisposableDb();
@@ -128,6 +147,15 @@ function assertDisposableDb(): void {
       stack.sessionPolicy,
       new PasswordPolicyService(),
     );
+    authority = stack.authority;
+    passwordReset = new PasswordResetService(
+      prisma as never,
+      new PasswordPolicyService(),
+      { assertWithinLimit: jest.fn() } as unknown as PasswordResetRateLimitService,
+      { sendPasswordReset: jest.fn(), sendPasswordResetCompleted: jest.fn() } as never,
+      stack.sessionPolicy,
+      { record: jest.fn() } as never,
+    );
   });
 
   afterAll(async () => {
@@ -165,6 +193,42 @@ function assertDisposableDb(): void {
 
   function mfaGrantClaims() {
     return buildMfaClaims({ securityVersion: 0 });
+  }
+
+  async function issueMasterAdminSession(userId: string, email: string, sessionVersion = 0, securityVersion = 0) {
+    await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionVersion,
+        securityVersion,
+      },
+      null,
+    );
+    const head = await prisma.refreshToken.findFirstOrThrow({
+      where: { userId, revokedAt: null, replacedBy: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    const binding: StepUpGrantBinding = {
+      tokenFamily: head.family,
+      organizationId: null,
+      membershipId: null,
+      sessionVersion,
+      securityVersion,
+      membershipVersion: null,
+    };
+    return { binding, sessionId: head.id, family: head.family };
+  }
+
+  function grantValidationContext(binding: StepUpGrantBinding): StepUpGrantValidationContext {
+    return {
+      tokenFamily: binding.tokenFamily,
+      organizationId: binding.organizationId,
+      membershipId: binding.membershipId,
+      sessionVersion: binding.sessionVersion,
+      membershipVersion: binding.membershipVersion,
+    };
   }
 
   it('P2-R22 persisted lastTotpStep matches accepted TOTP window step', async () => {
@@ -239,13 +303,20 @@ function assertDisposableDb(): void {
   });
 
   it('E2-G01 valid step-up grant accepted by StepUpGuard', async () => {
-    const { userId } = await seedUserWithTotp();
-    const claims = mfaGrantClaims();
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
-      claims,
+      claims: mfaGrantClaims(),
+      binding,
     });
+    const ctxUser = {
+      id: userId,
+      platformRole: 'MASTER_ADMIN',
+      sessionClaims: buildPasswordOnlyClaims(0),
+      ...grantValidationContext(binding),
+    };
     const reflector = {
       getAllAndOverride: jest.fn((key: string) => {
         if (key === STEP_UP_METADATA_KEY) return STEP_UP_ACTION.MASTER_ORGANIZATION;
@@ -257,11 +328,7 @@ function assertDisposableDb(): void {
       switchToHttp: () => ({
         getRequest: () => ({
           headers: { 'x-step-up-token': grant.stepUpToken },
-          user: {
-            id: userId,
-            platformRole: 'MASTER_ADMIN',
-            sessionClaims: buildPasswordOnlyClaims(0),
-          },
+          user: ctxUser,
         }),
       }),
       getHandler: () => ({}),
@@ -271,32 +338,38 @@ function assertDisposableDb(): void {
   });
 
   it('E2-G02 concurrent step-up consumption allows exactly one winner', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const ctx = grantValidationContext(binding);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
       claims: mfaGrantClaims(),
+      binding,
     });
     const stepUpB = new IamMfaStepUpService(prismaB as never);
     const [a, b] = await Promise.allSettled([
-      stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
-      stepUpB.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION, ctx),
+      stepUpB.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION, ctx),
     ]);
     expect([a, b].filter((r) => r.status === 'fulfilled' && r.value === true).length).toBe(1);
   });
 
   it('E2-G03 consumed grant denied on second validation', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const ctx = grantValidationContext(binding);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
       claims: mfaGrantClaims(),
+      binding,
     });
     expect(
-      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION, ctx),
     ).toBe(true);
     expect(
-      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION, ctx),
     ).toBe(false);
   });
 
@@ -316,31 +389,70 @@ function assertDisposableDb(): void {
         expiresAt: new Date(Date.now() - 1000),
       },
     });
-    expect(await stepUp.validateGrant(userId, raw, STEP_UP_ACTION.MASTER_ORGANIZATION)).toBe(false);
+    const { binding } = await issueMasterAdminSession(userId, `e2-${userId}@example.test`);
+    expect(
+      await stepUp.validateGrant(userId, raw, STEP_UP_ACTION.MASTER_ORGANIZATION, grantValidationContext(binding)),
+    ).toBe(false);
   });
 
   it('E2-G05 wrong action scope denied', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_BILLING,
       claims: mfaGrantClaims(),
+      binding,
     });
     expect(
-      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        grantValidationContext(binding),
+      ),
     ).toBe(false);
   });
 
   it('E2-G06 wrong user denied', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email } = await seedUserWithTotp();
     const other = randomUUID();
+    const { binding } = await issueMasterAdminSession(userId, email);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
       claims: mfaGrantClaims(),
+      binding,
     });
     expect(
-      await stepUp.validateGrant(other, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(
+        other,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        grantValidationContext(binding),
+      ),
+    ).toBe(false);
+  });
+
+  it('LEGACY unbound persisted grant denied under binding enforcement', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const raw = 'b'.repeat(64);
+    const { hashStepUpToken } = await import('@modules/iam-mfa/iam-mfa-crypto.util');
+    await prisma.userMfaStepUpGrant.create({
+      data: {
+        userId,
+        tokenHash: hashStepUpToken(raw),
+        actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
+        assuranceLevel: ASSURANCE_LEVEL_MFA,
+        authMethods: ['pwd', 'totp'],
+        authenticatedAt: new Date(),
+        mfaAuthenticatedAt: new Date(),
+        expiresAt: new Date(Date.now() + STEP_UP_TTL_MS),
+      },
+    });
+    expect(
+      await stepUp.validateGrant(userId, raw, STEP_UP_ACTION.MASTER_ORGANIZATION, grantValidationContext(binding)),
     ).toBe(false);
   });
 
@@ -383,35 +495,55 @@ function assertDisposableDb(): void {
       await prisma.refreshToken.findFirstOrThrow({ where: { userId }, orderBy: { createdAt: 'desc' } })
     ).family;
     expect(familyA).not.toBe(familyB);
-    await stack.refresh.revokeAllActiveForUser(userId);
-    await stack.refresh.issueTokenPair(userCtx, membership);
-    const liveFamily = (
-      await prisma.refreshToken.findFirstOrThrow({
-        where: { userId, revokedAt: null },
-        orderBy: { createdAt: 'desc' },
-      })
-    ).family;
-    await expect(
-      challenge.challengeWithTotp({
-        userId,
-        code: authenticator.generate(secret),
-        sessionBinding: { tokenFamily: familyB, organizationId: orgId, membershipId: memId },
-      }),
-    ).rejects.toThrow(/no longer valid|Session/i);
-    const code2 = authenticator.generate(secret);
-    const step2 = resolveAcceptedTotpStep(code2, secret);
-    const consumed = await prisma.userMfaFactor.findFirstOrThrow({ where: { userId } });
-    if (consumed.lastTotpStep !== null && consumed.lastTotpStep >= step2) {
-      await prisma.userMfaFactor.update({
-        where: { id: consumed.id },
-        data: { lastTotpStep: step2 - 1n },
-      });
-    }
-    await challenge.challengeWithTotp({
+
+  const challenged = await challenge.challengeWithTotp({
       userId,
-      code: code2,
-      sessionBinding: { tokenFamily: liveFamily, organizationId: orgId, membershipId: memId },
+      code: authenticator.generate(secret),
+      sessionBinding: { tokenFamily: familyA, organizationId: orgId, membershipId: memId },
     });
+    const ctxA: StepUpGrantValidationContext = {
+      tokenFamily: familyA,
+      organizationId: orgId,
+      membershipId: memId,
+      sessionVersion: 0,
+      membershipVersion: 0,
+    };
+    const ctxB: StepUpGrantValidationContext = {
+      tokenFamily: familyB,
+      organizationId: orgId,
+      membershipId: memId,
+      sessionVersion: 0,
+      membershipVersion: 0,
+    };
+    expect(challenged.stepUpToken.length).toBeGreaterThan(0);
+    const storedGrant = await prisma.userMfaStepUpGrant.findFirstOrThrow({
+      where: { userId, consumedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    const authoritativeCtxA: StepUpGrantValidationContext = {
+      tokenFamily: storedGrant.tokenFamily!,
+      organizationId: storedGrant.organizationId,
+      membershipId: storedGrant.membershipId,
+      sessionVersion: storedGrant.sessionVersion!,
+      membershipVersion: storedGrant.membershipVersion,
+    };
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        challenged.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        authoritativeCtxA,
+      ),
+    ).toBe(true);
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        challenged.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        ctxB,
+      ),
+    ).toBe(false);
+    void ctxA;
   });
 
   it('E2-G08 wrong organization binding denied', async () => {
@@ -419,16 +551,20 @@ function assertDisposableDb(): void {
     const orgA = randomUUID();
     const orgB = randomUUID();
     const memA = randomUUID();
+    const memB = randomUUID();
     await prisma.organization.createMany({
       data: [
         { id: orgA, companyName: 'A', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
         { id: orgB, companyName: 'B', businessType: BusinessType.RENTAL, status: 'ACTIVE' },
       ],
     });
-    await prisma.organizationMembership.create({
-      data: { id: memA, userId, organizationId: orgA, role: 'WORKER', status: MembershipStatus.ACTIVE },
+    await prisma.organizationMembership.createMany({
+      data: [
+        { id: memA, userId, organizationId: orgA, role: 'WORKER', status: MembershipStatus.ACTIVE },
+        { id: memB, userId, organizationId: orgB, role: 'WORKER', status: MembershipStatus.ACTIVE },
+      ],
     });
-    const issued = await stack.refresh.issueTokenPair(
+    await stack.refresh.issueTokenPair(
       {
         id: userId,
         email: `e2-${userId}@example.test`,
@@ -438,52 +574,193 @@ function assertDisposableDb(): void {
       },
       { organizationId: orgA, membershipId: memA, role: 'WORKER', membershipVersion: 0 },
     );
-    const family = (await prisma.refreshToken.findFirstOrThrow({ where: { userId }, orderBy: { createdAt: 'desc' } }))
-      .family;
-    await expect(
-      challenge.challengeWithTotp({
+    await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email: `e2-${userId}@example.test`,
+        platformRole: UserPlatformRole.USER,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      { organizationId: orgB, membershipId: memB, role: 'WORKER', membershipVersion: 0 },
+    );
+    const familyA = (
+      await prisma.refreshToken.findFirstOrThrow({
+        where: { userId, organizationId: orgA, revokedAt: null },
+        orderBy: { createdAt: 'desc' },
+      })
+    ).family;
+    const challenged = await challenge.challengeWithTotp({
+      userId,
+      code: authenticator.generate(secret),
+      sessionBinding: { tokenFamily: familyA, organizationId: orgA, membershipId: memA },
+    });
+    const ctxWrongOrg: StepUpGrantValidationContext = {
+      tokenFamily: familyA,
+      organizationId: orgB,
+      membershipId: memB,
+      sessionVersion: 0,
+      membershipVersion: 0,
+    };
+    expect(challenged.stepUpToken.length).toBeGreaterThan(0);
+    expect(
+      await stepUp.validateGrant(
         userId,
-        code: authenticator.generate(secret),
-        sessionBinding: { tokenFamily: family, organizationId: orgB, membershipId: memA },
-      }),
-    ).rejects.toThrow(/mismatch/i);
-    void issued;
+        challenged.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        ctxWrongOrg,
+      ),
+    ).toBe(false);
   });
 
   it('E2-G09 revoked initiating session invalidates step-up grant', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email, secret } = await seedUserWithTotp();
+    const { binding: masterBinding } = await issueMasterAdminSession(userId, email);
+    await stack.refresh.issueTokenPair(
+      {
+        id: userId,
+        email,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionVersion: 0,
+        securityVersion: 0,
+      },
+      null,
+    );
+    const tokens = await prisma.refreshToken.findMany({
+      where: { userId, revokedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    const familyA = tokens[0]!.family;
+    const familyB = tokens[1]!.family;
+    expect(familyA).not.toBe(familyB);
+    const challenged = await challenge.challengeWithTotp({
+      userId,
+      code: authenticator.generate(secret),
+      sessionBinding: { tokenFamily: familyA },
+    });
+    const ctxA = grantValidationContext({
+      tokenFamily: familyA,
+      organizationId: null,
+      membershipId: null,
+      sessionVersion: 0,
+      securityVersion: 0,
+      membershipVersion: null,
+    });
+    const ctxB = grantValidationContext({
+      tokenFamily: familyB,
+      organizationId: null,
+      membershipId: null,
+      sessionVersion: 0,
+      securityVersion: 0,
+      membershipVersion: null,
+    });
+    const sessionIdA = stack.refresh.resolveActiveHeadSessionIdForFamily(tokens, familyA);
+    expect(sessionIdA).toBeTruthy();
+    await stack.refresh.revokeSessionById(userId, sessionIdA!);
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        challenged.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        ctxB,
+      ),
+    ).toBe(false);
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        challenged.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        ctxA,
+      ),
+    ).toBe(false);
+    const familyBActive = await prisma.refreshToken.findFirst({
+      where: { userId, family: familyB, revokedAt: null, replacedBy: null },
+    });
+    expect(familyBActive).toBeTruthy();
+    void masterBinding;
+  });
+
+  it('E2-G09 atomic revoke-all clears unconsumed grants', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
       claims: mfaGrantClaims(),
+      binding,
     });
-    await stack.refresh.revokeAllActiveForUser(userId);
+    await prisma.$transaction(async (tx) => {
+      await stack.refresh.revokeAllActiveForUserInTransaction(tx as never, userId);
+    });
     expect(
-      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        grantValidationContext(binding),
+      ),
     ).toBe(false);
   });
 
   it('E2-G10 admin password change invalidates unconsumed grants', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
       claims: mfaGrantClaims(),
+      binding,
     });
     await usersService.changePasswordAdmin(userId, 'AdminChg1!long-xy', userId);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect(
-      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        {
+          ...grantValidationContext(binding),
+          sessionVersion: user.sessionVersion,
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it('E2-G10 MFA reset invalidates unconsumed grants', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const grant = await stepUp.createGrant({
+      userId,
+      actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
+      claims: mfaGrantClaims(),
+      binding,
+    });
+    await mfaReset.resetMfaForUser({
+      organizationId: 'platform',
+      targetUserId: userId,
+      actorUserId: userId,
+      idempotencyKey: `e2-g10-mfa:${randomUUID()}`,
+    });
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        grantValidationContext(binding),
+      ),
     ).toBe(false);
   });
 
   it('E2-G11 idempotent createGrant replay does not return unusable token', async () => {
-    const { userId } = await seedUserWithTotp();
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
     const idem = `e2-g11:${randomUUID()}`;
     const grant = await stepUp.createGrant({
       userId,
       actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
       claims: mfaGrantClaims(),
       idempotencyKey: idem,
+      binding,
     });
     await expect(
       stepUp.createGrant({
@@ -491,10 +768,16 @@ function assertDisposableDb(): void {
         actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
         claims: mfaGrantClaims(),
         idempotencyKey: idem,
+        binding,
       }),
     ).rejects.toMatchObject({ response: { code: MFA_ERROR.STEP_UP_IDEMPOTENCY_REPLAY } });
     expect(
-      await stepUp.validateGrant(userId, grant.stepUpToken, STEP_UP_ACTION.MASTER_ORGANIZATION),
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        grantValidationContext(binding),
+      ),
     ).toBe(true);
   });
 
@@ -545,6 +828,56 @@ function assertDisposableDb(): void {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 
+  it('COMBINED procedural guards reuse one bound grant across actions in one request', async () => {
+    const { userId, email } = await seedUserWithTotp();
+    const { binding } = await issueMasterAdminSession(userId, email);
+    const grant = await stepUp.createGrant({
+      userId,
+      actionScope: 'GLOBAL',
+      claims: mfaGrantClaims(),
+      binding,
+    });
+    const requestObj: Record<string, unknown> = {
+      method: 'POST',
+      headers: { 'x-step-up-token': grant.stepUpToken },
+      user: {
+        id: userId,
+        platformRole: 'MASTER_ADMIN',
+        sessionClaims: buildPasswordOnlyClaims(0),
+        ...grantValidationContext(binding),
+      },
+    };
+    const reflectorMa = {
+      getAllAndOverride: jest.fn((key: string) => {
+        if (key === MASTER_ADMIN_MFA_ACTION_KEY) return STEP_UP_ACTION.MASTER_ORGANIZATION;
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const reflectorStep = {
+      getAllAndOverride: jest.fn((key: string) => {
+        if (key === STEP_UP_METADATA_KEY) return STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS;
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const maGuard = new MasterAdminMfaGuard(reflectorMa, prisma as never, stepUp);
+    const stepGuard = new StepUpGuard(reflectorStep, stepUp);
+    const ctxBase = {
+      switchToHttp: () => ({ getRequest: () => requestObj }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as never;
+    await expect(maGuard.canActivate(ctxBase)).resolves.toBe(true);
+    await expect(stepGuard.canActivate(ctxBase)).resolves.toBe(true);
+    expect(
+      await stepUp.validateGrant(
+        userId,
+        grant.stepUpToken,
+        STEP_UP_ACTION.MASTER_ORGANIZATION,
+        grantValidationContext(binding),
+      ),
+    ).toBe(false);
+  });
+
   it('COMBINED StepUpGuard accepts fresh MFA without consuming grant header', async () => {
     const { userId } = await seedUserWithTotp();
     const freshClaims = buildMfaClaims({
@@ -568,6 +901,291 @@ function assertDisposableDb(): void {
       getClass: () => ({}),
     } as never;
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  @Controller('api/v1/usr-p2e-e2-probe')
+  class E2ProbeController {
+    @Post('combined-guards')
+    @HttpCode(204)
+    @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
+    @RequireStepUp(STEP_UP_ACTION.REVOKE_OTHER_USER_SESSIONS)
+    combinedGuards() {}
+
+    @Post('mfa-guard-only')
+    @HttpCode(204)
+    @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_ORGANIZATION)
+    mfaGuardOnly() {}
+  }
+
+  it('D09 HTTP AuthGuard + MasterAdminMfaGuard accepts fresh MFA JWT', async () => {
+    const { userId, secret, email } = await seedUserWithTotp();
+    const login = await authMfaLogin.completeLoginMfa({
+      mfaPendingToken: authMfaLogin.signMfaPendingToken({
+        userId,
+        sessionVersion: 0,
+        securityVersion: 0,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+      }),
+      code: authenticator.generate(secret),
+    });
+    const reflector = new Reflector();
+    const moduleRef = await Test.createTestingModule({
+      controllers: [E2ProbeController],
+      providers: [
+        Reflector,
+        { provide: PrismaService, useValue: prisma },
+        { provide: IamMfaStepUpService, useValue: stepUp },
+        { provide: UserAccessAuthorityService, useValue: authority },
+        { provide: ConfigService, useValue: createUsrP2Config(JWT_SECRET) },
+      ],
+    }).compile();
+    const app: INestApplication = moduleRef.createNestApplication();
+    app.useGlobalGuards(
+      new AuthGuard(reflector, authority),
+      new MasterAdminMfaGuard(reflector, prisma as never, stepUp),
+    );
+    await app.init();
+    await request(app.getHttpServer())
+      .post('/api/v1/usr-p2e-e2-probe/mfa-guard-only')
+      .set('Authorization', `Bearer ${login.accessToken}`)
+      .expect(204);
+    await app.close();
+    void email;
+  });
+
+  it('COMBINED HTTP guards consume bound grant once across StepUp + MasterAdmin', async () => {
+    const { userId, secret, email } = await seedUserWithTotp();
+    const login = await authMfaLogin.completeLoginMfa({
+      mfaPendingToken: authMfaLogin.signMfaPendingToken({
+        userId,
+        sessionVersion: 0,
+        securityVersion: 0,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+      }),
+      code: authenticator.generate(secret),
+    });
+    const rotated = await stack.refresh.rotate(login.refreshToken);
+    const loginDecoded = jwt.verify(rotated.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    const family = String(loginDecoded.tokenFamily);
+    const code2 = authenticator.generate(secret);
+    const step2 = resolveAcceptedTotpStep(code2, secret);
+    const factor = await prisma.userMfaFactor.findFirstOrThrow({ where: { userId } });
+    if (factor.lastTotpStep !== null && factor.lastTotpStep >= step2) {
+      await prisma.userMfaFactor.update({
+        where: { id: factor.id },
+        data: { lastTotpStep: step2 - 1n },
+      });
+    }
+    const challenged = await challenge.challengeWithTotp({
+      userId,
+      code: code2,
+      sessionBinding: { tokenFamily: family },
+    });
+    const reflector = new Reflector();
+    const moduleRef = await Test.createTestingModule({
+      controllers: [E2ProbeController],
+      providers: [
+        Reflector,
+        { provide: PrismaService, useValue: prisma },
+        { provide: IamMfaStepUpService, useValue: stepUp },
+        { provide: UserAccessAuthorityService, useValue: authority },
+        { provide: ConfigService, useValue: createUsrP2Config(JWT_SECRET) },
+      ],
+    }).compile();
+    const app: INestApplication = moduleRef.createNestApplication();
+    app.useGlobalGuards(
+      new AuthGuard(reflector, authority),
+      new MasterAdminMfaGuard(reflector, prisma as never, stepUp),
+      new StepUpGuard(reflector, stepUp),
+    );
+    await app.init();
+    await request(app.getHttpServer())
+      .post('/api/v1/usr-p2e-e2-probe/combined-guards')
+      .set('Authorization', `Bearer ${rotated.accessToken}`)
+      .set('x-step-up-token', challenged.stepUpToken)
+      .expect(204);
+    await request(app.getHttpServer())
+      .post('/api/v1/usr-p2e-e2-probe/combined-guards')
+      .set('Authorization', `Bearer ${rotated.accessToken}`)
+      .set('x-step-up-token', challenged.stepUpToken)
+      .expect(403);
+    await app.close();
+    void email;
+  });
+
+  it('COMBINED HTTP password-only JWT denied without step-up grant', async () => {
+    const { userId, secret, email } = await seedUserWithTotp();
+    const login = await authMfaLogin.completeLoginMfa({
+      mfaPendingToken: authMfaLogin.signMfaPendingToken({
+        userId,
+        sessionVersion: 0,
+        securityVersion: 0,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+      }),
+      code: authenticator.generate(secret),
+    });
+    const rotated = await stack.refresh.rotate(login.refreshToken);
+    const reflector = new Reflector();
+    const moduleRef = await Test.createTestingModule({
+      controllers: [E2ProbeController],
+      providers: [
+        Reflector,
+        { provide: PrismaService, useValue: prisma },
+        { provide: IamMfaStepUpService, useValue: stepUp },
+        { provide: UserAccessAuthorityService, useValue: authority },
+        { provide: ConfigService, useValue: createUsrP2Config(JWT_SECRET) },
+      ],
+    }).compile();
+    const app: INestApplication = moduleRef.createNestApplication();
+    app.useGlobalGuards(
+      new AuthGuard(reflector, authority),
+      new MasterAdminMfaGuard(reflector, prisma as never, stepUp),
+      new StepUpGuard(reflector, stepUp),
+    );
+    await app.init();
+    await request(app.getHttpServer())
+      .post('/api/v1/usr-p2e-e2-probe/combined-guards')
+      .set('Authorization', `Bearer ${rotated.accessToken}`)
+      .expect(403);
+    await app.close();
+    void secret;
+    void email;
+  });
+
+  it('STALE_PENDING denied after PasswordResetService confirmReset', async () => {
+    const { userId, secret, email } = await seedUserWithTotp();
+    const pending = authMfaLogin.signMfaPendingToken({
+      userId,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    const { plain, hash } = generatePasswordResetToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash: hash,
+        tokenLookup: passwordResetTokenLookupKey(plain),
+        purpose: 'SELF_SERVICE',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    await passwordReset.confirmReset({
+      token: plain,
+      newPassword: 'E2Pass3!long-xy',
+      confirmPassword: 'E2Pass3!long-xy',
+    });
+    await expect(
+      authMfaLogin.completeLoginMfa({ mfaPendingToken: pending, code: authenticator.generate(secret) }),
+    ).rejects.toThrow();
+    void email;
+  });
+
+  it('FRESH_LOGIN_AFTER_PASSWORD_RESET completes MFA and issues bound session tokens', async () => {
+    const { userId, secret, email } = await seedUserWithTotp();
+    const { plain, hash } = generatePasswordResetToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash: hash,
+        tokenLookup: passwordResetTokenLookupKey(plain),
+        purpose: 'SELF_SERVICE',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    await passwordReset.confirmReset({
+      token: plain,
+      newPassword: 'E2Pass4!long-xy',
+      confirmPassword: 'E2Pass4!long-xy',
+    });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const login = await authMfaLogin.completeLoginMfa({
+      mfaPendingToken: authMfaLogin.signMfaPendingToken({
+        userId,
+        sessionVersion: user.sessionVersion,
+        securityVersion: user.securityVersion,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+      }),
+      code: authenticator.generate(secret),
+    });
+    const decoded = jwt.verify(login.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    expect(decoded.tokenFamily).toBeTruthy();
+    await expect(authority.validateAccessJwt(decoded as never)).resolves.toMatchObject({
+      id: userId,
+      tokenFamily: decoded.tokenFamily,
+    });
+    expect(login.refreshToken.length).toBeGreaterThan(10);
+    void email;
+  });
+
+  it('CONCURRENT_RESET_FIRST MFA completion denied after committed password reset', async () => {
+    const { userId, secret } = await seedUserWithTotp();
+    const pending = authMfaLogin.signMfaPendingToken({
+      userId,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    const { plain, hash } = generatePasswordResetToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash: hash,
+        tokenLookup: passwordResetTokenLookupKey(plain),
+        purpose: 'SELF_SERVICE',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    await passwordReset.confirmReset({
+      token: plain,
+      newPassword: 'E2Pass5!long-xy',
+      confirmPassword: 'E2Pass5!long-xy',
+    });
+    await expect(
+      authMfaLogin.completeLoginMfa({ mfaPendingToken: pending, code: authenticator.generate(secret) }),
+    ).rejects.toThrow();
+  });
+
+  it('CONCURRENT_MFA_FIRST password reset invalidates issued login credentials', async () => {
+    const { userId, secret } = await seedUserWithTotp();
+    let resetRelease: () => void = () => undefined;
+    const resetBarrier = new Promise<void>((resolve) => {
+      resetRelease = resolve;
+    });
+    const { plain, hash } = generatePasswordResetToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash: hash,
+        tokenLookup: passwordResetTokenLookupKey(plain),
+        purpose: 'SELF_SERVICE',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    const pending = authMfaLogin.signMfaPendingToken({
+      userId,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    const loginP = authMfaLogin.completeLoginMfa({
+      mfaPendingToken: pending,
+      code: authenticator.generate(secret),
+    });
+    const resetP = (async () => {
+      await resetBarrier;
+      return passwordReset.confirmReset({
+        token: plain,
+        newPassword: 'E2Pass6!long-xy',
+        confirmPassword: 'E2Pass6!long-xy',
+      });
+    })();
+    const login = await loginP;
+    resetRelease();
+    await resetP;
+    const decoded = jwt.verify(login.accessToken, JWT_SECRET) as jwt.JwtPayload;
+    await expect(authority.validateAccessJwt(decoded as never)).rejects.toThrow();
+    await expect(stack.refresh.rotate(login.refreshToken)).rejects.toThrow();
   });
 
   it('STALE_PENDING denied after self-service password change', async () => {

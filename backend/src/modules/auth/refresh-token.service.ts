@@ -794,6 +794,11 @@ export class RefreshTokenService {
         revocationReason: 'SESSION_REVOKED_BY_ID',
       },
     });
+    if (result.count > 0) {
+      await tx.userMfaStepUpGrant.deleteMany({
+        where: { userId, tokenFamily: target.family, consumedAt: null },
+      });
+    }
     return result.count > 0;
   }
 
@@ -802,6 +807,9 @@ export class RefreshTokenService {
     userId: string,
   ): Promise<number> {
     await acquireSessionWriteLocks(tx, { userId, organizationId: null });
+    await tx.userMfaStepUpGrant.deleteMany({
+      where: { userId, consumedAt: null },
+    });
     const result = await tx.refreshToken.updateMany({
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
       data: {
@@ -852,6 +860,17 @@ export class RefreshTokenService {
         return { revoked: 0, keptSessionId: null };
       }
 
+      const familiesToRevoke = await tx.refreshToken.findMany({
+        where: {
+          userId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+          NOT: { family: keepTokenFamily },
+        },
+        select: { family: true },
+        distinct: ['family'],
+      });
+
       const result = await tx.refreshToken.updateMany({
         where: {
           userId,
@@ -864,6 +883,13 @@ export class RefreshTokenService {
           revocationReason: 'OTHER_SESSIONS_REVOKED',
         },
       });
+
+      for (const row of familiesToRevoke) {
+        if (!row.family) continue;
+        await tx.userMfaStepUpGrant.deleteMany({
+          where: { userId, tokenFamily: row.family, consumedAt: null },
+        });
+      }
 
       return { revoked: result.count, keptSessionId: keptHead.id };
     });

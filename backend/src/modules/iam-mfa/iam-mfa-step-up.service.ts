@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { MembershipStatus, UserStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import * as crypto from 'crypto';
 import {
@@ -11,6 +12,11 @@ import {
   StepUpActionCode,
 } from './iam-mfa.policy';
 import { hashStepUpToken } from './iam-mfa-crypto.util';
+import type {
+  StepUpGrantBinding,
+  StepUpGrantRequestCache,
+  StepUpGrantValidationContext,
+} from './iam-mfa-step-up-binding.types';
 
 @Injectable()
 export class IamMfaStepUpService {
@@ -21,7 +27,15 @@ export class IamMfaStepUpService {
     actionScope: StepUpActionCode | 'GLOBAL';
     claims: AuthSessionClaims;
     idempotencyKey?: string;
+    binding: StepUpGrantBinding;
   }): Promise<{ stepUpToken: string; expiresAt: Date }> {
+    if (!input.binding.tokenFamily) {
+      throw new ConflictException({
+        code: MFA_ERROR.STEP_UP_REQUIRED,
+        message: 'Step-up grant requires bound session family',
+      });
+    }
+
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashStepUpToken(rawToken);
     const expiresAt = new Date(Date.now() + STEP_UP_TTL_MS);
@@ -51,6 +65,12 @@ export class IamMfaStepUpService {
         authenticatedAt: new Date(input.claims.authenticatedAt),
         mfaAuthenticatedAt: new Date(input.claims.mfaAuthenticatedAt ?? new Date()),
         expiresAt,
+        tokenFamily: input.binding.tokenFamily,
+        organizationId: input.binding.organizationId,
+        membershipId: input.binding.membershipId,
+        sessionVersion: input.binding.sessionVersion,
+        securityVersion: input.binding.securityVersion,
+        membershipVersion: input.binding.membershipVersion,
       },
     });
 
@@ -61,25 +81,113 @@ export class IamMfaStepUpService {
     userId: string,
     rawToken: string,
     action: StepUpActionCode,
+    context: StepUpGrantValidationContext,
+    requestCache?: StepUpGrantRequestCache,
   ): Promise<boolean> {
     const tokenHash = hashStepUpToken(rawToken);
     const grant = await this.prisma.userMfaStepUpGrant.findFirst({
       where: {
         userId,
         tokenHash,
-        consumedAt: null,
         expiresAt: { gt: new Date() },
+        ...(requestCache?.consumedGrantId
+          ? { id: requestCache.consumedGrantId }
+          : { consumedAt: null }),
       },
     });
     if (!grant) return false;
+    const alreadyConsumedThisRequest =
+      Boolean(requestCache?.consumedGrantId) && grant.id === requestCache?.consumedGrantId;
+    if (grant.consumedAt && !alreadyConsumedThisRequest) {
+      return false;
+    }
     if (grant.actionScope !== 'GLOBAL' && grant.actionScope !== action) {
       return false;
     }
+
+    if (!grant.tokenFamily) {
+      return false;
+    }
+
+    const liveUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true, sessionVersion: true, securityVersion: true },
+    });
+    if (!liveUser || liveUser.status !== UserStatus.ACTIVE) {
+      return false;
+    }
+    if (grant.sessionVersion !== null && grant.sessionVersion !== liveUser.sessionVersion) {
+      return false;
+    }
+    if (grant.securityVersion !== null && grant.securityVersion !== liveUser.securityVersion) {
+      return false;
+    }
+    if (context.sessionVersion !== liveUser.sessionVersion) {
+      return false;
+    }
+
+    if (context.tokenFamily !== grant.tokenFamily) {
+      return false;
+    }
+    if (grant.organizationId !== null && context.organizationId !== grant.organizationId) {
+      return false;
+    }
+    if (grant.membershipId !== null && context.membershipId !== grant.membershipId) {
+      return false;
+    }
+
+    if (grant.membershipId) {
+      const membership = await this.prisma.organizationMembership.findUnique({
+        where: { id: grant.membershipId },
+        select: { membershipVersion: true, status: true },
+      });
+      if (!membership || membership.status !== MembershipStatus.ACTIVE) {
+        return false;
+      }
+      if (
+        grant.membershipVersion !== null &&
+        grant.membershipVersion !== membership.membershipVersion
+      ) {
+        return false;
+      }
+      if (
+        context.membershipVersion !== null &&
+        context.membershipVersion !== membership.membershipVersion
+      ) {
+        return false;
+      }
+    }
+
+    const activeRefresh = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId,
+        family: grant.tokenFamily,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        replacedBy: null,
+      },
+      select: { id: true },
+    });
+    if (!activeRefresh) {
+      return false;
+    }
+
+    if (alreadyConsumedThisRequest) {
+      return true;
+    }
+
     const consumed = await this.prisma.userMfaStepUpGrant.updateMany({
       where: { id: grant.id, consumedAt: null, expiresAt: { gt: new Date() } },
       data: { consumedAt: new Date() },
     });
-    return consumed.count === 1;
+    if (consumed.count === 1) {
+      if (requestCache) {
+        requestCache.consumedGrantId = grant.id;
+        requestCache.consumedTokenHash = tokenHash;
+      }
+      return true;
+    }
+    return false;
   }
 
   buildClaimsAfterChallenge(input: {

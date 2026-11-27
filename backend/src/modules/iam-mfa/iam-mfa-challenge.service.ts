@@ -11,6 +11,7 @@ import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { decryptMfaSecret } from './iam-mfa-crypto.util';
 import { MFA_ERROR } from './iam-mfa.policy';
 import { IamMfaStepUpService } from './iam-mfa-step-up.service';
+import type { StepUpGrantBinding } from './iam-mfa-step-up-binding.types';
 import { resolveAcceptedTotpStep } from './iam-mfa-totp-step.util';
 import type { MfaChallengeResult } from './iam-mfa.types';
 import { AuthMethod, type AuthSessionClaims } from '@shared/auth/auth-session-claims.types';
@@ -110,18 +111,22 @@ export class IamMfaChallengeService {
       { tokenFamily },
     );
 
-    const grant = await this.stepUp.createGrant({
-      userId: input.userId,
-      actionScope: 'GLOBAL',
-      claims,
-      idempotencyKey: input.idempotencyKey,
-    });
+    const grantBinding = this.resolveGrantBinding(user, membership, tokenFamily);
+    const grantPayload = grantBinding
+      ? await this.stepUp.createGrant({
+          userId: input.userId,
+          actionScope: 'GLOBAL',
+          claims,
+          idempotencyKey: input.idempotencyKey,
+          binding: grantBinding,
+        })
+      : null;
 
     return {
       accessToken: tokenResult.accessToken,
       expiresIn: tokenResult.expiresIn,
-      stepUpToken: grant.stepUpToken,
-      stepUpExpiresAt: grant.expiresAt.toISOString(),
+      stepUpToken: grantPayload?.stepUpToken ?? '',
+      stepUpExpiresAt: grantPayload?.expiresAt.toISOString() ?? new Date(0).toISOString(),
       assuranceLevel: claims.assuranceLevel,
       authMethods: claims.authMethods as AuthMethod[],
       mfaAuthenticatedAt: claims.mfaAuthenticatedAt!,
@@ -210,18 +215,22 @@ export class IamMfaChallengeService {
       { tokenFamily },
     );
 
-    const grant = await this.stepUp.createGrant({
-      userId: input.userId,
-      actionScope: 'GLOBAL',
-      claims,
-      idempotencyKey: input.idempotencyKey,
-    });
+    const grantBinding = this.resolveGrantBinding(user, membership, tokenFamily);
+    const grantPayload = grantBinding
+      ? await this.stepUp.createGrant({
+          userId: input.userId,
+          actionScope: 'GLOBAL',
+          claims,
+          idempotencyKey: input.idempotencyKey,
+          binding: grantBinding,
+        })
+      : null;
 
     return {
       accessToken: tokenResult.accessToken,
       expiresIn: tokenResult.expiresIn,
-      stepUpToken: grant.stepUpToken,
-      stepUpExpiresAt: grant.expiresAt.toISOString(),
+      stepUpToken: grantPayload?.stepUpToken ?? '',
+      stepUpExpiresAt: grantPayload?.expiresAt.toISOString() ?? new Date(0).toISOString(),
       assuranceLevel: claims.assuranceLevel,
       authMethods: claims.authMethods as AuthMethod[],
       mfaAuthenticatedAt: claims.mfaAuthenticatedAt!,
@@ -403,5 +412,27 @@ export class IamMfaChallengeService {
     ) {
       throw new UnauthorizedException('MFA session scope mismatch');
     }
+  }
+
+  private resolveGrantBinding(
+    user: { sessionVersion: number; securityVersion: number },
+    membership: {
+      id: string;
+      organizationId: string;
+      membershipVersion: number;
+    } | null,
+    tokenFamily: string | null,
+  ): StepUpGrantBinding | null {
+    if (!tokenFamily) {
+      return null;
+    }
+    return {
+      tokenFamily,
+      organizationId: membership?.organizationId ?? null,
+      membershipId: membership?.id ?? null,
+      sessionVersion: user.sessionVersion,
+      securityVersion: user.securityVersion,
+      membershipVersion: membership?.membershipVersion ?? null,
+    };
   }
 }

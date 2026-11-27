@@ -306,6 +306,14 @@ describe('IAM MFA and step-up (Prompt 18)', () => {
           actionScope: STEP_UP_ACTION.MASTER_ORGANIZATION,
           claims: buildMfaClaims(),
           idempotencyKey: 'idem-1',
+          binding: {
+            tokenFamily: 'family-test',
+            organizationId: null,
+            membershipId: null,
+            sessionVersion: 0,
+            securityVersion: 0,
+            membershipVersion: null,
+          },
         }),
       ).rejects.toMatchObject({ response: { code: MFA_ERROR.STEP_UP_IDEMPOTENCY_REPLAY } });
       expect((prisma as { userMfaStepUpGrant: { create: jest.Mock } }).userMfaStepUpGrant.create).not.toHaveBeenCalled();
