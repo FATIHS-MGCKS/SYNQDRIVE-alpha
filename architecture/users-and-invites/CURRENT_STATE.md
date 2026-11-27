@@ -1,6 +1,6 @@
 # Users & Invites — current state (USR_P0 seal + USR-P1A delta)
 
-**Epistemic baseline:** Repository @ `origin/main` post PR #2532 (`89e3a7c4`) + **USR-P2 draft** (request-time access authority). Production runtime **NOT_VERIFIED**.
+**Epistemic baseline:** Repository @ `origin/main` post PR #2534 merge `87e2172a` (USR-P2 **MERGED**; R-008 **REMEDIATED_REPO**) + **USR-P1B** frontend shell/i18n on feature branch. Production runtime **NOT_VERIFIED**.
 
 **Owner policies (2026-11-25):** USR-OWN-01–04 **OWNER_APPROVED** — documented in [USR_P0_OWNER_ATTESTATION_2026-11-25.md](evidence/USR_P0_OWNER_ATTESTATION_2026-11-25.md). **Not implemented** in repository by this attestation; **no** deploy/flag/prod authorization.
 
@@ -10,11 +10,11 @@
 |---------|--------|----------|
 | Global identity | **CONFIRMED** — `User` model + Clerk-less email/password in monolith | `backend/prisma/schema.prisma` `User` |
 | Membership isolation (REMOVED re-add) | **IMPLEMENTED + TESTED** (repo) | PR #2481, `iam-removed-membership` tests **pass** |
-| Master Admin users UI | **PARTIALLY_WIRED** — `SecurityAccessHub` canonical; legacy `App.tsx` user CRUD dead | USR-P0-F-001 |
+| Master Admin users UI | **IMPLEMENTED (repo)** — `SecurityAccessHub` canonical; F-001 dead shell removed (USR-P1B) | USR-P1B |
 | Authorization on `/admin/security` | **IMPLEMENTED** — `MASTER_ADMIN`, `MasterAdminMfaGuard`, step-up on privileged | `security-governance.controller.ts` |
 | MFA / sessions | **IMPLEMENTED** (repo) — revoke + reset with audit hooks | controller + `RefreshTokenService` |
 | Platform user create via MA hub | **MISSING_CAPABILITY** | No POST create on governance API |
-| i18n (Security & Access) | **GAP** — hardcoded DE strings | USR-P0-F-002 |
+| i18n (Security & Access) | **IMPLEMENTED (repo)** — 9-locale `master.securityAccess.*` (USR-P1B); native review debt non-EN | USR-P1B |
 | Session-audit HTTP security tests | **IMPLEMENTED + TESTED (repo)** — harness + real-guard HTTP specs | USR-P1A closes F-003 |
 | Session audit accountability (R-002) | **IMPLEMENTED (repo)** — `MasterAdminAuditDeliveryService` | USR-P1A / USR-OWN-04 |
 | Audit on billing grant/revoke | **IMPLEMENTED** — mandatory audit service | `grantMasterBillingWithMandatoryAudit` |
@@ -26,7 +26,7 @@
 |-------|-----------|--------|
 | `?view=security-access` | `SecurityAccessHub` | **ACTIVE** |
 | `?view=users` | redirect → security-access | **MIGRATED** (`security-access-url.ts`) |
-| Legacy `users` state in `App.tsx` | unused handlers + `listAll` on mount | **DEAD / PARTIAL** |
+| Legacy `users` state in `App.tsx` | removed (USR-P1B) | **CLOSED** — backend `admin/users` routes remain (USR-P3) |
 
 ## Backend entrypoints (inventory summary)
 
@@ -54,7 +54,7 @@ Transition implementation: `backend/src/modules/users/*`, organization onboardin
 | P0 | 0 |
 | P1 | 0 |
 | P1 | 0 (**R-008 — REMEDIATED_REPO** on PR **#2534** @ `7da011d72`; not production-verified) |
-| P2 | 6+ (F-001, F-002, F-004, F-006, R-002, R-013, …) |
+| P2 | 4+ (F-004, F-006, R-013, …) — **F-001/F-002 remediated repo USR-P1B** |
 
 **P0 seal:** [USR_P0_FINAL_EVIDENCE_SEAL.md](evidence/USR_P0_FINAL_EVIDENCE_SEAL.md) — **not** a claim of zero security gaps.
 | P3 | 1 (R-005 doc fixed) |

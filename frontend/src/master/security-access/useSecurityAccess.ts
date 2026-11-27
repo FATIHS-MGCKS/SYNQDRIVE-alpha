@@ -84,7 +84,7 @@ export function useSecurityUsers(query: SecurityUsersQuery, enabled: boolean, lo
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [enabled, loadError, queryKey, query]);
+  }, [enabled, loadError, queryKey]);
 
   useEffect(() => {
     void load();
@@ -228,7 +228,7 @@ export function useOrgRoles(query: OrgRolesQuery, loadError: (k: LoadErrorKey) =
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [loadError, queryKey, query]);
+  }, [loadError, queryKey]);
 
   useEffect(() => {
     void load();
@@ -307,7 +307,7 @@ export function useAuditLog(query: AuditLogQuery, loadError: (k: LoadErrorKey) =
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [loadError, queryKey, query]);
+  }, [loadError, queryKey]);
 
   useEffect(() => {
     void load();

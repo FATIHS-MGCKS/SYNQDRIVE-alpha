@@ -167,7 +167,6 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
         roleScope={location.roleScope}
         organizationId={location.orgId}
         onClose={() => navigate({ roleId: null, roleScope: null, orgId: null }, true)}
-        onOpenOrganization={onOpenOrganization}
       />
 
       <AuditDetailDrawer
