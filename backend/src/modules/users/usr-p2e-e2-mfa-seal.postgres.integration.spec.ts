@@ -627,6 +627,39 @@ function assertDisposableDb(): void {
     ).rejects.toThrow();
   });
 
+  it('STALE_PENDING denied when account is suspended', async () => {
+    const { userId, secret } = await seedUserWithTotp();
+    const pending = authMfaLogin.signMfaPendingToken({
+      userId,
+      sessionVersion: 0,
+      securityVersion: 0,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    await prisma.user.update({ where: { id: userId }, data: { status: UserStatus.SUSPENDED } });
+    await expect(
+      authMfaLogin.completeLoginMfa({ mfaPendingToken: pending, code: authenticator.generate(secret) }),
+    ).rejects.toThrow(/inactive|no longer valid/i);
+  });
+
+  it('FRESH_LOGIN_AFTER_RESET requires re-enrollment after MFA reset', async () => {
+    const { userId, secret } = await seedUserWithTotp();
+    await mfaReset.resetMfaForUser({
+      organizationId: 'platform',
+      targetUserId: userId,
+      actorUserId: userId,
+      idempotencyKey: `e2-fresh:${randomUUID()}`,
+    });
+    const pending = authMfaLogin.signMfaPendingToken({
+      userId,
+      sessionVersion: (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).sessionVersion,
+      securityVersion: (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).securityVersion,
+      platformRole: UserPlatformRole.MASTER_ADMIN,
+    });
+    await expect(
+      authMfaLogin.completeLoginMfa({ mfaPendingToken: pending, code: authenticator.generate(secret) }),
+    ).rejects.toMatchObject({ response: { code: MFA_ERROR.ENROLLMENT_REQUIRED } });
+  });
+
   it('CONCURRENT_RESET_MFA reset after MFA login blocks stale completion', async () => {
     const { userId, secret } = await seedUserWithTotp();
     const pending = authMfaLogin.signMfaPendingToken({
