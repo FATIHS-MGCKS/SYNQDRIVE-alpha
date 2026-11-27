@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   GoneException,
+  ConflictException,
 } from '@nestjs/common';
 import {
   MembershipStatus,
@@ -389,7 +390,15 @@ export class UsersService {
     return this.mapOrgUserFull(membership);
   }
 
-  async createOrgUser(orgId: string, dto: CreateOrgUserDto, actor: PermissionActor = {}) {
+  async createOrgUser(
+    orgId: string,
+    dto: CreateOrgUserDto,
+    actor: PermissionActor = {},
+    options?: {
+      transactionClient?: Prisma.TransactionClient;
+      requireNewGlobalIdentity?: boolean;
+    },
+  ) {
     const roleFields = await this.resolveMembershipRoleFields(orgId, dto);
     if (this.requiresManageForUserProvisioning(dto, roleFields.role)) {
       await assertMembershipPermission(
@@ -402,33 +411,32 @@ export class UsersService {
     }
     await this.validateStationIds(orgId, roleFields.stationIds);
 
-    const email = dto.email.toLowerCase().trim();
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-
-    if (existing) {
-      const existingMembership =
-        await this.prisma.organizationMembership.findUnique({
+    if (!options?.transactionClient && !options?.requireNewGlobalIdentity) {
+      const emailPre = dto.email.toLowerCase().trim();
+      const existingPre = await this.prisma.user.findUnique({ where: { email: emailPre } });
+      if (existingPre) {
+        const existingMembership = await this.prisma.organizationMembership.findUnique({
           where: {
             userId_organizationId: {
-              userId: existing.id,
+              userId: existingPre.id,
               organizationId: orgId,
             },
           },
         });
-
-      if (existingMembership) {
-        if (existingMembership.status === MembershipStatus.REMOVED) {
-          return this.reactivateOrgUser(
-            orgId,
-            existing.id,
-            dto,
-            existingMembership.id,
-            actor,
+        if (existingMembership) {
+          if (existingMembership.status === MembershipStatus.REMOVED) {
+            return this.reactivateOrgUser(
+              orgId,
+              existingPre.id,
+              dto,
+              existingMembership.id,
+              actor,
+            );
+          }
+          throw new BadRequestException(
+            'User already exists in this organization',
           );
         }
-        throw new BadRequestException(
-          'User already exists in this organization',
-        );
       }
     }
 
@@ -446,7 +454,40 @@ export class UsersService {
     const normalizedPermissions = roleFields.permissions;
 
     const outboxIds: string[] = [];
-    const result = await this.prisma.$transaction(async (tx) => {
+    const runInTransaction = async (tx: Prisma.TransactionClient) => {
+      const email = dto.email.toLowerCase().trim();
+      const existing = await tx.user.findUnique({ where: { email } });
+
+      if (existing && options?.requireNewGlobalIdentity) {
+        throw new ConflictException({
+          code: 'IDENTITY_ALREADY_EXISTS',
+          message: 'An identity with this email already exists.',
+          existingUserId: existing.id,
+        });
+      }
+
+      if (existing && !options?.requireNewGlobalIdentity) {
+        const existingMembership = await tx.organizationMembership.findUnique({
+          where: {
+            userId_organizationId: {
+              userId: existing.id,
+              organizationId: orgId,
+            },
+          },
+        });
+
+        if (existingMembership) {
+          if (existingMembership.status === MembershipStatus.REMOVED) {
+            throw new BadRequestException(
+              'Removed membership reprovision must use explicit lifecycle APIs',
+            );
+          }
+          throw new BadRequestException(
+            'User already exists in this organization',
+          );
+        }
+      }
+
       let user = existing;
       if (!user) {
         user = await tx.user.create({
@@ -512,9 +553,15 @@ export class UsersService {
       outboxIds.push(outbox.id);
 
       return membership;
-    });
+    };
 
-    await this.iamAudit.processOutboxIds(outboxIds);
+    const result = options?.transactionClient
+      ? await runInTransaction(options.transactionClient)
+      : await this.prisma.$transaction(runInTransaction);
+
+    if (!options?.transactionClient) {
+      await this.iamAudit.processOutboxIds(outboxIds);
+    }
 
     const mapped = this.mapOrgUserFull(result);
     return mapped;

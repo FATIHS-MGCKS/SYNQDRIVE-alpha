@@ -28,6 +28,7 @@ import {
   inviteTokenLookupKey,
 } from './utils/invite-token.util';
 import {
+  mapOutboxToDeliveryStatus,
   maskRecipientEmail,
   toInviteAdminView,
   type OrganizationInviteAdminView,
@@ -198,6 +199,98 @@ export class OrganizationInviteService {
     await this.iamAudit.processOutboxIds(outboxIds);
 
     return this.toAdminViewFromInvite(invite, deliveryRow?.status ?? null);
+  }
+
+  /**
+   * Persist invite row (+ IAM audit intent) inside an existing transaction — delivery is post-commit.
+   */
+  async persistNewInviteInTransaction(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    dto: CreateOrganizationInviteDto,
+    invitedByUserId: string,
+  ): Promise<{ inviteId: string; plainToken: string; iamAuditOutboxId?: string }> {
+    const email = normalizeIdentityEmail(dto.email);
+    const existingPending = await tx.organizationUserInvite.findFirst({
+      where: {
+        organizationId: orgId,
+        email,
+        status: OrganizationInviteStatus.PENDING,
+      },
+    });
+    if (existingPending) {
+      await tx.organizationUserInvite.update({
+        where: { id: existingPending.id },
+        data: { status: OrganizationInviteStatus.REVOKED, revokedAt: new Date() },
+      });
+    }
+
+    let membershipRole = dto.membershipRole ?? MembershipRole.WORKER;
+    let organizationRoleId: string | null = dto.organizationRoleId ?? null;
+    if (dto.organizationRoleId) {
+      const template = await this.roleService.resolveRoleForInvite(orgId, dto.organizationRoleId);
+      if (template) {
+        membershipRole = template.membershipRole;
+        organizationRoleId = template.id;
+      }
+    }
+
+    const { plain, hash } = generateInviteToken();
+    const tokenLookup = inviteTokenLookupKey(plain);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
+
+    const created = await tx.organizationUserInvite.create({
+      data: {
+        organizationId: orgId,
+        email,
+        membershipRole,
+        organizationRoleId,
+        status: OrganizationInviteStatus.PENDING,
+        tokenHash: hash,
+        tokenLookup,
+        expiresAt,
+        invitedByUserId,
+      },
+    });
+
+    const outbox = await this.iamAudit.enqueueInTransaction(tx, {
+      organizationId: orgId,
+      idempotencyKey: `invite-created:${created.id}`,
+      eventType: UserAccessAuditAction.USER_INVITED,
+      actorUserId: invitedByUserId,
+      targetInviteId: created.id,
+      description: `Einladung an ${maskRecipientEmail(email)} angelegt`,
+      metadata: {
+        recipientMasked: maskRecipientEmail(email),
+        membershipRole,
+        organizationRoleId,
+      },
+    });
+
+    return { inviteId: created.id, plainToken: plain, iamAuditOutboxId: outbox.id };
+  }
+
+  async enqueueDeliveryForPersistedInvite(input: {
+    organizationId: string;
+    inviteId: string;
+    plainToken: string;
+    sentByUserId: string;
+  }): Promise<{ deliveryRequested: boolean; deliveryConfirmed: boolean }> {
+    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
+      organizationId: input.organizationId,
+      inviteId: input.inviteId,
+      plainToken: input.plainToken,
+      sentByUserId: input.sentByUserId,
+      idempotencyKey: `invite:create:${input.inviteId}`,
+    });
+    await this.inviteDelivery.processOutboxIds([outboxId]);
+    const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
+    const status = mapOutboxToDeliveryStatus(deliveryRow?.status ?? null);
+    return {
+      deliveryRequested: status === 'QUEUED' || status === 'SENDING' || status === 'SENT',
+      deliveryConfirmed: status === 'SENT',
+    };
   }
 
   async listInvites(orgId: string, status?: OrganizationInviteStatus) {
