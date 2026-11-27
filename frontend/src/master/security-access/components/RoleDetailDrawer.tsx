@@ -5,7 +5,7 @@ import { StatusChip } from '../../../components/patterns';
 import { SkeletonCard } from '../../../components/patterns/states';
 import { useRoleDetail } from '../useSecurityAccess';
 import type { RoleScope } from '../types';
-import { formatRelativeDe } from '../security-access.utils';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 
 interface RoleDetailDrawerProps {
   roleId: string | null;
@@ -15,17 +15,23 @@ interface RoleDetailDrawerProps {
 }
 
 export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }: RoleDetailDrawerProps) {
+  const { t, formatRelative } = useSecurityAccessPresentation();
   const { detail, loading } = useRoleDetail(roleId, roleScope, organizationId);
 
   const criticalCaps = useMemo(() => detail?.criticalCapabilities ?? [], [detail]);
+
+  const eyebrow =
+    roleScope === 'platform'
+      ? t('master.securityAccess.roleDetail.eyebrowPlatform')
+      : t('master.securityAccess.roleDetail.eyebrowOrg');
 
   return (
     <DetailDrawer
       open={!!roleId && !!roleScope}
       onOpenChange={(open) => !open && onClose()}
-      eyebrow={roleScope === 'platform' ? 'Plattform-Rolle' : 'Mandanten-Rolle'}
-      title={detail?.name ?? 'Rolle'}
-      description={detail?.organizationName ?? (roleScope === 'platform' ? 'Plattform' : undefined)}
+      eyebrow={eyebrow}
+      title={detail?.name ?? t('master.securityAccess.roleDetail.titleFallback')}
+      description={detail?.organizationName ?? (roleScope === 'platform' ? t('master.securityAccess.common.platform') : undefined)}
       widthClassName="sm:max-w-xl"
     >
       {loading && !detail ? (
@@ -35,9 +41,15 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
           <section>
             <p className="text-sm text-foreground">{detail.description}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>{detail.userCount} Benutzer</span>
-              {detail.lastModified && <span>Geändert {formatRelativeDe(detail.lastModified)}</span>}
-              <StatusChip tone="neutral">{detail.type === 'system' ? 'System' : 'Benutzerdefiniert'}</StatusChip>
+              <span>{t('master.securityAccess.roleDetail.userCount', { count: String(detail.userCount) })}</span>
+              {detail.lastModified && (
+                <span>{t('master.securityAccess.roleDetail.modifiedRelative', { relative: formatRelative(detail.lastModified) })}</span>
+              )}
+              <StatusChip tone="neutral">
+                {detail.type === 'system'
+                  ? t('master.securityAccess.roles.typeSystem')
+                  : t('master.securityAccess.roles.typeCustom')}
+              </StatusChip>
             </div>
           </section>
 
@@ -45,7 +57,7 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
             <section>
               <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-muted-foreground">
                 <ShieldAlert className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                Kritische Fähigkeiten
+                {t('master.securityAccess.roleDetail.criticalCapabilities')}
               </h3>
               <ul className="space-y-1.5">
                 {criticalCaps.map((cap) => (
@@ -61,7 +73,9 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
           )}
 
           <section className="hidden lg:block">
-            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Berechtigungsgruppen</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              {t('master.securityAccess.roleDetail.permissionGroups')}
+            </h3>
             <div className="space-y-3">
               {detail.permissionGroups.map((group) => (
                 <details key={group.domain} className="rounded-xl border border-border/60">
@@ -82,7 +96,7 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
           </section>
 
           <p className="text-xs text-muted-foreground lg:hidden">
-            Vollständige Berechtigungsmatrix auf Desktop verfügbar.
+            {t('master.securityAccess.roleDetail.matrixDesktopOnly')}
           </p>
 
           {detail.scope === 'organization' && detail.organizationId && (
@@ -92,13 +106,13 @@ export function RoleDetailDrawer({ roleId, roleScope, organizationId, onClose }:
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
             >
-              In Mandant bearbeiten
+              {t('master.securityAccess.roleDetail.editInTenant')}
               <ExternalLink className="h-3 w-3" />
             </a>
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Rolle nicht gefunden.</p>
+        <p className="text-sm text-muted-foreground">{t('master.securityAccess.roleDetail.notFound')}</p>
       )}
     </DetailDrawer>
   );

@@ -1,11 +1,12 @@
 import { ShieldAlert } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DataCard, DataTable, StatusChip } from '../../../components/patterns';
 import type { DataTableColumn } from '../../../components/patterns';
 import { MasterErrorState, MasterLoadingState } from '../../shell';
 import { useOrgRoles, usePlatformRoles } from '../useSecurityAccess';
 import type { OrgRoleSummaryDto, PlatformRoleSummaryDto } from '../types';
-import { formatRelativeDe } from '../security-access.utils';
+import { useDebouncedValue } from '../useDebouncedValue';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 
 interface SecurityRolesTabProps {
   onOpenRole: (roleId: string, scope: 'platform' | 'organization', organizationId?: string) => void;
@@ -16,10 +17,16 @@ type RoleRow =
   | (OrgRoleSummaryDto & { rowScope: 'organization' });
 
 export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
-  const platform = usePlatformRoles();
+  const { t, formatRelative, loadError } = useSecurityAccessPresentation();
+  const platform = usePlatformRoles(loadError);
   const [orgPage, setOrgPage] = useState(1);
   const [orgSearch, setOrgSearch] = useState('');
-  const orgRoles = useOrgRoles({ page: orgPage, limit: 25, search: orgSearch || undefined });
+  const orgSearchDebounced = useDebouncedValue(orgSearch, 300);
+  const orgRoles = useOrgRoles({ page: orgPage, limit: 25, search: orgSearchDebounced || undefined }, loadError);
+
+  useEffect(() => {
+    setOrgPage(1);
+  }, [orgSearchDebounced]);
 
   const rows = useMemo<RoleRow[]>(() => {
     const platformRows: RoleRow[] = platform.roles.map((r) => ({ ...r, rowScope: 'platform' as const }));
@@ -31,54 +38,54 @@ export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
     () => [
       {
         key: 'name',
-        header: 'Rollenname',
+        header: t('master.securityAccess.roles.columns.roleName'),
         cell: (r) => <span className="text-sm font-semibold">{r.name}</span>,
       },
       {
         key: 'scope',
-        header: 'Scope',
+        header: t('master.securityAccess.roles.columns.scope'),
         cell: (r) =>
           r.rowScope === 'platform' ? (
             <StatusChip tone="info" className="text-xs">
-              Plattform
+              {t('master.securityAccess.common.platform')}
             </StatusChip>
           ) : (
-            <span className="text-xs">Mandant: {r.organizationName}</span>
+            <span className="text-xs">{t('master.securityAccess.roles.scopeTenant', { name: r.organizationName })}</span>
           ),
       },
       {
         key: 'users',
-        header: 'Benutzer',
+        header: t('master.securityAccess.roles.columns.users'),
         cell: (r) => <span className="text-xs tabular-nums">{r.userCount}</span>,
       },
       {
         key: 'critical',
-        header: 'Kritische Rechte',
+        header: t('master.securityAccess.roles.columns.criticalRights'),
         cell: (r) =>
           r.criticalCapabilities.length > 0 ? (
             <StatusChip tone="critical" icon={<ShieldAlert className="h-3 w-3" />} className="text-[10px]">
-              Kritisch · {r.criticalCapabilities[0]}
+              {t('master.securityAccess.roles.criticalWithCapability', { capability: r.criticalCapabilities[0] })}
             </StatusChip>
           ) : (
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-xs text-muted-foreground">{t('master.securityAccess.common.emDash')}</span>
           ),
       },
       {
         key: 'modified',
-        header: 'Zuletzt geändert',
-        cell: (r) => <span className="text-xs text-muted-foreground">{formatRelativeDe(r.lastModified)}</span>,
+        header: t('master.securityAccess.roles.columns.lastModified'),
+        cell: (r) => <span className="text-xs text-muted-foreground">{formatRelative(r.lastModified)}</span>,
       },
       {
         key: 'type',
-        header: 'Typ',
+        header: t('master.securityAccess.roles.columns.type'),
         cell: (r) => (
           <StatusChip tone="neutral" className="text-xs">
-            {r.type === 'system' ? 'System' : 'Benutzerdefiniert'}
+            {r.type === 'system' ? t('master.securityAccess.roles.typeSystem') : t('master.securityAccess.roles.typeCustom')}
           </StatusChip>
         ),
       },
     ],
-    [],
+    [formatRelative, t],
   );
 
   const loading = platform.loading && orgRoles.loading && rows.length === 0;
@@ -90,19 +97,16 @@ export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
         <input
           type="search"
           className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm"
-          placeholder="Mandantenrollen suchen…"
+          placeholder={t('master.securityAccess.roles.searchOrgPlaceholder')}
           value={orgSearch}
-          onChange={(e) => {
-            setOrgSearch(e.target.value);
-            setOrgPage(1);
-          }}
+          onChange={(e) => setOrgSearch(e.target.value)}
         />
       </DataCard>
 
       {loading ? (
         <MasterLoadingState variant="rows" count={4} />
       ) : error ? (
-        <MasterErrorState title="Rollen" error={error} onRetry={() => { void platform.refresh(); void orgRoles.refresh(); }} />
+        <MasterErrorState title={t('master.securityAccess.roles.errorTitle')} error={error} onRetry={() => { void platform.refresh(); void orgRoles.refresh(); }} />
       ) : (
         <>
           <div className="hidden lg:block">
@@ -110,7 +114,7 @@ export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
               columns={columns}
               rows={rows}
               getRowKey={(r) => `${r.rowScope}-${r.id}`}
-              empty="Keine Rollen gefunden"
+              empty={t('master.securityAccess.roles.empty')}
               onRowClick={(r) =>
                 onOpenRole(
                   r.id,
@@ -133,11 +137,14 @@ export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
               >
                 <p className="font-semibold text-sm">{r.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {r.rowScope === 'platform' ? 'Plattform' : r.organizationName} · {r.userCount} Benutzer
+                  {t('master.securityAccess.roles.mobileUsersCount', {
+                    scope: r.rowScope === 'platform' ? t('master.securityAccess.common.platform') : r.organizationName,
+                    count: String(r.userCount),
+                  })}
                 </p>
                 {r.criticalCapabilities.length > 0 && (
                   <StatusChip tone="critical" icon={<ShieldAlert className="h-3 w-3" />} className="mt-2 text-[10px]">
-                    Kritisch
+                    {t('master.securityAccess.common.critical')}
                   </StatusChip>
                 )}
               </button>
@@ -152,10 +159,13 @@ export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
                 className="sq-btn-secondary rounded-lg px-3 py-1.5 text-xs"
                 onClick={() => setOrgPage((p) => p - 1)}
               >
-                Zurück
+                {t('master.securityAccess.pagination.back')}
               </button>
               <span className="text-xs text-muted-foreground">
-                Mandantenrollen Seite {orgPage} / {orgRoles.result?.meta.totalPages}
+                {t('master.securityAccess.roles.orgPageOf', {
+                  page: String(orgPage),
+                  total: String(orgRoles.result?.meta.totalPages ?? 1),
+                })}
               </span>
               <button
                 type="button"
@@ -163,7 +173,7 @@ export function SecurityRolesTab({ onOpenRole }: SecurityRolesTabProps) {
                 className="sq-btn-secondary rounded-lg px-3 py-1.5 text-xs"
                 onClick={() => setOrgPage((p) => p + 1)}
               >
-                Weiter
+                {t('master.securityAccess.pagination.forward')}
               </button>
             </div>
           )}

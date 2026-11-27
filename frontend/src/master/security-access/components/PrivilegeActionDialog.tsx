@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { ConfirmDialog } from '../../../components/patterns';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 
 export type PrivilegeActionCategory = 'sensitive' | 'high-risk' | 'destructive';
 
@@ -26,15 +27,16 @@ export function PrivilegeActionDialog({
   title,
   description,
   category = 'sensitive',
-  confirmLabel = 'Bestätigen',
+  confirmLabel,
   requireReason = false,
   minReasonLength = 10,
   requireCheckbox = false,
-  checkboxLabel = 'Ich bestätige diese Aktion.',
+  checkboxLabel,
   targetSummary,
   loading = false,
   onConfirm,
 }: PrivilegeActionDialogProps) {
+  const { t } = useSecurityAccessPresentation();
   const [reason, setReason] = useState('');
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState('');
@@ -47,11 +49,11 @@ export function PrivilegeActionDialog({
 
   const handleConfirm = async () => {
     if (requireReason && reason.trim().length < minReasonLength) {
-      setError(`Bitte geben Sie einen Grund mit mindestens ${minReasonLength} Zeichen an.`);
+      setError(t('master.securityAccess.privilege.error.reasonMinLength', { min: String(minReasonLength) }));
       return;
     }
     if (requireCheckbox && !checked) {
-      setError('Bitte bestätigen Sie die Checkbox.');
+      setError(t('master.securityAccess.privilege.error.checkboxRequired'));
       return;
     }
     setError('');
@@ -60,6 +62,8 @@ export function PrivilegeActionDialog({
   };
 
   const destructive = category === 'destructive' || category === 'high-risk';
+  const resolvedConfirm = confirmLabel ?? t('master.securityAccess.common.confirm');
+  const resolvedCheckbox = checkboxLabel ?? t('master.securityAccess.privilege.checkboxDefault');
 
   return (
     <ConfirmDialog
@@ -70,7 +74,7 @@ export function PrivilegeActionDialog({
       }}
       title={title}
       description={description}
-      confirmLabel={confirmLabel}
+      confirmLabel={resolvedConfirm}
       tone={destructive ? 'critical' : 'default'}
       loading={loading}
       onConfirm={() => void handleConfirm()}
@@ -79,7 +83,7 @@ export function PrivilegeActionDialog({
         {(category === 'high-risk' || category === 'destructive') && (
           <div className="flex items-start gap-2 rounded-xl border border-[color:var(--status-critical-soft)] bg-[color:var(--status-critical-soft)]/20 px-3 py-2.5 text-xs text-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
-            <span>Privilegierte Aktion — wird revisionssicher protokolliert.</span>
+            <span>{t('master.securityAccess.privilege.auditBanner')}</span>
           </div>
         )}
 
@@ -88,7 +92,7 @@ export function PrivilegeActionDialog({
         {requireReason && (
           <div>
             <label htmlFor="privilege-reason" className="mb-1.5 block text-xs font-semibold text-foreground">
-              Grund (Pflicht)
+              {t('master.securityAccess.privilege.reasonLabel')}
             </label>
             <textarea
               id="privilege-reason"
@@ -96,7 +100,7 @@ export function PrivilegeActionDialog({
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-ring"
-              placeholder="Begründung für diese Aktion…"
+              placeholder={t('master.securityAccess.privilege.reasonPlaceholder')}
             />
           </div>
         )}
@@ -109,7 +113,7 @@ export function PrivilegeActionDialog({
               onChange={(e) => setChecked(e.target.checked)}
               className="mt-0.5"
             />
-            {checkboxLabel}
+            {resolvedCheckbox}
           </label>
         )}
 
@@ -127,6 +131,7 @@ export function RoleEscalationDialog(
   },
 ) {
   const { userName, userEmail, ...rest } = props;
+  const { t } = useSecurityAccessPresentation();
   return (
     <PrivilegeActionDialog
       {...rest}
@@ -134,14 +139,14 @@ export function RoleEscalationDialog(
       requireReason
       requireCheckbox
       minReasonLength={10}
-      checkboxLabel="Ich bestätige die Ausweitung privilegierter Rechte."
-      confirmLabel="Plattform-Administrator zuweisen"
+      checkboxLabel={t('master.securityAccess.privilege.escalation.checkbox')}
+      confirmLabel={t('master.securityAccess.privilege.escalation.confirm')}
       targetSummary={
         <div className="rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs space-y-1">
           <p className="font-semibold">{userName}</p>
           <p className="text-muted-foreground">{userEmail}</p>
           <p className="text-[color:var(--status-critical)] font-medium">
-            Vollzugriff auf alle Mandanten und privilegierte Control-Plane-Aktionen.
+            {t('master.securityAccess.privilege.escalation.fullAccessWarning')}
           </p>
         </div>
       }

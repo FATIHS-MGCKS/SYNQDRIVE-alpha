@@ -4,13 +4,8 @@ import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { StatusChip } from '../../../components/patterns';
 import { SkeletonCard } from '../../../components/patterns/states';
 import { useAuditDetail } from '../useSecurityAccess';
-import {
-  auditResultLabel,
-  auditResultTone,
-  formatRelativeDe,
-  maskIpDisplay,
-  truncateReason,
-} from '../security-access.utils';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
+import { auditResultTone, maskIpDisplay, truncateReason } from '../security-access.utils';
 
 interface AuditDetailDrawerProps {
   auditId: string | null;
@@ -19,9 +14,10 @@ interface AuditDetailDrawerProps {
 }
 
 function DiffBlock({ label, value }: { label: string; value: unknown }) {
+  const { t } = useSecurityAccessPresentation();
   const text =
     value == null
-      ? '—'
+      ? t('master.securityAccess.common.emDash')
       : typeof value === 'string'
         ? value
         : JSON.stringify(value, null, 2);
@@ -37,6 +33,7 @@ function DiffBlock({ label, value }: { label: string; value: unknown }) {
 }
 
 export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDetailDrawerProps) {
+  const { t, auditResultLabel, formatRelative } = useSecurityAccessPresentation();
   const { detail, loading } = useAuditDetail(auditId);
   const [techOpen, setTechOpen] = useState(false);
 
@@ -44,8 +41,8 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
     <DetailDrawer
       open={!!auditId}
       onOpenChange={(open) => !open && onClose()}
-      title={detail?.action ?? 'Audit-Eintrag'}
-      description={detail?.createdAt ? formatRelativeDe(detail.createdAt) : undefined}
+      title={detail?.action ?? t('master.securityAccess.auditDetail.titleFallback')}
+      description={detail?.createdAt ? formatRelative(detail.createdAt) : undefined}
       status={
         detail ? (
           <StatusChip tone={auditResultTone(detail.result)} dot>
@@ -60,44 +57,50 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
       ) : detail ? (
         <div className="space-y-5 text-sm">
           <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Zusammenfassung</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              {t('master.securityAccess.auditDetail.section.summary')}
+            </h3>
             <p className="text-sm text-foreground">{detail.summary ?? detail.description}</p>
           </section>
 
           <section className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <p className="text-muted-foreground">Akteur</p>
-              <p className="font-medium">{detail.userName ?? detail.actor?.name ?? 'System'}</p>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.actor')}</p>
+              <p className="font-medium">
+                {detail.userName ?? detail.actor?.name ?? t('master.securityAccess.common.system')}
+              </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Organisation</p>
-              <p className="font-medium">{detail.organizationName ?? 'Plattform'}</p>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.organization')}</p>
+              <p className="font-medium">{detail.organizationName ?? t('master.securityAccess.common.platform')}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Ziel</p>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.target')}</p>
               <p className="font-medium">
                 {detail.entity}
                 {detail.entityId ? ` · ${detail.entityId.slice(0, 8)}` : ''}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Grund</p>
+              <p className="text-muted-foreground">{t('master.securityAccess.auditDetail.field.reason')}</p>
               <p className="font-medium">{truncateReason(detail.reason, 200)}</p>
             </div>
           </section>
 
           {(detail.diff?.before != null || detail.diff?.after != null) && (
             <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Vorher / Nachher</h3>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                {t('master.securityAccess.auditDetail.section.diff')}
+              </h3>
               <div className="space-y-3">
-                <DiffBlock label="Vorher" value={detail.diff?.before} />
-                <DiffBlock label="Nachher" value={detail.diff?.after} />
+                <DiffBlock label={t('master.securityAccess.auditDetail.diff.before')} value={detail.diff?.before} />
+                <DiffBlock label={t('master.securityAccess.auditDetail.diff.after')} value={detail.diff?.after} />
               </div>
             </section>
           )}
 
           {detail.immutable && (
-            <p className="text-[10px] text-muted-foreground">Revisionssicher — nicht bearbeitbar.</p>
+            <p className="text-[10px] text-muted-foreground">{t('master.securityAccess.auditDetail.immutableNotice')}</p>
           )}
 
           {onOpenFullAudit && (
@@ -106,7 +109,7 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
               className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
               onClick={() => onOpenFullAudit(detail.id)}
             >
-              Vollständiger Audit-Eintrag
+              {t('master.securityAccess.auditDetail.fullEntryLink')}
               <ExternalLink className="h-3 w-3" />
             </button>
           )}
@@ -116,7 +119,7 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
             className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-xs font-semibold"
             onClick={() => setTechOpen((v) => !v)}
           >
-            Technische Details
+            {t('master.securityAccess.auditDetail.techDetails')}
             <ChevronDown className={`h-4 w-4 transition-transform ${techOpen ? 'rotate-180' : ''}`} />
           </button>
 
@@ -127,12 +130,16 @@ export function AuditDetailDrawer({ auditId, onClose, onOpenFullAudit }: AuditDe
               {detail.trace?.requestId && <p>Request: {detail.trace.requestId}</p>}
               {detail.network?.ipAddress && <p>IP: {maskIpDisplay(detail.network.ipAddress)}</p>}
               {detail.auditDomain && <p>Domain: {detail.auditDomain}</p>}
-              {detail.auditAction && <p>Aktion: {detail.auditAction}</p>}
+              {detail.auditAction && (
+                <p>
+                  {t('master.securityAccess.audit.columns.action')}: {detail.auditAction}
+                </p>
+              )}
             </div>
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Eintrag nicht gefunden.</p>
+        <p className="text-sm text-muted-foreground">{t('master.securityAccess.auditDetail.notFound')}</p>
       )}
     </DetailDrawer>
   );
