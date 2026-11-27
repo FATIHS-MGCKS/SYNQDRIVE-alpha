@@ -41,6 +41,31 @@ function userDetail(id: string, name: string, email: string) {
   };
 }
 
+function sessionRows(userId: string) {
+  return [
+    {
+      id: `${userId}-sess-current`,
+      device: 'E2E Current',
+      browser: 'Chromium',
+      os: 'Linux',
+      ipAddress: '203.0.113.10',
+      current: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      lastUsedAt: '2024-06-01T00:00:00Z',
+    },
+    {
+      id: `${userId}-sess-other`,
+      device: 'E2E Other',
+      browser: 'Firefox',
+      os: 'macOS',
+      ipAddress: '203.0.113.11',
+      current: false,
+      createdAt: '2024-01-02T00:00:00Z',
+      lastUsedAt: '2024-06-02T00:00:00Z',
+    },
+  ];
+}
+
 export async function installSecurityAccessMocks(page: Page) {
   await installMasterSidebarMocks(page);
   await page.route('**/api/admin/security/**', async (route) => {
@@ -53,19 +78,34 @@ export async function installSecurityAccessMocks(page: Page) {
       return json(route, { total: 0, topItems: [], byCode: {}, generatedAt: new Date().toISOString() });
     }
     if (url.includes('/admin/security/users') && method === 'GET' && !url.match(/\/users\/[^/?]+/)) {
+      const parsed = new URL(url);
+      const pageNum = Number(parsed.searchParams.get('page') ?? '1');
+      const search = (parsed.searchParams.get('search') ?? '').toLowerCase();
+      const all = [
+        listItem(SA_FIXTURE_USER_A.id, SA_FIXTURE_USER_A.name, SA_FIXTURE_USER_A.email),
+        listItem(SA_FIXTURE_USER_B.id, SA_FIXTURE_USER_B.name, SA_FIXTURE_USER_B.email),
+      ];
+      const filtered = search
+        ? all.filter((u) => u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search))
+        : all;
+      const pageSize = 1;
+      const start = (pageNum - 1) * pageSize;
+      const slice = filtered.slice(start, start + pageSize);
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
       return json(route, {
-        data: [listItem(SA_FIXTURE_USER_A.id, SA_FIXTURE_USER_A.name, SA_FIXTURE_USER_A.email)],
-        meta: { total: 1, page: 1, limit: 25, totalPages: 1 },
+        data: slice,
+        meta: { total: filtered.length, page: pageNum, limit: pageSize, totalPages },
       });
     }
-    if (url.includes(`/admin/security/users/${SA_FIXTURE_USER_A.id}`)) {
+    if (url.includes(`/admin/security/users/${SA_FIXTURE_USER_A.id}`) && !url.includes('/sessions')) {
       return json(route, userDetail(SA_FIXTURE_USER_A.id, SA_FIXTURE_USER_A.name, SA_FIXTURE_USER_A.email));
     }
-    if (url.includes(`/admin/security/users/${SA_FIXTURE_USER_B.id}`)) {
+    if (url.includes(`/admin/security/users/${SA_FIXTURE_USER_B.id}`) && !url.includes('/sessions')) {
       return json(route, userDetail(SA_FIXTURE_USER_B.id, SA_FIXTURE_USER_B.name, SA_FIXTURE_USER_B.email));
     }
     if (url.includes('/admin/security/users/') && url.includes('/sessions')) {
-      return json(route, []);
+      const userId = url.includes(SA_FIXTURE_USER_A.id) ? SA_FIXTURE_USER_A.id : SA_FIXTURE_USER_B.id;
+      return json(route, sessionRows(userId));
     }
     return json(route, { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 1 } });
   });

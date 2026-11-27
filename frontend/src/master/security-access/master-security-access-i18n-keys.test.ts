@@ -27,6 +27,23 @@ describe('master.securityAccess nine-locale key parity (USR-P1B F-002)', () => {
     });
   }
 
+  const PLACEHOLDER_KEYS = [
+    'master.securityAccess.privilege.reasonPlaceholder',
+    'master.securityAccess.users.searchPlaceholder',
+  ] as const;
+
+  for (const locale of OFFICIAL_PRODUCT_LOCALE_CODES) {
+    it(`locale ${locale} defines non-empty privilege/search placeholders`, () => {
+      const text = readFileSync(join(i18nDir, `master.security-access.v1.${locale}.ts`), 'utf8');
+      for (const key of PLACEHOLDER_KEYS) {
+        const re = new RegExp(`'${key.replace(/\./g, '\\.')}':\\s*'([^']*)'`);
+        const match = text.match(re);
+        expect(match, `${key} in ${locale}`).toBeTruthy();
+        expect(match![1].trim().length).toBeGreaterThan(0);
+      }
+    });
+  }
+
   it('does not use window._saSearch in SecurityUsersTab', () => {
     const usersTab = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), 'tabs/SecurityUsersTab.tsx'),

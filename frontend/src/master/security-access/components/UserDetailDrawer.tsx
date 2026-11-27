@@ -47,13 +47,18 @@ export function UserDetailDrawer({
   const [actionLoading, setActionLoading] = useState(false);
   const targetUserIdRef = useRef<string | null>(userId);
   targetUserIdRef.current = userId;
+  const drawerGenerationRef = useRef(0);
 
   useEffect(() => {
+    drawerGenerationRef.current += 1;
     setMfaResetOpen(false);
     setDeleteOpen(false);
     setRevokeAllOpen(false);
     setActionLoading(false);
   }, [userId]);
+
+  const isMutationTargetCurrent = (targetId: string, generationAtStart: number) =>
+    targetUserIdRef.current === targetId && drawerGenerationRef.current === generationAtStart;
 
   const boundDetail = detail && userId && detail.id === userId ? detail : null;
   const boundSessions = userId && boundDetail ? sessions : [];
@@ -97,15 +102,16 @@ export function UserDetailDrawer({
               className="text-xs"
               disabled={!targetReady}
               onClick={async () => {
+                const generationAtStart = drawerGenerationRef.current;
                 const targetId = targetUserIdRef.current;
                 if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
                 try {
                   await api.admin.securityAccess.revokeSession(targetId, s.id);
-                  if (targetUserIdRef.current !== targetId) return;
+                  if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
                   toast.success(t('master.securityAccess.userDetail.toast.sessionEnded'));
                   void refreshSessions();
                 } catch {
-                  if (targetUserIdRef.current !== targetId) return;
+                  if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
                   toast.error(t('master.securityAccess.userDetail.toast.sessionEndFailed'));
                 }
               }}
@@ -353,6 +359,7 @@ export function UserDetailDrawer({
           ) : undefined
         }
         onConfirm={async (reason) => {
+          const generationAtStart = drawerGenerationRef.current;
           const targetId = targetUserIdRef.current;
           if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
           setActionLoading(true);
@@ -361,15 +368,15 @@ export function UserDetailDrawer({
               reason,
               idempotencyKey: newIdempotencyKey('mfa-reset'),
             });
-            if (targetUserIdRef.current !== targetId) return;
+            if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
             toast.success(t('master.securityAccess.userDetail.mfaReset.success'));
             setMfaResetOpen(false);
             void refresh();
           } catch {
-            if (targetUserIdRef.current !== targetId) return;
+            if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
             toast.error(t('master.securityAccess.userDetail.mfaReset.failed'));
           } finally {
-            if (targetUserIdRef.current === targetId) setActionLoading(false);
+            if (isMutationTargetCurrent(targetId, generationAtStart)) setActionLoading(false);
           }
         }}
       />
@@ -386,21 +393,22 @@ export function UserDetailDrawer({
         confirmLabel={t('master.securityAccess.userDetail.delete.confirm')}
         loading={actionLoading}
         onConfirm={async (reason) => {
+          const generationAtStart = drawerGenerationRef.current;
           const targetId = targetUserIdRef.current;
           if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
           setActionLoading(true);
           try {
             await api.users.delete(targetId, reason);
-            if (targetUserIdRef.current !== targetId) return;
+            if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
             toast.success(t('master.securityAccess.userDetail.delete.success'));
             setDeleteOpen(false);
             onClose();
             onUserDeleted?.();
           } catch {
-            if (targetUserIdRef.current !== targetId) return;
+            if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
             toast.error(t('master.securityAccess.userDetail.delete.failed'));
           } finally {
-            if (targetUserIdRef.current === targetId) setActionLoading(false);
+            if (isMutationTargetCurrent(targetId, generationAtStart)) setActionLoading(false);
           }
         }}
       />
@@ -415,20 +423,21 @@ export function UserDetailDrawer({
         confirmLabel={t('master.securityAccess.userDetail.revokeAll.confirm')}
         loading={actionLoading}
         onConfirm={async () => {
+          const generationAtStart = drawerGenerationRef.current;
           const targetId = targetUserIdRef.current;
           if (!targetId || !boundDetail || boundDetail.id !== targetId) return;
           setActionLoading(true);
           try {
             await api.admin.securityAccess.revokeAllSessions(targetId);
-            if (targetUserIdRef.current !== targetId) return;
+            if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
             toast.success(t('master.securityAccess.userDetail.revokeAll.success'));
             setRevokeAllOpen(false);
             void refreshSessions();
           } catch {
-            if (targetUserIdRef.current !== targetId) return;
+            if (!isMutationTargetCurrent(targetId, generationAtStart)) return;
             toast.error(t('master.securityAccess.userDetail.revokeAll.failed'));
           } finally {
-            if (targetUserIdRef.current === targetId) setActionLoading(false);
+            if (isMutationTargetCurrent(targetId, generationAtStart)) setActionLoading(false);
           }
         }}
       />
