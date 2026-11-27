@@ -842,7 +842,7 @@ const run = process.env[OPT_IN] === '1';
       sessionId: session.id,
       securityOperationId: operationId,
     });
-    expect(retry.revoked).toBe(false);
+    expect(retry.revoked).toBe(true);
     expect(
       await prisma.masterAdminAuditOutbox.count({ where: { idempotencyKey } }),
     ).toBe(1);

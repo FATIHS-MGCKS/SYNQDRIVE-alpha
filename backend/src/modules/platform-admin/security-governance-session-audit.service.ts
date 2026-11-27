@@ -8,6 +8,7 @@ import {
 } from '@modules/activity-log/master-admin-audit-delivery.contract';
 import { MasterAdminAuditDeliveryService } from '@modules/activity-log/master-admin-audit-delivery.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { acquireSessionWriteLocks } from '@modules/auth/refresh-token-session-concurrency';
 import {
   buildPrivilegedRouteLabel,
   resolveCorrelationId,
@@ -68,16 +69,35 @@ export class SecurityGovernanceSessionAuditService {
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        const sessionMeta = await tx.refreshToken.findFirst({
+          where: { id: input.sessionId, userId: input.targetUserId },
+          select: { organizationId: true },
+        });
+        await acquireSessionWriteLocks(tx, {
+          userId: input.targetUserId,
+          organizationId: sessionMeta?.organizationId ?? null,
+        });
+
         const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
           where: { idempotencyKey },
         });
         if (priorOutbox) {
+          if (!this.outboxSingleSessionMatchesOperation(priorOutbox, input)) {
+            return {
+              ok: false,
+              outboxId: priorOutbox.id,
+              outcome: 'NO_OP' as const,
+              record: null,
+              replay: false,
+            };
+          }
           const parsed = this.readOutboxRevokedFromSingleSession(priorOutbox);
           return {
-            ok: false,
+            ok: parsed.revokedThisOperation,
             outboxId: priorOutbox.id,
             outcome: parsed.outcome,
             record: null,
+            replay: true,
           };
         }
         const ok = await this.refreshTokens.revokeSessionByIdInTransaction(
@@ -109,13 +129,21 @@ export class SecurityGovernanceSessionAuditService {
           },
           tx,
         );
-        return { ok, outboxId, outcome, record };
+        return { ok, outboxId, outcome, record, replay: false };
       });
 
       try {
         await this.auditDelivery.attemptImmediateDelivery(txn.outboxId);
       } catch {
         /* durable intent committed; scheduler will deliver */
+      }
+      const authoritative = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey },
+      });
+      if (authoritative && this.outboxSingleSessionMatchesOperation(authoritative, input)) {
+        return {
+          revoked: this.readOutboxRevokedFromSingleSession(authoritative).revokedThisOperation,
+        };
       }
       return { revoked: txn.ok };
     } catch {
@@ -147,14 +175,27 @@ export class SecurityGovernanceSessionAuditService {
 
     try {
       const txn = await this.prisma.$transaction(async (tx) => {
+        await acquireSessionWriteLocks(tx, {
+          userId: input.targetUserId,
+          organizationId: null,
+        });
         const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
           where: { idempotencyKey },
         });
         if (priorOutbox) {
+          if (!this.outboxRevokeAllMatchesOperation(priorOutbox, input)) {
+            return {
+              revokedSessionCount: 0,
+              outboxId: priorOutbox.id,
+              record: null,
+              replay: false,
+            };
+          }
           return {
             revokedSessionCount: this.readOutboxRevokedSessionCount(priorOutbox),
             outboxId: priorOutbox.id,
             record: null,
+            replay: true,
           };
         }
         const revokedSessionCount = await this.refreshTokens.revokeAllActiveForUserInTransaction(
@@ -179,13 +220,21 @@ export class SecurityGovernanceSessionAuditService {
           },
           tx,
         );
-        return { revokedSessionCount, outboxId, record };
+        return { revokedSessionCount, outboxId, record, replay: false };
       });
 
       try {
         await this.auditDelivery.attemptImmediateDelivery(txn.outboxId);
       } catch {
         /* durable intent committed; scheduler will deliver */
+      }
+      const authoritative = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey },
+      });
+      if (authoritative && this.outboxRevokeAllMatchesOperation(authoritative, input)) {
+        return {
+          revokedSessionCount: this.readOutboxRevokedSessionCount(authoritative),
+        };
       }
       return { revokedSessionCount: txn.revokedSessionCount };
     } catch {
@@ -259,6 +308,59 @@ export class SecurityGovernanceSessionAuditService {
     });
   }
 
+  private outboxMetadata(existing: { payload: unknown }): Record<string, unknown> | null {
+    const payload = existing.payload as Record<string, unknown>;
+    const raw = payload.masterAdminAuditEnvelope;
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+    const meta = (raw as { metadata?: Record<string, unknown> }).metadata;
+    return meta && typeof meta === 'object' ? meta : null;
+  }
+
+  private outboxSingleSessionMatchesOperation(
+    existing: { payload: unknown },
+    input: { targetUserId: string; sessionId: string },
+  ): boolean {
+    const meta = this.outboxMetadata(existing);
+    if (!meta) return false;
+    return (
+      meta.operation === 'REVOKE_ONE' &&
+      meta.targetUserId === input.targetUserId &&
+      meta.sessionId === input.sessionId
+    );
+  }
+
+  private outboxRevokeAllMatchesOperation(
+    existing: { payload: unknown },
+    input: { targetUserId: string },
+  ): boolean {
+    const meta = this.outboxMetadata(existing);
+    if (!meta) return false;
+    return meta.operation === 'REVOKE_ALL' && meta.targetUserId === input.targetUserId;
+  }
+
+  private async sessionFamilyHasActiveHead(userId: string, sessionId: string): Promise<boolean> {
+    const target = await this.prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+      select: { family: true },
+    });
+    if (!target?.family) {
+      return false;
+    }
+    const active = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId,
+        family: target.family,
+        revokedAt: null,
+        replacedBy: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    return Boolean(active);
+  }
+
   private readOutboxRevokedFromSingleSession(existing: {
     payload: unknown;
   }): { outcome: 'SUCCESS' | 'NO_OP'; revokedThisOperation: boolean } {
@@ -304,6 +406,14 @@ export class SecurityGovernanceSessionAuditService {
       /* audit read failure must not block security-critical session revocation */
     }
     if (existing) {
+      if (
+        !this.outboxSingleSessionMatchesOperation(existing, {
+          targetUserId: input.targetUserId,
+          sessionId: input.sessionId,
+        })
+      ) {
+        return { revoked: false };
+      }
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
         try {
           await this.auditDelivery.attemptImmediateDelivery(existing.id);
@@ -315,13 +425,12 @@ export class SecurityGovernanceSessionAuditService {
       return { revoked: parsed.revokedThisOperation };
     }
 
-    const token = await this.prisma.refreshToken.findFirst({
-      where: { id: input.sessionId, userId: input.targetUserId },
-      select: { revokedAt: true },
-    });
-    const alreadyRevoked = Boolean(token?.revokedAt);
+    const hasActiveFamily = await this.sessionFamilyHasActiveHead(
+      input.targetUserId,
+      input.sessionId,
+    );
     let revokedThisOperation = false;
-    if (token && !alreadyRevoked) {
+    if (hasActiveFamily) {
       revokedThisOperation = await this.refreshTokens.revokeSessionById(
         input.targetUserId,
         input.sessionId,
@@ -364,6 +473,9 @@ export class SecurityGovernanceSessionAuditService {
       /* audit read failure must not block security-critical session revocation */
     }
     if (existing) {
+      if (!this.outboxRevokeAllMatchesOperation(existing, { targetUserId: input.targetUserId })) {
+        return { revokedSessionCount: 0 };
+      }
       if (existing.status !== MasterAdminAuditOutboxStatus.PROCESSED) {
         try {
           await this.auditDelivery.attemptImmediateDelivery(existing.id);

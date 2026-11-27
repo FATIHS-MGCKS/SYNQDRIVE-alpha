@@ -193,6 +193,10 @@ log 'USR-P2E E2 MFA final seal PostgreSQL'
 export USR_P2E_E2_MFA_PG=1
 run_jest_heavy usr-p2e-e2-mfa-seal.postgres.integration.spec.ts
 
+log 'USR-P2E E3 audit accountability final seal PostgreSQL'
+export USR_P2E_E3_AUDIT_PG=1
+run_jest_heavy usr-p2e-e3-audit-accountability.postgres.integration.spec.ts
+
 log 'USR-P1A session audit PostgreSQL (full certification)'
 export USR_P1A_SESSION_AUDIT_PG=1
 run_jest usr-p1a-session-audit-certification.postgres.integration.spec.ts
