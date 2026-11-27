@@ -16,6 +16,8 @@
 
 1. Migration `20261127203000_billing_price_version_supersede_archive_guard` — allow closing `effective_to` (NULL → timestamp) on supersede.
 2. `publishVersion` — write `PRICE_VERSION_PUBLISHED` audit inside the same transaction (`logInTransaction`).
-3. Regression: `pricebook-publish.postgres.integration.spec.ts` (opt-in `PRICEBOOK_PUBLISH_POSTGRES_INTEGRATION=1`).
+3. Regression: `pricebook-publish.postgres.integration.spec.ts` + `pricebook-publish-postgres-ci.sh` (disposable DB name prefix `pricebook_publish_disposable`).
+4. Scheduled `effectiveFrom`: prior ACTIVE keeps billing applicable until transition (`effectiveTo` set, status remains ACTIVE until immediate supersede).
+5. Publish transaction: `Serializable` + price book `FOR UPDATE`; audit in-transaction.
 
 **Production mutations during forensics:** none.
