@@ -59,7 +59,7 @@ Transition implementation: `backend/src/modules/users/*`, organization onboardin
 **P0 seal:** [USR_P0_FINAL_EVIDENCE_SEAL.md](evidence/USR_P0_FINAL_EVIDENCE_SEAL.md) — **not** a claim of zero security gaps.
 | P3 | 1 (R-005 doc fixed) |
 
-**Audit coverage gaps closed:** R-003, R-004, R-007, **R-002 (USR-P1A)**, **F-003 (USR-P1A)**. **Security gaps:** R-008 — USR-P2 adds `UserAccessAuthorityService` + `tokenFamily` session binding on `AuthGuard` (**IMPLEMENTED + TESTED** in repo); **remaining:** full HTTP01–21 matrix, rolling deploy verification, legacy JWT refresh for all clients.
+**Audit coverage gaps closed:** R-003, R-004, R-007, **R-002 (USR-P1A)**, **F-003 (USR-P1A)**. **Security gaps:** R-008 — USR-P2E **E5C** on PR **#2534** (`e2119608d`): dispatch identity + active refresh head binding + C02/C02 race proofs + reset/MFA contention (**IMPLEMENTED**); **repository acceptance PENDING_CI** (USR-P2 / Product Catalog / VO-5B gates on exact HEAD). **NOT production-verified.**
 
 Full register: [evidence/USR_P0_FINDINGS_REGISTER.md](evidence/USR_P0_FINDINGS_REGISTER.md).
 

@@ -85,11 +85,22 @@ bash architecture/scripts/validate-module-registry.sh && node architecture/users
 
 Prisma `User.firstName` exists in schema; disposable DB after full migrate lacks `users.first_name`. Root cause: **migration baseline gap** (model ahead of applied migrations on fresh disposable DB). Mitigation in gate path: narrow `activityLog` user/org `include` selects for P1A reads; **not** a production schema claim.
 
+## E5C closeout (2026-11-27)
+
+| Area | Evidence |
+|------|----------|
+| Request dispatch identity | `frontend/src/lib/auth-api-transport.ts` + **27/27** vitest (`auth-api-transport`, `auth-release-compatibility`) |
+| Active refresh head binding | `iam-mfa-step-up.service.ts` + `usr-p2e-e2-mfa-seal.postgres.integration.spec.ts` (E5C head-org mismatch) |
+| C02 race correction | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` C02-A/B/C |
+| Reset vs MFA contention | `usr-p2e-e2-mfa-seal.postgres.integration.spec.ts` E5C barrier reset-first |
+
+**Prior exact-HEAD CI (`421f19f93`):** Product Catalog run `45987101532` — **16/16** HTTP PASS (job log). USR-P2 `45987101336` and VO-5B `45987101448` were **in_progress** when superseded by `e2119608d`.
+
+**New exact-HEAD CI (`e2119608d531c39735a9b537022c93726565fbc4`):** USR-P2 `45989019705`, Product Catalog `45989020760`, VO-5B `45989020278` — **pending/queued** at closeout.
+
 ## R-008 status
 
-**OPEN (P1)** — implementation on branch; **43/43** disposable PostgreSQL gate + **21/21** HTTP harness + build/typecheck PASS. **Acceptance gate not closed:** security-reset production-service proofs incomplete; P1A lost-commit-ack not demonstrated; RACE lacks ordered lock/barrier evidence; MFA TOTP/recovery refresh assurance not PG-certified; frontend refresh matrix absent; CI on final HEAD pending owner review.
-
-**NOT DEPLOYED / NOT PRODUCTION_VERIFIED.**
+**OPEN (P1)** — repository remediation **complete on branch** pending **exact-HEAD** disposable PostgreSQL gate + cross-domain regressions. **REMEDIATED_REPO** not claimed until mandatory CI is terminal **success**. **NOT DEPLOYED / NOT PRODUCTION_VERIFIED / NOT CERTIFIED.**
 
 ## Non-goals preserved
 

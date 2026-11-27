@@ -45,7 +45,7 @@ Maps **USR-OWN-02 acceptance behaviors** to **exact test file + test name** exec
 | ID | Required behavior | Executed test (file — name) | E1 verdict |
 |----|-------------------|----------------------------|------------|
 | C01 | Rotation-first vs `revokeAllActiveForUser` contention | `usr-p2c-deterministic-race.postgres.integration.spec.ts` — `RACE01 rotation-first: revoke waits on rotate fence; successor denied after both commit` | PASS |
-| C02 | Production org offboarding vs org-bound + legacy refresh | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` — `E1_C02 offboarding execution suspends org and revokes org-bound sessions; unrelated org preserved` | PASS |
+| C02 | Production org offboarding vs org-bound + legacy refresh | `usr-p2e-e1-org-lifecycle.postgres.integration.spec.ts` — `E1_C02` baseline + **E5C** `C02-A/B/C` (execute lock witness; post-offboard denial for issued/rotated credentials in either race order; unrelated org preserved) | PASS (E1+E5C implemented; **PENDING_CI** on `e2119608d`) |
 | C03 | B10 concurrent mutation invariants | `usr-p2b-atomic-security-mutations.postgres.integration.spec.ts` — `B10 password mutation serializes against concurrent refresh rotation`; `B10 MFA reset serializes…`; `B10 membership mutation serializes…` | PASS |
 | C04 | Role downgrade + RolesGuard | `usr-p2c-semantic-guard.postgres.integration.spec.ts` — `E1_C04 organization role downgrade denies RolesGuard for stale membershipRole` | PASS |
 | C05 | Permission revoke + PermissionsGuard | same — `E1_C05 custom permission revocation denies PermissionsGuard for stale JWT` | PASS |

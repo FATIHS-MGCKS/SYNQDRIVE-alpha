@@ -218,7 +218,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **SOURCE** | `auth.guard.ts`; `ACCESS_TOKEN_RESIDUAL_LIFETIME_NOTE`; `platform-permission-jwt.integration.spec.ts` |
 | **EVIDENCE** | [USR_P0_FINAL_EVIDENCE_SEAL.md](USR_P0_FINAL_EVIDENCE_SEAL.md) |
 | **OWNER_DECISION** | **OWNER_APPROVED_REMEDIATION_REQUIRED** (USR-OWN-02) |
-| **USR-P2_STATUS** | **OPEN (acceptance incomplete)** — gate **43/43** PG + **21/21** HTTP harness on branch; lock-order fix (P2-R19); residual evidence gaps per [USR_P2_IMMEDIATE_ACCESS_REVOCATION_EVIDENCE.md](USR_P2_IMMEDIATE_ACCESS_REVOCATION_EVIDENCE.md); **NOT DEPLOYED / NOT PRODUCTION_VERIFIED** |
+| **USR-P2_STATUS** | **OPEN (acceptance incomplete)** — E5C implementation on PR **#2534** @ `e2119608d`; mandatory exact-HEAD CI **PENDING** (USR-P2 `45989019705`, Product Catalog `45989020760`, VO-5B `45989020278`); prior Product Catalog **16/16** on `421f19f93` run `45987101532`. **REMEDIATED_REPO** only after green gates; **NOT DEPLOYED / NOT PRODUCTION_VERIFIED** |
 | **POLICY_BIND** | USR-OWN-02 |
 
 ---
