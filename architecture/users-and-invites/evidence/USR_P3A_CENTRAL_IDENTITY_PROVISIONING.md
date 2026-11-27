@@ -79,7 +79,9 @@
 - **Create dialog:** org/role selectors, onboarding modes, authoritative result step (no silent toast-only success)
 - **Profile editor:** hydrates from `globalProfile`, changed-fields-only PATCH, generation-bound saves
 - **i18n:** new `master.securityAccess.users.create.*` + profile keys in all 9 locales (pl–it rows still English placeholders — native review debt)
-- **Tests:** vitest `master-security-access-p3a2`, `global-profile-patch.util`; playwright `master-security-access-p3a2-provisioning.spec.ts`
+- **Tests:** vitest security-access matrix **87** (incl. P1B drawer **13**, USR-P2 auth transport **14**, profile patch **3**, P3A2 F01); playwright **6/6** (desktop/tablet/mobile × light/dark) with synthetic fixtures; screenshots `/opt/cursor/artifacts/p3a2-*.png`
+- **Fix:** `ProvisionResultView` capitalized component (lowercase JSX had rendered invalid `<motionresult>` — result panel absent in Playwright)
+- **F01–F24 matrix:** partial in vitest (F01, F16 util, P1B F20–F22, stale-role/concurrency in drawer tests); full F-matrix expansion remains pre-production debt
 
 ## P3A.3 backend security acceptance (OPEN — do not mark closed)
 

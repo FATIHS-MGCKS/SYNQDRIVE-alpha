@@ -151,6 +151,25 @@ export async function installSecurityAccessMocks(page: Page) {
         meta: { total: filtered.length, page: pageNum, limit: pageSize, totalPages },
       });
     }
+    const createdUserId = '00000000-0000-4000-8000-0000000000c3';
+    if (
+      url.includes(`/admin/security/users/${createdUserId}`) &&
+      !url.includes('/sessions') &&
+      method === 'PATCH'
+    ) {
+      const patch = route.request().postDataJSON() as Record<string, unknown>;
+      const base = userDetail(createdUserId, 'New Fixture', 'new-user@fixture.test');
+      return json(route, {
+        user: { id: createdUserId, email: 'new-user@fixture.test', name: patch.name ?? base.globalProfile.name },
+        globalProfile: {
+          ...base.globalProfile,
+          ...(patch as object),
+        },
+      });
+    }
+    if (url.includes(`/admin/security/users/${createdUserId}`) && !url.includes('/sessions') && method === 'GET') {
+      return json(route, userDetail(createdUserId, 'New Fixture', 'new-user@fixture.test'));
+    }
     if (url.includes(`/admin/security/users/${SA_FIXTURE_USER_A.id}`) && !url.includes('/sessions')) {
       return json(route, userDetail(SA_FIXTURE_USER_A.id, SA_FIXTURE_USER_A.name, SA_FIXTURE_USER_A.email));
     }

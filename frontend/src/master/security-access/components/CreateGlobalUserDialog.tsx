@@ -20,6 +20,7 @@ import {
   PROFILE_LOCALE_OPTIONS,
   PROFILE_TIMEZONE_OPTIONS,
 } from '../global-profile.constants';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 
 const INPUT =
@@ -179,7 +180,7 @@ export function CreateGlobalUserDialog({
       if (generationAtStart !== formGenerationRef.current) return;
       setProvisionResult(result);
       setStep('result');
-      onListRefresh();
+      queueMicrotask(() => onListRefresh());
     } catch (err: unknown) {
       if (generationAtStart !== formGenerationRef.current) return;
       const code =
@@ -415,7 +416,7 @@ export function CreateGlobalUserDialog({
             </DialogFooter>
           </form>
         ) : provisionResult ? (
-          <motionResult
+          <ProvisionResultView
             result={provisionResult}
             t={t}
             onOpenUser={() => {
@@ -430,14 +431,14 @@ export function CreateGlobalUserDialog({
   );
 }
 
-function motionResult({
+function ProvisionResultView({
   result,
   t,
   onOpenUser,
   onDone,
 }: {
   result: GovernanceGlobalIdentityProvisionResult;
-  t: (k: string, vars?: Record<string, string>) => string;
+  t: (k: TranslationKey, vars?: Record<string, string>) => string;
   onOpenUser: () => void;
   onDone: () => void;
 }) {
