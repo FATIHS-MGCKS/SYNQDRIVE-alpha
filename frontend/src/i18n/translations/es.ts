@@ -22,6 +22,7 @@ import { masterBillingInvoicesEs } from './master.billing.invoices.es';
 import { masterCvTechnicalSpecsEs } from './master.cv.technicalSpecs.es';
 import { masterCvDimoPrivilegeEs } from './master.cv.dimoPrivilege.es';
 import { masterCvOemSpecsEs } from './master.cv.oemSpecs.es';
+import { masterSecurityAccessV1Es } from './master.security-access.v1.es';
 import { rentalMisuseStressStressGateEs } from './rental.misuseStress.stressGate.i18n';
 import { operatorTodayEs } from './operator.today.es';
 
@@ -232,6 +233,7 @@ export const es = {
   ...masterCvTechnicalSpecsEs,
   ...masterCvDimoPrivilegeEs,
   ...masterCvOemSpecsEs,
+  ...masterSecurityAccessV1Es,
   ...batteryV2HvInspectionES,
   ...tireWearV3Es,
   ...serviceIntelligenceEs,

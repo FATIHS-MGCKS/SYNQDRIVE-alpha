@@ -22,6 +22,7 @@ import { masterBillingInvoicesCs } from './master.billing.invoices.cs';
 import { masterCvTechnicalSpecsCs } from './master.cv.technicalSpecs.cs';
 import { masterCvDimoPrivilegeCs } from './master.cv.dimoPrivilege.cs';
 import { masterCvOemSpecsCs } from './master.cv.oemSpecs.cs';
+import { masterSecurityAccessV1Cs } from './master.security-access.v1.cs';
 import { rentalMisuseStressStressGateCs } from './rental.misuseStress.stressGate.i18n';
 import { operatorTodayCs } from './operator.today.cs';
 
@@ -232,6 +233,7 @@ export const cs = {
   ...masterCvTechnicalSpecsCs,
   ...masterCvDimoPrivilegeCs,
   ...masterCvOemSpecsCs,
+  ...masterSecurityAccessV1Cs,
   ...batteryV2HvInspectionCS,
   ...tireWearV3Cs,
   ...serviceIntelligenceCs,

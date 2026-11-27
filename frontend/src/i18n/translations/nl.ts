@@ -22,6 +22,7 @@ import { masterBillingInvoicesNl } from './master.billing.invoices.nl';
 import { masterCvTechnicalSpecsNl } from './master.cv.technicalSpecs.nl';
 import { masterCvDimoPrivilegeNl } from './master.cv.dimoPrivilege.nl';
 import { masterCvOemSpecsNl } from './master.cv.oemSpecs.nl';
+import { masterSecurityAccessV1Nl } from './master.security-access.v1.nl';
 import { rentalMisuseStressStressGateNl } from './rental.misuseStress.stressGate.i18n';
 import { operatorTodayNl } from './operator.today.nl';
 
@@ -233,6 +234,7 @@ export const nl = {
   ...masterCvTechnicalSpecsNl,
   ...masterCvDimoPrivilegeNl,
   ...masterCvOemSpecsNl,
+  ...masterSecurityAccessV1Nl,
   ...batteryV2HvInspectionNL,
   ...tireWearV3Nl,
   ...serviceIntelligenceNl,

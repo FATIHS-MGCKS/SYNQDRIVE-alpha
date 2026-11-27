@@ -22,6 +22,7 @@ import { masterBillingInvoicesFr } from './master.billing.invoices.fr';
 import { masterCvTechnicalSpecsFr } from './master.cv.technicalSpecs.fr';
 import { masterCvDimoPrivilegeFr } from './master.cv.dimoPrivilege.fr';
 import { masterCvOemSpecsFr } from './master.cv.oemSpecs.fr';
+import { masterSecurityAccessV1Fr } from './master.security-access.v1.fr';
 import { rentalMisuseStressStressGateFr } from './rental.misuseStress.stressGate.i18n';
 import { operatorTodayFr } from './operator.today.fr';
 
@@ -983,6 +984,7 @@ export const fr = {
   ...masterCvTechnicalSpecsFr,
   ...masterCvDimoPrivilegeFr,
   ...masterCvOemSpecsFr,
+  ...masterSecurityAccessV1Fr,
   ...batteryV2HvInspectionFR,
   ...tireWearV3Fr,
   ...serviceIntelligenceFr,
