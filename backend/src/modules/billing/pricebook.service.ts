@@ -591,7 +591,7 @@ export class PricebookService {
         },
       });
 
-      return tx.billingPriceVersion.update({
+      const activated = await tx.billingPriceVersion.update({
         where: { id: priceVersionId },
         data: {
           status: BillingPriceVersionStatus.ACTIVE,
@@ -600,15 +600,17 @@ export class PricebookService {
         },
         include: { tiers: { orderBy: { sortOrder: 'asc' } } },
       });
-    });
 
-    await this.audit.log({
-      actorUserId,
-      action: 'PRICE_VERSION_PUBLISHED',
-      entityType: 'BillingPriceVersion',
-      entityId: priceVersionId,
-      before: version,
-      after: published,
+      await this.audit.logInTransaction(tx, {
+        actorUserId,
+        action: 'PRICE_VERSION_PUBLISHED',
+        entityType: 'BillingPriceVersion',
+        entityId: priceVersionId,
+        before: version,
+        after: activated,
+      });
+
+      return activated;
     });
 
     return published;
