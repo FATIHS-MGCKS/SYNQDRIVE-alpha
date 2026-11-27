@@ -1,0 +1,166 @@
+name: USR-P2 PostgreSQL gate
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/auth/**'
+      - 'backend/src/modules/users/usr-p2-*.postgres.integration.spec.ts'
+      - 'backend/scripts/test/usr-p2-postgres-gate.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - '.github/workflows/usr-p2-postgres-ci.yml'
+
+jobs:
+  usr-p2-classify-pr-evidence:
+    name: USR-P2 classify PR evidence
+    runs-on: ubuntu-latest
+    outputs:
+      bootstrap_eligible: ${{ steps.evidence.outputs.bootstrap_eligible }}
+      evidence_reason: ${{ steps.evidence.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify bootstrap eligibility from trusted base/head Git evidence
+        id: evidence
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          fail_closed() {
+            echo "::error::USR-P2 bootstrap classification: $1"
+            echo "BOOTSTRAP_CLASSIFICATION=FAIL"
+            echo "REASON=$1"
+            exit 1
+          }
+
+          emit_not_bootstrap() {
+            echo "bootstrap_eligible=false" >> "$GITHUB_OUTPUT"
+            echo "reason=$1" >> "$GITHUB_OUTPUT"
+            echo "BOOTSTRAP_ELIGIBLE=NO"
+            echo "BOOTSTRAP_REASON=$1"
+            echo "FUTURE_WORKFLOW_EDIT_EXCLUDED=$2"
+            echo "PRODUCT_PR_BOOTSTRAP_EXCLUDED=YES"
+          }
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            fail_closed "NON_PULL_REQUEST_EVENT"
+          fi
+
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+            fail_closed "MISSING_BASE_OR_HEAD_SHA"
+          fi
+
+          if ! git rev-parse --verify "${BASE_SHA}^{commit}" >/dev/null 2>&1; then
+            fail_closed "BASE_SHA_NOT_RESOLVED"
+          fi
+          if ! git rev-parse --verify "${HEAD_SHA}^{commit}" >/dev/null 2>&1; then
+            fail_closed "HEAD_SHA_NOT_RESOLVED"
+          fi
+
+          AUTHORITY_WORKFLOW='.github/workflows/usr-p2-postgres-ci.yml'
+          GATE_SCRIPT='backend/scripts/test/usr-p2-postgres-gate.sh'
+
+          if git cat-file -e "${BASE_SHA}:${AUTHORITY_WORKFLOW}" 2>/dev/null; then
+            emit_not_bootstrap "WORKFLOW_ALREADY_ON_TRUSTED_BASE" "YES"
+            exit 0
+          fi
+
+          mapfile -t DIFF_LINES < <(git diff --name-status "${BASE_SHA}" "${HEAD_SHA}")
+          if [ "${#DIFF_LINES[@]}" -eq 0 ]; then
+            fail_closed "EMPTY_BASE_HEAD_DIFF"
+          fi
+
+          if [ "${#DIFF_LINES[@]}" -ne 1 ]; then
+            emit_not_bootstrap "DIFF_NOT_EXACTLY_ONE_FILE" "YES"
+            exit 0
+          fi
+
+          IFS=$'\t' read -r status path _ <<< "${DIFF_LINES[0]}"
+          if [ "${status}" != "A" ] || [ "${path}" != "${AUTHORITY_WORKFLOW}" ]; then
+            emit_not_bootstrap "DIFF_NOT_SOLE_ADDED_AUTHORITY_WORKFLOW" "YES"
+            exit 0
+          fi
+
+          if [ -f "${GATE_SCRIPT}" ]; then
+            fail_closed "BOOTSTRAP_REQUIRES_MISSING_GATE_SCRIPT_ON_HEAD"
+          fi
+
+          echo "bootstrap_eligible=true" >> "$GITHUB_OUTPUT"
+          echo "reason=INITIAL_AUTHORITY_WORKFLOW_BOOTSTRAP" >> "$GITHUB_OUTPUT"
+          echo "BOOTSTRAP_ELIGIBLE=YES"
+          echo "BOOTSTRAP_REASON=INITIAL_AUTHORITY_WORKFLOW_BOOTSTRAP"
+
+  usr-p2-workflow-bootstrap-validation:
+    name: USR-P2 workflow bootstrap validation
+    needs: usr-p2-classify-pr-evidence
+    if: needs.usr-p2-classify-pr-evidence.outputs.bootstrap_eligible == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bounded initial workflow bootstrap (no PostgreSQL execution)
+        run: |
+          set -euo pipefail
+          echo "BOOTSTRAP_VALIDATION=PASS"
+          echo "POSTGRES_EXECUTED=NO"
+          echo "POSTGRES_EVIDENCE=NOT_AVAILABLE"
+          echo "BOOTSTRAP_REASON=${{ needs.usr-p2-classify-pr-evidence.outputs.evidence_reason }}"
+          echo "This job validates governance bootstrap only. Disposable PostgreSQL certification runs on product refs with the gate script."
+
+  usr-p2-disposable-postgres-certification:
+    name: USR-P2 disposable PostgreSQL certification
+    needs: usr-p2-classify-pr-evidence
+    if: needs.usr-p2-classify-pr-evidence.outputs.bootstrap_eligible != 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Assert USR-P2 gate prerequisites (fail closed)
+        run: |
+          set -euo pipefail
+          if [[ ! -f scripts/test/usr-p2-postgres-gate.sh ]]; then
+            echo "USR_P2_GATE_PREREQUISITE=MISSING"
+            echo "MISSING_PATH=backend/scripts/test/usr-p2-postgres-gate.sh"
+            echo "POSTGRES_EXECUTED=NO"
+            echo "POSTGRES_EVIDENCE=NOT_AVAILABLE"
+            echo "::error::USR-P2 PostgreSQL certification requires backend/scripts/test/usr-p2-postgres-gate.sh on this ref."
+            exit 1
+          fi
+      - run: npm ci && npx prisma generate
+      - name: Execute USR-P2 disposable PostgreSQL gate
+        run: |
+          set -euo pipefail
+          echo "BOOTSTRAP_VALIDATION=NOT_APPLICABLE"
+          echo "POSTGRES_EXECUTED=YES"
+          bash scripts/test/usr-p2-postgres-gate.sh
+        env:
+          CI_PG_HOST: 127.0.0.1
+          CI_PG_PORT: 5432
+          USR_P2_PG_USER: synqdrive
+          USR_P2_PG_PASSWORD: synqdrive
+      - name: Attest PostgreSQL evidence
+        if: success()
+        run: |
+          echo "POSTGRES_EVIDENCE=AVAILABLE"
+          echo "BOOTSTRAP_VALIDATION=NOT_APPLICABLE"
