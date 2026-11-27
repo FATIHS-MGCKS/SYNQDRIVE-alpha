@@ -47,4 +47,6 @@ Detail: [`USR_P2E_E2_MFA_SEAL.md`](USR_P2E_E2_MFA_SEAL.md).
 | Active refresh head binding | **IMPLEMENTED** — grant validation checks live refresh head org/membership/session versions |
 | C02 offboarding races | **CORRECTED** — execute advisory lock witness; post-offboard denial for issued/rotated credentials regardless of race winner |
 | Reset/challenge contention | **IMPLEMENTED** — `E5C concurrent reset-first holds MFA login challenge behind user session lock` (E2 PG) |
-| Repository acceptance | **PENDING_CI** on new E5C commit — **R-008 OPEN** until green exact-HEAD gates |
+| i18n PR gate | **FIXED** on `bded2167d` — restored `hardcoded-copy-inventory.json` (accidental regen in E5C); `GOVERNANCE_AUTHORITY_CHANGED` cleared |
+| E5C CI stabilization | **PUSHED** `bded2167d` — C02 infra guards; step-up `membershipVersion`; MFA reset/login cross-connection contention |
+| Repository acceptance | **PENDING_CI** on `bded2167d` — **R-008 OPEN** until green exact-HEAD gates |
