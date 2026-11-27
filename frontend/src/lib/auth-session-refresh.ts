@@ -19,10 +19,20 @@ export type RefreshOutcome = RefreshSuccess | RefreshFailure;
 
 let refreshInFlight: Promise<RefreshOutcome> | null = null;
 let refreshTerminated = false;
+let authSessionEpoch = 0;
+
+export function getAuthSessionEpoch(): number {
+  return authSessionEpoch;
+}
+
+export function bumpAuthSessionEpoch(): void {
+  authSessionEpoch += 1;
+}
 
 export function resetAuthRefreshCoordinator(): void {
   refreshInFlight = null;
   refreshTerminated = false;
+  authSessionEpoch = 0;
 }
 
 export function markRefreshSessionTerminated(): void {
