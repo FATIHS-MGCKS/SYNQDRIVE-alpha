@@ -78,18 +78,18 @@ export class PricebookService {
     private readonly audit: BillingAuditService,
   ) {}
 
-  async findDefaultPriceBook() {
-    return this.prisma.billingPriceBook.findFirst({
+  async findDefaultPriceBook(asOf: Date = new Date()) {
+    const book = await this.prisma.billingPriceBook.findFirst({
       where: { isDefault: true },
-      include: {
-        versions: {
-          where: { status: BillingPriceVersionStatus.ACTIVE },
-          include: { tiers: { orderBy: { sortOrder: 'asc' } } },
-          orderBy: { versionNumber: 'desc' },
-          take: 1,
-        },
-      },
     });
+    if (!book) {
+      return null;
+    }
+    const activeVersion = await this.findActiveVersion(book.id, asOf);
+    return {
+      ...book,
+      versions: activeVersion ? [activeVersion] : [],
+    };
   }
 
   async findActiveVersion(priceBookId: string, asOf: Date = new Date()) {

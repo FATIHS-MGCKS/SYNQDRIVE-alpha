@@ -8,11 +8,16 @@ cd "$ROOT"
 log() { printf '[pricebook-publish-postgres-gate] %s\n' "$*"; }
 fail() { printf '[pricebook-publish-postgres-gate] FAIL: %s\n' "$*" >&2; exit 1; }
 
-if [[ "${DATABASE_URL:-}" == *"app.synqdrive"* || "${DATABASE_URL:-}" == *"srv1374778"* ]]; then
-  fail 'production-like DATABASE_URL is not permitted'
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  if [[ "${DATABASE_URL}" == *"app.synqdrive"* || "${DATABASE_URL}" == *"srv1374778"* ]]; then
+    fail 'production-like DATABASE_URL is not permitted'
+  fi
 fi
 
 PG_HOST="${CI_PG_HOST:-127.0.0.1}"
+if ! [[ "$PG_HOST" =~ ^(127\.0\.0\.1|localhost)$ ]]; then
+  fail "CI_PG_HOST must be loopback (got ${PG_HOST})"
+fi
 PG_PORT="${CI_PG_PORT:-5432}"
 PG_USER="${CI_PG_USER:-synqdrive}"
 PG_PASSWORD="${CI_PG_PASSWORD:-synqdrive}"

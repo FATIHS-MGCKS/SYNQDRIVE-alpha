@@ -151,6 +151,47 @@ async function seedBook(prisma: PrismaClient, prefix: string) {
 
   });
 
+  it('getPricingConfiguration does not surface future-effective ACTIVE as current', async () => {
+    const { key, bookId } = await seedBook(prisma, 'CFG');
+    catalogKeys.push(key);
+    await prisma.billingPriceBook.updateMany({
+      where: { isDefault: true },
+      data: { isDefault: false },
+    });
+    await prisma.billingPriceBook.update({
+      where: { id: bookId },
+      data: { isDefault: true },
+    });
+
+    const current = await createPublishedActiveVersion(
+      prisma,
+      bookId,
+      1,
+      100,
+      new Date('2020-01-01T00:00:00.000Z'),
+    );
+
+    const draft = await prisma.billingPriceVersion.create({
+      data: {
+        priceBookId: bookId,
+        versionNumber: 2,
+        status: BillingPriceVersionStatus.DRAFT,
+        tierMode: BillingTierMode.VOLUME,
+        tiers: {
+          create: [{ minVehicles: 1, maxVehicles: null, unitPriceCents: 999, sortOrder: 0 }],
+        },
+      },
+    });
+
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await svc.publishVersion(draft.id, 'actor-test', future);
+
+    const config = await svc.getPricingConfiguration();
+    expect(config.configured).toBe(true);
+    expect(config.activeVersion?.id).toBe(current.id);
+    expect(config.activeVersion?.id).not.toBe(draft.id);
+  });
+
   it('keeps prior ACTIVE applicable until scheduled effectiveFrom', async () => {
     const { key, bookId } = await seedBook(prisma, 'FUTURE');
     catalogKeys.push(key);
