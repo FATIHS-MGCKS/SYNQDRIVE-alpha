@@ -1,5 +1,5 @@
 /**
- * SPA session refresh coordinator (USR-P2E E4 release compatibility).
+ * SPA session refresh coordinator (USR-P2E E4/E5).
  * Coalesces concurrent refresh attempts and prevents unbounded 401 retry loops.
  */
 import { clearAuth } from './auth';
@@ -20,23 +20,53 @@ export type RefreshOutcome = RefreshSuccess | RefreshFailure;
 let refreshInFlight: Promise<RefreshOutcome> | null = null;
 let refreshTerminated = false;
 let authSessionEpoch = 0;
+/** Access JWT refreshed for this epoch (at most one backend refresh per epoch). */
+let accessRefreshedAtEpoch: number | null = null;
 
 export function getAuthSessionEpoch(): number {
   return authSessionEpoch;
 }
 
-export function bumpAuthSessionEpoch(): void {
-  authSessionEpoch += 1;
+export function getAccessRefreshedAtEpoch(): number | null {
+  return accessRefreshedAtEpoch;
 }
 
-export function resetAuthRefreshCoordinator(): void {
+export function bumpAuthSessionEpoch(): void {
+  authSessionEpoch += 1;
+  accessRefreshedAtEpoch = null;
+}
+
+/** Production: new login, org switch, or credential replacement. */
+export function beginAuthenticatedSession(): void {
+  bumpAuthSessionEpoch();
+  refreshInFlight = null;
+  refreshTerminated = false;
+}
+
+/** Vitest only — never call in production transitions. */
+export function resetAuthRefreshCoordinatorForTests(): void {
   refreshInFlight = null;
   refreshTerminated = false;
   authSessionEpoch = 0;
+  accessRefreshedAtEpoch = null;
+}
+
+/** @deprecated Use resetAuthRefreshCoordinatorForTests in specs only. */
+export function resetAuthRefreshCoordinator(): void {
+  resetAuthRefreshCoordinatorForTests();
+}
+
+export function markAccessRefreshedForCurrentEpoch(): void {
+  accessRefreshedAtEpoch = authSessionEpoch;
 }
 
 export function markRefreshSessionTerminated(): void {
   refreshTerminated = true;
+  refreshInFlight = null;
+}
+
+export function openRefreshCoordinatorAfterLogin(): void {
+  refreshTerminated = false;
   refreshInFlight = null;
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setAuth } from '../lib/auth';
+import { beginAuthenticatedSession } from '../lib/auth-session-refresh';
 import { Eye, EyeOff, ArrowRight, Building2, Zap } from 'lucide-react';
 import { SynqDriveBrandLogo } from '../components/brand/SynqDriveBrandLogo';
 import loginHeroVideo from '../assets/synqdrive-login.mp4';
@@ -37,6 +38,7 @@ export default function LoginPage() {
     if (!token || !res.user) {
       throw new Error('Login response incomplete');
     }
+    beginAuthenticatedSession();
     setAuth(token, res.user, res.refreshToken);
     if (res.user.platformRole === 'MASTER_ADMIN') navigate('/master', { replace: true });
     else if (res.user.organizationId) navigate('/rental', { replace: true });

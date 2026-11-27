@@ -10,7 +10,7 @@ import {
 } from '../lib/auth';
 import { api } from '../lib/api';
 import { setStepUpToken } from '../lib/mfa';
-import { bumpAuthSessionEpoch, resetAuthRefreshCoordinator } from '../lib/auth-session-refresh';
+import { beginAuthenticatedSession } from '../lib/auth-session-refresh';
 
 interface RentalContextValue {
   orgId: string;
@@ -129,8 +129,7 @@ export function RentalProvider({ children }: { children: ReactNode }) {
     }
     setSwitchingOrganization(true);
     try {
-      bumpAuthSessionEpoch();
-      resetAuthRefreshCoordinator();
+      beginAuthenticatedSession();
       setStepUpToken(null);
       const result = await api.auth.switchOrganization(organizationId, refreshToken);
       const storedUser = getStoredUser();

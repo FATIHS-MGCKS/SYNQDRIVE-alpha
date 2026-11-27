@@ -5,7 +5,7 @@ import {
   coalescedAuthRefresh,
   executeUnauthorizedRecovery,
   markRefreshSessionTerminated,
-  resetAuthRefreshCoordinator,
+  resetAuthRefreshCoordinatorForTests,
   type RefreshOutcome,
 } from './auth-session-refresh';
 import { clearAuth, getRefreshToken, getToken, setAuth, type AuthUser } from './auth';
@@ -27,12 +27,12 @@ describe('USR-P2E E4 frontend auth compatibility', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    resetAuthRefreshCoordinator();
+    resetAuthRefreshCoordinatorForTests();
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
-    resetAuthRefreshCoordinator();
+    resetAuthRefreshCoordinatorForTests();
   });
 
   it('F01 legacy access JWT lacking family binding receives expected denial', () => {

@@ -12,7 +12,9 @@ import { setStepUpToken } from './mfa';
 import {
   bumpAuthSessionEpoch,
   coalescedAuthRefresh,
+  getAccessRefreshedAtEpoch,
   getAuthSessionEpoch,
+  markAccessRefreshedForCurrentEpoch,
   markRefreshSessionTerminated,
   type RefreshOutcome,
 } from './auth-session-refresh';
@@ -88,6 +90,7 @@ export async function performBackendTokenRefresh(): Promise<RefreshOutcome> {
   }
   setStepUpToken(null);
   setAuth(body.accessToken, user, body.refreshToken ?? refreshToken);
+  markAccessRefreshedForCurrentEpoch();
   return {
     ok: true,
     accessToken: body.accessToken,
@@ -107,13 +110,30 @@ export async function recoverFromUnauthorized<T>(input: {
     clearAuthSession(true);
     throw new Error('Session expired');
   }
+  const epochAtStart = getAuthSessionEpoch();
+  if (getAccessRefreshedAtEpoch() === epochAtStart) {
+    if (getAuthSessionEpoch() === epochAtStart) {
+      clearAuthSession(true);
+    }
+    throw new Error('Session expired');
+  }
   const refreshed = await coalescedAuthRefresh(performBackendTokenRefresh);
   if (!refreshed.ok) {
-    clearAuthSession(true);
+    if (getAuthSessionEpoch() === epochAtStart) {
+      clearAuthSession(true);
+    }
     throw new Error('Session expired');
   }
   if (isIdempotentReadMethod(input.method)) {
-    return input.retry();
+    const result = await input.retry();
+    const maybeRes = result as Response;
+    if (maybeRes instanceof Response && maybeRes.status === 401) {
+      if (getAuthSessionEpoch() === epochAtStart) {
+        clearAuthSession(true);
+      }
+      throw new Error('Session expired');
+    }
+    return result;
   }
   throw new Error('Session refreshed');
 }

@@ -148,6 +148,11 @@ function applyAdmittedOffboardEnvWithoutMfaRollout() {
   const masterWithMfa = {
     id: 'ma-p4a-1',
     platformRole: UserPlatformRole.MASTER_ADMIN,
+    tokenFamily: 'vo5c-ma-p4a-family',
+    organizationId: null,
+    membershipId: null,
+    sessionVersion: 1,
+    membershipVersion: null,
     sessionClaims: buildMfaClaims(),
   };
 
@@ -420,6 +425,8 @@ function applyAdmittedOffboardEnvWithoutMfaRollout() {
       masterWithMfa.id,
       'stale-token',
       STEP_UP_ACTION.MASTER_INTEGRATIONS,
+      expect.objectContaining({ tokenFamily: 'vo5c-ma-p4a-family' }),
+      expect.anything(),
     );
   });
 
