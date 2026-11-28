@@ -21,6 +21,7 @@ import { PlatformPermissionService } from '@modules/users/platform-permissions/p
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
 import { IamMfaService } from '@modules/iam-mfa/iam-mfa.service';
 import { MasterGlobalIdentityService } from '@modules/users/master-global-identity.service';
+import { GovernanceCreateGlobalUserDto } from '@modules/users/dto';
 
 describe('SecurityGovernance identity provisioning — HTTP guard security', () => {
   const globalIdentity = {
@@ -122,6 +123,53 @@ describe('SecurityGovernance identity provisioning — HTTP guard security', () 
       } finally {
         await app.close();
       }
+    });
+
+    it('A01 — authorized master with MFA + step-up may POST (service mocked)', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: SecurityGovernanceController,
+        providers: sharedProviders,
+      });
+      harness.validateGrant.mockResolvedValue(true);
+      try {
+        await request(harness.app.getHttpServer())
+          .post('/admin/security/users')
+          .set('Authorization', 'Bearer master-token')
+          .set('x-step-up-token', 'step-up-grant')
+          .send({ email: 'allowed@test.de', firstName: 'A', lastName: 'B' })
+          .expect(201);
+        expect(globalIdentity.provisionGlobalUser).toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('A06 — missing step-up token denied for privileged create', async () => {
+      const harness = await createMasterAdminMfaHttpHarness({
+        controller: SecurityGovernanceController,
+        providers: sharedProviders,
+      });
+      harness.validateGrant.mockResolvedValue(false);
+      try {
+        await request(harness.app.getHttpServer())
+          .post('/admin/security/users')
+          .set('Authorization', 'Bearer master-token')
+          .send({ email: 'x@test.de', firstName: 'X', lastName: 'Y' })
+          .expect(403);
+        expect(globalIdentity.provisionGlobalUser).not.toHaveBeenCalled();
+      } finally {
+        await closeMasterAdminMfaHttpHarness(harness);
+      }
+    });
+
+    it('A07 — governance create DTO contract excludes password and role fields', () => {
+      const allowedKeys = new Set(
+        Object.getOwnPropertyNames(GovernanceCreateGlobalUserDto.prototype).filter(
+          (k) => k !== 'constructor',
+        ),
+      );
+      expect(allowedKeys.has('password')).toBe(false);
+      expect(allowedKeys.has('platformRole')).toBe(false);
     });
 
     it('A03b — master without MFA factor denied when MFA enforced', async () => {

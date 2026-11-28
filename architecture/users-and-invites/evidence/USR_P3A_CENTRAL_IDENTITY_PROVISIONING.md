@@ -83,19 +83,46 @@
 - **Fix:** `ProvisionResultView` capitalized component (lowercase JSX had rendered invalid `<motionresult>` — result panel absent in Playwright)
 - **F01–F24 matrix:** partial in vitest (F01, F16 util, P1B F20–F22, stale-role/concurrency in drawer tests); full F-matrix expansion remains pre-production debt
 
-## P3A.3 backend security acceptance (OPEN — do not mark closed)
+## USR-P3A.3A backend security acceptance (PR #2544)
 
-| ID | Remaining |
-|----|-----------|
-| P3A-R01 | Normalized effective fingerprints, omitted-value encoding, conflicting replay PG proof |
-| P3A-R02 | Authoritative target + invite identity on lost-ack replay |
-| P3A-R03 | Concurrent invitation recovery, token rotation dedup |
-| P3A-R04 | Credential setup continuation after lost acknowledgement |
-| P3A-R05 | Service-level PG, real HTTP guard matrix, semantic audit counts, lock contention |
-| P3A-R06 | Org/identity validation parity, org lifecycle fencing, invite acceptance E2E |
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight).
 
-**P3A.1_SECURITY_ACCEPTANCE=PENDING_P3A3** — frontend completion does not close backend acceptance.
+| R-ID | Verdict | Notes |
+|------|---------|-------|
+| R01 | **PASS (partial)** | Fingerprint omits `__omitted__` sentinels; PG conflicting fingerprint; policy **9/9** |
+| R02 | **PASS (partial)** | `operationBinding` + invite metadata allowed in audit privacy util; PG identity/profile same-key replay; org replay binds `inviteId` from outbox (not latest-by-email) |
+| R03 | **PASS (partial)** | Token rotation fenced to `PENDING`; recovery idempotency key unchanged |
+| R04 | **PASS (partial)** | Credential continuation on idempotent replay (non-invite ACTIVE membership) |
+| R05 | **PARTIAL** | HTTP guard slice **7** tests; full A01–A24 + lost-ack PG **NOT_EXECUTED**; lock-wait soak **skipped** (PG load) |
+| R06 | **PASS (partial)** | PG duplicate email + invalid timezone; org fencing code present — org-provision PG service path **NOT_EXECUTED** |
 
-## Remaining matrix (not executed this PR)
+**Critical fix:** `master-admin-audit-privacy.util.ts` now retains `operationBinding`, `inviteId`, `membershipId`, `inviteByEmail` in persisted metadata (replay was fail-closed when binding was stripped).
 
-Full A01–A24 with **real** AuthGuard/MFA/step-up on disposable Postgres, commit-then-lost-ack replay E2E, expanded F01–F24 coverage, and CI green on pushed HEAD.
+### P3A.3B frontend residuals (record only)
+
+| ID | Record |
+|----|--------|
+| P3A-FR01 | Immutable idempotency payload binding + operation-conflict UX |
+| P3A-FR02 | Profile draft vs unrelated refresh + generation binding |
+| P3A-FR03 | Org role clear/disable while roles load |
+| P3A-FR04 | Seven locales English placeholders for new security-access keys |
+| P3A-FR05 | Credential setup UI gated until full R04 E2E proof |
+
+### A01–A24 matrix (this iteration)
+
+| Case | Result |
+|------|--------|
+| A01 | **PASS** (HTTP harness, mocked service) |
+| A02–A03b | **PASS** (existing HTTP harness) |
+| A04–A05, A08–A24 | **NOT_EXECUTED** (requires full Nest + disposable PG security harness) |
+| A06–A07 | **PASS** (HTTP / DTO contract) |
+
+**P3A1_SECURITY_ACCEPTANCE=PENDING_P3A3B** — partial R + partial A; **no merge readiness**.
+
+### CI authority
+
+`usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). **NEW_CI_AUTHORITY_REQUIRED=YES** for owner-approved workflow entry if mandatory on every PR.
+
+## Remaining matrix (P3A.3B)
+
+Full A01–A24 on disposable PG with real guards, lost-ack replay E2E, org-provision + invite acceptance PG, concurrent recovery scenarios, and CI gate wiring.

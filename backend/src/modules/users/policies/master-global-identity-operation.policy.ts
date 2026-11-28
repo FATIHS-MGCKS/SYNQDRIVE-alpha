@@ -53,35 +53,47 @@ function stableJson(value: unknown): string {
   return stableFingerprintJson(value);
 }
 
+function fingerprintOptionalString(
+  target: Record<string, unknown>,
+  key: string,
+  value: string | undefined | null,
+): void {
+  if (value === undefined) return;
+  target[key] = value === null ? null : value;
+}
+
 export function buildProvisionPayloadFingerprint(
   email: string,
   dto: GovernanceCreateGlobalUserDto,
   withOrg: boolean,
 ): string {
-  const payload = {
+  const payload: Record<string, unknown> = {
     email,
-    firstName: fieldFingerprintValue(dto.firstName),
-    lastName: fieldFingerprintValue(dto.lastName),
-    name: fieldFingerprintValue(dto.name),
-    phone: fieldFingerprintValue(dto.phone),
-    mobile: fieldFingerprintValue(dto.mobile),
-    address: fieldFingerprintValue(dto.address),
-    language: fieldFingerprintValue(dto.language),
-    timezone: fieldFingerprintValue(dto.timezone),
-    dateFormat: fieldFingerprintValue(dto.dateFormat),
-    initialMembership: withOrg
-      ? {
-          inviteByEmail:
-            dto.initialMembership!.inviteByEmail === undefined
-              ? null
-              : Boolean(dto.initialMembership!.inviteByEmail),
-          organizationId: dto.initialMembership!.organizationId,
-          organizationRoleId: fieldFingerprintValue(dto.initialMembership!.organizationRoleId),
-          role: dto.initialMembership!.role,
-        }
-      : null,
     sendCredentialSetup: dto.sendCredentialSetup === true,
   };
+  fingerprintOptionalString(payload, 'firstName', dto.firstName);
+  fingerprintOptionalString(payload, 'lastName', dto.lastName);
+  fingerprintOptionalString(payload, 'name', dto.name);
+  fingerprintOptionalString(payload, 'phone', dto.phone);
+  fingerprintOptionalString(payload, 'mobile', dto.mobile);
+  fingerprintOptionalString(payload, 'address', dto.address);
+  fingerprintOptionalString(payload, 'language', dto.language);
+  fingerprintOptionalString(payload, 'timezone', dto.timezone);
+  fingerprintOptionalString(payload, 'dateFormat', dto.dateFormat);
+  if (withOrg && dto.initialMembership) {
+    const mem = dto.initialMembership;
+    const membership: Record<string, unknown> = {
+      organizationId: mem.organizationId,
+      role: mem.role,
+    };
+    if (mem.inviteByEmail !== undefined) {
+      membership.inviteByEmail = Boolean(mem.inviteByEmail);
+    }
+    fingerprintOptionalString(membership, 'organizationRoleId', mem.organizationRoleId);
+    payload.initialMembership = membership;
+  } else {
+    payload.initialMembership = null;
+  }
   return createHash('sha256').update(stableJson(payload)).digest('hex');
 }
 
@@ -91,12 +103,6 @@ export function buildProfilePayloadFingerprint(
 ): string {
   const payload = { targetUserId, patch: pickDefinedProfileFields(dto) };
   return createHash('sha256').update(stableJson(payload)).digest('hex');
-}
-
-function fieldFingerprintValue(value: string | undefined | null): string | null | '__omitted__' {
-  if (value === undefined) return '__omitted__';
-  if (value === null) return null;
-  return value;
 }
 
 function pickDefinedProfileFields(dto: GovernanceUpdateGlobalProfileDto): Record<string, unknown> {
@@ -176,6 +182,31 @@ export function readProvisionedUserIdFromOutbox(row: MasterAdminAuditOutbox): st
     const root = row.payload as { masterAdminAuditEnvelope?: { entityId?: string; after?: { userId?: string } } };
     const env = root.masterAdminAuditEnvelope;
     return env?.entityId ?? env?.after?.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export type ProvisionOperationMetadata = {
+  inviteId?: string | null;
+  membershipId?: string | null;
+  inviteByEmail?: boolean;
+};
+
+export function readProvisionOperationMetadataFromOutbox(
+  row: MasterAdminAuditOutbox,
+): ProvisionOperationMetadata | null {
+  try {
+    const root = row.payload as { masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> } };
+    const meta = root.masterAdminAuditEnvelope?.metadata;
+    if (!meta || typeof meta !== 'object') return null;
+    const out: ProvisionOperationMetadata = {};
+    if (meta.inviteId === null) out.inviteId = null;
+    else if (typeof meta.inviteId === 'string') out.inviteId = meta.inviteId;
+    if (meta.membershipId === null) out.membershipId = null;
+    else if (typeof meta.membershipId === 'string') out.membershipId = meta.membershipId;
+    if (typeof meta.inviteByEmail === 'boolean') out.inviteByEmail = meta.inviteByEmail;
+    return out;
   } catch {
     return null;
   }

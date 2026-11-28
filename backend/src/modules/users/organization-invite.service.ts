@@ -299,7 +299,15 @@ export class OrganizationInviteService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
 
+    let rotated = false;
     await this.prisma.$transaction(async (tx) => {
+      const current = await tx.organizationUserInvite.findUnique({
+        where: { id: inviteId },
+        select: { status: true },
+      });
+      if (!current || current.status !== OrganizationInviteStatus.PENDING) {
+        return;
+      }
       await tx.organizationUserInvite.update({
         where: { id: inviteId },
         data: {
@@ -309,7 +317,12 @@ export class OrganizationInviteService {
           revokedAt: null,
         },
       });
+      rotated = true;
     });
+
+    if (!rotated) {
+      return { deliveryRequested: false, deliveryConfirmed: false, invitePending: false };
+    }
 
     const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
       organizationId: orgId,

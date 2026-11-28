@@ -54,6 +54,7 @@ import {
   buildProvisionPayloadFingerprint,
   outboxMatchesIdentityOperation,
   readProvisionedUserIdFromOutbox,
+  readProvisionOperationMetadataFromOutbox,
   resolveSecurityOperationId,
   type MasterIdentityOperationBinding,
 } from './policies/master-global-identity-operation.policy';
@@ -528,24 +529,29 @@ export class MasterGlobalIdentityService {
     let deliveryConfirmed = false;
 
     if (idempotentReplay && inviteByEmail) {
-      const pendingInvite = await this.prisma.organizationUserInvite.findFirst({
-        where: {
-          organizationId: mem.organizationId,
-          email,
-          status: OrganizationInviteStatus.PENDING,
-        },
-        orderBy: { createdAt: 'desc' },
+      const priorOutbox = await this.prisma.masterAdminAuditOutbox.findUnique({
+        where: { idempotencyKey: auditIdempotencyKey },
       });
-      if (pendingInvite) {
-        inviteId = pendingInvite.id;
-        invitationPersisted = true;
-        const continuity = await this.inviteService.ensureInviteDeliveryContinuity(
-          mem.organizationId,
-          pendingInvite.id,
-          actorUserId,
-        );
-        deliveryRequested = continuity.deliveryRequested;
-        deliveryConfirmed = continuity.deliveryConfirmed;
+      const opMeta = priorOutbox ? readProvisionOperationMetadataFromOutbox(priorOutbox) : null;
+      const boundInviteId = opMeta?.inviteId;
+      if (typeof boundInviteId === 'string' && boundInviteId.length > 0) {
+        inviteId = boundInviteId;
+        const inviteRow = await this.prisma.organizationUserInvite.findUnique({
+          where: { id: boundInviteId },
+          select: { id: true, status: true, organizationId: true },
+        });
+        if (inviteRow?.organizationId === mem.organizationId) {
+          invitationPersisted = true;
+          if (inviteRow.status === OrganizationInviteStatus.PENDING) {
+            const continuity = await this.inviteService.ensureInviteDeliveryContinuity(
+              mem.organizationId,
+              boundInviteId,
+              actorUserId,
+            );
+            deliveryRequested = continuity.deliveryRequested;
+            deliveryConfirmed = continuity.deliveryConfirmed;
+          }
+        }
       }
     } else if (inviteId && invitePlain) {
       try {
@@ -572,15 +578,18 @@ export class MasterGlobalIdentityService {
     if (
       dto.sendCredentialSetup &&
       !inviteByEmail &&
-      membershipStatus === MembershipStatus.ACTIVE &&
-      !idempotentReplay
+      membershipStatus === MembershipStatus.ACTIVE
     ) {
-      await this.passwordReset.requestAdminReset({
-        organizationId: mem.organizationId,
-        userId: createdUserId,
-        actorUserId: actor.id,
-      });
-      deliveryRequested = true;
+      try {
+        await this.passwordReset.requestAdminReset({
+          organizationId: mem.organizationId,
+          userId: createdUserId,
+          actorUserId: actor.id,
+        });
+        deliveryRequested = true;
+      } catch {
+        deliveryRequested = false;
+      }
     }
 
     const userRow = await this.prisma.user.findUniqueOrThrow({

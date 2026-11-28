@@ -90,6 +90,27 @@ describe('master-global-identity-operation.policy', () => {
     expect(fpRole).not.toBe(fpRoleSwapped);
   });
 
+  it('omitted profile field does not affect fingerprint vs absent key', () => {
+    const withLang = buildProfilePayloadFingerprint('u1', { language: 'de' } as never);
+    const withoutLang = buildProfilePayloadFingerprint('u1', {} as never);
+    expect(withLang).not.toBe(withoutLang);
+    const omittedPhone = buildProfilePayloadFingerprint('u1', {} as never);
+    const nullPhone = buildProfilePayloadFingerprint('u1', { phone: null } as never);
+    expect(omittedPhone).not.toBe(nullPhone);
+  });
+
+  it('provision fingerprint omits undefined optional strings (no sentinel)', () => {
+    const minimal = buildProvisionPayloadFingerprint('a@b.de', { email: 'a@b.de' } as never, false);
+    const withFirst = buildProvisionPayloadFingerprint(
+      'a@b.de',
+      { email: 'a@b.de', firstName: 'A' } as never,
+      false,
+    );
+    expect(minimal).not.toBe(withFirst);
+    expect(minimal).not.toContain('omitted');
+    expect(withFirst).not.toContain('omitted');
+  });
+
   it('includes every supported profile patch field in fingerprint', () => {
     const dto = { language: 'de' };
     const fp1 = buildProfilePayloadFingerprint('u1', dto as never);
