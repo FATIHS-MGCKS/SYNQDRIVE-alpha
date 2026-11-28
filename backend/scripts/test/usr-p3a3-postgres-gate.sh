@@ -67,6 +67,11 @@ run_jest() {
   npx jest "$@" --runInBand --forceExit || fail "jest failed: $*"
 }
 
+run_jest_heavy() {
+  node --max-old-space-size=8192 ./node_modules/jest/bin/jest.js "$@" --runInBand --forceExit \
+    || fail "jest failed: $*"
+}
+
 log 'USR-P3A.1 master identity PostgreSQL (full disposable suite)'
 export USR_P3A1_MASTER_IDENTITY_PG=1
 run_jest usr-p3a1-master-identity.postgres.integration.spec.ts
@@ -95,6 +100,10 @@ run_jest usr-p3a3-credential-delivery-edge.postgres.integration.spec.ts
 log 'USR-P3A.3 identity HTTP authorization (PostgreSQL)'
 export USR_P3A3_IDENTITY_HTTP_PG=1
 run_jest usr-p3a3-identity-http-security.postgres.integration.spec.ts
+
+log 'USR-P3A.3C full AppModule boot (PostgreSQL + SYNQDRIVE_BOOT_CHECK)'
+export USR_P3A3_FULL_APPMODULE_BOOT_PG=1
+run_jest_heavy usr-p3a3-full-appmodule-boot.postgres.integration.spec.ts
 
 log 'USR-P3A policy unit (fingerprint / replay binding)'
 npx jest master-global-identity-operation.policy.spec.ts --runInBand --forceExit

@@ -15,6 +15,7 @@ import {
 import * as request from 'supertest';
 import { MasterGlobalIdentityService } from '@modules/users/master-global-identity.service';
 import { MFA_ERROR } from '@modules/iam-mfa/iam-mfa.policy';
+import { hashStepUpToken } from '@modules/iam-mfa/iam-mfa-crypto.util';
 import {
   assertUsrP3a3HttpDisposableDb,
   canonicalCreatePath,
@@ -186,6 +187,25 @@ const run = process.env[OPT_IN] === '1';
         .send({ email: `h06c-${randomUUID()}@example.test`, firstName: 'Bad', lastName: 'Step' });
       expect(res.status).toBe(403);
       expect(res.body.code).toBe(MFA_ERROR.STEP_UP_EXPIRED);
+    });
+
+    it('clock-expired issued grant denied (same family)', async () => {
+      const master = await seedMasterAdminWithTotp(prisma);
+      const session = await issueMasterPrivilegedHttpSession(ctx, master);
+      const tokenHash = hashStepUpToken(session.stepUpToken);
+      await prisma.userMfaStepUpGrant.updateMany({
+        where: { userId: master.userId, tokenHash },
+        data: { expiresAt: new Date(Date.now() - 60_000) },
+      });
+      const email = `h06c2-${randomUUID()}@example.test`;
+      const res = await request(ctx.app.getHttpServer())
+        .post(canonicalCreatePath())
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .set('x-step-up-token', session.stepUpToken)
+        .send({ email, firstName: 'Expired', lastName: 'Grant' });
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe(MFA_ERROR.STEP_UP_EXPIRED);
+      expect(await prisma.user.findFirst({ where: { email } })).toBeNull();
     });
 
     it('wrong session-family grant denied', async () => {

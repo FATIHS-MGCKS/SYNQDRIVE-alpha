@@ -94,6 +94,7 @@ export function useMasterIdentityPrivilegedMutations() {
   const retryPendingAfterStepUp = useCallback(async () => {
     const pending = pendingRef.current;
     if (!pending) return false;
+    pending.authIdentity = captureAuthRequestDispatchIdentity();
     try {
       assertPreDispatch(pending);
     } catch {

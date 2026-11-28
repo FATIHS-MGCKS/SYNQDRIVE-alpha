@@ -2,21 +2,34 @@ import type { Page } from '@playwright/test';
 import { installSecurityAccessMocks } from './security-access-fixtures';
 
 type CreateAttempt = { headers: Record<string, string>; body: Record<string, unknown> };
+type PatchAttempt = { headers: Record<string, string>; body: Record<string, unknown> };
+
+import { SA_FIXTURE_USER_A } from './security-access-fixtures';
+
+const PROFILE_USER_ID = SA_FIXTURE_USER_A.id;
 
 const createAttempts: CreateAttempt[] = [];
+const patchAttempts: PatchAttempt[] = [];
 let requireStepUpUntilChallenge = false;
+let requireProfileStepUpUntilChallenge = false;
 let stepUpSatisfied = false;
 let failNextCreateOnce = false;
 
 export function resetP3a3cFixtureState() {
   createAttempts.length = 0;
+  patchAttempts.length = 0;
   requireStepUpUntilChallenge = false;
+  requireProfileStepUpUntilChallenge = false;
   stepUpSatisfied = false;
   failNextCreateOnce = false;
 }
 
 export function getRecordedCreateAttempts() {
   return [...createAttempts];
+}
+
+export function getRecordedPatchAttempts() {
+  return [...patchAttempts];
 }
 
 function fulfillCreate(route: import('@playwright/test').Route, body: Record<string, unknown>) {
@@ -63,10 +76,39 @@ export async function installSecurityAccessP3a3cMocks(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         stepUpToken: 'fixture-step-up-grant',
-        accessToken: 'fixture-access-after-step-up',
         stepUpExpiresAt: new Date(Date.now() + 60_000).toISOString(),
       }),
     });
+  });
+
+  await page.route('**/api/v1/admin/security/users/**', async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+    if (url.includes(`/admin/security/users/${PROFILE_USER_ID}`) && method === 'PATCH') {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      const headers = route.request().headers();
+      patchAttempts.push({ headers, body });
+      if (requireProfileStepUpUntilChallenge && !stepUpSatisfied && !headers['x-step-up-token']) {
+        return route.fulfill({
+          status: 403,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            code: 'STEP_UP_REQUIRED',
+            message: '[STEP_UP_REQUIRED] MFA confirmation required',
+            action: 'MASTER_USER_MANAGEMENT',
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          user: { id: PROFILE_USER_ID, email: 'stepup@fixture.test', name: 'Step Patched' },
+          globalProfile: { firstName: body.firstName ?? 'Step', lastName: body.lastName ?? null },
+        }),
+      });
+    }
+    return route.fallback();
   });
 
   await page.route('**/api/v1/admin/security/users', async (route) => {
@@ -85,7 +127,11 @@ export async function installSecurityAccessP3a3cMocks(page: Page) {
       return route.fulfill({
         status: 403,
         contentType: 'application/json',
-        body: JSON.stringify({ code: 'STEP_UP_REQUIRED', action: 'MASTER_USER_MANAGEMENT' }),
+        body: JSON.stringify({
+          code: 'STEP_UP_REQUIRED',
+          message: '[STEP_UP_REQUIRED] MFA confirmation required',
+          action: 'MASTER_USER_MANAGEMENT',
+        }),
       });
     }
     return fulfillCreate(route, body);
@@ -94,9 +140,18 @@ export async function installSecurityAccessP3a3cMocks(page: Page) {
 
 export function armCreateStepUpChallenge() {
   requireStepUpUntilChallenge = true;
+  requireProfileStepUpUntilChallenge = false;
+  stepUpSatisfied = false;
+}
+
+export function armProfileStepUpChallenge() {
+  requireProfileStepUpUntilChallenge = true;
+  requireStepUpUntilChallenge = false;
   stepUpSatisfied = false;
 }
 
 export function armTransientCreateFailure() {
   failNextCreateOnce = true;
 }
+
+export { PROFILE_USER_ID };

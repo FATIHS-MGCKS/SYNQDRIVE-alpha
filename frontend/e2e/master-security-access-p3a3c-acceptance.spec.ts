@@ -94,27 +94,3 @@ test('P3A.3C ambiguous create retry preserves operation key', async ({ page }) =
   expect(keys.length).toBe(2);
   expect(keys[0]).toBe(keys[1]);
 });
-
-// Full OTP + auto-retry under stacked modals remains flaky in headless UI; step-up retry fence is covered in vitest.
-test.skip('P3A.3C step-up required surfaces challenge on privileged create', async ({ page }) => {
-  await seedMasterSidebarAuth(page, 'en');
-  await installSecurityAccessP3a3cMocks(page);
-  armCreateStepUpChallenge();
-  await page.goto('/master?view=security-access&securityAccess=users', { waitUntil: 'domcontentloaded' });
-  await openCreateForm(page);
-  await page.getByTestId('create-user-email').fill('stepup@fixture.test');
-  await page.getByTestId('create-user-first-name').fill('Step');
-  const firstPost = page.waitForResponse(
-    (res) => res.url().includes('/admin/security/users') && res.request().method() === 'POST',
-  );
-  await page.getByTestId('create-user-submit').click();
-  expect((await firstPost).status()).toBe(403);
-  await expect(page.getByText(/Sicherheitsbestätigung/)).toBeVisible({ timeout: 15_000 });
-  const challenge = page.waitForResponse((res) => res.url().includes('/account/mfa/challenge') && res.ok());
-  await page.locator('input').nth(1).fill('123456');
-  await page.getByRole('button', { name: 'Bestätigen' }).click({ force: true });
-  await challenge;
-  const attempts = getRecordedCreateAttempts();
-  expect(attempts[0]?.headers['x-step-up-token']).toBeFalsy();
-  expect(attempts[0]?.body.idempotencyKey).toBeTruthy();
-});

@@ -385,6 +385,7 @@ function MasterAppInner() {
             action={stepUpAction}
             onClose={() => {
               setStepUpOpen(false);
+              window.dispatchEvent(new CustomEvent('synqdrive:step-up-settled'));
               if (skipMfaCancelCleanupRef.current) {
                 skipMfaCancelCleanupRef.current = false;
                 return;
@@ -396,24 +397,33 @@ function MasterAppInner() {
             onSuccess={() => {
               skipMfaCancelCleanupRef.current = true;
               void (async () => {
-                try {
-                  const retriedOrg = await retryPendingAfterStepUp();
-                  const retriedIam = await iamMutations.retryPendingAfterStepUp();
-                  const retriedIdentity = await identityMutations.retryPendingAfterStepUp();
-                  if (retriedOrg || retriedIam || retriedIdentity) {
-                    toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
-                    return;
+                const retryErrors: string[] = [];
+                const tryRetry = async (runner: () => Promise<boolean>) => {
+                  try {
+                    return await runner();
+                  } catch (e: unknown) {
+                    retryErrors.push(getErrorMessage(e));
+                    return false;
                   }
-                  toast.success(t('master.organizations.mfa.stepUpSuccessManual'));
-                } catch (e: unknown) {
+                };
+                const retriedOrg = await tryRetry(retryPendingAfterStepUp);
+                const retriedIam = await tryRetry(() => iamMutations.retryPendingAfterStepUp());
+                const retriedIdentity = await tryRetry(() => identityMutations.retryPendingAfterStepUp());
+                if (retryErrors.length > 0) {
                   toast.error(
                     t('master.organizations.mfa.retryFailed', {
-                      error: getErrorMessage(e),
+                      error: retryErrors[0],
                     }),
                   );
-                } finally {
+                } else if (retriedOrg || retriedIam || retriedIdentity) {
+                  toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
+                } else {
+                  toast.success(t('master.organizations.mfa.stepUpSuccessManual'));
+                }
+                {
                   skipMfaCancelCleanupRef.current = false;
                   setStepUpOpen(false);
+                  window.dispatchEvent(new CustomEvent('synqdrive:step-up-settled'));
                 }
               })();
             }}

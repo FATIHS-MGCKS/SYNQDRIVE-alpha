@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ShieldAlert } from 'lucide-react';
 import { api } from '../../lib/api';
 import { setAuth, getStoredUser } from '../../lib/auth';
@@ -46,8 +47,11 @@ export function MfaStepUpDialog({ open, action, onClose, onSuccess }: MfaStepUpD
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+  const panel = (
+    <div
+      data-testid="mfa-step-up-dialog"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+    >
       <div className="w-full max-w-md rounded-dialog sq-dialog-panel border border-border bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center gap-3">
           <ShieldAlert className="h-5 w-5 text-amber-500" />
@@ -62,7 +66,7 @@ export function MfaStepUpDialog({ open, action, onClose, onSuccess }: MfaStepUpD
 
         {!useRecovery ? (
           <div className="space-y-3">
-            <InputOTP maxLength={6} value={code} onChange={setCode}>
+            <InputOTP data-testid="mfa-step-up-otp" maxLength={6} value={code} onChange={setCode}>
               <InputOTPGroup>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <InputOTPSlot key={i} index={i} />
@@ -98,14 +102,22 @@ export function MfaStepUpDialog({ open, action, onClose, onSuccess }: MfaStepUpD
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 
         <div className="mt-5 flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+          <Button
+            data-testid="mfa-step-up-cancel"
+            variant="outline"
+            className="flex-1"
+            onClick={onClose}
+            disabled={loading}
+          >
             Abbrechen
           </Button>
-          <Button className="flex-1" onClick={submit} disabled={loading}>
+          <Button data-testid="mfa-step-up-confirm" className="flex-1" onClick={submit} disabled={loading}>
             {loading ? 'Prüfe…' : 'Bestätigen'}
           </Button>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }

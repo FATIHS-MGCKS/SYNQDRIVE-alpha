@@ -12,7 +12,7 @@ import {
 } from '../../../components/ui/dialog';
 import { api } from '../../../lib/api';
 import { parseHttpErrorCodeFromUnknown, parseHttpErrorStatusFromUnknown } from '../../../lib/http-error-code';
-import { newIdempotencyKey } from '../../../lib/mfa';
+import { isStepUpRequiredError, newIdempotencyKey } from '../../../lib/mfa';
 import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
 import type { MasterIdentityCreatePendingOp } from '../master-identity-privileged-admission';
 import {
@@ -95,6 +95,8 @@ export function CreateGlobalUserDialog({
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [orgRolesLoading, setOrgRolesLoading] = useState(false);
   const [orgRolesLoadError, setOrgRolesLoadError] = useState(false);
+  const [stepUpUiOpen, setStepUpUiOpen] = useState(false);
+  const stepUpGateRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [formLocked, setFormLocked] = useState(false);
   const [submittedOnboardingMode, setSubmittedOnboardingMode] = useState<OnboardingMode | null>(null);
@@ -136,6 +138,23 @@ export function CreateGlobalUserDialog({
   }, []);
 
   useEffect(() => {
+    const onStepUp = () => {
+      stepUpGateRef.current = true;
+      setStepUpUiOpen(true);
+    };
+    const onSettled = () => {
+      stepUpGateRef.current = false;
+      setStepUpUiOpen(false);
+    };
+    window.addEventListener('synqdrive:step-up-required', onStepUp);
+    window.addEventListener('synqdrive:step-up-settled', onSettled);
+    return () => {
+      window.removeEventListener('synqdrive:step-up-required', onStepUp);
+      window.removeEventListener('synqdrive:step-up-settled', onSettled);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     formGenerationRef.current += 1;
     operationKeyRef.current = newIdempotencyKey('ma-global-user-create');
@@ -150,13 +169,6 @@ export function CreateGlobalUserDialog({
       })
       .finally(() => setOrgsLoading(false));
   }, [open, resetFormState, identityMutations]);
-
-  useEffect(() => {
-    if (!open) return;
-    return () => {
-      formGenerationRef.current += 1;
-    };
-  }, [open]);
 
   useEffect(() => {
     if (!organizationId) {
@@ -303,6 +315,9 @@ export function CreateGlobalUserDialog({
       if (generationAtStart !== formGenerationRef.current) return;
       const code = parseHttpErrorCodeFromUnknown(err);
       const status = parseHttpErrorStatusFromUnknown(err);
+      if (code === 'STEP_UP_REQUIRED' || isStepUpRequiredError(err)) {
+        return;
+      }
       if (code === 'OPERATION_IDEMPOTENCY_CONFLICT') {
         setLastError('operation');
         setFormLocked(true);
@@ -328,6 +343,9 @@ export function CreateGlobalUserDialog({
   };
 
   const handleClose = (next: boolean) => {
+    if (!next && (stepUpGateRef.current || stepUpStacked)) {
+      return;
+    }
     if (!next) {
       identityMutations?.clearPendingIf((op) => op.kind === 'create');
       if (!submitting) {
@@ -341,10 +359,14 @@ export function CreateGlobalUserDialog({
     identityMutations?.isPendingFor(
       (op) => op.kind === 'create' && op.dialogGeneration === formGenerationRef.current,
     ) ?? false;
+  const stepUpStacked = mutationPending || stepUpUiOpen;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" data-testid="create-global-user-dialog">
+    <Dialog open={open} onOpenChange={handleClose} modal={!stepUpStacked}>
+      <DialogContent
+        className={`sm:max-w-lg max-h-[90vh] overflow-y-auto${stepUpStacked ? ' pointer-events-none' : ''}`}
+        data-testid="create-global-user-dialog"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />

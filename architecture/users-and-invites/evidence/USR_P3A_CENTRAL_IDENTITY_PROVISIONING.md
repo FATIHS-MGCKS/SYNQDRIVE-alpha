@@ -349,6 +349,18 @@
 
 **PRODUCT_REPOSITORY_ACCEPTANCE=CONDITIONAL_PASS** — FE-R01/R02 implemented and tested; PG **116/116**; browser step-up auto-retry E2E **NOT_EXECUTED** (skipped; vitest + HTTP MFA). **MERGE_READINESS=BLOCKED_CI_AUTHORITY** (P3A PG not in GitHub CI + full `AppModule` boot not demonstrated).
 
+### P3A.3C residual acceptance seal (PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3C_RESIDUAL_ACCEPTANCE_SEAL`  
+**Parent HEAD (pre-seal):** `c5eb38ae0acc5cc7a3c5cd5647789174fc18b7eb`
+
+| Residual | Status | Executed evidence |
+|--------|--------|-------------------|
+| **R01** Step-up browser | **BLOCKED** | `master-security-access-p3a3c-step-up.spec.ts` — MFA challenge **PASS**, auto-retry create POST count **1** (expected **2**). Product fixes: MFA `createPortal` z-200, create dialog step-up gate + `modal={!stepUpStacked}`, `synqdrive:step-up-settled`, per-domain MFA retry isolation, `retryPending` auth-identity refresh, removed strict-mode generation bump on create dialog unmount. |
+| **R02** Expired grant | **PASS** | HTTP PG `clock-expired issued grant denied (same family)` — `hashStepUpToken` + backdated `userMfaStepUpGrant.expiresAt` → `STEP_UP_EXPIRED`, no user row. |
+| **R03** AppModule boot | **PASS** (gate-wired) | `usr-p3a3-full-appmodule-boot.postgres.integration.spec.ts`: `npm run build` + `SYNQDRIVE_BOOT_CHECK=1` + live Nest `GET /api/v1/health` + `MasterGlobalIdentityService` instance. |
+| **R04** USR-P2 PG | **PASS** | Fresh disposable DB + resilient migrate (tail `20260816110731` recovery); prior full gate log `/opt/cursor/artifacts/usr-p2-pg-gate.log`; seal re-run in `/opt/cursor/artifacts/p3a3c-pg-gate.log`. |
+
 ### CI authority
 
 `usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). Design: `architecture/users-and-invites/evidence/USR_P3A3_CI_AUTHORITY_PROPOSAL.md`. **NEW_CI_AUTHORITY_REQUIRED=YES** (separate authority PR; not in #2544).
