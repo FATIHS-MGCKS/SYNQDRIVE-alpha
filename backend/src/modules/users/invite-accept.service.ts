@@ -17,16 +17,18 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
-import { acquireIdentityEmailProvisionLock, acquireInviteDeliveryContinuityLock } from '@modules/auth/refresh-token-session-concurrency';
+import { acquireInviteDeliveryContinuityLock } from '@modules/auth/refresh-token-session-concurrency';
+import { UserAccessAuthorityService } from '@shared/auth/user-access-authority.service';
+import type { AccessJwtPayload } from '@shared/auth/user-access-authority.types';
+import * as jwt from 'jsonwebtoken';
+import { acquireInviteAcceptMutationLocks } from './iam-identity-mutation-lock-order';
 import { PrismaService } from '@shared/database/prisma.service';
 import { LAST_ORG_ADMIN_MESSAGE } from '@shared/auth/permission.constants';
 import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 import type { OptionalAuthIdentity } from '@shared/auth/optional-auth.util';
 import { verifyInviteToken, inviteTokenLookupKey } from './utils/invite-token.util';
-import {
-  identityEmailsMatch,
-} from './utils/identity-email.util';
+import { identityEmailsMatch, normalizeIdentityEmail } from './utils/identity-email.util';
 import {
   canActivateMembershipFromInvite,
   evaluateInitialCredentialEligibility,
@@ -43,6 +45,14 @@ import type { AcceptInviteDto } from './dto/organization-invite.dto';
 
 type LoadedInvite = NonNullable<Awaited<ReturnType<InviteAcceptService['loadInviteByToken']>>>;
 
+type InviteAcceptUserRow = {
+  id: string;
+  email: string;
+  passwordHash: string | null;
+  status: UserStatus;
+  platformRole: UserPlatformRole;
+};
+
 @Injectable()
 export class InviteAcceptService {
   constructor(
@@ -50,7 +60,29 @@ export class InviteAcceptService {
     private readonly lifecycle: IamMembershipLifecycleService,
     private readonly iamAudit: IamAuditService,
     private readonly passwordPolicy: PasswordPolicyService,
+    private readonly accessAuthority: UserAccessAuthorityService,
   ) {}
+
+  async resolveOptionalAuthIdentity(authorizationHeader?: string | null) {
+    const secret = process.env.JWT_SECRET?.trim();
+    if (!secret) return null;
+
+    const [type, token] = authorizationHeader?.split(' ') ?? [];
+    if (type !== 'Bearer' || !token) return null;
+
+    try {
+      const decoded = jwt.verify(token, secret) as AccessJwtPayload;
+      const validated = await this.accessAuthority.validateAccessJwt(decoded);
+      const normalizedEmail = normalizeIdentityEmail(validated.email ?? '');
+      if (!normalizedEmail) return null;
+      return {
+        userId: validated.id,
+        email: normalizedEmail,
+      } satisfies OptionalAuthIdentity;
+    } catch {
+      return null;
+    }
+  }
 
   async validateInviteToken(token: string) {
     const invite = await this.loadInviteByToken(token);
@@ -139,7 +171,8 @@ export class InviteAcceptService {
     };
   }
 
-  async acceptInvite(dto: AcceptInviteDto, auth: OptionalAuthIdentity | null) {
+  async acceptInvite(dto: AcceptInviteDto, authorizationHeader?: string | null) {
+    const auth = await this.resolveOptionalAuthIdentity(authorizationHeader);
     if (!dto.confirmed) {
       throw new BadRequestException({
         code: INVITE_ACCEPT_ERROR.CONFIRMATION_REQUIRED,
@@ -299,20 +332,26 @@ export class InviteAcceptService {
 
     const wasNewUser = !existingUser;
     const previousMembershipStatus = existingMembership?.status ?? null;
-    let user = existingUser;
-  let credentiallessFirstLogin = false;
+    let user: InviteAcceptUserRow | null = existingUser
+      ? {
+          id: existingUser.id,
+          email: existingUser.email,
+          passwordHash: existingUser.passwordHash,
+          status: existingUser.status,
+          platformRole: existingUser.platformRole,
+        }
+      : null;
+    let credentiallessFirstLogin = false;
 
     const outboxIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
-      await acquireInviteDeliveryContinuityLock(tx, invite.id);
-      await acquireCanonicalSecurityMutationLocks(tx, {
-        organizationIds: [invite.organizationId],
-        userIds: user ? [user.id] : [],
+      await acquireInviteAcceptMutationLocks(tx, {
+        inviteId: invite.id,
+        organizationId: invite.organizationId,
+        userId: user?.id,
+        normalizedEmail: user ? null : invite.email,
       });
-      if (!user) {
-        await acquireIdentityEmailProvisionLock(tx, invite.email);
-      }
 
       const authoritativeInvite = await tx.organizationUserInvite.findUnique({
         where: { id: invite.id },
@@ -352,7 +391,7 @@ export class InviteAcceptService {
       if (!user) {
         const passwordHash = await bcrypt.hash(dto.password!, 10);
         const fullName = [dto.firstName, dto.lastName].filter(Boolean).join(' ');
-        user = await tx.user.create({
+        const created = await tx.user.create({
           data: {
             email: inviteTx.email,
             firstName: dto.firstName?.trim() || null,
@@ -363,22 +402,85 @@ export class InviteAcceptService {
             status: UserStatus.ACTIVE,
           },
         });
+        user = {
+          id: created.id,
+          email: created.email,
+          passwordHash: created.passwordHash,
+          status: created.status,
+          platformRole: created.platformRole,
+        };
         await acquireCanonicalSecurityMutationLocks(tx, {
           organizationIds: [inviteTx.organizationId],
           userIds: [user.id],
         });
       } else {
+        const authoritativeUser = await tx.user.findUniqueOrThrow({
+          where: { id: user!.id },
+          select: {
+            id: true,
+            email: true,
+            passwordHash: true,
+            status: true,
+            platformRole: true,
+          },
+        });
+        user = authoritativeUser;
+        const liveUser = authoritativeUser;
         const membershipRow = await tx.organizationMembership.findUnique({
           where: {
             userId_organizationId: {
-              userId: user.id,
+              userId: liveUser.id,
               organizationId: inviteTx.organizationId,
             },
           },
         });
-        const security = await this.loadInitialCredentialSecuritySnapshot(tx, user.id);
-        if (user.passwordHash) {
-          // Established identity: authentication already validated pre-transaction.
+        const security = await this.loadInitialCredentialSecuritySnapshot(tx, liveUser.id);
+        if (liveUser.passwordHash) {
+          const authLive = await this.resolveOptionalAuthIdentity(authorizationHeader);
+          if (!authLive?.userId) {
+            throw new UnauthorizedException({
+              code: INVITE_ACCEPT_ERROR.AUTHENTICATION_REQUIRED,
+              message: 'Authentication required to accept invite for an existing account',
+            });
+          }
+          if (authLive.userId !== liveUser.id) {
+            throw new ForbiddenException({
+              code: INVITE_ACCEPT_ERROR.IDENTITY_MISMATCH,
+              message: 'Authenticated identity does not match invite target',
+            });
+          }
+          if (!identityEmailsMatch(authLive.email, inviteTx.email)) {
+            throw new ForbiddenException({
+              code: INVITE_ACCEPT_ERROR.IDENTITY_MISMATCH,
+              message: 'Authenticated identity does not match invite email',
+            });
+          }
+          if (liveUser.status !== UserStatus.ACTIVE) {
+            throw new BadRequestException({
+              code: INVITE_ACCEPT_ERROR.INITIAL_CREDENTIAL_INELIGIBLE,
+              message: 'User account is not active',
+            });
+          }
+          if (membershipRow?.status === MembershipStatus.ACTIVE) {
+            throw new BadRequestException('User is already an active member of this organization');
+          }
+          if (
+            requiresRejoinAcknowledgement(membershipRow?.status ?? null) &&
+            !dto.acknowledgeRejoin
+          ) {
+            throw new BadRequestException({
+              code: INVITE_ACCEPT_ERROR.REJOIN_ACK_REQUIRED,
+              message: 'Explicit rejoin acknowledgement is required for removed or suspended memberships',
+            });
+          }
+          if (
+            !canActivateMembershipFromInvite(
+              membershipRow?.status ?? null,
+              Boolean(dto.acknowledgeRejoin),
+            )
+          ) {
+            throw new BadRequestException('Membership cannot be activated from this invite');
+          }
         } else {
           const eligibility = evaluateInitialCredentialEligibility({
             invite: {
@@ -389,7 +491,7 @@ export class InviteAcceptService {
               provisionedUserId: inviteTx.provisionedUserId,
               provisionedMembershipId: inviteTx.provisionedMembershipId,
             },
-            user,
+            user: liveUser,
             membership: membershipRow
               ? {
                   id: membershipRow.id,
@@ -410,7 +512,7 @@ export class InviteAcceptService {
           const passwordHash = await bcrypt.hash(dto.password!, 10);
           const admitted = await tx.user.updateMany({
             where: {
-              id: user.id,
+              id: liveUser.id,
               passwordHash: null,
               status: UserStatus.ACTIVE,
               platformRole: UserPlatformRole.USER,
@@ -426,7 +528,17 @@ export class InviteAcceptService {
               message: 'Initial credential could not be admitted atomically',
             });
           }
-          user = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
+          const reloaded = await tx.user.findUniqueOrThrow({
+            where: { id: liveUser.id },
+            select: {
+              id: true,
+              email: true,
+              passwordHash: true,
+              status: true,
+              platformRole: true,
+            },
+          });
+          user = reloaded;
         }
       }
 

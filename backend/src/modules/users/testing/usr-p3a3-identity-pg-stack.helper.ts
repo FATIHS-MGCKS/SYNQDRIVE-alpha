@@ -27,6 +27,7 @@ import { createUsrP2PgIamStack } from './usr-p2-pg-iam-stack.helper';
 
 export type UsrP3a3IdentityPgStack = {
   prisma: PrismaClient;
+  authority: ReturnType<typeof createUsrP2PgIamStack>['authority'];
   globalIdentity: MasterGlobalIdentityService;
   auditDelivery: MasterAdminAuditDeliveryService;
   maProcessor: MasterAdminAuditOutboxProcessorService;
@@ -67,7 +68,8 @@ export function createUsrP3a3IdentityPgStack(
   );
   const iamAudit = new IamAuditService(iamOutboxRepo, iamOutboxProcessor);
 
-  const { sessionPolicy } = createUsrP2PgIamStack(prisma, jwtSecret);
+  const p2Stack = createUsrP2PgIamStack(prisma, jwtSecret);
+  const { sessionPolicy, authority } = p2Stack;
 
   const passwordPolicy = new PasswordPolicyService();
   const passwordReset = new PasswordResetService(
@@ -129,10 +131,12 @@ export function createUsrP3a3IdentityPgStack(
     lifecycle,
     iamAudit,
     passwordPolicy,
+    authority,
   );
 
   return {
     prisma,
+    authority,
     globalIdentity,
     auditDelivery,
     maProcessor,

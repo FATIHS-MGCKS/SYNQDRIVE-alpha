@@ -408,12 +408,14 @@ function assertDisposableDb(): void {
     expect(second.idempotentReplay).toBe(true);
     expect((stack.noopMail.sendPasswordReset as jest.Mock).mock.calls.length).toBe(mailCallsAfterFirst);
 
-    const meta = readProvisionOperationMetadataFromOutbox(
-      await prisma.masterAdminAuditOutbox.findUniqueOrThrow({
-        where: { idempotencyKey: buildMasterIdentityAuditIdempotencyKey(opId) },
-      }),
-    );
-    expect(meta?.credentialSetupRequested).toBe(true);
+    const intent = await prisma.masterIdentityCredentialSetupIntent.findUniqueOrThrow({
+      where: { securityOperationId: opId },
+    });
+    expect(intent.passwordResetTokenId).toBeTruthy();
+    const tokens = await prisma.passwordResetToken.count({
+      where: { userId: first.user.id, securityOperationId: opId },
+    });
+    expect(tokens).toBe(1);
   });
 
   it('R09 — semantic ActivityLog count stable across provision replay', async () => {

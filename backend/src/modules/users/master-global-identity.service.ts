@@ -9,7 +9,6 @@ import {
   MembershipStatus,
   OrganizationInviteStatus,
   OrganizationStatus,
-  PasswordResetPurpose,
   Prisma,
   UserPlatformRole,
   UserStatus,
@@ -25,13 +24,12 @@ import {
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
+import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
+import { acquireSecurityOperationAdmissionLock } from '@modules/auth/refresh-token-session-concurrency';
 import {
-  acquireCanonicalSecurityMutationLocks,
-} from '@modules/auth/iam-security-mutation-concurrency';
-import {
-  acquireIdentityEmailProvisionLock,
-  acquireSecurityOperationAdmissionLock,
-} from '@modules/auth/refresh-token-session-concurrency';
+  acquireMasterProvisionGlobalMutationLocks,
+  acquireMasterProvisionOrgMutationLocks,
+} from './iam-identity-mutation-lock-order';
 import type {
   AdminCreateUserDto,
   AdminUpdateUserDto,
@@ -229,8 +227,7 @@ export class MasterGlobalIdentityService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        await acquireSecurityOperationAdmissionLock(tx, securityOperationId);
-        await acquireIdentityEmailProvisionLock(tx, email);
+        await acquireMasterProvisionGlobalMutationLocks(tx, { securityOperationId, normalizedEmail: email });
 
         const priorOutbox = await tx.masterAdminAuditOutbox.findUnique({
           where: { idempotencyKey: auditIdempotencyKey },
@@ -414,11 +411,10 @@ export class MasterGlobalIdentityService {
     const iamAuditOutboxIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
-      await acquireSecurityOperationAdmissionLock(tx, securityOperationId);
-      await acquireIdentityEmailProvisionLock(tx, email);
-      await acquireCanonicalSecurityMutationLocks(tx, {
-        organizationIds: [mem.organizationId],
-        userIds: [],
+      await acquireMasterProvisionOrgMutationLocks(tx, {
+        securityOperationId,
+        organizationId: mem.organizationId,
+        normalizedEmail: email,
       });
 
       const orgRow = await tx.organization.findUnique({
@@ -461,6 +457,23 @@ export class MasterGlobalIdentityService {
         if (membership) {
           membershipId = membership.id;
           membershipStatus = membership.status;
+        }
+        if (
+          dto.sendCredentialSetup &&
+          !inviteByEmail &&
+          membershipId &&
+          membershipStatus === MembershipStatus.ACTIVE
+        ) {
+          await tx.masterIdentityCredentialSetupIntent.upsert({
+            where: { securityOperationId },
+            create: {
+              securityOperationId,
+              userId: createdUserId,
+              organizationId: mem.organizationId,
+              membershipId,
+            },
+            update: {},
+          });
         }
         return;
       }
@@ -522,6 +535,21 @@ export class MasterGlobalIdentityService {
         },
         tx,
       );
+
+      if (
+        dto.sendCredentialSetup &&
+        !inviteByEmail &&
+        membershipStatus === MembershipStatus.ACTIVE
+      ) {
+        await tx.masterIdentityCredentialSetupIntent.create({
+          data: {
+            securityOperationId,
+            userId: createdUserId,
+            organizationId: mem.organizationId,
+            membershipId,
+          },
+        });
+      }
     });
 
     if (iamAuditOutboxIds.length > 0) {
@@ -596,35 +624,14 @@ export class MasterGlobalIdentityService {
       !inviteByEmail &&
       membershipStatus === MembershipStatus.ACTIVE
     ) {
-      const priorOutboxForCred = idempotentReplay
-        ? await this.prisma.masterAdminAuditOutbox.findUnique({
-            where: { idempotencyKey: auditIdempotencyKey },
-          })
-        : null;
-      const priorCredMeta = priorOutboxForCred
-        ? readProvisionOperationMetadataFromOutbox(priorOutboxForCred)
-        : null;
-      credentialSetupRequested = priorCredMeta?.credentialSetupRequested === true;
-      if (!credentialSetupRequested && idempotentReplay) {
-        credentialSetupRequested = await this.hasActiveAdminCredentialSetupIntent(
-          createdUserId,
-          mem.organizationId,
-        );
-      }
-      if (!credentialSetupRequested) {
-        try {
-          await this.passwordReset.requestAdminReset({
-            organizationId: mem.organizationId,
-            userId: createdUserId,
-            actorUserId: actor.id,
-          });
-          deliveryRequested = true;
-          credentialSetupRequested = true;
-          await this.markProvisionCredentialSetupRequested(auditIdempotencyKey);
-        } catch {
-          deliveryRequested = false;
-        }
-      } else {
+      const continuation = await this.continueCredentialSetupForOperation({
+        securityOperationId,
+        organizationId: mem.organizationId,
+        userId: createdUserId,
+        actorUserId: actor.id!,
+      });
+      credentialSetupRequested = continuation.intentPresent;
+      if (continuation.transportRequested) {
         deliveryRequested = true;
       }
     }
@@ -866,38 +873,76 @@ export class MasterGlobalIdentityService {
     };
   }
 
-  private async hasActiveAdminCredentialSetupIntent(
-    userId: string,
-    organizationId: string,
-  ): Promise<boolean> {
-    const pending = await this.prisma.passwordResetToken.count({
-      where: {
-        userId,
-        organizationId,
-        purpose: PasswordResetPurpose.ADMIN_INITIATED,
-        usedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
+  private async continueCredentialSetupForOperation(input: {
+    securityOperationId: string;
+    organizationId: string;
+    userId: string;
+    actorUserId: string;
+  }): Promise<{
+    intentPresent: boolean;
+    transportRequested: boolean;
+    credentialEstablished: boolean;
+  }> {
+    const intent = await this.prisma.masterIdentityCredentialSetupIntent.findUnique({
+      where: { securityOperationId: input.securityOperationId },
     });
-    return pending > 0;
-  }
+    if (!intent || intent.userId !== input.userId || intent.organizationId !== input.organizationId) {
+      return { intentPresent: false, transportRequested: false, credentialEstablished: false };
+    }
+    if (intent.credentialEstablishedAt) {
+      return { intentPresent: true, transportRequested: true, credentialEstablished: true };
+    }
 
-  private async markProvisionCredentialSetupRequested(auditIdempotencyKey: string): Promise<void> {
-    const row = await this.prisma.masterAdminAuditOutbox.findUnique({
-      where: { idempotencyKey: auditIdempotencyKey },
+    const user = await this.prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { passwordHash: true, status: true },
     });
-    if (!row?.payload || typeof row.payload !== 'object') return;
-    const root = row.payload as {
-      masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> };
-    };
-    const envelope = root.masterAdminAuditEnvelope;
-    if (!envelope?.metadata || typeof envelope.metadata !== 'object') return;
-    envelope.metadata.credentialSetupRequested = true;
-    await this.prisma.masterAdminAuditOutbox.update({
-      where: { id: row.id },
-      data: { payload: root as Prisma.InputJsonValue },
-    });
+    if (user?.passwordHash) {
+      await this.prisma.masterIdentityCredentialSetupIntent.update({
+        where: { id: intent.id },
+        data: { credentialEstablishedAt: new Date() },
+      });
+      return { intentPresent: true, transportRequested: true, credentialEstablished: true };
+    }
+
+    if (intent.passwordResetTokenId) {
+      const bound = await this.prisma.passwordResetToken.findUnique({
+        where: { id: intent.passwordResetTokenId },
+        select: { usedAt: true, revokedAt: true, expiresAt: true },
+      });
+      if (
+        bound &&
+        !bound.usedAt &&
+        !bound.revokedAt &&
+        bound.expiresAt > new Date()
+      ) {
+        return { intentPresent: true, transportRequested: true, credentialEstablished: false };
+      }
+    }
+
+    try {
+      const { tokenId } = await this.passwordReset.requestAdminResetBoundToOperation({
+        organizationId: input.organizationId,
+        userId: input.userId,
+        actorUserId: input.actorUserId,
+        securityOperationId: input.securityOperationId,
+        reason: 'master_identity_provision',
+      });
+      await this.prisma.masterIdentityCredentialSetupIntent.updateMany({
+        where: {
+          id: intent.id,
+          passwordResetTokenId: null,
+          credentialEstablishedAt: null,
+        },
+        data: {
+          passwordResetTokenId: tokenId,
+          transportRequestedAt: new Date(),
+        },
+      });
+      return { intentPresent: true, transportRequested: true, credentialEstablished: false };
+    } catch {
+      return { intentPresent: true, transportRequested: false, credentialEstablished: false };
+    }
   }
 
   private buildProvisionAuditEnvelope(input: {

@@ -1,7 +1,6 @@
 import { Body, Controller, Headers, Post } from '@nestjs/common';
 import { InviteAcceptService } from './invite-accept.service';
 import { AcceptInviteDto, ValidateInviteDto } from './dto/organization-invite.dto';
-import { extractOptionalAuthIdentity } from '@shared/auth/optional-auth.util';
 
 /**
  * Public invite acceptance — validate is anonymous; accept optionally reads JWT
@@ -21,7 +20,6 @@ export class PublicInvitesController {
     @Body() body: AcceptInviteDto,
     @Headers('authorization') authorization?: string,
   ) {
-    const auth = extractOptionalAuthIdentity(authorization);
-    return this.inviteAccept.acceptInvite(body, auth);
+    return this.inviteAccept.acceptInvite(body, authorization);
   }
 }

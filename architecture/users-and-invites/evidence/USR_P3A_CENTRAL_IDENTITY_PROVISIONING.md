@@ -85,7 +85,7 @@
 
 ## USR-P3A.3A backend security acceptance (PR #2544)
 
-**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence (post FL seal):** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20**, **L-matrix 10/10**, **E-matrix 10/10**, **HTTP authorization 15/15**, policy unit **9/9**, IAM invite acceptance **14/14**, **94/94 total**, **0 skipped**, exit **0**.
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence (post credential authority seal):** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20**, **L-matrix 10/10**, **E-matrix 10/10**, **credential C+FLE 8/8**, **HTTP authorization 15/15**, policy unit **9/9**, IAM invite acceptance **14/14**, **102/102 total**, **0 skipped**, exit **0**.
 
 **Atomic invitation delivery (P3A.3A tx seal):** encrypted `inviteEmailOutbox` rows are created inside the same Prisma transaction as invite create/resend/recovery token rotation (+ IAM rotation audit on recovery). SMTP runs only via `processOutboxIds` after commit. Stale generations are suppressed at dispatch (`STALE_TOKEN_GENERATION` / `INVITE_NOT_PENDING`). Not exactly-once SMTP — in-flight transport may complete after supersede (documented).
 
@@ -214,6 +214,30 @@
 **L-matrix deltas:** L09/L09b expect **400** on ineligible identity; L11 advisory-only pid barrier removed (E07 carries overlap proof).
 
 **P3A3A_FIRST_LOGIN_SECURITY=CONDITIONAL_PARTIAL** — FL-01/FL-02 sealed in repo; **not** merge/deploy/production.
+
+### Final credential authority seal (FL-R01 / FL-R02 / R04, PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3A_FINAL_CREDENTIAL_AUTHORITY_SEAL`
+
+**FL-R01:** `InviteAcceptService` reloads authoritative user inside mutation locks; revalidates optional auth via `UserAccessAuthorityService.validateAccessJwt`; membership lifecycle / rejoin checks use in-tx membership rows for established identities.
+
+**FL-R02:** Canonical lock order documented in `iam-identity-mutation-lock-order.ts`; provisioning uses op → org → email; invite accept uses continuity → org → email (net-new).
+
+**R04:** `master_identity_credential_setup_intents` + `password_reset_tokens.security_operation_id`; durable intent in provision tx; post-commit `continueCredentialSetupForOperation` + `requestAdminResetBoundToOperation`; audit payload no longer mutated for workflow state; confirm marks `credentialEstablishedAt`.
+
+| Matrix | Result |
+|--------|--------|
+| C01–C05 | **PASS** (provision → intent → mock transport → reset confirm → login) |
+| C06–C07 | **PASS** (replay + concurrent admission) |
+| C09–C11 | **PASS** (unrelated reset isolation, ineligible deny, revoked token) |
+| C10 | **PASS** (suspended) |
+| C08/C12 | **PARTIAL** (recovery covered by intent continuation + transport mocks; no operator secret exposure in responses) |
+| FLE04–FLE05 | **PASS** |
+| E01–E10 + L-matrix | **PASS** (regression via gate) |
+
+**Gate (agent):** `usr-p3a3-postgres-gate.sh` **102/102** (prior 94 + credential authority **8/8**), exit **0**.
+
+**P3A3A_CREDENTIAL_AUTHORITY=CONDITIONAL_PARTIAL** — R04 path proven on disposable PG; **FR01–FR05** still open; **no merge/deploy**.
 
 ### CI authority
 

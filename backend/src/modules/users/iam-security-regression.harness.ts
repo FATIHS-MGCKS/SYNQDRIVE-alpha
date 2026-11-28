@@ -141,11 +141,15 @@ export function createInviteAcceptServiceHarness() {
     processOutboxIds: jest.fn().mockResolvedValue(undefined),
   };
   const { PasswordPolicyService } = require('@shared/auth/password-policy.service') as typeof import('@shared/auth/password-policy.service');
+  const accessAuthority = {
+    validateAccessJwt: jest.fn(),
+  } as unknown as import('@shared/auth/user-access-authority.service').UserAccessAuthorityService;
   const service = new InviteAcceptService(
     prisma as unknown as PrismaService,
     lifecycle as unknown as import('./iam-membership-lifecycle.service').IamMembershipLifecycleService,
     iamAudit as unknown as import('./iam-audit.service').IamAuditService,
     new PasswordPolicyService(),
+    accessAuthority,
   );
   return { prisma, lifecycle, iamAudit, service };
 }

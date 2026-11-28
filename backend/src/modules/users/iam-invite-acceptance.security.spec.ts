@@ -60,6 +60,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     processOutboxIds: jest.Mock;
   };
   let service: InviteAcceptService;
+  let optionalAuth: { userId: string; email: string } | null = null;
 
   const baseDto = {
     token: '',
@@ -103,13 +104,11 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       },
       user: {
         findUnique: jest.fn(),
-        findUniqueOrThrow: jest.fn().mockImplementation(async ({ where }) => ({
-          id: where.id,
-          email,
-          passwordHash: 'hashed',
-          status: UserStatus.ACTIVE,
-          platformRole: UserPlatformRole.USER,
-        })),
+        findUniqueOrThrow: jest.fn().mockImplementation(async ({ where }) => {
+          const row = await prisma.user.findUnique({ where });
+          if (!row) throw new Error('User not found');
+          return row;
+        }),
         create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'new-user', ...data })),
         update: jest.fn().mockImplementation(async ({ data, where }) => ({
           id: where.id,
@@ -150,12 +149,18 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       ),
       processOutboxIds: jest.fn().mockResolvedValue(undefined),
     };
+    const accessAuthority = {
+      validateAccessJwt: jest.fn(),
+    } as unknown as import('@shared/auth/user-access-authority.service').UserAccessAuthorityService;
     service = new InviteAcceptService(
       prisma as unknown as PrismaService,
       lifecycle as unknown as IamMembershipLifecycleService,
       iamAudit as unknown as IamAuditService,
       new PasswordPolicyService(),
+      accessAuthority,
     );
+    optionalAuth = null;
+    jest.spyOn(service, 'resolveOptionalAuthIdentity').mockImplementation(async () => optionalAuth);
   });
 
   it('accepts new user with password and explicit confirmation', async () => {
@@ -164,7 +169,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.organizationMembership.findUnique.mockResolvedValue(null);
 
-    const result = await service.acceptInvite({ ...baseDto, token: plain }, null);
+    const result = await service.acceptInvite({ ...baseDto, token: plain });
 
     expect(result.accepted).toBe(true);
     expect(prisma.user.create).toHaveBeenCalled();
@@ -182,7 +187,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       platformRole: UserPlatformRole.USER,
     });
 
-    await expect(service.acceptInvite({ ...baseDto, token: plain, password: undefined }, null)).rejects.toThrow(
+    await expect(service.acceptInvite({ ...baseDto, token: plain, password: undefined })).rejects.toThrow(
       UnauthorizedException,
     );
   });
@@ -208,7 +213,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       status: MembershipStatus.INVITED,
     });
 
-    const result = await service.acceptInvite({ ...baseDto, token: plain }, null);
+    const result = await service.acceptInvite({ ...baseDto, token: plain });
 
     expect(result.accepted).toBe(true);
     expect(prisma.user.create).not.toHaveBeenCalled();
@@ -228,9 +233,10 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     });
     prisma.organizationMembership.findUnique.mockResolvedValue(null);
 
+    optionalAuth = { userId, email };
     const result = await service.acceptInvite(
       { token: plain, confirmed: true },
-      { userId, email },
+      'Bearer session',
     );
 
     expect(result.accepted).toBe(true);
@@ -248,11 +254,12 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       status: UserStatus.ACTIVE,
       platformRole: UserPlatformRole.USER,
     });
+    optionalAuth = { userId: 'other-user', email: 'other@test.de' };
 
     await expect(
       service.acceptInvite(
         { token: plain, confirmed: true },
-        { userId: 'other-user', email: 'other@test.de' },
+        'Bearer session',
       ),
     ).rejects.toMatchObject({
       response: { code: INVITE_ACCEPT_ERROR.IDENTITY_MISMATCH },
@@ -264,7 +271,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     mockPendingInvite(plain, hash);
 
     await expect(
-      service.acceptInvite({ token: plain, confirmed: false as unknown as true }, null),
+      service.acceptInvite({ token: plain, confirmed: false as unknown as true }),
     ).rejects.toMatchObject({
       response: { code: INVITE_ACCEPT_ERROR.CONFIRMATION_REQUIRED },
     });
@@ -285,9 +292,10 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       role: MembershipRole.WORKER,
       status: MembershipStatus.REMOVED,
     });
+    optionalAuth = { userId, email };
 
     await expect(
-      service.acceptInvite({ token: plain, confirmed: true }, { userId, email }),
+      service.acceptInvite({ token: plain, confirmed: true }, 'Bearer session'),
     ).rejects.toMatchObject({
       response: { code: INVITE_ACCEPT_ERROR.REJOIN_ACK_REQUIRED },
     });
@@ -309,9 +317,10 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       status: MembershipStatus.REMOVED,
     });
 
+    optionalAuth = { userId, email };
     const result = await service.acceptInvite(
       { token: plain, confirmed: true, acknowledgeRejoin: true },
-      { userId, email },
+      'Bearer session',
     );
 
     expect(result.accepted).toBe(true);
@@ -333,9 +342,10 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       role: MembershipRole.WORKER,
       status: MembershipStatus.SUSPENDED,
     });
+    optionalAuth = { userId, email };
 
     await expect(
-      service.acceptInvite({ token: plain, confirmed: true }, { userId, email }),
+      service.acceptInvite({ token: plain, confirmed: true }, 'Bearer session'),
     ).rejects.toMatchObject({
       response: { code: INVITE_ACCEPT_ERROR.REJOIN_ACK_REQUIRED },
     });
@@ -347,7 +357,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.organizationMembership.findUnique.mockResolvedValue(null);
 
-    await expect(service.acceptInvite({ ...baseDto, token: plain }, null)).rejects.toMatchObject({
+    await expect(service.acceptInvite({ ...baseDto, token: plain })).rejects.toMatchObject({
       response: { code: INVITE_ACCEPT_ERROR.PRIVILEGED_ROLE_ACK_REQUIRED },
     });
   });
@@ -360,7 +370,8 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     });
     prisma.user.findUnique.mockResolvedValue({ id: userId, email });
 
-    const result = await service.acceptInvite({ token: plain, confirmed: true }, { userId, email });
+    optionalAuth = { userId, email };
+    const result = await service.acceptInvite({ token: plain, confirmed: true }, 'Bearer session');
 
     expect(result.idempotent).toBe(true);
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -370,7 +381,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash, { expiresAt: new Date(Date.now() - 60_000) });
 
-    await expect(service.acceptInvite({ ...baseDto, token: plain }, null)).rejects.toThrow(
+    await expect(service.acceptInvite({ ...baseDto, token: plain })).rejects.toThrow(
       BadRequestException,
     );
   });
@@ -379,7 +390,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash, { status: OrganizationInviteStatus.REVOKED });
 
-    await expect(service.acceptInvite({ ...baseDto, token: plain }, null)).rejects.toThrow(
+    await expect(service.acceptInvite({ ...baseDto, token: plain })).rejects.toThrow(
       BadRequestException,
     );
   });
@@ -390,7 +401,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.organizationMembership.findUnique.mockResolvedValue(null);
 
-    await service.acceptInvite({ ...baseDto, token: plain }, null);
+    await service.acceptInvite({ ...baseDto, token: plain });
 
     const updateData = prisma.organizationUserInvite.updateMany.mock.calls[0][0].data;
     expect(updateData.status).toBe(OrganizationInviteStatus.ACCEPTED);

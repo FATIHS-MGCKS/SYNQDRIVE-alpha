@@ -5,9 +5,13 @@ import {
 } from './refresh-token-session-concurrency';
 
 /**
- * Canonical IAM security-mutation lock hierarchy (P2-R20):
- * 1) organization advisory locks (sorted)
- * 2) user advisory locks (sorted)
+ * Canonical IAM security-mutation lock hierarchy (P2-R20 / USR-P3A.3A FL-R02):
+ *
+ * See `iam-identity-mutation-lock-order.ts` for invite/provision entry paths.
+ *
+ * Within `acquireCanonicalSecurityMutationLocks` only:
+ * 1) organization advisory locks (sorted, 913105)
+ * 2) user advisory locks (sorted, 913104)
  * 3) row mutations and authoritative invalidation (caller responsibility)
  */
 export async function acquireCanonicalSecurityMutationLocks(

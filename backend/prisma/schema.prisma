@@ -1843,6 +1843,7 @@ model Organization {
   organizationRoleChangeApplications                        OrganizationRoleChangeApplication[]
   organizationRoleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
   organizationUserInvites                                   OrganizationUserInvite[]
+  credentialSetupIntents                                    MasterIdentityCredentialSetupIntent[]
   inviteEmailOutbox                                         InviteEmailOutbox[]
   iamAuditOutbox                                            IamAuditOutbox[]
   businessAuditOutbox                                       BusinessAuditOutbox[]
@@ -2037,6 +2038,7 @@ model User {
   iamRetentionPolicyApprovals          IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
   iamSessionRevocationIntents          IamSessionRevocationIntent[]
   passwordResetTokens                  PasswordResetToken[]
+  credentialSetupIntents               MasterIdentityCredentialSetupIntent[]
   accountPreferences                   UserAccountPreference[]
   notificationPreferences              UserNotificationPreference[]
   invitesSent                          OrganizationUserInvite[]                @relation("InvitesSent")
@@ -2295,6 +2297,7 @@ model OrganizationMembership {
   permissionOverrides                           MembershipPermissionOverride[]
   roleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
   provisionedInvites                            OrganizationUserInvite[]                                   @relation("InviteProvisionedMembership")
+  credentialSetupIntents                        MasterIdentityCredentialSetupIntent[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -2351,24 +2354,46 @@ enum PasswordResetPurpose {
 }
 
 model PasswordResetToken {
-  id             String               @id @default(uuid())
-  userId         String               @map("user_id")
-  tokenHash      String               @map("token_hash")
-  tokenLookup    String               @unique @map("token_lookup")
-  purpose        PasswordResetPurpose
-  organizationId String?              @map("organization_id")
-  actorUserId    String?              @map("actor_user_id")
-  reason         String?
-  expiresAt      DateTime             @map("expires_at")
-  usedAt         DateTime?            @map("used_at")
-  revokedAt      DateTime?            @map("revoked_at")
-  createdAt      DateTime             @default(now()) @map("created_at")
+  id                   String               @id @default(uuid())
+  userId               String               @map("user_id")
+  tokenHash            String               @map("token_hash")
+  tokenLookup          String               @unique @map("token_lookup")
+  purpose              PasswordResetPurpose
+  organizationId       String?              @map("organization_id")
+  actorUserId          String?              @map("actor_user_id")
+  reason               String?
+  securityOperationId  String?              @map("security_operation_id")
+  expiresAt            DateTime             @map("expires_at")
+  usedAt               DateTime?            @map("used_at")
+  revokedAt            DateTime?            @map("revoked_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                            User                                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialSetupIntentByToken    MasterIdentityCredentialSetupIntent?
 
   @@index([userId, purpose])
+  @@index([userId, securityOperationId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model MasterIdentityCredentialSetupIntent {
+  id                      String    @id @default(uuid())
+  securityOperationId     String    @unique @map("security_operation_id")
+  userId                  String    @map("user_id")
+  organizationId          String    @map("organization_id")
+  membershipId            String    @map("membership_id")
+  passwordResetTokenId    String?   @unique @map("password_reset_token_id")
+  transportRequestedAt    DateTime? @map("transport_requested_at")
+  credentialEstablishedAt DateTime? @map("credential_established_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  membership         OrganizationMembership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  passwordResetToken PasswordResetToken?     @relation(fields: [passwordResetTokenId], references: [id], onDelete: SetNull)
+
+  @@map("master_identity_credential_setup_intents")
 }
 
 model PasswordResetAttempt {

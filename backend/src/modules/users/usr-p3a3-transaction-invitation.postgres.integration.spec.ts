@@ -104,6 +104,7 @@ function assertDisposableDb(): void {
       lifecycle,
       stack.iamAudit,
       new PasswordPolicyService(),
+      stack.authority,
     );
     masterActorId = randomUUID();
     await prisma.user.create({
