@@ -71,7 +71,7 @@ export class MasterCredentialSetupDeliveryService {
     if (user.passwordHash) {
       await this.prisma.masterIdentityCredentialSetupIntent.update({
         where: { id: intent.id },
-        data: { credentialEstablishedAt: new Date() },
+        data: { credentialEstablishedAt: new Date(), deliveryTokenCiphertext: null },
       });
       return {
         intentPresent: true,
@@ -145,7 +145,7 @@ export class MasterCredentialSetupDeliveryService {
       if (membership.user.passwordHash) {
         await tx.masterIdentityCredentialSetupIntent.update({
           where: { id: freshIntent.id },
-          data: { credentialEstablishedAt: new Date() },
+          data: { credentialEstablishedAt: new Date(), deliveryTokenCiphertext: null },
         });
         return { kind: 'completed' as const, transportConfirmedAt: freshIntent.transportConfirmedAt };
       }
@@ -194,8 +194,11 @@ export class MasterCredentialSetupDeliveryService {
         return {
           kind: 'retry_transport' as const,
           intentId: freshIntent.id,
+          deliveryGeneration: currentGen,
+          passwordResetTokenId: linkedToken!.id,
           ciphertext: freshIntent.deliveryTokenCiphertext,
           email: membership.user.email,
+          expiresAt: linkedToken!.expiresAt,
         };
       }
 
@@ -240,17 +243,26 @@ export class MasterCredentialSetupDeliveryService {
         if (raced?.transportConfirmedAt) {
           return { kind: 'already_confirmed' as const };
         }
-        if (raced?.deliveryTokenCiphertext && !raced.transportConfirmedAt) {
+        if (raced?.deliveryTokenCiphertext && !raced.transportConfirmedAt && raced.passwordResetTokenId) {
+          const racedToken = await tx.passwordResetToken.findUnique({
+            where: { id: raced.passwordResetTokenId },
+            select: { id: true, expiresAt: true, setupDeliveryGeneration: true, revokedAt: true, usedAt: true },
+          });
           const mem = await tx.organizationMembership.findFirst({
             where: { id: freshIntent.membershipId },
             include: { user: { select: { email: true } } },
           });
-          return {
-            kind: 'retry_transport' as const,
-            intentId: freshIntent.id,
-            ciphertext: raced.deliveryTokenCiphertext,
-            email: mem?.user.email ?? membership.user.email,
-          };
+          if (racedToken && !racedToken.revokedAt && !racedToken.usedAt) {
+            return {
+              kind: 'retry_transport' as const,
+              intentId: freshIntent.id,
+              deliveryGeneration: raced.deliveryGeneration,
+              passwordResetTokenId: racedToken.id,
+              ciphertext: raced.deliveryTokenCiphertext,
+              email: mem?.user.email ?? membership.user.email,
+              expiresAt: racedToken.expiresAt,
+            };
+          }
         }
         throw new NotFoundException('Credential setup delivery admission lost');
       }
@@ -258,6 +270,8 @@ export class MasterCredentialSetupDeliveryService {
       return {
         kind: 'fresh_transport' as const,
         intentId: freshIntent.id,
+        deliveryGeneration: nextGen,
+        passwordResetTokenId: tokenId,
         ciphertext,
         email: membership.user.email,
         expiresAt,
@@ -298,15 +312,37 @@ export class MasterCredentialSetupDeliveryService {
       };
     }
 
+    const liveIntent = await this.prisma.masterIdentityCredentialSetupIntent.findUnique({
+      where: { id: admission.intentId },
+      select: {
+        deliveryGeneration: true,
+        passwordResetTokenId: true,
+        deliveryTokenCiphertext: true,
+        credentialEstablishedAt: true,
+        transportConfirmedAt: true,
+      },
+    });
+    if (
+      !liveIntent ||
+      liveIntent.credentialEstablishedAt ||
+      liveIntent.deliveryGeneration !== admission.deliveryGeneration ||
+      liveIntent.passwordResetTokenId !== admission.passwordResetTokenId ||
+      !liveIntent.deliveryTokenCiphertext
+    ) {
+      return {
+        intentPresent: true,
+        deliveryAttempted: false,
+        deliveryConfirmed: Boolean(liveIntent?.transportConfirmedAt),
+        credentialEstablished: Boolean(liveIntent?.credentialEstablishedAt),
+      };
+    }
+
     const plain =
       admission.kind === 'retry_transport'
         ? decryptInviteToken(admission.ciphertext)
         : admission.plainToken;
     const email = admission.email;
-    const expiresAt =
-      admission.kind === 'fresh_transport'
-        ? admission.expiresAt
-        : new Date(Date.now() + 60 * 60 * 1000);
+    const expiresAt = admission.expiresAt;
 
     const sent = await this.passwordReset.deliverOperationBoundResetEmail({
       email,
@@ -318,9 +354,14 @@ export class MasterCredentialSetupDeliveryService {
       await this.prisma.masterIdentityCredentialSetupIntent.updateMany({
         where: {
           id: admission.intentId,
+          deliveryGeneration: admission.deliveryGeneration,
+          passwordResetTokenId: admission.passwordResetTokenId,
           transportConfirmedAt: null,
         },
-        data: { transportConfirmedAt: new Date() },
+        data: {
+          transportConfirmedAt: new Date(),
+          deliveryTokenCiphertext: null,
+        },
       });
     } else {
       this.logger.warn(

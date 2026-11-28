@@ -456,17 +456,10 @@ export class PasswordResetService {
             securityOperationId: freshRecord.securityOperationId,
             credentialEstablishedAt: null,
           },
-          data: { credentialEstablishedAt: new Date() },
-        });
-
-        await tx.passwordResetToken.updateMany({
-          where: {
-            userId: record.userId,
-            securityOperationId: freshRecord.securityOperationId,
-            usedAt: null,
-            revokedAt: null,
+          data: {
+            credentialEstablishedAt: new Date(),
+            deliveryTokenCiphertext: null,
           },
-          data: { revokedAt: new Date() },
         });
       } else {
         await tx.user.update({
@@ -482,6 +475,16 @@ export class PasswordResetService {
           data: { usedAt: new Date() },
         });
       }
+
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: record.userId,
+          id: { not: record.id },
+          usedAt: null,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
 
       const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
         eventType: 'PASSWORD_CHANGED',

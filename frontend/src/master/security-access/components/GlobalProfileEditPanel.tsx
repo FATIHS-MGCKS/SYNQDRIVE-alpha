@@ -38,6 +38,10 @@ export function GlobalProfileEditPanel({
   const { t } = useSecurityAccessPresentation();
   const bindGenerationRef = useRef(drawerGeneration);
   const saveOperationKeyRef = useRef(newIdempotencyKey('ma-global-profile'));
+  const submittedPatchRef = useRef<{
+    operationKey: string;
+    patch: Parameters<typeof api.admin.securityAccess.updateUserProfile>[1];
+  } | null>(null);
   const submitAdmittedRef = useRef(false);
 
   const [snapshot, setSnapshot] = useState<GovernanceGlobalProfileDto | null>(null);
@@ -52,7 +56,8 @@ export function GlobalProfileEditPanel({
     setDraft(profileDtoToDraft(profile));
     setSaving(false);
     submitAdmittedRef.current = false;
-  }, [detail.id, detail.globalProfile, drawerGeneration]);
+    submittedPatchRef.current = null;
+  }, [detail.id, drawerGeneration]);
 
   const updateDraft = (patch: Partial<ProfileDraft>) => {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -74,14 +79,29 @@ export function GlobalProfileEditPanel({
       return;
     }
 
+    if (!submittedPatchRef.current) {
+      submittedPatchRef.current = {
+        operationKey: saveOperationKeyRef.current,
+        patch: {
+          ...patchBody,
+          idempotencyKey: saveOperationKeyRef.current,
+        },
+      };
+    }
+
     submitAdmittedRef.current = true;
     setSaving(true);
     try {
-      await api.admin.securityAccess.updateUserProfile(userId, {
-        ...patchBody,
-        idempotencyKey: saveOperationKeyRef.current,
-      });
+      await api.admin.securityAccess.updateUserProfile(userId, submittedPatchRef.current.patch);
       if (!isMutationTargetCurrent(userId, generationAtStart)) return;
+      const nextSnapshot: GovernanceGlobalProfileDto = {
+        ...snapshot,
+        ...patchBody,
+      };
+      setSnapshot(nextSnapshot);
+      setDraft(profileDtoToDraft(nextSnapshot));
+      saveOperationKeyRef.current = newIdempotencyKey('ma-global-profile');
+      submittedPatchRef.current = null;
       toast.success(t('master.securityAccess.userDetail.profile.success'));
       onSaved();
     } catch (err: unknown) {

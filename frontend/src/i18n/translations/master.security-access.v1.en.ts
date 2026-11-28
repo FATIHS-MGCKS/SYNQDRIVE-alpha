@@ -110,6 +110,18 @@ export const masterSecurityAccessV1En = {
   'master.securityAccess.users.create.result.membership': 'Membership: {status}',
   'master.securityAccess.users.create.result.recovery': 'If onboarding looks incomplete, open the user and use recovery from the backend continuity flow or retry delivery from organization invites.',
   'master.securityAccess.users.create.operationConflict': 'This operation identity is bound to a different request',
+  'master.securityAccess.users.create.validationOrgRole': 'Selected organization role is not valid for this organization',
+  'master.securityAccess.users.create.orgRolesLoading': 'Loading organization roles…',
+  'master.securityAccess.users.create.result.onboardingIdentity':
+    'Onboarding: identity only — no immediate authentication',
+  'master.securityAccess.users.create.result.onboardingInvite':
+    'Onboarding: organization invitation — membership stays INVITED until the invite is accepted',
+  'master.securityAccess.users.create.result.onboardingCredential':
+    'Onboarding: credential setup — ACTIVE membership with initial password pending',
+  'master.securityAccess.users.create.result.credentialDeliveryConfirmed':
+    'Credential setup email transport confirmed (not mailbox receipt)',
+  'master.securityAccess.users.create.result.credentialDeliveryPending':
+    'Credential setup delivery pending or unconfirmed — retry the same provisioning operation if needed',
   'master.securityAccess.userDetail.section.globalProfile': "Global profile",
   'master.securityAccess.userDetail.profile.firstName': "First name",
   'master.securityAccess.userDetail.profile.lastName': "Last name",

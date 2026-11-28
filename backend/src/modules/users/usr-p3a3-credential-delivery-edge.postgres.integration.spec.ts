@@ -18,6 +18,7 @@ import {
   createUsrP3a3FirstLoginHttpApp,
 } from './testing/usr-p3a3-first-login-http-pg.harness';
 import { MasterCredentialSetupDeliveryService } from './master-credential-setup-delivery.service';
+import { encryptInviteToken } from './utils/invite-secret-crypto.util';
 
 const OPT_IN = 'USR_P3A3_CREDENTIAL_DELIVERY_EDGE_PG';
 const run = process.env[OPT_IN] === '1';
@@ -207,11 +208,12 @@ function resetTokenFromLastMail(sendPasswordReset: jest.Mock): string {
   });
 
   it('D06 — deactivated organization blocks credential write', async () => {
-    const orgId = await seedOrg(OrganizationStatus.INACTIVE);
+    const orgId = await seedOrg();
     const opId = `op-d06b-${randomUUID()}`;
     const email = `d06b-${randomUUID()}@example.test`;
     await ctx.p3.globalIdentity.provisionGlobalUser(provisionDto(orgId, opId, email), actor(), auditReq());
     const token = resetTokenFromLastMail(ctx.p3.noopMail.sendPasswordReset as jest.Mock);
+    await prisma.organization.update({ where: { id: orgId }, data: { status: OrganizationStatus.ARCHIVED } });
     await request(ctx.app.getHttpServer())
       .post('/api/v1/auth/password-reset/confirm')
       .send({
@@ -326,6 +328,73 @@ function resetTokenFromLastMail(sendPasswordReset: jest.Mock): string {
       where: { id: unrelated.id },
     });
     expect(stillActive.revokedAt).toBeNull();
+  });
+
+  it('R01 — stale generation transport ack cannot confirm newer generation', async () => {
+    const orgId = await seedOrg();
+    const opId = `op-r01-${randomUUID()}`;
+    await ctx.p3.globalIdentity.provisionGlobalUser(provisionDto(orgId, opId), actor(), auditReq());
+    const before = await prisma.masterIdentityCredentialSetupIntent.findUniqueOrThrow({
+      where: { securityOperationId: opId },
+    });
+    const staleGen = before.deliveryGeneration;
+    const staleTokenId = before.passwordResetTokenId!;
+  await prisma.masterIdentityCredentialSetupIntent.update({
+      where: { id: before.id },
+      data: {
+        deliveryGeneration: staleGen + 1,
+        transportConfirmedAt: null,
+        deliveryTokenCiphertext: encryptInviteToken('stale-ciphertext-test'),
+      },
+    });
+    const ack = await prisma.masterIdentityCredentialSetupIntent.updateMany({
+      where: {
+        id: before.id,
+        deliveryGeneration: staleGen,
+        passwordResetTokenId: staleTokenId,
+        transportConfirmedAt: null,
+      },
+      data: { transportConfirmedAt: new Date(), deliveryTokenCiphertext: null },
+    });
+    expect(ack.count).toBe(0);
+    const after = await prisma.masterIdentityCredentialSetupIntent.findUniqueOrThrow({
+      where: { id: before.id },
+    });
+    expect(after.transportConfirmedAt).toBeNull();
+  });
+
+  it('R02 — obsolete reset denied after credential establishment', async () => {
+    const orgId = await seedOrg();
+    const opId = `op-r02-${randomUUID()}`;
+    const email = `r02-${randomUUID()}@example.test`;
+    await ctx.p3.globalIdentity.provisionGlobalUser(provisionDto(orgId, opId, email), actor(), auditReq());
+    const setupPlain = resetTokenFromLastMail(ctx.p3.noopMail.sendPasswordReset as jest.Mock);
+    await ctx.p3.passwordReset.requestAdminReset({
+      organizationId: orgId,
+      userId: (await prisma.user.findUniqueOrThrow({ where: { email } })).id,
+      actorUserId: masterActorId,
+    });
+    const adminTokenPlain = resetTokenFromLastMail(ctx.p3.noopMail.sendPasswordReset as jest.Mock);
+    const password = 'Str0ng-R02-Credential!';
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/auth/password-reset/confirm')
+      .send({ token: setupPlain, newPassword: password, confirmPassword: password })
+      .expect(200);
+    await request(ctx.app.getHttpServer())
+      .post('/api/v1/auth/password-reset/confirm')
+      .send({ token: adminTokenPlain, newPassword: 'Other-Pass-12!', confirmPassword: 'Other-Pass-12!' })
+      .expect(401);
+  });
+
+  it('R03 — encrypted secret cleared after transport confirm', async () => {
+    const orgId = await seedOrg();
+    const opId = `op-r03-${randomUUID()}`;
+    await ctx.p3.globalIdentity.provisionGlobalUser(provisionDto(orgId, opId), actor(), auditReq());
+    const intent = await prisma.masterIdentityCredentialSetupIntent.findUniqueOrThrow({
+      where: { securityOperationId: opId },
+    });
+    expect(intent.transportConfirmedAt).toBeTruthy();
+    expect(intent.deliveryTokenCiphertext).toBeNull();
   });
 
   it('D10 — HTTP confirm and login after delivery', async () => {

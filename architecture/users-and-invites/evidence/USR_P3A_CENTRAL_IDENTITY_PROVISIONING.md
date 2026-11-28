@@ -260,6 +260,18 @@
 
 **BACKEND_IMPLEMENTATION_FROZEN=YES** (CR01–CR03 closure); **A01–A24**, **AppModule boot**, **FR01–FR05** remain acceptance blockers.
 
+### P3A.3B frontend integration seal (PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3B_FRONTEND_INTEGRATION_SEAL`
+
+**Governance:** `hardcoded-copy-inventory.json` restored to trusted `main` (empty three-dot PR diff after commit).
+
+**CR-R01–R03:** Transport ack fenced by `intentId` + `deliveryGeneration` + `passwordResetTokenId`; retry uses persisted `expiresAt`; obsolete reset tokens revoked after successful mutation; ciphertext cleared after transport confirm / completion.
+
+**FR01–FR05:** Immutable submitted create/profile operations; org/role isolation; nine-locale strings for P3A onboarding copy; truthful credential/invite delivery UI.
+
+**P3A3B_VERDICT=CONDITIONAL_PARTIAL** — core UI + targeted tests; **P3A3C** (A01–A24, AppModule boot, CI authority) outstanding.
+
 ### CI authority
 
 `usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). Design: `architecture/users-and-invites/evidence/USR_P3A3_CI_AUTHORITY_PROPOSAL.md`. **NEW_CI_AUTHORITY_REQUIRED=YES** (separate authority PR; not in #2544).

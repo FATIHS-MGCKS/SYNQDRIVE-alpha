@@ -45,6 +45,10 @@ export function CreateGlobalUserDialog({
   const { t } = useSecurityAccessPresentation();
   const formGenerationRef = useRef(0);
   const operationKeyRef = useRef('');
+  const submittedOperationRef = useRef<{
+    operationKey: string;
+    payload: Parameters<typeof api.admin.securityAccess.createUser>[0];
+  } | null>(null);
   const submitAdmittedRef = useRef(false);
   const orgRolesRequestRef = useRef(0);
 
@@ -64,6 +68,7 @@ export function CreateGlobalUserDialog({
   const [orgs, setOrgs] = useState<OrganizationOperationalRowDto[]>([]);
   const [orgRoles, setOrgRoles] = useState<Array<{ id: string; name: string }>>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
+  const [orgRolesLoading, setOrgRolesLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastError, setLastError] = useState<'conflict' | 'operation' | 'generic' | null>(null);
   const [provisionResult, setProvisionResult] = useState<GovernanceGlobalIdentityProvisionResult | null>(null);
@@ -87,6 +92,7 @@ export function CreateGlobalUserDialog({
     setProvisionResult(null);
     setSubmitting(false);
     submitAdmittedRef.current = false;
+    submittedOperationRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -113,6 +119,9 @@ export function CreateGlobalUserDialog({
     }
     const requestId = ++orgRolesRequestRef.current;
     setOrganizationRoleId('');
+    setMembershipRole('WORKER');
+    setOrgRoles([]);
+    setOrgRolesLoading(true);
     void api.admin.securityAccess
       .listOrgRoles({ organizationId, limit: 100 })
       .then((res) => {
@@ -121,6 +130,9 @@ export function CreateGlobalUserDialog({
       })
       .catch(() => {
         if (requestId === orgRolesRequestRef.current) setOrgRoles([]);
+      })
+      .finally(() => {
+        if (requestId === orgRolesRequestRef.current) setOrgRolesLoading(false);
       });
   }, [organizationId]);
 
@@ -171,12 +183,27 @@ export function CreateGlobalUserDialog({
       toast.error(t('master.securityAccess.users.create.validationName'));
       return;
     }
+    if (
+      organizationRoleId &&
+      orgRoles.length > 0 &&
+      !orgRoles.some((r) => r.id === organizationRoleId)
+    ) {
+      toast.error(t('master.securityAccess.users.create.validationOrgRole'));
+      return;
+    }
+
+    if (!submittedOperationRef.current) {
+      submittedOperationRef.current = {
+        operationKey: operationKeyRef.current,
+        payload: buildPayload(),
+      };
+    }
 
     submitAdmittedRef.current = true;
     setSubmitting(true);
     setLastError(null);
     try {
-      const result = await api.admin.securityAccess.createUser(buildPayload());
+      const result = await api.admin.securityAccess.createUser(submittedOperationRef.current.payload);
       if (generationAtStart !== formGenerationRef.current) return;
       setProvisionResult(result);
       setStep('result');
@@ -320,7 +347,9 @@ export function CreateGlobalUserDialog({
                     className={INPUT}
                     value={organizationRoleId}
                     onChange={(e) => setOrganizationRoleId(e.target.value)}
+                    disabled={orgRolesLoading}
                     data-testid="create-user-org-role"
+                    aria-busy={orgRolesLoading}
                   >
                     <option value="">{t('master.securityAccess.users.create.organizationRoleNone')}</option>
                     {orgRoles.map((r) => (
@@ -418,6 +447,7 @@ export function CreateGlobalUserDialog({
         ) : provisionResult ? (
           <ProvisionResultView
             result={provisionResult}
+            onboardingMode={organizationId ? onboardingMode : 'identity'}
             t={t}
             onOpenUser={() => {
               onOpenCreatedUser(provisionResult.user.id);
@@ -433,18 +463,39 @@ export function CreateGlobalUserDialog({
 
 function ProvisionResultView({
   result,
+  onboardingMode,
   t,
   onOpenUser,
   onDone,
 }: {
   result: GovernanceGlobalIdentityProvisionResult;
+  onboardingMode: OnboardingMode;
   t: (k: TranslationKey, vars?: Record<string, string>) => string;
   onOpenUser: () => void;
   onDone: () => void;
 }) {
   const o = result.onboarding;
+  const modeLabel =
+    onboardingMode === 'credential'
+      ? t('master.securityAccess.users.create.result.onboardingCredential')
+      : onboardingMode === 'invite'
+        ? t('master.securityAccess.users.create.result.onboardingInvite')
+        : t('master.securityAccess.users.create.result.onboardingIdentity');
+  const deliveryLabel =
+    onboardingMode === 'credential'
+      ? o.deliveryConfirmed
+        ? t('master.securityAccess.users.create.result.credentialDeliveryConfirmed')
+        : o.deliveryRequested
+          ? t('master.securityAccess.users.create.result.credentialDeliveryPending')
+          : t('master.securityAccess.users.create.result.deliveryNotRequested')
+      : o.deliveryConfirmed
+        ? t('master.securityAccess.users.create.result.deliveryConfirmed')
+        : o.deliveryRequested
+          ? t('master.securityAccess.users.create.result.deliveryPending')
+          : t('master.securityAccess.users.create.result.deliveryNotRequested');
   return (
     <div className="space-y-3 text-xs" data-testid="create-user-result">
+      <p className="text-muted-foreground">{modeLabel}</p>
       <ul className="space-y-1 rounded-lg border border-border bg-muted/40 p-3">
         <li>
           {o.accountReadyForAuthentication
@@ -456,13 +507,7 @@ function ProvisionResultView({
             ? t('master.securityAccess.users.create.result.invitePersisted')
             : t('master.securityAccess.users.create.result.inviteNotPersisted')}
         </li>
-        <li>
-          {o.deliveryConfirmed
-            ? t('master.securityAccess.users.create.result.deliveryConfirmed')
-            : o.deliveryRequested
-              ? t('master.securityAccess.users.create.result.deliveryPending')
-              : t('master.securityAccess.users.create.result.deliveryNotRequested')}
-        </li>
+        <li>{deliveryLabel}</li>
         {result.membership ? (
           <li>
             {t('master.securityAccess.users.create.result.membership', {
