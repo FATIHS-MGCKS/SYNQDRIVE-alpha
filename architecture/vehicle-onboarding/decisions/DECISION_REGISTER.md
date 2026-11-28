@@ -145,7 +145,7 @@
 | **NON-EFFECTS** | No flag arm; no Stripe/provider mutation; no harness removal without OWN-5 |
 | **EVIDENCE** | VO-EVID-2B-006 (`V2B_PR6_SINGLE_BILLING_AUTHORITY_2026-11-24.md`) |
 | **VALIDATION** | `v2b-pr6-single-billing-authority.characterization.spec.ts`; PG-05 reuse on main |
-| **OPEN GAPS** | OWN-3…6; optional dead-code removal (V2B-PR10) |
+| **OPEN GAPS** | V2B-PR10: **no** dead-code removal (rollback/test retention) |
 
 ---
 
@@ -162,7 +162,7 @@
 | **NON-EFFECTS** | No production flag arm; no Stripe/provider calls; no case/vehicle/outbox writes in observation |
 | **EVIDENCE** | VO-EVID-2B-007 (`V2B_PR7_HM_CANONICAL_READINESS_OBSERVABILITY_2026-11-24.md`) |
 | **VALIDATION** | `v2b-hm-canonical-readiness-observation.postgres.integration.spec.ts`; unit specs |
-| **OPEN GAPS** | OWN-3…6 owner attestation; HM canonical flag arm (V2B-PR9) |
+| **OPEN GAPS** | Production keeps shadow flag **OFF**; code **retained** for optional observation |
 
 ---
 
@@ -214,8 +214,8 @@
 | **CHANGE** | Ten direct production release gates; no calendar soak; shadow flag not required; HM canonical flag owner-gated ON after PR9B authorization |
 | **ENGINEERING_EVIDENCE** | PG03 18/18, PG05 12/12, PR7 30/30, total PG 60/60, PR7 workflows 24/24 — repository certification, not production attestation |
 | **EVIDENCE** | VO-EVID-2B-010 |
-| **OPEN GAPS** | PR9A–C execution; production activation authorization **NOT GRANTED** in PR #2523 |
-| **NON-EFFECTS** | **FLAGS_ARMED: NO**; **DEPLOYED: NO** |
+| **OPEN GAPS** | — (closed by PR9C ops + VO-DEC-2B-005) |
+| **PRODUCTION** | Deploy @ `4c029c5d`; P4B16 gen 109; HM canonical **ON** (PR9C record) |
 
 ---
 
@@ -228,5 +228,21 @@
 | **APPROVED_OPTION** | OWN-6-A |
 | **CHANGE** | Read-only legacy fleet inventory approved as policy; no automated repairs/migrations |
 | **EVIDENCE** | VO-EVID-2B-009 |
-| **OPEN GAPS** | Inventory **execution** on production DB not authorized by this attestation |
-| **NON-EFFECTS** | No production access; no migration |
+| **OPEN GAPS** | — (read-only inventory executed PR9A/PR9C; **1** HM legacy debt non-blocking) |
+| **NON-EFFECTS** | No automated repair; no retroactive billing |
+
+---
+
+## VO-DEC-2B-005
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PRODUCTION_VALIDATED |
+| **BEFORE** | V2B implementation merged; production HM canonical **OFF**; cutover **FORBIDDEN** |
+| **WHY** | OWN-5B + PR9B/C owner authorization; direct controlled cutover without shadow soak |
+| **CHANGE** | V2B registration convergence **closed** as **PRODUCTION_ACTIVE** @ `4c029c5ddcddd6cfe67a3ad8d809d2efbb062b8f`; governance reconciled in V2B-PR10 |
+| **ROLLBACK** | Routing-only: set HM canonical **false** on all replicas; legacy HM path **retained in code** |
+| **LEGACY DEBT** | **1** HM vehicle — reconciliation only; no auto repair / no billing backfill |
+| **EVIDENCE** | VO-EVID-2B-012 (`V2B_PR10_FINAL_PRODUCTION_CLOSEOUT_2026-11-25.md`) |
+| **OPEN GAPS** | Live HM registration smoke **not** authorized; duplicate billing events **not** exhaustively audited |
+| **NON-EFFECTS** | Does **not** promote Vehicle Onboarding module to `AUTHORITY_ACTIVE`; does **not** close VO5C / identity / OEM workstreams |

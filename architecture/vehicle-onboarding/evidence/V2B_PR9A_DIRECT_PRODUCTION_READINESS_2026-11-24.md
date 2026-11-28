@@ -190,3 +190,9 @@ Reference: [`architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md`](../
 **Next phases:** **PR9B** owner release authorization · **PR9C** cutover + smoke attestation · **PR10** post-cutover helper cleanup (optional).
 
 **Policy links:** [V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md](./V2B_PR8_DIRECT_CUTOVER_POLICY_2026-11-24.md) · [V2B_PR8_OWNER_ATTESTATION_2026-11-24.md](./V2B_PR8_OWNER_ATTESTATION_2026-11-24.md)
+
+---
+
+## Step 10 — Post-execution pointer (frozen PR9A snapshot unchanged above)
+
+**Superseding closeout (2026-11-25):** PR9C ops **SUCCESS** + V2B **PRODUCTION_ACTIVE** — [V2B_PR10_FINAL_PRODUCTION_CLOSEOUT_2026-11-25.md](./V2B_PR10_FINAL_PRODUCTION_CLOSEOUT_2026-11-25.md) (VO-EVID-2B-012). Step 9 table values remain the **PR9A authoring-time** snapshot.
