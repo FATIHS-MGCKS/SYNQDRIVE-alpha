@@ -124,7 +124,12 @@ export function createUsrP3a3IdentityPgStack(
     passwordReset,
   );
 
-  const inviteAccept = new InviteAcceptService(prisma as never, lifecycle, iamAudit);
+  const inviteAccept = new InviteAcceptService(
+    prisma as never,
+    lifecycle,
+    iamAudit,
+    passwordPolicy,
+  );
 
   return {
     prisma,

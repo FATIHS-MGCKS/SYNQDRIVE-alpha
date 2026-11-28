@@ -488,7 +488,11 @@ export class MasterGlobalIdentityService {
           },
           actorUserId,
           actor,
-          { skipManagePermissionCheck: true },
+          {
+            skipManagePermissionCheck: true,
+            provisionedUserId: createdUserId,
+            provisionedMembershipId: membershipId,
+          },
         );
         inviteId = persisted.inviteId;
         invitePlain = persisted.plainToken;

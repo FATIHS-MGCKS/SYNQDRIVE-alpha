@@ -85,7 +85,7 @@
 
 ## USR-P3A.3A backend security acceptance (PR #2544)
 
-**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence:** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20**, **first-login HTTP L01–L12 10/10**, **HTTP authorization 15/15**, policy unit **9/9**, IAM invite acceptance **14/14**, **84/84 total**, **0 skipped**, exit **0**.
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence (post FL seal):** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20**, **L-matrix 10/10**, **E-matrix 10/10**, **HTTP authorization 15/15**, policy unit **9/9**, IAM invite acceptance **14/14**, **94/94 total**, **0 skipped**, exit **0**.
 
 **Atomic invitation delivery (P3A.3A tx seal):** encrypted `inviteEmailOutbox` rows are created inside the same Prisma transaction as invite create/resend/recovery token rotation (+ IAM rotation audit on recovery). SMTP runs only via `processOutboxIds` after commit. Stale generations are suppressed at dispatch (`STALE_TOKEN_GENERATION` / `INVITE_NOT_PENDING`). Not exactly-once SMTP — in-flight transport may complete after supersede (documented).
 
@@ -187,6 +187,33 @@
 **R04 (`sendCredentialSetup` admin path):** still **OPEN** — optional admin credential reset not expanded; first-login uses invite accept + bcrypt only (no parallel credential authority).
 
 **P3A3A_FIRST_LOGIN=CONDITIONAL_PARTIAL** — proves public HTTP onboarding for MA-provisioned credentialless identities; **not** full A01–A24; **no merge readiness**.
+
+### First-login security edge seal (FL-01 / FL-02, PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3A_FIRST_LOGIN_SECURITY_EDGE_SEAL`
+
+**FL-01 provisioning binding:** `OrganizationUserInvite.provisionedUserId` + `provisionedMembershipId` (migration `20261128110000_organization_invite_provision_binding`); master org onboarding persists binding in invite create tx; `evaluateInitialCredentialEligibility` fail-closes on missing/mismatch + security snapshot (MFA, refresh sessions, platform grants); public `validateInviteToken` exposes same `initialCredentialEligible` semantics as accept.
+
+**FL-02 atomic first credential:** accept path reloads invite/membership/user inside `acquireInviteDeliveryContinuityLock` + `acquireCanonicalSecurityMutationLocks`; conditional `user.updateMany` (`passwordHash: null`, `ACTIVE`, `USER`); invite consume `updateMany` on `PENDING`; `resendInvite` / `revokeInvite` / `markExpired` fenced with continuity lock + pending CAS; `PasswordPolicyService` on accept.
+
+| ID | Result |
+|----|--------|
+| E01 | **PASS** — L03–L06 bound provision path |
+| E02 | **PASS** — unbound invite → `PROVISIONING_BINDING_INVALID` |
+| E03 | **PASS** — MFA identity denied initial path |
+| E04 | **PASS** — one `updateMany` password admit; single activation |
+| E05 | **PASS** — established `passwordHash` not overwritten |
+| E06 | **PASS** — stale token after recovery rotation rejected |
+| E07 | **PASS** — accept∥revoke; authoritative final invite state; optional `pg_blocking_pids` on holder |
+| E08 | **PASS** — expired invite + weak password denied |
+| E09 | **PASS** — suspended / protections exercised |
+| E10 | **PASS** — preview parity with accept eligibility |
+
+**Gate (agent):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → **94/94** (4+12+20+10 L-matrix + **10 E-matrix** +15+9+14), **0 skipped**, exit **0**; `tsc --noEmit` + `npm run build` **passed**; `validate-module-registry.sh` + `users-and-invites/scripts/validate-graph.sh` **passed**.
+
+**L-matrix deltas:** L09/L09b expect **400** on ineligible identity; L11 advisory-only pid barrier removed (E07 carries overlap proof).
+
+**P3A3A_FIRST_LOGIN_SECURITY=CONDITIONAL_PARTIAL** — FL-01/FL-02 sealed in repo; **not** merge/deploy/production.
 
 ### CI authority
 

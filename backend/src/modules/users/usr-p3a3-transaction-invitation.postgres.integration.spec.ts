@@ -98,7 +98,13 @@ function assertDisposableDb(): void {
       new IamMembershipLifecycleNotificationService(prisma as never),
       sessionPolicy,
     );
-    inviteAccept = new InviteAcceptService(prisma as never, lifecycle, stack.iamAudit);
+    const { PasswordPolicyService } = await import('@shared/auth/password-policy.service');
+    inviteAccept = new InviteAcceptService(
+      prisma as never,
+      lifecycle,
+      stack.iamAudit,
+      new PasswordPolicyService(),
+    );
     masterActorId = randomUUID();
     await prisma.user.create({
       data: {

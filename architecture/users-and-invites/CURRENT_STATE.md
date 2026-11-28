@@ -14,6 +14,7 @@
 | Authorization on `/admin/security` | **IMPLEMENTED** — `MASTER_ADMIN`, `MasterAdminMfaGuard`, step-up on privileged | `security-governance.controller.ts` |
 | MFA / sessions | **IMPLEMENTED** (repo) — revoke + reset with audit hooks | controller + `RefreshTokenService` |
 | Platform user create via MA hub | **IMPLEMENTED (repo)** — USR-P3A `POST/PATCH /admin/security/users`; canonical `MasterGlobalIdentityService` | [USR_P3A evidence](evidence/USR_P3A_CENTRAL_IDENTITY_PROVISIONING.md) |
+| Invite initial credential (FL-01/FL-02) | **IMPLEMENTED + TESTED (repo, disposable PG)** — provision binding on invite row; atomic first-password CAS; preview/accept parity | USR-P3A.3A security edge (PR #2544) |
 | i18n (Security & Access) | **IMPLEMENTED (repo)** — 9-locale `master.securityAccess.*` (USR-P1B); native review debt non-EN | USR-P1B |
 | Session-audit HTTP security tests | **IMPLEMENTED + TESTED (repo)** — harness + real-guard HTTP specs | USR-P1A closes F-003 |
 | Session audit accountability (R-002) | **IMPLEMENTED (repo)** — `MasterAdminAuditDeliveryService` | USR-P1A / USR-OWN-04 |

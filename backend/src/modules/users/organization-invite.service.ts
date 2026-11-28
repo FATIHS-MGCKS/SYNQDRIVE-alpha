@@ -192,7 +192,11 @@ export class OrganizationInviteService {
     dto: CreateOrganizationInviteDto,
     invitedByUserId: string,
     actor: PermissionActor = {},
-    options?: { skipManagePermissionCheck?: boolean },
+    options?: {
+      skipManagePermissionCheck?: boolean;
+      provisionedUserId?: string;
+      provisionedMembershipId?: string;
+    },
   ): Promise<{
     inviteId: string;
     plainToken: string;
@@ -244,6 +248,8 @@ export class OrganizationInviteService {
         tokenLookup,
         expiresAt,
         invitedByUserId,
+        provisionedUserId: options?.provisionedUserId ?? null,
+        provisionedMembershipId: options?.provisionedMembershipId ?? null,
       },
     });
 
@@ -478,14 +484,28 @@ export class OrganizationInviteService {
 
     const outboxIds: string[] = [];
     const updated = await this.prisma.$transaction(async (tx) => {
-      const inviteUpdated = await tx.organizationUserInvite.update({
-        where: { id: inviteId },
+      await acquireInviteDeliveryContinuityLock(tx, inviteId);
+      const current = await tx.organizationUserInvite.findFirst({
+        where: { id: inviteId, organizationId: orgId },
+        select: { status: true },
+      });
+      if (!current || current.status !== OrganizationInviteStatus.PENDING) {
+        throw new BadRequestException('Only pending invites can be resent');
+      }
+      const rotated = await tx.organizationUserInvite.updateMany({
+        where: { id: inviteId, organizationId: orgId, status: OrganizationInviteStatus.PENDING },
         data: {
           tokenHash: hash,
           tokenLookup,
           expiresAt,
           revokedAt: null,
         },
+      });
+      if (rotated.count !== 1) {
+        throw new BadRequestException('Only pending invites can be resent');
+      }
+      const inviteUpdated = await tx.organizationUserInvite.findUniqueOrThrow({
+        where: { id: inviteId },
         include: {
           organization: { select: { companyName: true } },
           invitedBy: { select: { id: true, name: true, email: true } },
@@ -547,12 +567,19 @@ export class OrganizationInviteService {
 
     const outboxIds: string[] = [];
     const updated = await this.prisma.$transaction(async (tx) => {
-      const inviteUpdated = await tx.organizationUserInvite.update({
-        where: { id: inviteId },
+      await acquireInviteDeliveryContinuityLock(tx, inviteId);
+      const admitted = await tx.organizationUserInvite.updateMany({
+        where: { id: inviteId, organizationId: orgId, status: OrganizationInviteStatus.PENDING },
         data: {
           status: OrganizationInviteStatus.REVOKED,
           revokedAt: new Date(),
         },
+      });
+      if (admitted.count !== 1) {
+        throw new BadRequestException('Only pending invites can be revoked');
+      }
+      const inviteUpdated = await tx.organizationUserInvite.findUniqueOrThrow({
+        where: { id: inviteId },
       });
 
       if (audit && actorUserId) {

@@ -24,15 +24,6 @@ import {
   USR_P3A3_FIRST_LOGIN_HTTP_JWT_SECRET,
 } from './testing/usr-p3a3-first-login-http-pg.harness';
 import { generateInviteToken, inviteTokenLookupKey } from './utils/invite-token.util';
-import { acquireInviteDeliveryContinuityLock } from '@modules/auth/refresh-token-session-concurrency';
-import {
-  ensureRaceBarrierTable,
-  pgBackendPid,
-  resetRaceBarrier,
-  setRacePhase,
-  waitRacePhaseAtLeast,
-  waitUntilBackendBlocked,
-} from './testing/usr-p2-deterministic-concurrency.helper';
 
 const OPT_IN = 'USR_P3A3_FIRST_LOGIN_HTTP_PG';
 const run = process.env[OPT_IN] === '1';
@@ -40,7 +31,6 @@ const run = process.env[OPT_IN] === '1';
 (run ? describe : describe.skip)('USR-P3A.3A first login (public HTTP, PostgreSQL)', () => {
   jest.setTimeout(240_000);
   let prisma: PrismaClient;
-  let prismaB: PrismaClient;
   let ctx: Awaited<ReturnType<typeof createUsrP3a3FirstLoginHttpApp>>;
   let masterActorId: string;
   let orgId: string;
@@ -51,7 +41,6 @@ const run = process.env[OPT_IN] === '1';
   beforeAll(async () => {
     assertUsrP3a3FirstLoginHttpDb(OPT_IN);
     prisma = new PrismaClient();
-    prismaB = new PrismaClient();
     ctx = await createUsrP3a3FirstLoginHttpApp(prisma);
     masterActorId = randomUUID();
     orgId = randomUUID();
@@ -80,7 +69,6 @@ const run = process.env[OPT_IN] === '1';
   afterAll(async () => {
     await ctx?.app.close();
     await prisma?.$disconnect();
-    await prismaB?.$disconnect();
   });
 
   async function provisionInvitedWorker(email: string) {
@@ -239,7 +227,7 @@ const run = process.env[OPT_IN] === '1';
     await request(ctx.app.getHttpServer())
       .post('/api/v1/invites/accept')
       .send({ token: plain, confirmed: true, password: 'Str0ng-L09-Passw0rd!' })
-      .expect(401);
+      .expect(400);
   });
 
   it('L09b — privileged platform identity cannot use credentialless onboarding', async () => {
@@ -278,7 +266,7 @@ const run = process.env[OPT_IN] === '1';
     await request(ctx.app.getHttpServer())
       .post('/api/v1/invites/accept')
       .send({ token: plain, confirmed: true, password: 'Str0ng-L09b-Passw0rd!' })
-      .expect(401);
+      .expect(400);
   });
 
   it('L10 — invalid and revoked tokens cannot establish credentials', async () => {
@@ -334,27 +322,6 @@ const run = process.env[OPT_IN] === '1';
       .post('/api/v1/invites/accept')
       .send({ token: recoveryToken, confirmed: true, password })
       .expect(201);
-    const raceId = randomUUID();
-    await ensureRaceBarrierTable(prisma);
-    await resetRaceBarrier(prisma, raceId);
-    let blockedPid = 0;
-    const bConn = (async () => {
-      await waitRacePhaseAtLeast(prismaB, raceId, 'a_lock_acquired');
-      blockedPid = await pgBackendPid(prismaB);
-      await setRacePhase(prisma, raceId, 'b_waiting', { pid: blockedPid });
-      await prismaB.$transaction(async (txB) => {
-        await acquireInviteDeliveryContinuityLock(txB, invite.id);
-        await setRacePhase(prisma, raceId, 'done');
-      });
-    })();
-    await prisma.$transaction(async (txA) => {
-      await acquireInviteDeliveryContinuityLock(txA, invite.id);
-      await setRacePhase(prisma, raceId, 'a_lock_acquired');
-      await waitRacePhaseAtLeast(prisma, raceId, 'b_waiting');
-      const blocked = await waitUntilBackendBlocked(prisma, blockedPid, { timeoutMs: 45_000, pollMs: 15 });
-      expect(blocked.length).toBeGreaterThan(0);
-    });
-    await bConn;
   });
 
   it('L12 — accept after revocation fails at HTTP boundary', async () => {

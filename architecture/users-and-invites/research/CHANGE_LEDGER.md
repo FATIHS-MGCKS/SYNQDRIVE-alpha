@@ -21,3 +21,4 @@
 | 2026-11-27 | USR-P3A.1 closeout — recursive fingerprint; creation replay target semantics; invite field parity + delivery continuity; IANA timezone; pg lock-wait proof |
 | 2026-11-27 | USR-P3A.2 — globalProfile read contract; create dialog + result states; profile hydration/PATCH; 9-locale keys; vitest + playwright scaffolding |
 | 2026-11-28 | USR-P3A.3A first-login — `canEstablishInitialCredentialsViaInvite`; credentialless invite accept + HTTP L01–L12 disposable PG; T12/T14 without pre-auth |
+| 2026-11-28 | USR-P3A.3A first-login security edge — invite provision binding columns; atomic first credential CAS; invite lifecycle fences; E01–E10 PG; gate **94/94** |

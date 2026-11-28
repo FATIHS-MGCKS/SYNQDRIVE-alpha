@@ -7,9 +7,11 @@ import {
   MembershipRole,
   MembershipStatus,
   OrganizationInviteStatus,
+  OrganizationStatus,
   UserPlatformRole,
   UserStatus,
 } from '@prisma/client';
+import { PasswordPolicyService } from '@shared/auth/password-policy.service';
 import { InviteAcceptService } from './invite-accept.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamAuditService } from './iam-audit.service';
@@ -27,16 +29,27 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     organizationUserInvite: {
       findUnique: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
     };
-    user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
+    user: {
+      findUnique: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+    };
     organizationMembership: {
       findUnique: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
       count: jest.Mock;
     };
+    userMfaFactor: { count: jest.Mock };
+    refreshToken: { count: jest.Mock };
+    userPlatformPermissionGrant: { count: jest.Mock };
     activityLog: { create: jest.Mock };
     iamAuditOutbox: { create: jest.Mock };
+    $executeRaw: jest.Mock;
     $transaction: jest.Mock;
   };
   let lifecycle: {
@@ -73,7 +86,9 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       status: OrganizationInviteStatus.PENDING,
       expiresAt: new Date(Date.now() + 86_400_000),
       acceptedByUserId: null,
-      organization: { id: orgId, companyName: 'Org' },
+      provisionedUserId: null,
+      provisionedMembershipId: null,
+      organization: { id: orgId, companyName: 'Org', status: OrganizationStatus.ACTIVE },
       organizationRole: null,
       ...overrides,
     });
@@ -84,15 +99,24 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       organizationUserInvite: {
         findUnique: jest.fn(),
         update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       user: {
         findUnique: jest.fn(),
+        findUniqueOrThrow: jest.fn().mockImplementation(async ({ where }) => ({
+          id: where.id,
+          email,
+          passwordHash: 'hashed',
+          status: UserStatus.ACTIVE,
+          platformRole: UserPlatformRole.USER,
+        })),
         create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'new-user', ...data })),
         update: jest.fn().mockImplementation(async ({ data, where }) => ({
           id: where.id,
           email,
           ...data,
         })),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       organizationMembership: {
         findUnique: jest.fn(),
@@ -100,6 +124,9 @@ describe('IAM invite acceptance (Prompt 15)', () => {
         update: jest.fn().mockResolvedValue({}),
         count: jest.fn().mockResolvedValue(1),
       },
+      userMfaFactor: { count: jest.fn().mockResolvedValue(0) },
+      refreshToken: { count: jest.fn().mockResolvedValue(0) },
+      userPlatformPermissionGrant: { count: jest.fn().mockResolvedValue(0) },
       activityLog: { create: jest.fn().mockResolvedValue({}) },
       iamAuditOutbox: {
         create: jest.fn().mockImplementation(async ({ data }) => ({
@@ -107,7 +134,8 @@ describe('IAM invite acceptance (Prompt 15)', () => {
           ...data,
         })),
       },
-      $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
+      $executeRaw: jest.fn().mockResolvedValue(0),
+    $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma)),
     };
     lifecycle = {
       applyJoinInTransaction: jest.fn().mockResolvedValue({
@@ -126,6 +154,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       prisma as unknown as PrismaService,
       lifecycle as unknown as IamMembershipLifecycleService,
       iamAudit as unknown as IamAuditService,
+      new PasswordPolicyService(),
     );
   });
 
@@ -160,7 +189,10 @@ describe('IAM invite acceptance (Prompt 15)', () => {
 
   it('allows credentialless provisioned identity to establish password without auth', async () => {
     const { plain, hash } = generateInviteToken();
-    mockPendingInvite(plain, hash);
+    mockPendingInvite(plain, hash, {
+      provisionedUserId: userId,
+      provisionedMembershipId: 'm-invited',
+    });
     prisma.user.findUnique.mockResolvedValue({
       id: userId,
       email,
@@ -170,6 +202,8 @@ describe('IAM invite acceptance (Prompt 15)', () => {
     });
     prisma.organizationMembership.findUnique.mockResolvedValue({
       id: 'm-invited',
+      organizationId: orgId,
+      userId,
       role: MembershipRole.WORKER,
       status: MembershipStatus.INVITED,
     });
@@ -178,7 +212,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
 
     expect(result.accepted).toBe(true);
     expect(prisma.user.create).not.toHaveBeenCalled();
-    expect(prisma.user.update).toHaveBeenCalled();
+    expect(prisma.user.updateMany).toHaveBeenCalled();
     expect(lifecycle.applyJoinInTransaction).toHaveBeenCalled();
   });
 
@@ -207,7 +241,13 @@ describe('IAM invite acceptance (Prompt 15)', () => {
   it('rejects wrong logged-in user', async () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash);
-    prisma.user.findUnique.mockResolvedValue({ id: userId, email });
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: 'existing-hash',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
 
     await expect(
       service.acceptInvite(
@@ -233,7 +273,13 @@ describe('IAM invite acceptance (Prompt 15)', () => {
   it('blocks removed membership without rejoin acknowledgement', async () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash);
-    prisma.user.findUnique.mockResolvedValue({ id: userId, email });
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: 'existing-hash',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
     prisma.organizationMembership.findUnique.mockResolvedValue({
       id: 'm-1',
       role: MembershipRole.WORKER,
@@ -250,7 +296,13 @@ describe('IAM invite acceptance (Prompt 15)', () => {
   it('allows removed membership rejoin with explicit acknowledgement', async () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash);
-    prisma.user.findUnique.mockResolvedValue({ id: userId, email });
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: 'existing-hash',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
     prisma.organizationMembership.findUnique.mockResolvedValue({
       id: 'm-1',
       role: MembershipRole.WORKER,
@@ -269,7 +321,13 @@ describe('IAM invite acceptance (Prompt 15)', () => {
   it('blocks suspended membership without rejoin acknowledgement', async () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash);
-    prisma.user.findUnique.mockResolvedValue({ id: userId, email });
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: 'existing-hash',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
     prisma.organizationMembership.findUnique.mockResolvedValue({
       id: 'm-1',
       role: MembershipRole.WORKER,
@@ -334,7 +392,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
 
     await service.acceptInvite({ ...baseDto, token: plain }, null);
 
-    const updateData = prisma.organizationUserInvite.update.mock.calls[0][0].data;
+    const updateData = prisma.organizationUserInvite.updateMany.mock.calls[0][0].data;
     expect(updateData.status).toBe(OrganizationInviteStatus.ACCEPTED);
     expect(updateData.tokenHash).toBeDefined();
   });

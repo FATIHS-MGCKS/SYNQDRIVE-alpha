@@ -80,7 +80,9 @@ run_jest usr-p3a3-transaction-invitation.postgres.integration.spec.ts
 
 log 'USR-P3A.3A actual first-login (public HTTP, PostgreSQL)'
 export USR_P3A3_FIRST_LOGIN_HTTP_PG=1
+export USR_P3A3_FIRST_LOGIN_SECURITY_EDGE_PG=1
 run_jest usr-p3a3-first-login-http.postgres.integration.spec.ts
+run_jest usr-p3a3-first-login-security-edge.postgres.integration.spec.ts
 
 log 'USR-P3A.3 identity HTTP authorization (PostgreSQL)'
 export USR_P3A3_IDENTITY_HTTP_PG=1

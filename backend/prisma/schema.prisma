@@ -2041,6 +2041,7 @@ model User {
   notificationPreferences              UserNotificationPreference[]
   invitesSent                          OrganizationUserInvite[]                @relation("InvitesSent")
   invitesAccepted                      OrganizationUserInvite[]                @relation("InvitesAccepted")
+  invitesProvisionedFor                OrganizationUserInvite[]                @relation("InvitesProvisionedFor")
   inviteEmailOutboxSent                InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
   organizationRolesCreated             OrganizationRole[]                      @relation("RolesCreated")
   organizationRoleVersionsCreated      OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
@@ -2293,6 +2294,7 @@ model OrganizationMembership {
   roleAssignments                               OrganizationRoleAssignment[]
   permissionOverrides                           MembershipPermissionOverride[]
   roleAssignmentDriftReconciliationApplications OrganizationRoleAssignmentDriftReconciliationApplication[]
+  provisionedInvites                            OrganizationUserInvite[]                                   @relation("InviteProvisionedMembership")
 
   @@unique([userId, organizationId])
   @@index([organizationId])
@@ -2581,22 +2583,27 @@ model OrganizationUserInvite {
   tokenLookup        String                   @unique @map("token_lookup")
   status             OrganizationInviteStatus @default(PENDING)
   expiresAt          DateTime                 @map("expires_at")
-  invitedByUserId    String                   @map("invited_by_user_id")
-  acceptedByUserId   String?                  @map("accepted_by_user_id")
-  acceptedAt         DateTime?                @map("accepted_at")
-  revokedAt          DateTime?                @map("revoked_at")
+  invitedByUserId           String                   @map("invited_by_user_id")
+  provisionedUserId         String?                  @map("provisioned_user_id")
+  provisionedMembershipId   String?                  @map("provisioned_membership_id")
+  acceptedByUserId          String?                  @map("accepted_by_user_id")
+  acceptedAt                DateTime?                @map("accepted_at")
+  revokedAt                 DateTime?                @map("revoked_at")
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
 
   organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   organizationRole  OrganizationRole?   @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
-  invitedBy         User                @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
-  acceptedBy        User?               @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
-  inviteEmailOutbox InviteEmailOutbox[]
+  invitedBy              User                    @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy             User?                   @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  provisionedUser        User?                   @relation("InvitesProvisionedFor", fields: [provisionedUserId], references: [id], onDelete: SetNull)
+  provisionedMembership  OrganizationMembership? @relation("InviteProvisionedMembership", fields: [provisionedMembershipId], references: [id], onDelete: SetNull)
+  inviteEmailOutbox      InviteEmailOutbox[]
 
   @@index([organizationId, status])
   @@index([organizationId, email])
   @@index([tokenHash])
+  @@index([provisionedUserId])
   @@map("organization_user_invites")
 }
 
