@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
-import { parseHttpErrorCodeFromUnknown } from '../../../lib/http-error-code';
+import { parseHttpErrorCodeFromUnknown, parseHttpErrorStatusFromUnknown } from '../../../lib/http-error-code';
 import { newIdempotencyKey } from '../../../lib/mfa';
 import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
 import type { GovernanceGlobalProfileDto, GovernanceUserDetailDto } from '../types';
@@ -18,6 +18,11 @@ import {
   profileDtoToDraft,
   type ProfileDraft,
 } from '../global-profile-patch.util';
+import {
+  MASTER_IDENTITY_STEP_UP_ACTION,
+  executeIdentityPrivilegedMutation,
+  type MasterIdentityProfilePendingOp,
+} from '../master-identity-privileged-admission';
 
 const INPUT =
   'w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-ring';
@@ -28,7 +33,10 @@ export interface GlobalProfileEditPanelProps {
   drawerGeneration: number;
   onSaved: () => void;
   isMutationTargetCurrent: (userId: string, generationAtStart: number) => boolean;
-  identityMutations?: Pick<MasterIdentityPrivilegedMutations, 'runWithStepUp'>;
+  identityMutations?: Pick<
+    MasterIdentityPrivilegedMutations,
+    'runWithStepUp' | 'clearPendingIf' | 'isPendingFor'
+  >;
 }
 
 export function GlobalProfileEditPanel({
@@ -57,6 +65,9 @@ export function GlobalProfileEditPanel({
   useEffect(() => {
     bindGenerationRef.current = drawerGeneration;
     saveOperationKeyRef.current = newIdempotencyKey('ma-global-profile');
+    identityMutations?.clearPendingIf(
+      (op) => op.kind === 'profile' && (op.userId !== userId || op.drawerGeneration !== drawerGeneration),
+    );
     const profile = detail.globalProfile;
     setSnapshot(profile);
     setDraft(profileDtoToDraft(profile));
@@ -65,7 +76,7 @@ export function GlobalProfileEditPanel({
     setSaving(false);
     submitAdmittedRef.current = false;
     submittedPatchRef.current = null;
-  }, [detail.id, drawerGeneration]);
+  }, [detail.id, drawerGeneration, userId, identityMutations]);
 
   useEffect(() => {
     if (!snapshot || !draft) return;
@@ -75,10 +86,17 @@ export function GlobalProfileEditPanel({
   useEffect(() => {
     const profile = detail.globalProfile;
     baselineRef.current = profile;
-    if (draftDirtyRef.current) return;
+    if (draftDirtyRef.current || saving || submitAdmittedRef.current) return;
+    if (
+      identityMutations?.isPendingFor(
+        (op) => op.kind === 'profile' && op.userId === userId && op.drawerGeneration === drawerGeneration,
+      )
+    ) {
+      return;
+    }
     setSnapshot(profile);
     setDraft(profileDtoToDraft(profile));
-  }, [detail.globalProfile]);
+  }, [detail.globalProfile, saving, userId, drawerGeneration, identityMutations]);
 
   const discardDraft = () => {
     if (!snapshot) return;
@@ -121,16 +139,41 @@ export function GlobalProfileEditPanel({
     submitAdmittedRef.current = true;
     setSaving(true);
 
-    const runPatch = async () => {
-      await api.admin.securityAccess.updateUserProfile(userId, submittedPatchRef.current!.patch);
-      if (!isMutationTargetCurrent(userId, generationAtStart)) return;
+    const frozenPatch = structuredClone(submittedPatchRef.current!.patch);
+    const pendingOp: MasterIdentityProfilePendingOp = {
+      kind: 'profile',
+      action: MASTER_IDENTITY_STEP_UP_ACTION,
+      drawerGeneration: generationAtStart,
+      userId,
+      operationKey: submittedPatchRef.current!.operationKey,
+      patch: frozenPatch,
+    };
+
+    const assertStillAdmitted = () =>
+      isMutationTargetCurrent(userId, generationAtStart) &&
+      bindGenerationRef.current === generationAtStart &&
+      saveOperationKeyRef.current === pendingOp.operationKey;
+
+    const onSuccess = async () => {
+      if (!assertStillAdmitted()) return;
       const reloaded = await api.admin.securityAccess.getUser(userId);
-      if (!isMutationTargetCurrent(userId, generationAtStart)) return;
+      if (!assertStillAdmitted()) return;
       const authoritative = reloaded.globalProfile;
+      const localOverlay =
+        draft && submittedPatchRef.current
+          ? Object.fromEntries(
+              Object.entries(draft).filter(([key, value]) => {
+                const patchKey = key as keyof ProfileDraft;
+                if (!(patchKey in frozenPatch)) return true;
+                return String(value ?? '') !== String(frozenPatch[patchKey as keyof typeof frozenPatch] ?? '');
+              }),
+            )
+          : {};
       setSnapshot(authoritative);
-      setDraft(profileDtoToDraft(authoritative));
+      const merged = profileDtoToDraft(authoritative);
+      setDraft({ ...merged, ...localOverlay });
+      draftDirtyRef.current = Object.keys(localOverlay).length > 0;
       baselineRef.current = authoritative;
-      draftDirtyRef.current = false;
       saveOperationKeyRef.current = newIdempotencyKey('ma-global-profile');
       submittedPatchRef.current = null;
       toast.success(t('master.securityAccess.userDetail.profile.success'));
@@ -139,15 +182,23 @@ export function GlobalProfileEditPanel({
 
     try {
       if (identityMutations?.runWithStepUp) {
-        await identityMutations.runWithStepUp(runPatch);
+        await identityMutations.runWithStepUp({ op: pendingOp, assertStillAdmitted, onSuccess });
       } else {
-        await runPatch();
+        if (!assertStillAdmitted()) throw new Error('IDENTITY_ADMISSION_STALE');
+        await executeIdentityPrivilegedMutation(pendingOp);
+        if (!assertStillAdmitted()) return;
+        await onSuccess();
       }
     } catch (err: unknown) {
       if (!isMutationTargetCurrent(userId, generationAtStart)) return;
       const code = parseHttpErrorCodeFromUnknown(err);
+      const status = parseHttpErrorStatusFromUnknown(err);
       if (code === 'OPERATION_IDEMPOTENCY_CONFLICT') {
         toast.error(t('master.securityAccess.userDetail.profile.conflict'));
+      } else if (status === 400 || code === 'BAD_REQUEST') {
+        saveOperationKeyRef.current = newIdempotencyKey('ma-global-profile');
+        submittedPatchRef.current = null;
+        toast.error(t('master.securityAccess.userDetail.profile.failed'));
       } else {
         toast.error(t('master.securityAccess.userDetail.profile.failed'));
       }
@@ -162,6 +213,11 @@ export function GlobalProfileEditPanel({
   if (!draft) return null;
 
   const noOp = snapshot ? draftsEqualForNoOp(snapshot, draft) : true;
+  const mutationPending =
+    identityMutations?.isPendingFor(
+      (op) => op.kind === 'profile' && op.userId === userId && op.drawerGeneration === drawerGeneration,
+    ) ?? false;
+  const inputsFrozen = saving || mutationPending || Boolean(submittedPatchRef.current);
 
   return (
     <section data-testid="global-profile-edit">
@@ -178,6 +234,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.firstName}
             onChange={(e) => updateDraft({ firstName: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-first-name"
           />
         </label>
@@ -187,6 +244,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.lastName}
             onChange={(e) => updateDraft({ lastName: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-last-name"
           />
         </label>
@@ -196,6 +254,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.name}
             onChange={(e) => updateDraft({ name: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-display-name"
           />
         </label>
@@ -205,6 +264,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.phone}
             onChange={(e) => updateDraft({ phone: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-phone"
           />
         </label>
@@ -214,6 +274,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.mobile}
             onChange={(e) => updateDraft({ mobile: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-mobile"
           />
         </label>
@@ -223,6 +284,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.address}
             onChange={(e) => updateDraft({ address: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-address"
           />
         </label>
@@ -232,6 +294,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.language}
             onChange={(e) => updateDraft({ language: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-language"
           >
             <option value="">—</option>
@@ -248,6 +311,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.timezone}
             onChange={(e) => updateDraft({ timezone: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-timezone"
           >
             <option value="">—</option>
@@ -264,6 +328,7 @@ export function GlobalProfileEditPanel({
             className={INPUT}
             value={draft.dateFormat}
             onChange={(e) => updateDraft({ dateFormat: e.target.value })}
+            disabled={inputsFrozen}
             data-testid="profile-date-format"
           >
             <option value="">—</option>

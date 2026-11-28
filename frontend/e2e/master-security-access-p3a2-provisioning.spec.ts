@@ -13,13 +13,23 @@ const viewports = [
 
 test.describe.configure({ timeout: 120_000 });
 
-async function openCreateAndSubmitIdentityOnly(page: Page) {
+async function openCreateFormIdentityOnly(page: Page, captureFormShot = false) {
   await page.getByTestId('security-access-tab-users').click();
   await page.getByTestId('security-users-create').click();
   await expect(page.getByTestId('create-global-user-dialog')).toBeVisible();
   await page.getByTestId('create-user-email').fill('new-user@fixture.test');
   await page.getByTestId('create-user-first-name').fill('New');
   await page.getByTestId('create-user-last-name').fill('Fixture');
+  if (captureFormShot) {
+    await page.screenshot({
+      path: path.join(EVIDENCE_DIR, 'p3a2-create-form-light.png'),
+      fullPage: false,
+    });
+  }
+}
+
+async function openCreateAndSubmitIdentityOnly(page: Page) {
+  await openCreateFormIdentityOnly(page);
   const createPost = page.waitForResponse(
     (res) => res.url().includes('/admin/security/users') && res.request().method() === 'POST' && res.ok(),
     { timeout: 30_000 },
@@ -41,12 +51,19 @@ for (const vp of viewports) {
       await page.goto('/master?view=security-access&securityAccess=users', { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('security-access-hub')).toBeVisible({ timeout: 60_000 });
 
-      await openCreateAndSubmitIdentityOnly(page);
       if (vp.name === 'desktop' && theme === 'light') {
-        await page.screenshot({
-          path: path.join(EVIDENCE_DIR, 'p3a2-create-form-light.png'),
-          fullPage: false,
-        });
+        await openCreateFormIdentityOnly(page, true);
+      } else {
+        await openCreateFormIdentityOnly(page);
+      }
+      const createPost = page.waitForResponse(
+        (res) => res.url().includes('/admin/security/users') && res.request().method() === 'POST' && res.ok(),
+        { timeout: 30_000 },
+      );
+      await page.getByTestId('create-user-submit').click();
+      await createPost;
+      await expect(page.getByTestId('create-user-result')).toBeVisible({ timeout: 15_000 });
+      if (vp.name === 'desktop' && theme === 'light') {
         await page.screenshot({
           path: path.join(EVIDENCE_DIR, 'p3a2-create-result-light.png'),
         });

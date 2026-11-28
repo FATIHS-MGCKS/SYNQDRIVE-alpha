@@ -14,6 +14,11 @@ import { api } from '../../../lib/api';
 import { parseHttpErrorCodeFromUnknown, parseHttpErrorStatusFromUnknown } from '../../../lib/http-error-code';
 import { newIdempotencyKey } from '../../../lib/mfa';
 import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
+import type { MasterIdentityCreatePendingOp } from '../master-identity-privileged-admission';
+import {
+  MASTER_IDENTITY_STEP_UP_ACTION,
+  executeIdentityPrivilegedMutation,
+} from '../master-identity-privileged-admission';
 import type { GovernanceGlobalIdentityProvisionResult } from '../types';
 import type { OrganizationOperationalRowDto } from '../../organizations/types';
 import {
@@ -28,6 +33,17 @@ import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation'
 const INPUT =
   'w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-ring';
 
+async function executeCreateWithoutStepUpFence(
+  op: MasterIdentityCreatePendingOp,
+  assertStillAdmitted: () => boolean,
+  onSuccess: (result: unknown) => void | Promise<void>,
+) {
+  if (!assertStillAdmitted()) throw new Error('IDENTITY_ADMISSION_STALE');
+  const result = await executeIdentityPrivilegedMutation(op);
+  if (!assertStillAdmitted()) return;
+  await onSuccess(result);
+}
+
 type OnboardingMode = 'identity' | 'invite' | 'credential';
 type Step = 'form' | 'result';
 
@@ -36,7 +52,10 @@ export interface CreateGlobalUserDialogProps {
   onOpenChange: (open: boolean) => void;
   onListRefresh: () => void;
   onOpenCreatedUser: (userId: string) => void;
-  identityMutations?: Pick<MasterIdentityPrivilegedMutations, 'runWithStepUp'>;
+  identityMutations?: Pick<
+    MasterIdentityPrivilegedMutations,
+    'runWithStepUp' | 'clearPendingIf' | 'isPendingFor'
+  >;
 }
 
 export function CreateGlobalUserDialog({
@@ -120,6 +139,7 @@ export function CreateGlobalUserDialog({
     if (!open) return;
     formGenerationRef.current += 1;
     operationKeyRef.current = newIdempotencyKey('ma-global-user-create');
+    identityMutations?.clearPendingIf((op) => op.kind === 'create');
     resetFormState();
     setOrgsLoading(true);
     void api.organizations
@@ -129,7 +149,7 @@ export function CreateGlobalUserDialog({
         setOrgs(rows.filter((o) => o.orgStatus === 'ACTIVE'));
       })
       .finally(() => setOrgsLoading(false));
-  }, [open, resetFormState]);
+  }, [open, resetFormState, identityMutations]);
 
   useEffect(() => {
     if (!open) return;
@@ -245,27 +265,39 @@ export function CreateGlobalUserDialog({
     }
     }
 
-    const runCreate = async () => {
-      const result = await api.admin.securityAccess.createUser(submittedOperationRef.current!.payload);
-      if (generationAtStart !== formGenerationRef.current) return;
-      setProvisionResult(result);
-      setStep('result');
-      setFormLocked(false);
-      setLastError(null);
-      if (!listRefreshScheduledRef.current) {
-        listRefreshScheduledRef.current = true;
-        queueMicrotask(() => onListRefresh());
-      }
+    const frozen = submittedOperationRef.current!;
+    const pendingOp: MasterIdentityCreatePendingOp = {
+      kind: 'create',
+      action: MASTER_IDENTITY_STEP_UP_ACTION,
+      dialogGeneration: generationAtStart,
+      operationKey: frozen.operationKey,
+      onboardingMode: frozen.onboardingMode,
+      payload: structuredClone(frozen.payload),
     };
 
     submitAdmittedRef.current = true;
     setSubmitting(true);
     setLastError(null);
     try {
+      const assertStillAdmitted = () =>
+        open && formGenerationRef.current === generationAtStart && operationKeyRef.current === frozen.operationKey;
+
+      const onSuccess = async (result: unknown) => {
+        if (!assertStillAdmitted()) return;
+        setProvisionResult(result as GovernanceGlobalIdentityProvisionResult);
+        setStep('result');
+        setFormLocked(false);
+        setLastError(null);
+        if (!listRefreshScheduledRef.current) {
+          listRefreshScheduledRef.current = true;
+          queueMicrotask(() => onListRefresh());
+        }
+      };
+
       if (identityMutations?.runWithStepUp) {
-        await identityMutations.runWithStepUp(runCreate);
+        await identityMutations.runWithStepUp({ op: pendingOp, assertStillAdmitted, onSuccess });
       } else {
-        await runCreate();
+        await executeCreateWithoutStepUpFence(pendingOp, assertStillAdmitted, onSuccess);
       }
     } catch (err: unknown) {
       if (generationAtStart !== formGenerationRef.current) return;
@@ -296,11 +328,19 @@ export function CreateGlobalUserDialog({
   };
 
   const handleClose = (next: boolean) => {
-    if (!next && !submitting) {
-      resetFormState();
+    if (!next) {
+      identityMutations?.clearPendingIf((op) => op.kind === 'create');
+      if (!submitting) {
+        resetFormState();
+      }
     }
     onOpenChange(next);
   };
+
+  const mutationPending =
+    identityMutations?.isPendingFor(
+      (op) => op.kind === 'create' && op.dialogGeneration === formGenerationRef.current,
+    ) ?? false;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -325,7 +365,7 @@ export function CreateGlobalUserDialog({
               void submitCreate();
             }}
           >
-            {formLocked ? (
+            {formLocked || mutationPending ? (
               <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-100">
                 {t('master.securityAccess.users.create.submittedLocked')}
               </p>
@@ -337,7 +377,7 @@ export function CreateGlobalUserDialog({
                 className={INPUT}
                 value={email}
                 onChange={(ev) => setEmail(ev.target.value)}
-                disabled={formLocked}
+                disabled={formLocked || mutationPending}
                 autoComplete="off"
                 data-testid="create-user-email"
               />
@@ -352,7 +392,7 @@ export function CreateGlobalUserDialog({
                   className={INPUT}
                   value={firstName}
                   onChange={(ev) => setFirstName(ev.target.value)}
-                  disabled={formLocked}
+                  disabled={formLocked || mutationPending}
                   data-testid="create-user-first-name"
                 />
               </label>
@@ -365,7 +405,7 @@ export function CreateGlobalUserDialog({
                   className={INPUT}
                   value={lastName}
                   onChange={(ev) => setLastName(ev.target.value)}
-                  disabled={formLocked}
+                  disabled={formLocked || mutationPending}
                   data-testid="create-user-last-name"
                 />
               </label>
@@ -379,7 +419,7 @@ export function CreateGlobalUserDialog({
                 className={INPUT}
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
-                disabled={orgsLoading || formLocked}
+                disabled={orgsLoading || formLocked || mutationPending}
                 data-testid="create-user-organization"
               >
                 <option value="">{t('master.securityAccess.users.create.organizationNone')}</option>
@@ -401,7 +441,7 @@ export function CreateGlobalUserDialog({
                     className={INPUT}
                     value={membershipRole}
                     onChange={(e) => setMembershipRole(e.target.value)}
-                    disabled={formLocked}
+                    disabled={formLocked || mutationPending}
                     data-testid="create-user-membership-role"
                   >
                     {MEMBERSHIP_ROLE_OPTIONS.map((r) => (
@@ -419,7 +459,7 @@ export function CreateGlobalUserDialog({
                     className={INPUT}
                     value={organizationRoleId}
                     onChange={(e) => setOrganizationRoleId(e.target.value)}
-                    disabled={orgRolesLoading || formLocked || orgRolesLoadError}
+                    disabled={orgRolesLoading || formLocked || mutationPending || orgRolesLoadError}
                     data-testid="create-user-org-role"
                     aria-busy={orgRolesLoading}
                   >
@@ -436,7 +476,7 @@ export function CreateGlobalUserDialog({
                     </p>
                   ) : null}
                 </label>
-                <fieldset className="space-y-1 text-xs" disabled={formLocked}>
+                <fieldset className="space-y-1 text-xs" disabled={formLocked || mutationPending}>
                   <legend className="font-medium text-muted-foreground">
                     {t('master.securityAccess.users.create.onboardingMode')}
                   </legend>

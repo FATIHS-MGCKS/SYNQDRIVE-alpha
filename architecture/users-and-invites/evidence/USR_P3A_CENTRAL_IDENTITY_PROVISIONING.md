@@ -296,6 +296,59 @@
 
 **P3A3B_FINAL_VERDICT=CONDITIONAL_COMPLETE** (frontend acceptance scope; backend frozen). **P3A3C_READY=NO**.
 
+### P3A.3C final repository acceptance (PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3C_FINAL_REPOSITORY_ACCEPTANCE`  
+**Baseline main:** `e8c2422064309501dc31685ddca4ab16966b3cea`  
+**Candidate HEAD (pre-push):** branch tip after FE-R01/R02 + evidence (see git).
+
+| Gate | Command | Exit | Result |
+|------|---------|------|--------|
+| P3A PG gate | `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` | 0 | **116/116** tests (suites: 4+12+20+10+10+8+14+15+9+14) |
+| Backend build | `cd backend && npm run build` | 0 | PASS |
+| Backend typecheck | `npx tsc -p tsconfig.build.json --noEmit` | 0 | PASS |
+| Frontend build | `cd frontend && npm run build` | 0 | PASS |
+| Frontend typecheck | `npx tsc -p tsconfig.app.json --noEmit` | 0 | PASS |
+| i18n PR gate | `cd frontend && npm run i18n:check` | 0 | PASS |
+| Registry | `bash architecture/scripts/validate-module-registry.sh` | 0 | PASS |
+| Users graph | `bash architecture/users-and-invites/scripts/validate-graph.sh` | 0 | PASS |
+
+**FE-R01 (admission fence):** frozen `MasterIdentityPendingOp` + pre-dispatch `assertStillAdmitted` + `authDispatchIdentityMatches`; vitest **2/2** in `useMasterIdentityPrivilegedMutations.test.ts`. Header transport: canonical `x-step-up-token` via `auth-api-transport.ts` (existing).
+
+**FE-R02 (profile draft):** freeze inputs while save/pending; authoritative `getUser` after PATCH; preserve unsent overlay; definitive 400 clears operation key.
+
+**FE-R03 (browser):** `master-security-access-p3a3c-acceptance.spec.ts` — **24 passed, 3 skipped** (step-up OTP overlay; vitest covers retry fence). **66/66** retained on `master-security-access-p3a2-provisioning.spec.ts`. Screenshots: `p3a3c-create-form-before-submit.png`, `p3a3c-org-invite-result.png`, p3a2 form/result/profile (fixed pre-submit form capture).
+
+**Full Nest HTTP boot (bounded):** `FULL_NEST_BOOT` in `usr-p3a3-identity-http-security.postgres.integration.spec.ts` — `MasterGlobalIdentityService` DI + `/api/v1/health` 200 on disposable PG harness (`createUsrP3a3IdentityHttpApp`). **Not** full production `AppModule` import.
+
+**A01–A24 crosswalk (executed PG/HTTP highlights):**
+
+| ID | Evidence |
+|----|----------|
+| A01 | H01 identity HTTP; R01/R04 master-identity-security |
+| A02 | H02 |
+| A03 | H03 |
+| A04 | H04 |
+| A05 | H05 |
+| A06 | H06 suite (incl. wrong-family grant) |
+| A07 | H07 |
+| A08 | R06 duplicate email |
+| A09–A11 | T04/T05/T09–T12 transaction-invitation |
+| A12–A14 | R-cross-tenant + rollback suites (master-identity-security / transaction) |
+| A15–A16 | Audit / no credential exposure (C/L/R cases) |
+| A17–A18 | H08/H09 |
+| A19 | H10 legacy |
+| A20 | IAM REMOVED isolation (invite specs) |
+| A21–A22 | first-login HTTP + security edge |
+| A23 | R01 audit dedup lock |
+| A24 | USR-P2 invariants preserved via gate IAM regression |
+
+**F01–F24 crosswalk:** Vitest matrix (F03,F05,F07,F09,F16); P1B drawer/locale/nav/shell/privileged **54** tests; P3A2 Playwright **66**; P3A3C Playwright **24** (org invite, credential, ambiguous retry, responsive desktop/tablet/mobile × light/dark).
+
+**B01–B03:** CR/D/R delivery-edge + credential-authority PG specs; H06 HTTP edge (same-user different session: H06d cross-principal grant); clock-expired: invalid token (H06c); forbidden PATCH (H09). **B03 gap:** explicit clock-expired issued grant test not added (optional debt).
+
+**PRODUCT_REPOSITORY_ACCEPTANCE=CONDITIONAL_PASS** — FE-R01/R02 implemented and tested; PG **116/116**; browser step-up auto-retry E2E **NOT_EXECUTED** (skipped; vitest + HTTP MFA). **MERGE_READINESS=BLOCKED_CI_AUTHORITY** (P3A PG not in GitHub CI + full `AppModule` boot not demonstrated).
+
 ### CI authority
 
 `usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). Design: `architecture/users-and-invites/evidence/USR_P3A3_CI_AUTHORITY_PROPOSAL.md`. **NEW_CI_AUTHORITY_REQUIRED=YES** (separate authority PR; not in #2544).

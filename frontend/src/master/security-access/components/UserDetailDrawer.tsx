@@ -61,7 +61,10 @@ export function UserDetailDrawer({
     setDeleteOpen(false);
     setRevokeAllOpen(false);
     setActionLoading(false);
-  }, [userId]);
+    if (!userId) {
+      identityMutations?.clearPendingIf((op) => op.kind === 'profile');
+    }
+  }, [userId, identityMutations]);
 
   const isMutationTargetCurrent = (targetId: string, generationAtStart: number) =>
     targetUserIdRef.current === targetId && drawerGenerationRef.current === generationAtStart;
