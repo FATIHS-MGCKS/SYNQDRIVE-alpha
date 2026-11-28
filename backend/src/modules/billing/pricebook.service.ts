@@ -78,18 +78,18 @@ export class PricebookService {
     private readonly audit: BillingAuditService,
   ) {}
 
-  async findDefaultPriceBook() {
-    return this.prisma.billingPriceBook.findFirst({
+  async findDefaultPriceBook(asOf: Date = new Date()) {
+    const book = await this.prisma.billingPriceBook.findFirst({
       where: { isDefault: true },
-      include: {
-        versions: {
-          where: { status: BillingPriceVersionStatus.ACTIVE },
-          include: { tiers: { orderBy: { sortOrder: 'asc' } } },
-          orderBy: { versionNumber: 'desc' },
-          take: 1,
-        },
-      },
     });
+    if (!book) {
+      return null;
+    }
+    const activeVersion = await this.findActiveVersion(book.id, asOf);
+    return {
+      ...book,
+      versions: activeVersion ? [activeVersion] : [],
+    };
   }
 
   async findActiveVersion(priceBookId: string, asOf: Date = new Date()) {
@@ -577,39 +577,67 @@ export class PricebookService {
       }
     }
 
-    const now = effectiveFrom ?? new Date();
+    const transitionAt = effectiveFrom ?? new Date();
+    const publishedAt = new Date();
+    const supersedeNow = transitionAt.getTime() <= publishedAt.getTime();
 
-    const published = await this.prisma.$transaction(async (tx) => {
-      await tx.billingPriceVersion.updateMany({
-        where: {
-          priceBookId: version.priceBookId,
-          status: BillingPriceVersionStatus.ACTIVE,
-        },
-        data: {
-          status: BillingPriceVersionStatus.ARCHIVED,
-          effectiveTo: now,
-        },
-      });
+    const published = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${version.priceBookId}))`;
 
-      return tx.billingPriceVersion.update({
-        where: { id: priceVersionId },
-        data: {
-          status: BillingPriceVersionStatus.ACTIVE,
-          effectiveFrom: now,
-          publishedAt: new Date(),
-        },
-        include: { tiers: { orderBy: { sortOrder: 'asc' } } },
-      });
-    });
+        const priorActive = await tx.billingPriceVersion.count({
+          where: {
+            priceBookId: version.priceBookId,
+            status: BillingPriceVersionStatus.ACTIVE,
+            id: { not: priceVersionId },
+          },
+        });
 
-    await this.audit.log({
-      actorUserId,
-      action: 'PRICE_VERSION_PUBLISHED',
-      entityType: 'BillingPriceVersion',
-      entityId: priceVersionId,
-      before: version,
-      after: published,
-    });
+        if (priorActive > 0) {
+          await tx.billingPriceVersion.updateMany({
+            where: {
+              priceBookId: version.priceBookId,
+              status: BillingPriceVersionStatus.ACTIVE,
+              id: { not: priceVersionId },
+            },
+            data: supersedeNow
+              ? {
+                  status: BillingPriceVersionStatus.ARCHIVED,
+                  effectiveTo: transitionAt,
+                }
+              : {
+                  effectiveTo: transitionAt,
+                },
+          });
+        }
+
+        const activated = await tx.billingPriceVersion.update({
+          where: { id: priceVersionId },
+          data: {
+            status: BillingPriceVersionStatus.ACTIVE,
+            effectiveFrom: transitionAt,
+            publishedAt,
+          },
+          include: { tiers: { orderBy: { sortOrder: 'asc' } } },
+        });
+
+        await this.audit.logInTransaction(tx, {
+          actorUserId,
+          action: 'PRICE_VERSION_PUBLISHED',
+          entityType: 'BillingPriceVersion',
+          entityId: priceVersionId,
+          before: version,
+          after: activated,
+        });
+
+        return activated;
+      },
+      {
+        isolationLevel: 'Serializable',
+        maxWait: 10_000,
+        timeout: 30_000,
+      },
+    );
 
     return published;
   }

@@ -71,6 +71,14 @@ describe('Billing product & price Prisma schema (Prompt 06)', () => {
     expect(sql).toContain('CREATE TABLE "billing_catalog_products"');
     expect(sql).toContain('billing_stripe_price_mappings_price_book_id_stripe_mode_key');
     expect(sql).toContain('billing_guard_published_price_version');
+    const supersedeGuard = fs.readFileSync(
+      path.join(
+        BACKEND_ROOT,
+        'prisma/migrations/20261127203000_billing_price_version_supersede_archive_guard/migration.sql',
+      ),
+      'utf8',
+    );
+    expect(supersedeGuard).toMatch(/OLD\."effective_to" IS NULL/);
     expect(sql).toContain('billing_guard_published_price_tier');
     expect(sql).toContain('ON CONFLICT ("key") DO NOTHING');
     expect(sql).not.toMatch(/DROP TABLE "billing_price_books"/i);

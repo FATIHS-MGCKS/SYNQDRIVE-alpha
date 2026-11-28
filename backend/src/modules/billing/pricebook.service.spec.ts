@@ -3,17 +3,19 @@ import { BillingPriceVersionStatus, BillingTierMode } from '@prisma/client';
 import { PricebookService } from './pricebook.service';
 
 describe('PricebookService publish rules', () => {
-  const audit = { log: jest.fn() };
+  const audit = { log: jest.fn(), logInTransaction: jest.fn() };
   let prisma: any;
   let svc: PricebookService;
 
   beforeEach(() => {
+    audit.logInTransaction.mockResolvedValue(undefined);
     prisma = {
       billingPriceVersion: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
         updateMany: jest.fn(),
         update: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
       },
       billingPriceBook: {
         findUnique: jest.fn(),
@@ -30,7 +32,9 @@ describe('PricebookService publish rules', () => {
         count: jest.fn(),
         groupBy: jest.fn(),
       },
-      $transaction: jest.fn((fn: any) =>
+      $queryRaw: jest.fn(),
+      $executeRaw: jest.fn(),
+      $transaction: jest.fn((fn: any, _opts?: unknown) =>
         typeof fn === 'function' ? fn(prisma) : Promise.all(fn),
       ),
     };
@@ -83,6 +87,26 @@ describe('PricebookService publish rules', () => {
     });
 
     await expect(svc.archiveVersion('v1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rolls back publish when audit logInTransaction fails', async () => {
+    prisma.billingPriceVersion.findUnique.mockResolvedValue({
+      id: 'v1',
+      status: BillingPriceVersionStatus.DRAFT,
+      priceBookId: 'book-1',
+      priceBook: { currency: 'EUR' },
+      tiers: [{ minVehicles: 1, maxVehicles: null, unitPriceCents: 100, sortOrder: 0 }],
+    });
+    prisma.billingPriceVersion.count.mockResolvedValue(1);
+    prisma.billingPriceVersion.update.mockResolvedValue({
+      id: 'v1',
+      status: BillingPriceVersionStatus.ACTIVE,
+      tiers: [],
+    });
+    audit.logInTransaction.mockRejectedValue(new Error('audit insert failed'));
+
+    await expect(svc.publishVersion('v1', 'actor')).rejects.toThrow('audit insert failed');
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 });
 
