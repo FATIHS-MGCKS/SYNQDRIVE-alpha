@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
+import { parseHttpErrorCodeFromUnknown } from '../../../lib/http-error-code';
 import { newIdempotencyKey } from '../../../lib/mfa';
+import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
 import type { GovernanceGlobalProfileDto, GovernanceUserDetailDto } from '../types';
 import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 import {
@@ -26,6 +28,7 @@ export interface GlobalProfileEditPanelProps {
   drawerGeneration: number;
   onSaved: () => void;
   isMutationTargetCurrent: (userId: string, generationAtStart: number) => boolean;
+  identityMutations?: Pick<MasterIdentityPrivilegedMutations, 'runWithStepUp'>;
 }
 
 export function GlobalProfileEditPanel({
@@ -34,9 +37,12 @@ export function GlobalProfileEditPanel({
   drawerGeneration,
   onSaved,
   isMutationTargetCurrent,
+  identityMutations,
 }: GlobalProfileEditPanelProps) {
   const { t } = useSecurityAccessPresentation();
   const bindGenerationRef = useRef(drawerGeneration);
+  const baselineRef = useRef<GovernanceGlobalProfileDto | null>(null);
+  const draftDirtyRef = useRef(false);
   const saveOperationKeyRef = useRef(newIdempotencyKey('ma-global-profile'));
   const submittedPatchRef = useRef<{
     operationKey: string;
@@ -54,10 +60,33 @@ export function GlobalProfileEditPanel({
     const profile = detail.globalProfile;
     setSnapshot(profile);
     setDraft(profileDtoToDraft(profile));
+    baselineRef.current = profile;
+    draftDirtyRef.current = false;
     setSaving(false);
     submitAdmittedRef.current = false;
     submittedPatchRef.current = null;
   }, [detail.id, drawerGeneration]);
+
+  useEffect(() => {
+    if (!snapshot || !draft) return;
+    draftDirtyRef.current = !draftsEqualForNoOp(snapshot, draft);
+  }, [draft, snapshot]);
+
+  useEffect(() => {
+    const profile = detail.globalProfile;
+    baselineRef.current = profile;
+    if (draftDirtyRef.current) return;
+    setSnapshot(profile);
+    setDraft(profileDtoToDraft(profile));
+  }, [detail.globalProfile]);
+
+  const discardDraft = () => {
+    if (!snapshot) return;
+    setDraft(profileDtoToDraft(snapshot));
+    draftDirtyRef.current = false;
+    saveOperationKeyRef.current = newIdempotencyKey('ma-global-profile');
+    submittedPatchRef.current = null;
+  };
 
   const updateDraft = (patch: Partial<ProfileDraft>) => {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -91,25 +120,32 @@ export function GlobalProfileEditPanel({
 
     submitAdmittedRef.current = true;
     setSaving(true);
-    try {
-      await api.admin.securityAccess.updateUserProfile(userId, submittedPatchRef.current.patch);
+
+    const runPatch = async () => {
+      await api.admin.securityAccess.updateUserProfile(userId, submittedPatchRef.current!.patch);
       if (!isMutationTargetCurrent(userId, generationAtStart)) return;
-      const nextSnapshot: GovernanceGlobalProfileDto = {
-        ...snapshot,
-        ...patchBody,
-      };
-      setSnapshot(nextSnapshot);
-      setDraft(profileDtoToDraft(nextSnapshot));
+      const reloaded = await api.admin.securityAccess.getUser(userId);
+      if (!isMutationTargetCurrent(userId, generationAtStart)) return;
+      const authoritative = reloaded.globalProfile;
+      setSnapshot(authoritative);
+      setDraft(profileDtoToDraft(authoritative));
+      baselineRef.current = authoritative;
+      draftDirtyRef.current = false;
       saveOperationKeyRef.current = newIdempotencyKey('ma-global-profile');
       submittedPatchRef.current = null;
       toast.success(t('master.securityAccess.userDetail.profile.success'));
       onSaved();
+    };
+
+    try {
+      if (identityMutations?.runWithStepUp) {
+        await identityMutations.runWithStepUp(runPatch);
+      } else {
+        await runPatch();
+      }
     } catch (err: unknown) {
       if (!isMutationTargetCurrent(userId, generationAtStart)) return;
-      const code =
-        err && typeof err === 'object' && 'code' in err
-          ? String((err as { code?: string }).code)
-          : '';
+      const code = parseHttpErrorCodeFromUnknown(err);
       if (code === 'OPERATION_IDEMPOTENCY_CONFLICT') {
         toast.error(t('master.securityAccess.userDetail.profile.conflict'));
       } else {
@@ -239,16 +275,27 @@ export function GlobalProfileEditPanel({
           </select>
         </label>
       </div>
-      <Button
-        type="button"
-        size="sm"
-        className="mt-3"
-        disabled={saving || noOp}
-        onClick={() => void handleSave()}
-        data-testid="profile-save"
-      >
-        {t('master.securityAccess.userDetail.profile.save')}
-      </Button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={saving || noOp}
+          onClick={() => void handleSave()}
+          data-testid="profile-save"
+        >
+          {t('master.securityAccess.userDetail.profile.save')}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={saving || noOp}
+          onClick={discardDraft}
+          data-testid="profile-discard"
+        >
+          {t('master.securityAccess.userDetail.profile.discard')}
+        </Button>
+      </div>
     </section>
   );
 }

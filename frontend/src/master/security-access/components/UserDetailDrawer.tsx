@@ -20,6 +20,7 @@ import {
 import { MasterErrorState } from '../../shell';
 import { PrivilegeActionDialog } from './PrivilegeActionDialog';
 import { GlobalProfileEditPanel } from './GlobalProfileEditPanel';
+import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
 
 interface UserDetailDrawerProps {
   userId: string | null;
@@ -28,6 +29,7 @@ interface UserDetailDrawerProps {
   onOpenAudit?: (auditId: string) => void;
   onOpenOrganization?: (orgId: string) => void;
   onUserDeleted?: () => void;
+  identityMutations?: MasterIdentityPrivilegedMutations;
 }
 
 export function UserDetailDrawer({
@@ -37,6 +39,7 @@ export function UserDetailDrawer({
   onOpenAudit,
   onOpenOrganization,
   onUserDeleted,
+  identityMutations,
 }: UserDetailDrawerProps) {
   const { t, mfaStateLabel, attentionCodeLabel, accountStateLabel, platformRoleLabel, formatRelative, loadError } =
     useSecurityAccessPresentation();
@@ -196,6 +199,7 @@ export function UserDetailDrawer({
                 drawerGeneration={drawerGeneration}
                 onSaved={() => void refresh()}
                 isMutationTargetCurrent={isMutationTargetCurrent}
+                identityMutations={identityMutations}
               />
             )}
 

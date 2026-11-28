@@ -12,6 +12,7 @@ const createUser = vi.fn();
 const listOrgRoles = vi.fn();
 const listOperational = vi.fn();
 const updateUserProfile = vi.fn();
+const getUser = vi.fn();
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
@@ -24,6 +25,7 @@ vi.mock('../../lib/api', () => ({
         createUser: (...args: unknown[]) => createUser(...args),
         listOrgRoles: (...args: unknown[]) => listOrgRoles(...args),
         updateUserProfile: (...args: unknown[]) => updateUserProfile(...args),
+        getUser: (...args: unknown[]) => getUser(...args),
       },
     },
     organizations: {
@@ -62,6 +64,7 @@ describe('P3A.3B F-matrix (UI)', () => {
     listOrgRoles.mockReset();
     listOperational.mockReset();
     updateUserProfile.mockReset();
+    getUser.mockReset();
     listOperational.mockResolvedValue({
       data: [{ id: 'org-1', companyName: 'Org One', orgStatus: 'ACTIVE' }],
     });
@@ -146,7 +149,7 @@ describe('P3A.3B F-matrix (UI)', () => {
   });
 
   it('F09 ambiguous retry reuses payload and idempotency key', async () => {
-    createUser.mockRejectedValueOnce({ code: 'NETWORK', status: 0 });
+    createUser.mockRejectedValueOnce(new Error('[NETWORK] transient failure'));
     createUser.mockResolvedValueOnce({
       user: { id: 'u2', email: 'retry@example.test' },
       onboarding: {
@@ -192,8 +195,47 @@ describe('P3A.3B F-matrix (UI)', () => {
     expect(createUser.mock.calls[0][0].email).toBe(createUser.mock.calls[1][0].email);
   });
 
+  it('F07 operation conflict precedes generic 409', async () => {
+    createUser.mockRejectedValueOnce(new Error('[OPERATION_IDEMPOTENCY_CONFLICT] bound'));
+    await act(async () => {
+      root.render(
+        wrap(
+          createElement(CreateGlobalUserDialog, {
+            open: true,
+            onOpenChange: () => {},
+            onListRefresh: () => {},
+            onOpenCreatedUser: () => {},
+          }),
+        ),
+      );
+    });
+    await act(async () => {
+      setInputValue(document.querySelector('[data-testid="create-user-email"]') as HTMLInputElement, 'x@y.z');
+      setInputValue(document.querySelector('[data-testid="create-user-first-name"]') as HTMLInputElement, 'A');
+      (document.querySelector('[data-testid="create-user-submit"]') as HTMLButtonElement)?.click();
+    });
+    await act(async () => Promise.resolve());
+    expect(createUser).toHaveBeenCalledTimes(1);
+    const email = document.querySelector('[data-testid="create-user-email"]') as HTMLInputElement;
+    expect(email.disabled).toBe(true);
+  });
+
   it('F16 profile PATCH sends changed fields only', async () => {
     updateUserProfile.mockResolvedValue({ user: { id: 'uid', email: 'x@y.z', name: 'Edited' } });
+    getUser.mockResolvedValue({
+      id: 'uid',
+      globalProfile: {
+        name: 'Edited',
+        firstName: 'Edited',
+        lastName: 'User',
+        phone: null,
+        mobile: null,
+        address: null,
+        language: 'en',
+        timezone: 'Europe/Berlin',
+        dateFormat: 'DD.MM.YYYY',
+      },
+    });
     const detail = {
       id: 'uid',
       globalProfile: {

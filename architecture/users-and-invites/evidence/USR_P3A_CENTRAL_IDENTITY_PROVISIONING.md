@@ -272,6 +272,30 @@
 
 **P3A3B_VERDICT=CONDITIONAL_PARTIAL** — core UI + targeted tests; **P3A3C** (A01–A24, AppModule boot, CI authority) outstanding.
 
+### P3A.3B final frontend acceptance (PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3B_FINAL_FRONTEND_ACCEPTANCE`  
+**Verified HEAD:** `e8d56b2059faaaeb05bae43a7f86877f69256e63` (local = remote PR head at agent run).
+
+| Area | Status |
+|------|--------|
+| FR01 submitted-operation UI | **IMPLEMENTED** — form lock + immutable payload retry; `OPERATION_IDEMPOTENCY_CONFLICT` before generic 409; generation invalidation on close |
+| FR02 authoritative profile | **IMPLEMENTED** — `getUser` reload after PATCH; discard draft; dirty preserve on background refresh |
+| FR03 role scope | **IMPLEMENTED** — request-id fence, load error state, submit guard when roles invalid/loading |
+| FR04 nine locales | **IMPLEMENTED** for P3A create/onboarding/result keys (pl, fr, cs, nl, es, tr, it translated; native review debt remains) |
+| FR05 onboarding UX | **IMPLEMENTED** — result binds `submittedOnboardingMode`; pending delivery retry on result step |
+| Step-up | **IMPLEMENTED** — `useMasterIdentityPrivilegedMutations` + `MasterApp` retry after MFA; hook test executed |
+| Vitest F-matrix | **EXECUTED** — `master-security-access-p3a3b-f-matrix.ui.test.tsx` **5/5**; `useMasterIdentityPrivilegedMutations.test.ts` **1/1**; P3A2/locale/stale **8/8** |
+| Playwright | **EXECUTED** — `e2e/master-security-access-p3a2-provisioning.spec.ts` **66/66**, exit **0** (webServer `127.0.0.1:5173`) |
+| `npm run build` | **PASS** |
+| `npm run i18n:check` | **PASS** |
+| `validate-module-registry.sh` | **PASS** |
+| Protected inventory diff | **EMPTY** (restored from `origin/main`) |
+
+**F01–F24 crosswalk:** F03, F05, F07, F09, F16 evidenced in vitest; F01/F23 partial via P3A2 + locale tests; responsive F01–F24 flows partially covered by Playwright fixture spec (not per-id matrix file). Remaining explicit per-case UI tests: backlog for P3A3C.
+
+**P3A3B_FINAL_VERDICT=CONDITIONAL_COMPLETE** (frontend acceptance scope; backend frozen). **P3A3C_READY=NO**.
+
 ### CI authority
 
 `usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). Design: `architecture/users-and-invites/evidence/USR_P3A3_CI_AUTHORITY_PROPOSAL.md`. **NEW_CI_AUTHORITY_REQUIRED=YES** (separate authority PR; not in #2544).

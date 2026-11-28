@@ -19,12 +19,14 @@ import { RoleDetailDrawer } from './components/RoleDetailDrawer';
 import { AuditDetailDrawer } from './components/AuditDetailDrawer';
 import { AuditExportDialog } from './components/AuditExportDialog';
 import { CreateGlobalUserDialog } from './components/CreateGlobalUserDialog';
+import type { MasterIdentityPrivilegedMutations } from './useMasterIdentityPrivilegedMutations';
 
 interface SecurityAccessHubProps {
   onOpenOrganization?: (orgId: string) => void;
+  identityMutations?: MasterIdentityPrivilegedMutations;
 }
 
-export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps) {
+export function SecurityAccessHub({ onOpenOrganization, identityMutations }: SecurityAccessHubProps) {
   const { t, sectionTabs, loadError, formatRelative } = useSecurityAccessPresentation();
   const initial = useMemo(() => readSecurityAccessLocation(window.location.search), []);
   const [location, setLocation] = useState<SecurityAccessLocation>(initial);
@@ -165,6 +167,7 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
         onOpenAudit={(id) => navigate({ section: 'audit', auditId: id, userId: null })}
         onOpenOrganization={onOpenOrganization}
         onUserDeleted={() => navigate({ userId: null }, true)}
+        identityMutations={identityMutations}
       />
 
       <RoleDetailDrawer
@@ -195,6 +198,7 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
           navigate({ userId });
           setCreateUserOpen(false);
         }}
+        identityMutations={identityMutations}
       />
     </div>
   );

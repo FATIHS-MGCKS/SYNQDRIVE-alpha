@@ -11,7 +11,9 @@ import {
   DialogTitle,
 } from '../../../components/ui/dialog';
 import { api } from '../../../lib/api';
+import { parseHttpErrorCodeFromUnknown, parseHttpErrorStatusFromUnknown } from '../../../lib/http-error-code';
 import { newIdempotencyKey } from '../../../lib/mfa';
+import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
 import type { GovernanceGlobalIdentityProvisionResult } from '../types';
 import type { OrganizationOperationalRowDto } from '../../organizations/types';
 import {
@@ -34,6 +36,7 @@ export interface CreateGlobalUserDialogProps {
   onOpenChange: (open: boolean) => void;
   onListRefresh: () => void;
   onOpenCreatedUser: (userId: string) => void;
+  identityMutations?: Pick<MasterIdentityPrivilegedMutations, 'runWithStepUp'>;
 }
 
 export function CreateGlobalUserDialog({
@@ -41,14 +44,17 @@ export function CreateGlobalUserDialog({
   onOpenChange,
   onListRefresh,
   onOpenCreatedUser,
+  identityMutations,
 }: CreateGlobalUserDialogProps) {
   const { t } = useSecurityAccessPresentation();
   const formGenerationRef = useRef(0);
   const operationKeyRef = useRef('');
   const submittedOperationRef = useRef<{
     operationKey: string;
+    onboardingMode: OnboardingMode;
     payload: Parameters<typeof api.admin.securityAccess.createUser>[0];
   } | null>(null);
+  const listRefreshScheduledRef = useRef(false);
   const submitAdmittedRef = useRef(false);
   const orgRolesRequestRef = useRef(0);
 
@@ -69,7 +75,10 @@ export function CreateGlobalUserDialog({
   const [orgRoles, setOrgRoles] = useState<Array<{ id: string; name: string }>>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
   const [orgRolesLoading, setOrgRolesLoading] = useState(false);
+  const [orgRolesLoadError, setOrgRolesLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formLocked, setFormLocked] = useState(false);
+  const [submittedOnboardingMode, setSubmittedOnboardingMode] = useState<OnboardingMode | null>(null);
   const [lastError, setLastError] = useState<'conflict' | 'operation' | 'generic' | null>(null);
   const [provisionResult, setProvisionResult] = useState<GovernanceGlobalIdentityProvisionResult | null>(null);
 
@@ -88,11 +97,23 @@ export function CreateGlobalUserDialog({
     setOrganizationRoleId('');
     setOnboardingMode('identity');
     setOrgRoles([]);
+    setOrgRolesLoadError(false);
+    setFormLocked(false);
+    setSubmittedOnboardingMode(null);
     setLastError(null);
     setProvisionResult(null);
     setSubmitting(false);
     submitAdmittedRef.current = false;
     submittedOperationRef.current = null;
+    listRefreshScheduledRef.current = false;
+  }, []);
+
+  const beginNewOperation = useCallback(() => {
+    operationKeyRef.current = newIdempotencyKey('ma-global-user-create');
+    submittedOperationRef.current = null;
+    setSubmittedOnboardingMode(null);
+    setFormLocked(false);
+    setLastError(null);
   }, []);
 
   useEffect(() => {
@@ -111,6 +132,13 @@ export function CreateGlobalUserDialog({
   }, [open, resetFormState]);
 
   useEffect(() => {
+    if (!open) return;
+    return () => {
+      formGenerationRef.current += 1;
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!organizationId) {
       orgRolesRequestRef.current += 1;
       setOrgRoles([]);
@@ -121,15 +149,20 @@ export function CreateGlobalUserDialog({
     setOrganizationRoleId('');
     setMembershipRole('WORKER');
     setOrgRoles([]);
+    setOrgRolesLoadError(false);
     setOrgRolesLoading(true);
     void api.admin.securityAccess
       .listOrgRoles({ organizationId, limit: 100 })
       .then((res) => {
         if (requestId !== orgRolesRequestRef.current) return;
+        setOrgRolesLoadError(false);
         setOrgRoles(res.data.map((r) => ({ id: r.id, name: r.name })));
       })
       .catch(() => {
-        if (requestId === orgRolesRequestRef.current) setOrgRoles([]);
+        if (requestId === orgRolesRequestRef.current) {
+          setOrgRoles([]);
+          setOrgRolesLoadError(true);
+        }
       })
       .finally(() => {
         if (requestId === orgRolesRequestRef.current) setOrgRolesLoading(false);
@@ -174,6 +207,9 @@ export function CreateGlobalUserDialog({
   const submitCreate = async () => {
     if (submitAdmittedRef.current || submitting) return;
     const generationAtStart = formGenerationRef.current;
+  const retryFromResult = step === 'result' && submittedOperationRef.current;
+
+    if (!retryFromResult) {
     const normalizedEmail = email.trim();
     if (!normalizedEmail) {
       toast.error(t('master.securityAccess.users.create.validationEmail'));
@@ -183,45 +219,72 @@ export function CreateGlobalUserDialog({
       toast.error(t('master.securityAccess.users.create.validationName'));
       return;
     }
+    if (organizationId && orgRolesLoading) {
+      return;
+    }
+    if (organizationId && orgRolesLoadError) {
+      toast.error(t('master.securityAccess.users.create.orgRolesLoadError'));
+      return;
+    }
     if (
       organizationRoleId &&
-      orgRoles.length > 0 &&
-      !orgRoles.some((r) => r.id === organizationRoleId)
+      (orgRoles.length === 0 || !orgRoles.some((r) => r.id === organizationRoleId))
     ) {
       toast.error(t('master.securityAccess.users.create.validationOrgRole'));
       return;
     }
 
     if (!submittedOperationRef.current) {
+      const modeForSubmit: OnboardingMode = organizationId ? onboardingMode : 'identity';
       submittedOperationRef.current = {
         operationKey: operationKeyRef.current,
+        onboardingMode: modeForSubmit,
         payload: buildPayload(),
       };
+      setSubmittedOnboardingMode(modeForSubmit);
     }
+    }
+
+    const runCreate = async () => {
+      const result = await api.admin.securityAccess.createUser(submittedOperationRef.current!.payload);
+      if (generationAtStart !== formGenerationRef.current) return;
+      setProvisionResult(result);
+      setStep('result');
+      setFormLocked(false);
+      setLastError(null);
+      if (!listRefreshScheduledRef.current) {
+        listRefreshScheduledRef.current = true;
+        queueMicrotask(() => onListRefresh());
+      }
+    };
 
     submitAdmittedRef.current = true;
     setSubmitting(true);
     setLastError(null);
     try {
-      const result = await api.admin.securityAccess.createUser(submittedOperationRef.current.payload);
-      if (generationAtStart !== formGenerationRef.current) return;
-      setProvisionResult(result);
-      setStep('result');
-      queueMicrotask(() => onListRefresh());
+      if (identityMutations?.runWithStepUp) {
+        await identityMutations.runWithStepUp(runCreate);
+      } else {
+        await runCreate();
+      }
     } catch (err: unknown) {
       if (generationAtStart !== formGenerationRef.current) return;
-      const code =
-        err && typeof err === 'object' && 'code' in err
-          ? String((err as { code?: string }).code)
-          : '';
-      if (code === 'IDENTITY_ALREADY_EXISTS' || (err as { status?: number })?.status === 409) {
-        setLastError('conflict');
-        toast.error(t('master.securityAccess.users.create.conflict'));
-      } else if (code === 'OPERATION_IDEMPOTENCY_CONFLICT') {
+      const code = parseHttpErrorCodeFromUnknown(err);
+      const status = parseHttpErrorStatusFromUnknown(err);
+      if (code === 'OPERATION_IDEMPOTENCY_CONFLICT') {
         setLastError('operation');
+        setFormLocked(true);
         toast.error(t('master.securityAccess.users.create.operationConflict'));
+      } else if (code === 'IDENTITY_ALREADY_EXISTS' || status === 409) {
+        setLastError('conflict');
+        beginNewOperation();
+        toast.error(t('master.securityAccess.users.create.conflict'));
+      } else if (status === 400 || code === 'BAD_REQUEST') {
+        beginNewOperation();
+        toast.error(t('master.securityAccess.users.create.failed'));
       } else {
         setLastError('generic');
+        setFormLocked(true);
         toast.error(t('master.securityAccess.users.create.failed'));
       }
     } finally {
@@ -262,6 +325,11 @@ export function CreateGlobalUserDialog({
               void submitCreate();
             }}
           >
+            {formLocked ? (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-100">
+                {t('master.securityAccess.users.create.submittedLocked')}
+              </p>
+            ) : null}
             <label className="block space-y-1 text-xs">
               <span className="font-medium text-muted-foreground">{t('master.securityAccess.users.create.email')}</span>
               <input
@@ -269,6 +337,7 @@ export function CreateGlobalUserDialog({
                 className={INPUT}
                 value={email}
                 onChange={(ev) => setEmail(ev.target.value)}
+                disabled={formLocked}
                 autoComplete="off"
                 data-testid="create-user-email"
               />
@@ -283,6 +352,7 @@ export function CreateGlobalUserDialog({
                   className={INPUT}
                   value={firstName}
                   onChange={(ev) => setFirstName(ev.target.value)}
+                  disabled={formLocked}
                   data-testid="create-user-first-name"
                 />
               </label>
@@ -295,6 +365,7 @@ export function CreateGlobalUserDialog({
                   className={INPUT}
                   value={lastName}
                   onChange={(ev) => setLastName(ev.target.value)}
+                  disabled={formLocked}
                   data-testid="create-user-last-name"
                 />
               </label>
@@ -308,7 +379,7 @@ export function CreateGlobalUserDialog({
                 className={INPUT}
                 value={organizationId}
                 onChange={(e) => setOrganizationId(e.target.value)}
-                disabled={orgsLoading}
+                disabled={orgsLoading || formLocked}
                 data-testid="create-user-organization"
               >
                 <option value="">{t('master.securityAccess.users.create.organizationNone')}</option>
@@ -330,6 +401,7 @@ export function CreateGlobalUserDialog({
                     className={INPUT}
                     value={membershipRole}
                     onChange={(e) => setMembershipRole(e.target.value)}
+                    disabled={formLocked}
                     data-testid="create-user-membership-role"
                   >
                     {MEMBERSHIP_ROLE_OPTIONS.map((r) => (
@@ -347,7 +419,7 @@ export function CreateGlobalUserDialog({
                     className={INPUT}
                     value={organizationRoleId}
                     onChange={(e) => setOrganizationRoleId(e.target.value)}
-                    disabled={orgRolesLoading}
+                    disabled={orgRolesLoading || formLocked || orgRolesLoadError}
                     data-testid="create-user-org-role"
                     aria-busy={orgRolesLoading}
                   >
@@ -358,8 +430,13 @@ export function CreateGlobalUserDialog({
                       </option>
                     ))}
                   </select>
+                  {orgRolesLoadError ? (
+                    <p className="text-[10px] text-destructive">
+                      {t('master.securityAccess.users.create.orgRolesLoadError')}
+                    </p>
+                  ) : null}
                 </label>
-                <fieldset className="space-y-1 text-xs">
+                <fieldset className="space-y-1 text-xs" disabled={formLocked}>
                   <legend className="font-medium text-muted-foreground">
                     {t('master.securityAccess.users.create.onboardingMode')}
                   </legend>
@@ -432,12 +509,25 @@ export function CreateGlobalUserDialog({
               <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
                 {t('master.securityAccess.users.create.cancel')}
               </Button>
+              {formLocked || lastError === 'operation' ? (
+                <Button type="button" variant="ghost" disabled={submitting} onClick={beginNewOperation}>
+                  {t('master.securityAccess.users.create.startNewOperation')}
+                </Button>
+              ) : null}
               {lastError && lastError !== 'conflict' ? (
                 <Button type="button" variant="secondary" disabled={submitting} onClick={() => void submitCreate()}>
                   {t('master.securityAccess.users.create.retry')}
                 </Button>
               ) : null}
-              <Button type="submit" disabled={submitting} data-testid="create-user-submit">
+              <Button
+                type="submit"
+                disabled={
+                  submitting ||
+                  (Boolean(organizationId) &&
+                    (orgRolesLoading || orgRolesLoadError || (organizationRoleId !== '' && orgRoles.length === 0)))
+                }
+                data-testid="create-user-submit"
+              >
                 {submitting
                   ? t('master.securityAccess.users.create.submitting')
                   : t('master.securityAccess.users.create.submit')}
@@ -447,8 +537,14 @@ export function CreateGlobalUserDialog({
         ) : provisionResult ? (
           <ProvisionResultView
             result={provisionResult}
-            onboardingMode={organizationId ? onboardingMode : 'identity'}
+            onboardingMode={submittedOnboardingMode ?? (organizationId ? onboardingMode : 'identity')}
             t={t}
+            onRetry={
+              submittedOperationRef.current
+                ? () => void submitCreate()
+                : undefined
+            }
+            retrying={submitting}
             onOpenUser={() => {
               onOpenCreatedUser(provisionResult.user.id);
               handleClose(false);
@@ -467,12 +563,16 @@ function ProvisionResultView({
   t,
   onOpenUser,
   onDone,
+  onRetry,
+  retrying,
 }: {
   result: GovernanceGlobalIdentityProvisionResult;
   onboardingMode: OnboardingMode;
   t: (k: TranslationKey, vars?: Record<string, string>) => string;
   onOpenUser: () => void;
   onDone: () => void;
+  onRetry?: () => void;
+  retrying?: boolean;
 }) {
   const o = result.onboarding;
   const modeLabel =
@@ -493,6 +593,11 @@ function ProvisionResultView({
         : o.deliveryRequested
           ? t('master.securityAccess.users.create.result.deliveryPending')
           : t('master.securityAccess.users.create.result.deliveryNotRequested');
+  const deliveryPending =
+    (onboardingMode === 'credential' || onboardingMode === 'invite') &&
+    result.onboarding.deliveryRequested &&
+    !result.onboarding.deliveryConfirmed;
+
   return (
     <div className="space-y-3 text-xs" data-testid="create-user-result">
       <p className="text-muted-foreground">{modeLabel}</p>
@@ -520,6 +625,11 @@ function ProvisionResultView({
         {t('master.securityAccess.users.create.result.recovery')}
       </p>
       <DialogFooter className="gap-2 pt-2">
+        {deliveryPending && onRetry ? (
+          <Button type="button" variant="secondary" disabled={retrying} onClick={onRetry}>
+            {t('master.securityAccess.users.create.retry')}
+          </Button>
+        ) : null}
         <Button type="button" variant="outline" onClick={onDone}>
           {t('master.securityAccess.users.create.result.done')}
         </Button>

@@ -112,6 +112,10 @@ export const masterSecurityAccessV1De = {
   'master.securityAccess.users.create.operationConflict': 'Diese Vorgangskennung ist an eine andere Anfrage gebunden',
   'master.securityAccess.users.create.validationOrgRole': 'Die gewählte Organisationsrolle ist für diese Organisation ungültig',
   'master.securityAccess.users.create.orgRolesLoading': 'Organisationsrollen werden geladen…',
+  'master.securityAccess.users.create.orgRolesLoadError': 'Organisationsrollen für diese Organisation konnten nicht geladen werden',
+  'master.securityAccess.users.create.submittedLocked':
+    'Felder sind an den übermittelten Vorgang gebunden — mit derselben Nutzlast erneut versuchen oder neuen Vorgang starten.',
+  'master.securityAccess.users.create.startNewOperation': 'Neuen Vorgang starten',
   'master.securityAccess.users.create.result.onboardingIdentity': 'Onboarding: nur Identität — keine sofortige Anmeldung',
   'master.securityAccess.users.create.result.onboardingInvite': 'Onboarding: Organisationseinladung — Mitgliedschaft bleibt EINGELADEN bis zur Annahme',
   'master.securityAccess.users.create.result.onboardingCredential': 'Onboarding: Zugangsdaten — AKTIVE Mitgliedschaft, initiales Passwort ausstehend',
@@ -131,6 +135,7 @@ export const masterSecurityAccessV1De = {
   'master.securityAccess.userDetail.profile.conflict': 'Profilkonflikt — aktualisieren und erneut versuchen',
   'master.securityAccess.userDetail.profile.clearField': 'Löschen',
   'master.securityAccess.userDetail.profile.save': "Profil speichern",
+  'master.securityAccess.userDetail.profile.discard': 'Änderungen verwerfen',
   'master.securityAccess.userDetail.profile.emailLocked': "E-Mail-Änderungen erfordern verifizierte Identitätsprozesse und sind hier nicht editierbar.",
   'master.securityAccess.userDetail.profile.success': "Profil aktualisiert",
   'master.securityAccess.userDetail.profile.failed': "Profil konnte nicht aktualisiert werden",

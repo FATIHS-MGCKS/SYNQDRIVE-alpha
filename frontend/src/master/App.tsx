@@ -49,6 +49,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { OrganizationsOperationalRefreshProvider, useOrganizationsOperationalRefresh } from './organizations/organizations-operational-refresh';
 import { useMasterOrganizationPatch } from './organizations/useMasterOrganizationPatch';
 import { useMasterOrganizationIamMutations } from './organizations/useMasterOrganizationIamMutations';
+import { useMasterIdentityPrivilegedMutations } from './security-access/useMasterIdentityPrivilegedMutations';
 import { classifyMasterOrgPatchError } from './organizations/master-organization-patch';
 import { classifyCreateOrgRefreshOutcome } from './organizations/organizations-operational-create-outcome';
 import { MasterAdminShell, PageContainer } from './shell';
@@ -114,6 +115,7 @@ function MasterAppInner() {
   const { refreshOperationalList } = useOrganizationsOperationalRefresh();
   const { patchOrganization, retryPendingAfterStepUp, clearPending } = useMasterOrganizationPatch();
   const iamMutations = useMasterOrganizationIamMutations();
+  const identityMutations = useMasterIdentityPrivilegedMutations();
   const initialNav = readInitialMasterNavLocation();
   const [currentView, setCurrentView] = useState<MasterView>(initialNav.view);
   const [settingsTab, setSettingsTab] = useState<string>(initialNav.settingsTab ?? 'general');
@@ -389,6 +391,7 @@ function MasterAppInner() {
               }
               clearPending();
               iamMutations.clearPending();
+              identityMutations.clearPending();
             }}
             onSuccess={() => {
               skipMfaCancelCleanupRef.current = true;
@@ -396,7 +399,8 @@ function MasterAppInner() {
                 try {
                   const retriedOrg = await retryPendingAfterStepUp();
                   const retriedIam = await iamMutations.retryPendingAfterStepUp();
-                  if (retriedOrg || retriedIam) {
+                  const retriedIdentity = await identityMutations.retryPendingAfterStepUp();
+                  if (retriedOrg || retriedIam || retriedIdentity) {
                     toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
                     return;
                   }
@@ -477,6 +481,7 @@ function MasterAppInner() {
         {currentView === 'security-access' && (
           <PageContainer variant="wide">
             <SecurityAccessHub
+              identityMutations={identityMutations}
               onOpenOrganization={(orgId) => {
                 setDetailOrgId(orgId);
                 pushMasterNavState({ view: 'organizations', orgId });

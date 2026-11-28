@@ -112,6 +112,10 @@ export const masterSecurityAccessV1En = {
   'master.securityAccess.users.create.operationConflict': 'This operation identity is bound to a different request',
   'master.securityAccess.users.create.validationOrgRole': 'Selected organization role is not valid for this organization',
   'master.securityAccess.users.create.orgRolesLoading': 'Loading organization roles…',
+  'master.securityAccess.users.create.orgRolesLoadError': 'Could not load organization roles for this organization',
+  'master.securityAccess.users.create.submittedLocked':
+    'Fields are locked to the submitted operation — retry with the same payload or start a new operation.',
+  'master.securityAccess.users.create.startNewOperation': 'Start new operation',
   'master.securityAccess.users.create.result.onboardingIdentity':
     'Onboarding: identity only — no immediate authentication',
   'master.securityAccess.users.create.result.onboardingInvite':
@@ -136,6 +140,7 @@ export const masterSecurityAccessV1En = {
   'master.securityAccess.userDetail.profile.conflict': 'Profile update conflict — refresh and try again',
   'master.securityAccess.userDetail.profile.clearField': 'Clear',
   'master.securityAccess.userDetail.profile.save': "Save profile",
+  'master.securityAccess.userDetail.profile.discard': 'Discard changes',
   'master.securityAccess.userDetail.profile.emailLocked': "Email changes require verified identity workflows and are not edited here.",
   'master.securityAccess.userDetail.profile.success': "Profile updated",
   'master.securityAccess.userDetail.profile.failed': "Could not update profile",
