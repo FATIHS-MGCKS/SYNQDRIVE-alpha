@@ -22,9 +22,9 @@ Unique `(organizationId, vehicleId, physicalRequestId, policyVersion)` on `apds_
 
 `scheduleBaselineObserve` on processor critical path: no await, no V3-only extra DB round trips, try/catch fail-open. Bounded queue + timeout off critical path.
 
-## P1_PHYSICAL_IDENTITY (R2)
+## P1_PHYSICAL_IDENTITY (R2 / hotfix)
 
-Physical fetch id is always `physical-fetch:{jobId}:run:{attemptsMade}` (`DERIVED` or `CORRELATED` when admissible enqueue metadata is present). Enqueue `attemptId` is stored as `correlationAttemptId` only — never authoritative physical identity. BullMQ retries advance `attemptsMade` → distinct physical rows.
+Production canonical BullMQ job ids (`snapshot-${vehicleId}`) recycle across completed jobs. Physical identity is **execution-bound**: `physical-fetch:exec:{enqueueAttemptId}:run:{attemptsMade}` when admissible enqueue evidence exists; `correlationAttemptId` remains the enqueue UUID. Without enqueue evidence on a canonical job id, physical identity is **unverified** (fail-closed). Non-canonical job ids may still use `physical-fetch:{jobId}:run:{attemptsMade}`.
 
 ## BASELINE_SOURCE_LINK (R2)
 

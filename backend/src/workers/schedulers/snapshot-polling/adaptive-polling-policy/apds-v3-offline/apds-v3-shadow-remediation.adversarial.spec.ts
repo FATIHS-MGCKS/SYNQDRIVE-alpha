@@ -33,7 +33,7 @@ describe('APDS V3 P1B1 remediation adversarial', () => {
     expect(a?.physicalRequestId).not.toBe(b?.physicalRequestId);
   });
 
-  it('different enqueue attempt ids still share physical id for same BullMQ run', () => {
+  it('different enqueue attempt ids yield distinct execution-bound physical ids', () => {
     const a = resolveApdsV3ShadowPhysicalRequestIdentity(
       {
         id: 'j',
@@ -70,7 +70,7 @@ describe('APDS V3 P1B1 remediation adversarial', () => {
       },
       'v',
     );
-    expect(a?.physicalRequestId).toBe(b?.physicalRequestId);
+    expect(a?.physicalRequestId).not.toBe(b?.physicalRequestId);
     expect(a?.enqueueAttemptId).not.toBe(b?.enqueueAttemptId);
   });
 
