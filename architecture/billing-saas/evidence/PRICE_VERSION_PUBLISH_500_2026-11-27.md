@@ -21,3 +21,16 @@
 5. Publish transaction: `Serializable` + price book `FOR UPDATE`; audit in-transaction.
 
 **Production mutations during forensics:** none.
+
+## CI and merge-readiness closeout (2026-11-28)
+
+| Field | Value |
+|-------|-------|
+| **PR** | [#2543](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2543) |
+| **Prior CI flake** | Trip FSM run `46064361476` job `140733702381` — R12 step hung ~46m; **no assertion log** (runner/logs unavailable); **not** reproduced locally after `main` merge |
+| **Main sync** | Merge `origin/main` @ `3de62a1777a5e096bede0f4b1eacd34525b4dffc` into PR branch |
+| **PostgreSQL regression** | **7/7** scenarios (`pricebook-publish-postgres-ci.sh`) on synchronized HEAD |
+| **Governance** | Label `i18n-governance-authority-change` (owner **FATIHS-MGCKS**); workflow `.github/workflows/pricebook-publish-postgres-ci.yml` |
+| **Post-merge deploy** | Requires `prisma migrate deploy` for `20261127203000`; then manual sandbox **Entwurf v3** publish retry (no auto-prod price change) |
+
+**Historical pricing integrity:** immutability triggers unchanged for published tiers/versions except documented supersede + scheduled `effective_to` paths; archival does not rewrite historical invoice rows.
