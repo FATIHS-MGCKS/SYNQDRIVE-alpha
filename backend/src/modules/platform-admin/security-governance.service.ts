@@ -241,6 +241,17 @@ export class SecurityGovernanceService {
     return {
       ...base,
       createdAt: user.createdAt.toISOString(),
+      globalProfile: {
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        mobile: user.mobile,
+        address: user.address,
+        language: user.language,
+        timezone: user.timezone,
+        dateFormat: user.dateFormat,
+      },
       memberships: user.memberships.map((m) => ({
         organizationId: m.organizationId,
         organizationName: m.organization?.companyName ?? '',

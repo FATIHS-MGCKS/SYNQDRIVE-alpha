@@ -28,6 +28,7 @@ import { SupportModule } from '../support/support.module';
 import { OutboundEmailModule } from '../outbound-email/outbound-email.module';
 import { VoiceAssistantModule } from '../voice-assistant/voice-assistant.module';
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
+import { UsersModule } from '../users/users.module';
 import { PlatformIntegrationsController } from './platform-integrations.controller';
 import { PlatformIntegrationsService } from './platform-integrations.service';
 import { BatteryGeneralizedEvidenceModule } from '../vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
@@ -52,6 +53,7 @@ import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-web
     OutboundEmailModule,
     VoiceAssistantModule,
     HighMobilityModule,
+    UsersModule,
   ],
   controllers: [PlatformAdminController, SecurityGovernanceController, PlatformIntegrationsController],
   providers: [

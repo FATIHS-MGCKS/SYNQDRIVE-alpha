@@ -1,4 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { OrganizationInviteStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { IamMetricsService } from '@modules/iam-observability/iam-metrics.service';
 import { INVITE_EMAIL_OUTBOX } from './invite-email.constants';
@@ -6,6 +7,7 @@ import { InviteEmailOutboxRepository } from './invite-email-outbox.repository';
 import { TransactionalMailService } from './transactional-mail.service';
 import { decryptInviteToken, encryptInviteToken } from './utils/invite-secret-crypto.util';
 import { maskRecipientEmail } from './utils/invite-admin-response.util';
+import { verifyInviteToken } from './utils/invite-token.util';
 
 @Injectable()
 export class InviteEmailDeliveryService {
@@ -17,6 +19,26 @@ export class InviteEmailDeliveryService {
     private readonly mail: TransactionalMailService,
     @Optional() private readonly iamMetrics?: IamMetricsService,
   ) {}
+
+  async enqueueInviteDeliveryInTransaction(
+    tx: Prisma.TransactionClient,
+    input: {
+      organizationId: string;
+      inviteId: string;
+      plainToken: string;
+      sentByUserId: string;
+      idempotencyKey: string;
+    },
+  ): Promise<{ outboxId: string | null }> {
+    const row = await this.outboxRepo.createEntryIdempotentInTransaction(tx, {
+      organizationId: input.organizationId,
+      inviteId: input.inviteId,
+      idempotencyKey: input.idempotencyKey,
+      tokenCiphertext: encryptInviteToken(input.plainToken),
+      sentByUserId: input.sentByUserId,
+    });
+    return { outboxId: row?.id ?? null };
+  }
 
   async enqueueInviteDelivery(input: {
     organizationId: string;
@@ -57,6 +79,10 @@ export class InviteEmailDeliveryService {
       await this.outboxRepo.markDeadLetter(claimed.id, 'INVITE_NOT_FOUND');
       return 'dead_letter';
     }
+    if (invite.status !== OrganizationInviteStatus.PENDING) {
+      await this.outboxRepo.markDeadLetter(claimed.id, 'INVITE_NOT_PENDING');
+      return 'skipped';
+    }
 
     let plainToken: string;
     try {
@@ -64,6 +90,12 @@ export class InviteEmailDeliveryService {
     } catch {
       await this.outboxRepo.markDeadLetter(claimed.id, 'TOKEN_DECRYPT_FAILED');
       return 'dead_letter';
+    }
+
+    const tokenMatchesGeneration = await verifyInviteToken(plainToken, invite.tokenHash);
+    if (!tokenMatchesGeneration) {
+      await this.outboxRepo.markDeadLetter(claimed.id, 'STALE_TOKEN_GENERATION');
+      return 'skipped';
     }
 
     const inviteUrl = this.buildInviteUrl(plainToken);

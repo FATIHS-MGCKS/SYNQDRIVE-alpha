@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -27,6 +28,11 @@ import {
 } from './security-governance-session-audit.service';
 import { SecurityGovernancePlatformPermissionAuditService } from './security-governance-platform-permission-audit.service';
 import { PlatformPermissionService } from '@modules/users/platform-permissions/platform-permission.service';
+import { MasterGlobalIdentityService } from '@modules/users/master-global-identity.service';
+import {
+  GovernanceCreateGlobalUserDto,
+  GovernanceUpdateGlobalProfileDto,
+} from '@modules/users/dto';
 
 type AuthedRequest = SessionRevocationAuditRequest;
 
@@ -41,6 +47,7 @@ export class SecurityGovernanceController {
     private readonly sessionAudit: SecurityGovernanceSessionAuditService,
     private readonly platformPermissionAudit: SecurityGovernancePlatformPermissionAuditService,
     private readonly platformPermissions: PlatformPermissionService,
+    private readonly globalIdentity: MasterGlobalIdentityService,
   ) {}
 
   @Get('attention-summary')
@@ -65,6 +72,29 @@ export class SecurityGovernanceController {
   @Get('users/:userId')
   getUser(@Param('userId') userId: string) {
     return this.governance.getUserDetail(userId);
+  }
+
+  @Post('users')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @HttpCode(HttpStatus.CREATED)
+  async createUser(@Body() body: GovernanceCreateGlobalUserDto, @Req() req: AuthedRequest) {
+    return this.globalIdentity.provisionGlobalUser(body, req.user ?? {}, req);
+  }
+
+  @Patch('users/:userId')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
+  @HttpCode(HttpStatus.OK)
+  async updateUserProfile(
+    @Param('userId') userId: string,
+    @Body() body: GovernanceUpdateGlobalProfileDto,
+    @Req() req: AuthedRequest,
+  ) {
+    const user = await this.globalIdentity.updateGlobalProfile(userId, body, req.user ?? {}, req);
+    return { user };
   }
 
   @Get('users/:userId/sessions')

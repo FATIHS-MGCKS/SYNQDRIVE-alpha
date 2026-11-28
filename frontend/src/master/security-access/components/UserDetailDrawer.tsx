@@ -19,6 +19,8 @@ import {
 } from '../security-access.utils';
 import { MasterErrorState } from '../../shell';
 import { PrivilegeActionDialog } from './PrivilegeActionDialog';
+import { GlobalProfileEditPanel } from './GlobalProfileEditPanel';
+import type { MasterIdentityPrivilegedMutations } from '../useMasterIdentityPrivilegedMutations';
 
 interface UserDetailDrawerProps {
   userId: string | null;
@@ -27,6 +29,7 @@ interface UserDetailDrawerProps {
   onOpenAudit?: (auditId: string) => void;
   onOpenOrganization?: (orgId: string) => void;
   onUserDeleted?: () => void;
+  identityMutations?: MasterIdentityPrivilegedMutations;
 }
 
 export function UserDetailDrawer({
@@ -36,6 +39,7 @@ export function UserDetailDrawer({
   onOpenAudit,
   onOpenOrganization,
   onUserDeleted,
+  identityMutations,
 }: UserDetailDrawerProps) {
   const { t, mfaStateLabel, attentionCodeLabel, accountStateLabel, platformRoleLabel, formatRelative, loadError } =
     useSecurityAccessPresentation();
@@ -48,14 +52,19 @@ export function UserDetailDrawer({
   const targetUserIdRef = useRef<string | null>(userId);
   targetUserIdRef.current = userId;
   const drawerGenerationRef = useRef(0);
+  const [drawerGeneration, setDrawerGeneration] = useState(0);
 
   useEffect(() => {
     drawerGenerationRef.current += 1;
+    setDrawerGeneration(drawerGenerationRef.current);
     setMfaResetOpen(false);
     setDeleteOpen(false);
     setRevokeAllOpen(false);
     setActionLoading(false);
-  }, [userId]);
+    if (!userId) {
+      identityMutations?.clearPendingIf((op) => op.kind === 'profile');
+    }
+  }, [userId, identityMutations]);
 
   const isMutationTargetCurrent = (targetId: string, generationAtStart: number) =>
     targetUserIdRef.current === targetId && drawerGenerationRef.current === generationAtStart;
@@ -186,6 +195,17 @@ export function UserDetailDrawer({
           />
         ) : boundDetail ? (
           <div className="space-y-6 text-sm">
+            {boundDetail && userId && (
+              <GlobalProfileEditPanel
+                userId={userId}
+                detail={boundDetail}
+                drawerGeneration={drawerGeneration}
+                onSaved={() => void refresh()}
+                isMutationTargetCurrent={isMutationTargetCurrent}
+                identityMutations={identityMutations}
+              />
+            )}
+
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 {t('master.securityAccess.userDetail.section.identity')}

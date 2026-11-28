@@ -12,16 +12,20 @@ function InputOTP({
   ...props
 }: React.ComponentProps<typeof OTPInput> & {
   containerClassName?: string;
+  'data-testid'?: string;
 }) {
+  const testId = props['data-testid'];
+  const { 'data-testid': _dt, ...otpProps } = props;
   return (
     <OTPInput
       data-slot="input-otp"
+      data-testid={testId}
+      {...otpProps}
       containerClassName={cn(
         "flex items-center gap-2 has-disabled:opacity-50",
         containerClassName,
       )}
       className={cn("disabled:cursor-not-allowed", className)}
-      {...props}
     />
   );
 }

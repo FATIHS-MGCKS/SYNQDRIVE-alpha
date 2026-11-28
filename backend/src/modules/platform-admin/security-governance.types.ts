@@ -45,6 +45,19 @@ export interface GovernanceUserListItemDto {
   activeSessionCount: number;
 }
 
+/** Safe persisted global identity profile fields (no credentials / MFA). */
+export interface GovernanceGlobalProfileDto {
+  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  mobile: string | null;
+  address: string | null;
+  language: string | null;
+  timezone: string | null;
+  dateFormat: string | null;
+}
+
 export interface GovernanceUserMembershipDto {
   organizationId: string;
   organizationName: string;
@@ -55,6 +68,7 @@ export interface GovernanceUserMembershipDto {
 
 export interface GovernanceUserDetailDto extends GovernanceUserListItemDto {
   createdAt: string;
+  globalProfile: GovernanceGlobalProfileDto;
   memberships: GovernanceUserMembershipDto[];
   mfa: {
     enrolled: boolean;

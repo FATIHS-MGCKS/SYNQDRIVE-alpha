@@ -159,8 +159,25 @@ describe('useSecurityAccess stale concurrency (USR-P1B)', () => {
       name: 'U',
       email: 'u@test.com',
       createdAt: '2020-01-01T00:00:00Z',
+      globalProfile: {
+        name: 'U',
+        firstName: null,
+        lastName: null,
+        phone: null,
+        mobile: null,
+        address: null,
+        language: null,
+        timezone: null,
+        dateFormat: null,
+      },
       memberships: [],
-      mfa: { state: 'ENABLED' },
+      mfa: {
+        enrolled: true,
+        factorTypes: [],
+        recoveryCodesRemaining: 0,
+        enrollmentRequired: false,
+        stepUpEnforced: false,
+      },
     });
     listUserSessions.mockRejectedValueOnce(new Error('network'));
 

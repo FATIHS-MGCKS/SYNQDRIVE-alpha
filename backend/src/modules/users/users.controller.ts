@@ -37,6 +37,7 @@ import {
 import { AssignOrganizationRoleDto } from './dto/organization-role.dto';
 import { OrganizationRoleService } from './organization-role.service';
 import { OrganizationInviteService } from './organization-invite.service';
+import { MasterGlobalIdentityService } from './master-global-identity.service';
 
 interface AuthedRequest {
   user?: {
@@ -59,6 +60,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly roleService: OrganizationRoleService,
     private readonly inviteService: OrganizationInviteService,
+    private readonly masterGlobalIdentity: MasterGlobalIdentityService,
   ) {}
 
   // ─── Master Admin routes ─────────────────────────────
@@ -84,16 +86,20 @@ export class UsersController {
   @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
   @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
-  async adminCreate(@Body() body: AdminCreateUserDto) {
-    return this.usersService.create(body);
+  async adminCreate(@Body() body: AdminCreateUserDto, @Req() req: AuthedRequest) {
+    return this.masterGlobalIdentity.legacyAdminCreate(body, req.user ?? {}, req);
   }
 
   @Patch('admin/users/:id')
   @UseGuards(RolesGuard, MasterAdminMfaGuard)
   @Roles('MASTER_ADMIN')
   @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_USER_MANAGEMENT)
-  async adminUpdate(@Param('id') id: string, @Body() body: AdminUpdateUserDto) {
-    return this.usersService.update(id, body);
+  async adminUpdate(
+    @Param('id') id: string,
+    @Body() body: AdminUpdateUserDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.masterGlobalIdentity.legacyAdminUpdate(id, body, req.user ?? {}, req);
   }
 
   @Post('admin/users/:id/change-password')

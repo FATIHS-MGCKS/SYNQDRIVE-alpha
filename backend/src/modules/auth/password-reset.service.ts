@@ -23,6 +23,11 @@ import {
   passwordResetTokenLookupKey,
   verifyPasswordResetToken,
 } from './utils/password-reset-token.util';
+import type { Prisma } from '@prisma/client';
+import {
+  evaluateOperationBoundCredentialSetupConfirm,
+} from '@modules/users/policies/credential-setup-confirm.policy';
+import type { InitialCredentialSecuritySnapshot } from '@modules/users/policies/invite-accept.policy';
 
 export interface PasswordResetRequestContext {
   ipAddress?: string;
@@ -99,6 +104,199 @@ export class PasswordResetService {
     });
 
     return PASSWORD_RESET_REQUEST_NEUTRAL;
+  }
+
+  /**
+   * Admin-initiated reset bound to a master provisioning securityOperationId.
+   * Returns the persisted token id; never exposes plaintext to callers.
+   */
+  async requestAdminResetBoundToOperation(input: {
+    organizationId: string;
+    userId: string;
+    actorUserId?: string;
+    securityOperationId: string;
+    reason?: string;
+    context?: PasswordResetRequestContext;
+  }): Promise<{ tokenId: string }> {
+    await this.assertOperationBoundResetRateLimits(input);
+
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        status: { not: 'REMOVED' },
+      },
+      include: {
+        user: { select: { id: true, email: true, status: true, passwordHash: true } },
+      },
+    });
+    if (!membership?.user) {
+      throw new NotFoundException('User not found in organization');
+    }
+    if (membership.user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('User is not eligible for credential setup');
+    }
+
+    const boundIntent = await this.prisma.masterIdentityCredentialSetupIntent.findUnique({
+      where: { securityOperationId: input.securityOperationId },
+      select: { passwordResetTokenId: true },
+    });
+    if (boundIntent?.passwordResetTokenId) {
+      const linked = await this.prisma.passwordResetToken.findUnique({
+        where: { id: boundIntent.passwordResetTokenId },
+        select: { id: true, usedAt: true, revokedAt: true, expiresAt: true },
+      });
+      if (
+        linked &&
+        !linked.usedAt &&
+        !linked.revokedAt &&
+        linked.expiresAt > new Date()
+      ) {
+        return { tokenId: linked.id };
+      }
+    }
+
+    const issued = await this.issueResetToken({
+      userId: membership.user.id,
+      email: membership.user.email,
+      purpose: PasswordResetPurpose.ADMIN_INITIATED,
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
+      reason: input.reason,
+      securityOperationId: input.securityOperationId,
+    });
+
+    void this.userAudit.record({
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
+      auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_REQUESTED,
+      targetUserId: membership.user.id,
+      description: 'Admin-initiated credential setup requested',
+      metadata: {
+        securityOperationId: input.securityOperationId,
+        ...(input.reason ? { reason: input.reason } : {}),
+      },
+      ipAddress: input.context?.ipAddress,
+      userAgent: input.context?.userAgent,
+    });
+
+    return { tokenId: issued.tokenId };
+  }
+
+  async assertOperationBoundResetRateLimits(input: {
+    organizationId: string;
+    userId: string;
+    securityOperationId: string;
+    context?: PasswordResetRequestContext;
+  }): Promise<void> {
+    const ip = input.context?.ipAddress?.trim() || `op:${input.securityOperationId}`;
+    await this.rateLimit.assertWithinLimit('IP', ip, input.organizationId);
+    await this.rateLimit.assertWithinLimit(
+      'ORGANIZATION',
+      `op:${input.organizationId}:${input.securityOperationId}`,
+      input.organizationId,
+    );
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        status: { not: 'REMOVED' },
+      },
+      include: { user: { select: { email: true } } },
+    });
+    if (membership?.user) {
+      await this.rateLimit.assertWithinLimit(
+        'EMAIL',
+        membership.user.email.toLowerCase(),
+        input.organizationId,
+      );
+    }
+  }
+
+  async assertOperationBoundResetEligibleInTransaction(
+    tx: Prisma.TransactionClient,
+    input: {
+      organizationId: string;
+      userId: string;
+      actorUserId?: string;
+      securityOperationId: string;
+    },
+  ): Promise<void> {
+    const membership = await tx.organizationMembership.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        status: { not: 'REMOVED' },
+      },
+      include: {
+        user: { select: { id: true, email: true, status: true, passwordHash: true } },
+      },
+    });
+    if (!membership?.user) {
+      throw new NotFoundException('User not found in organization');
+    }
+    if (membership.user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('User is not eligible for credential setup');
+    }
+  }
+
+  async createOperationBoundTokenInTransaction(
+    tx: Prisma.TransactionClient,
+    input: {
+      userId: string;
+      email: string;
+      organizationId: string;
+      actorUserId?: string;
+      securityOperationId: string;
+      setupDeliveryGeneration: number;
+      reason?: string;
+    },
+  ): Promise<{ tokenId: string; plainToken: string; expiresAt: Date }> {
+    await tx.passwordResetToken.updateMany({
+      where: {
+        userId: input.userId,
+        securityOperationId: input.securityOperationId,
+        usedAt: null,
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+
+    const { plain, hash } = generatePasswordResetToken();
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+
+    const created = await tx.passwordResetToken.create({
+      data: {
+        userId: input.userId,
+        tokenHash: hash,
+        tokenLookup: passwordResetTokenLookupKey(plain),
+        purpose: PasswordResetPurpose.ADMIN_INITIATED,
+        organizationId: input.organizationId,
+        actorUserId: input.actorUserId ?? null,
+        reason: input.reason ?? null,
+        securityOperationId: input.securityOperationId,
+        setupDeliveryGeneration: input.setupDeliveryGeneration,
+        expiresAt,
+      },
+    });
+
+    return { tokenId: created.id, plainToken: plain, expiresAt };
+  }
+
+  async deliverOperationBoundResetEmail(input: {
+    email: string;
+    plainToken: string;
+    expiresAt: Date;
+    purpose: PasswordResetPurpose;
+  }): Promise<boolean> {
+    const resetUrl = this.buildResetUrl(input.plainToken);
+    const result = await this.mail.sendPasswordReset({
+      to: input.email,
+      resetUrl,
+      expiresAt: input.expiresAt,
+      purpose: input.purpose,
+    });
+    return Boolean(result?.sent);
   }
 
   /** Public self-service — enumeration-safe neutral response. */
@@ -197,17 +395,95 @@ export class PasswordResetService {
       }
 
       const hash = await bcrypt.hash(input.newPassword, 10);
-      await tx.user.update({
-        where: { id: record.userId },
-        data: {
-          passwordHash: hash,
-          mustChangePassword: false,
-        },
-      });
 
-      await tx.passwordResetToken.update({
-        where: { id: record.id },
-        data: { usedAt: new Date() },
+      if (freshRecord.securityOperationId) {
+        const intent = await tx.masterIdentityCredentialSetupIntent.findUnique({
+          where: { securityOperationId: freshRecord.securityOperationId },
+        });
+        if (!intent) {
+          throw new UnauthorizedException('Invalid or expired password reset token');
+        }
+        const membership = await tx.organizationMembership.findUnique({
+          where: { id: intent.membershipId },
+        });
+        const organization = membership
+          ? await tx.organization.findUnique({ where: { id: membership.organizationId } })
+          : null;
+        const liveUser = await tx.user.findUnique({ where: { id: record.userId } });
+        if (!membership || !organization || !liveUser) {
+          throw new UnauthorizedException('Invalid or expired password reset token');
+        }
+        const security = await this.loadInitialCredentialSecuritySnapshot(tx, record.userId);
+        const eligibility = evaluateOperationBoundCredentialSetupConfirm({
+          intent,
+          token: {
+            id: record.id,
+            userId: record.userId,
+            organizationId: record.organizationId,
+            securityOperationId: record.securityOperationId,
+            setupDeliveryGeneration: freshRecord.setupDeliveryGeneration,
+          },
+          user: liveUser,
+          membership,
+          organization,
+          security,
+        });
+        if (!eligibility.eligible) {
+          throw new UnauthorizedException('Invalid or expired password reset token');
+        }
+
+        const passwordAdmitted = await tx.user.updateMany({
+          where: { id: record.userId, passwordHash: null },
+          data: {
+            passwordHash: hash,
+            mustChangePassword: false,
+          },
+        });
+        if (passwordAdmitted.count !== 1) {
+          throw new BadRequestException('Initial credentials are no longer eligible for this token');
+        }
+
+        const tokenAdmitted = await tx.passwordResetToken.updateMany({
+          where: { id: record.id, usedAt: null, revokedAt: null },
+          data: { usedAt: new Date() },
+        });
+        if (tokenAdmitted.count !== 1) {
+          throw new BadRequestException('Password reset token has already been used');
+        }
+
+        await tx.masterIdentityCredentialSetupIntent.updateMany({
+          where: {
+            securityOperationId: freshRecord.securityOperationId,
+            credentialEstablishedAt: null,
+          },
+          data: {
+            credentialEstablishedAt: new Date(),
+            deliveryTokenCiphertext: null,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: record.userId },
+          data: {
+            passwordHash: hash,
+            mustChangePassword: false,
+          },
+        });
+
+        await tx.passwordResetToken.update({
+          where: { id: record.id },
+          data: { usedAt: new Date() },
+        });
+      }
+
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: record.userId,
+          id: { not: record.id },
+          usedAt: null,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
       });
 
       const enqueued = await this.sessionPolicy.enqueueInTransactionWithAuthoritativeInvalidation(tx, {
@@ -230,11 +506,18 @@ export class PasswordResetService {
       actorUserId: record.userId,
       auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_COMPLETED,
       targetUserId: record.userId,
-      description: 'Password reset completed (self-service)',
+      description: record.securityOperationId
+        ? 'Initial credential setup completed'
+        : 'Password reset completed (self-service)',
       level: 'WARN',
       ipAddress: input.context?.ipAddress,
       userAgent: input.context?.userAgent,
-      metadata: { purpose: record.purpose },
+      metadata: {
+        purpose: record.purpose,
+        ...(record.securityOperationId
+          ? { securityOperationId: record.securityOperationId }
+          : {}),
+      },
     });
 
     await this.mail.sendPasswordResetCompleted({
@@ -251,13 +534,17 @@ export class PasswordResetService {
     organizationId?: string;
     actorUserId?: string;
     reason?: string;
-  }): Promise<void> {
-    await this.revokePendingTokensForUser(input.userId);
+    securityOperationId?: string;
+  }): Promise<{ tokenId: string; plainToken: string }> {
+    await this.revokePendingTokensForUser(input.userId, {
+      purpose: input.purpose,
+      securityOperationId: input.securityOperationId,
+    });
 
     const { plain, hash } = generatePasswordResetToken();
     const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
 
-    await this.prisma.passwordResetToken.create({
+    const created = await this.prisma.passwordResetToken.create({
       data: {
         userId: input.userId,
         tokenHash: hash,
@@ -266,6 +553,7 @@ export class PasswordResetService {
         organizationId: input.organizationId ?? null,
         actorUserId: input.actorUserId ?? null,
         reason: input.reason ?? null,
+        securityOperationId: input.securityOperationId ?? null,
         expiresAt,
       },
     });
@@ -282,17 +570,75 @@ export class PasswordResetService {
     this.logger.log(
       `Password reset email queued for user=${input.userId} purpose=${input.purpose}`,
     );
+    return { tokenId: created.id, plainToken: plain };
   }
 
-  private async revokePendingTokensForUser(userId: string): Promise<void> {
+  private async revokePendingTokensForUser(
+    userId: string,
+    scope?: { purpose: PasswordResetPurpose; securityOperationId?: string },
+  ): Promise<void> {
+    if (scope?.securityOperationId) {
+      await this.prisma.passwordResetToken.updateMany({
+        where: {
+          userId,
+          securityOperationId: scope.securityOperationId,
+          usedAt: null,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+      return;
+    }
+  if (scope?.purpose === PasswordResetPurpose.ADMIN_INITIATED) {
+      await this.prisma.passwordResetToken.updateMany({
+        where: {
+          userId,
+          purpose: PasswordResetPurpose.ADMIN_INITIATED,
+          securityOperationId: null,
+          usedAt: null,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+      return;
+    }
     await this.prisma.passwordResetToken.updateMany({
       where: {
         userId,
+        purpose: PasswordResetPurpose.SELF_SERVICE,
         usedAt: null,
         revokedAt: null,
       },
       data: { revokedAt: new Date() },
     });
+  }
+
+  private async loadInitialCredentialSecuritySnapshot(
+    db: Prisma.TransactionClient | PrismaService,
+    userId: string,
+  ): Promise<InitialCredentialSecuritySnapshot> {
+    const [verifiedMfaFactorCount, activeRefreshSessionCount, activePlatformPermissionGrantCount] =
+      await Promise.all([
+        db.userMfaFactor.count({
+          where: { userId, verifiedAt: { not: null } },
+        }),
+        db.refreshToken.count({
+          where: {
+            userId,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+            replacedBy: null,
+          },
+        }),
+        db.userPlatformPermissionGrant.count({
+          where: { userId, revokedAt: null },
+        }),
+      ]);
+    return {
+      verifiedMfaFactorCount,
+      activeRefreshSessionCount,
+      activePlatformPermissionGrantCount,
+    };
   }
 
   private buildResetUrl(token: string): string {

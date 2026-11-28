@@ -18,16 +18,21 @@ import { UserDetailDrawer } from './components/UserDetailDrawer';
 import { RoleDetailDrawer } from './components/RoleDetailDrawer';
 import { AuditDetailDrawer } from './components/AuditDetailDrawer';
 import { AuditExportDialog } from './components/AuditExportDialog';
+import { CreateGlobalUserDialog } from './components/CreateGlobalUserDialog';
+import type { MasterIdentityPrivilegedMutations } from './useMasterIdentityPrivilegedMutations';
 
 interface SecurityAccessHubProps {
   onOpenOrganization?: (orgId: string) => void;
+  identityMutations?: MasterIdentityPrivilegedMutations;
 }
 
-export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps) {
+export function SecurityAccessHub({ onOpenOrganization, identityMutations }: SecurityAccessHubProps) {
   const { t, sectionTabs, loadError, formatRelative } = useSecurityAccessPresentation();
   const initial = useMemo(() => readSecurityAccessLocation(window.location.search), []);
   const [location, setLocation] = useState<SecurityAccessLocation>(initial);
   const [exportOpen, setExportOpen] = useState(false);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [usersListGeneration, setUsersListGeneration] = useState(0);
   const summary = useSecurityAttentionSummary(loadError);
 
   const navigate = useCallback((patch: Partial<SecurityAccessLocation>, replace = false) => {
@@ -110,9 +115,11 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
 
       {location.section === 'users' && (
         <SecurityUsersTab
+          key={usersListGeneration}
           variant="users"
           organizationId={location.organizationId}
           onOpenUser={(userId) => navigate({ userId })}
+          onCreateUser={() => setCreateUserOpen(true)}
         />
       )}
 
@@ -160,6 +167,7 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
         onOpenAudit={(id) => navigate({ section: 'audit', auditId: id, userId: null })}
         onOpenOrganization={onOpenOrganization}
         onUserDeleted={() => navigate({ userId: null }, true)}
+        identityMutations={identityMutations}
       />
 
       <RoleDetailDrawer
@@ -179,6 +187,18 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
         open={exportOpen}
         onOpenChange={setExportOpen}
         defaultOrganizationId={location.organizationId}
+      />
+
+      <CreateGlobalUserDialog
+        open={createUserOpen}
+        onOpenChange={setCreateUserOpen}
+        onListRefresh={() => setUsersListGeneration((g) => g + 1)}
+        onOpenCreatedUser={(userId) => {
+          setUsersListGeneration((g) => g + 1);
+          navigate({ userId });
+          setCreateUserOpen(false);
+        }}
+        identityMutations={identityMutations}
       />
     </div>
   );

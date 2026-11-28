@@ -27,10 +27,12 @@ describe('PasswordResetService (Prompt 6)', () => {
     organizationMembership: { findFirst: jest.Mock };
     passwordResetToken: {
       create: jest.Mock;
+      findFirst: jest.Mock;
       findUnique: jest.Mock;
       update: jest.Mock;
       updateMany: jest.Mock;
     };
+    masterIdentityCredentialSetupIntent: { updateMany: jest.Mock };
     $transaction: jest.Mock;
     $executeRaw: jest.Mock;
   };
@@ -52,10 +54,14 @@ describe('PasswordResetService (Prompt 6)', () => {
       },
       organizationMembership: { findFirst: jest.fn() },
       passwordResetToken: {
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({ id: 'prt-created' }),
+        findFirst: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      masterIdentityCredentialSetupIntent: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       $executeRaw: jest.fn().mockResolvedValue(undefined),
       $transaction: jest.fn(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
@@ -165,6 +171,7 @@ describe('PasswordResetService (Prompt 6)', () => {
       tokenHash: hash,
       purpose: PasswordResetPurpose.SELF_SERVICE,
       organizationId: null,
+      securityOperationId: null,
       expiresAt: new Date(Date.now() + 60_000),
       usedAt: null,
       revokedAt: null,

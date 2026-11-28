@@ -49,6 +49,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { OrganizationsOperationalRefreshProvider, useOrganizationsOperationalRefresh } from './organizations/organizations-operational-refresh';
 import { useMasterOrganizationPatch } from './organizations/useMasterOrganizationPatch';
 import { useMasterOrganizationIamMutations } from './organizations/useMasterOrganizationIamMutations';
+import { useMasterIdentityPrivilegedMutations } from './security-access/useMasterIdentityPrivilegedMutations';
 import { classifyMasterOrgPatchError } from './organizations/master-organization-patch';
 import { classifyCreateOrgRefreshOutcome } from './organizations/organizations-operational-create-outcome';
 import { MasterAdminShell, PageContainer } from './shell';
@@ -114,6 +115,7 @@ function MasterAppInner() {
   const { refreshOperationalList } = useOrganizationsOperationalRefresh();
   const { patchOrganization, retryPendingAfterStepUp, clearPending } = useMasterOrganizationPatch();
   const iamMutations = useMasterOrganizationIamMutations();
+  const identityMutations = useMasterIdentityPrivilegedMutations();
   const initialNav = readInitialMasterNavLocation();
   const [currentView, setCurrentView] = useState<MasterView>(initialNav.view);
   const [settingsTab, setSettingsTab] = useState<string>(initialNav.settingsTab ?? 'general');
@@ -383,33 +385,45 @@ function MasterAppInner() {
             action={stepUpAction}
             onClose={() => {
               setStepUpOpen(false);
+              window.dispatchEvent(new CustomEvent('synqdrive:step-up-settled'));
               if (skipMfaCancelCleanupRef.current) {
                 skipMfaCancelCleanupRef.current = false;
                 return;
               }
               clearPending();
               iamMutations.clearPending();
+              identityMutations.clearPending();
             }}
             onSuccess={() => {
               skipMfaCancelCleanupRef.current = true;
               void (async () => {
-                try {
-                  const retriedOrg = await retryPendingAfterStepUp();
-                  const retriedIam = await iamMutations.retryPendingAfterStepUp();
-                  if (retriedOrg || retriedIam) {
-                    toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
-                    return;
+                const retryErrors: string[] = [];
+                const tryRetry = async (runner: () => Promise<boolean>) => {
+                  try {
+                    return await runner();
+                  } catch (e: unknown) {
+                    retryErrors.push(getErrorMessage(e));
+                    return false;
                   }
-                  toast.success(t('master.organizations.mfa.stepUpSuccessManual'));
-                } catch (e: unknown) {
+                };
+                const retriedOrg = await tryRetry(retryPendingAfterStepUp);
+                const retriedIam = await tryRetry(() => iamMutations.retryPendingAfterStepUp());
+                const retriedIdentity = await tryRetry(() => identityMutations.retryPendingAfterStepUp());
+                if (retryErrors.length > 0) {
                   toast.error(
                     t('master.organizations.mfa.retryFailed', {
-                      error: getErrorMessage(e),
+                      error: retryErrors[0],
                     }),
                   );
-                } finally {
+                } else if (retriedOrg || retriedIam || retriedIdentity) {
+                  toast.success(t('master.organizations.mfa.stepUpSuccessRetry'));
+                } else {
+                  toast.success(t('master.organizations.mfa.stepUpSuccessManual'));
+                }
+                {
                   skipMfaCancelCleanupRef.current = false;
                   setStepUpOpen(false);
+                  window.dispatchEvent(new CustomEvent('synqdrive:step-up-settled'));
                 }
               })();
             }}
@@ -477,6 +491,7 @@ function MasterAppInner() {
         {currentView === 'security-access' && (
           <PageContainer variant="wide">
             <SecurityAccessHub
+              identityMutations={identityMutations}
               onOpenOrganization={(orgId) => {
                 setDetailOrgId(orgId);
                 pushMasterNavState({ view: 'organizations', orgId });
