@@ -58,8 +58,8 @@ function assertDisposableDb(): void {
     throw new Error('DATABASE_URL must be a valid postgres URL');
   }
   const dbName = raw.split('/').pop()?.split('?')[0] ?? '';
-  if (!['127.0.0.1', 'localhost'].includes(host) || !/usr/i.test(dbName)) {
-    throw new Error('DATABASE_URL must target disposable loopback usr* test DB');
+  if (!['127.0.0.1', 'localhost'].includes(host) || !/^usr_p2_[a-z0-9_]+$/.test(dbName)) {
+    throw new Error('DATABASE_URL must target disposable loopback usr_p2_* test DB');
   }
 }
 
@@ -379,11 +379,13 @@ function assertDisposableDb(): void {
       where: { id: inviteId! },
     });
     expect(inviteRow.status).toBe(OrganizationInviteStatus.PENDING);
-    const activeOutboxes = await prisma.inviteEmailOutbox.count({
+    const liveOutboxes = await prisma.inviteEmailOutbox.findMany({
       where: { inviteId: inviteId!, status: { not: 'DEAD_LETTER' } },
+      orderBy: { createdAt: 'asc' },
     });
-    expect(activeOutboxes).toBeGreaterThanOrEqual(1);
-    expect(activeOutboxes).toBeLessThanOrEqual(2);
+    expect(liveOutboxes).toHaveLength(1);
+    expect(liveOutboxes[0].idempotencyKey).toBe(`invite:recovery:${inviteId}:${inviteRow.tokenLookup}`);
+    expect(['PENDING', 'PROCESSING', 'COMPLETED']).toContain(liveOutboxes[0].status);
   });
 
   it('R04 — credential setup replay does not repeat admin reset mail', async () => {

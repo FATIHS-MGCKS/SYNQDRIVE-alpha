@@ -85,7 +85,9 @@
 
 ## USR-P3A.3A backend security acceptance (PR #2544)
 
-**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence:** P3A.1 **4/4**, P3A.3 security **12/12**, **HTTP authorization 15/15** (`usr-p3a3-identity-http-security.postgres.integration.spec.ts`), policy unit **9/9**, **0 skipped**, exit **0**.
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence:** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20** (`usr-p3a3-transaction-invitation.postgres.integration.spec.ts`), **HTTP authorization 15/15**, policy unit **9/9**, **0 skipped**, exit **0**.
+
+**Atomic invitation delivery (P3A.3A tx seal):** encrypted `inviteEmailOutbox` rows are created inside the same Prisma transaction as invite create/resend/recovery token rotation (+ IAM rotation audit on recovery). SMTP runs only via `processOutboxIds` after commit. Stale generations are suppressed at dispatch (`STALE_TOKEN_GENERATION` / `INVITE_NOT_PENDING`). Not exactly-once SMTP — in-flight transport may complete after supersede (documented).
 
 **USR-P3A.3A real HTTP authorization (PR #2544):** `createUsrP3a3IdentityHttpApp` — real `AuthGuard` (APP_GUARD), `RolesGuard`, `MasterAdminMfaGuard`, `StepUpGuard`, `UserAccessAuthorityService`, `IamMfaStepUpService`, `MasterGlobalIdentityService` via `createUsrP3a3IdentityPgStack`; signed access JWTs + persisted session families; MFA/step-up flags enabled in disposable env; `ValidationPipe` whitelist + forbidNonWhitelisted; only `TransactionalMailService` mocked. Preliminary mocked harness (`security-governance-identity.http-security.integration.spec.ts` **7/7**) retained as non-authoritative.
 
@@ -93,7 +95,7 @@
 |------|---------|-------|
 | R01 | **PASS (partial)** | Fingerprint + PG conflicting fingerprint; policy **9/9** |
 | R02 | **PASS (partial)** | Real-stack PG identity/profile replay; outbox-bound `inviteId` |
-| R03 | **PASS (partial)** | `acquireInviteDeliveryContinuityLock` (913108); PG concurrent recovery + real invite delivery (mail mocked) |
+| R03 | **PASS (partial)** | Continuity lock + **single recovery generation** (exact live outbox idempotency); atomic rotation + delivery intent in one tx |
 | R04 | **PASS (partial)** | `credentialSetupRequested` metadata + PG idempotent credential replay (no duplicate reset mail) |
 | R05 | **PASS (partial)** | PG lock-wait + **real HTTP H01–H10** on disposable PG (see below); full A01–A24 matrix **not** claimed |
 | R06 | **PASS (partial)** | PG duplicate email + timezone; real org provision paths in R03/R04 cases |
@@ -136,6 +138,30 @@
 | Preliminary mocked harness | **7/7** (non-authoritative) |
 
 **P3A3A_HTTP_AUTHORIZATION=CONDITIONAL_PARTIAL** — H01–H10 executed; **no full A01–A24**; **no merge readiness**.
+
+### Transaction + invitation PG matrix (T01–T17)
+
+| ID | Result | Maps (A-matrix) |
+|----|--------|-----------------|
+| T01 | **PASS** | identity replay / A04 partial |
+| T02 | **PASS** | org provision replay binding |
+| T03 | **PASS** | R06 email uniqueness |
+| T04 | **PASS** | concurrent idempotency |
+| T05 | **PASS** | commit + lost ack replay |
+| T06 | **PASS** | cross-actor denial |
+| T07 | **PASS** | audit failure rollback |
+| T08 | **PASS** | invite failure rollback |
+| T09 | **PASS** | delivery intent failure rollback |
+| T10 | **PASS** | concurrent recovery generation |
+| T11 | **PASS** | stale delivery suppression |
+| T12 | **PASS** | accept + recovery token parity |
+| T13 | **PASS** | revoke fences recovery |
+| T14 | **PASS** | authoritative accept |
+| T15 | **PASS** | single semantic CREATE log |
+| T16 | **PASS** | org lifecycle fence |
+| T17 | **PASS** | invite/membership role parity |
+
+**P3A3A_TRANSACTION_INVITATION=CONDITIONAL_PARTIAL** — core R01/R02/R03/R06 invariants exercised; **not** full repository acceptance.
 
 ### CI authority
 

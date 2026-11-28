@@ -118,6 +118,7 @@ export class OrganizationInviteService {
     expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
 
     const outboxIds: string[] = [];
+    let inviteEmailOutboxId: string | null = null;
     const invite = await this.prisma.$transaction(async (tx) => {
       const created = await tx.organizationUserInvite.create({
         data: {
@@ -161,18 +162,21 @@ export class OrganizationInviteService {
         },
       });
       outboxIds.push(outbox.id);
+      const delivery = await this.inviteDelivery.enqueueInviteDeliveryInTransaction(tx, {
+        organizationId: orgId,
+        inviteId: created.id,
+        plainToken: plain,
+        sentByUserId: invitedByUserId,
+        idempotencyKey: `invite:create:${created.id}`,
+      });
+      inviteEmailOutboxId = delivery.outboxId;
       return created;
     });
 
-    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
-      organizationId: orgId,
-      inviteId: invite.id,
-      plainToken: plain,
-      sentByUserId: invitedByUserId,
-      idempotencyKey: `invite:create:${invite.id}`,
-    });
-    await this.inviteDelivery.processOutboxIds([outboxId]);
-    const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
+    await this.inviteDelivery.processOutboxIds([inviteEmailOutboxId]);
+    const deliveryRow = inviteEmailOutboxId
+      ? await this.inviteOutbox.findById(inviteEmailOutboxId)
+      : null;
 
     await this.iamAudit.processOutboxIds(outboxIds);
 
@@ -189,7 +193,12 @@ export class OrganizationInviteService {
     invitedByUserId: string,
     actor: PermissionActor = {},
     options?: { skipManagePermissionCheck?: boolean },
-  ): Promise<{ inviteId: string; plainToken: string; iamAuditOutboxId?: string }> {
+  ): Promise<{
+    inviteId: string;
+    plainToken: string;
+    iamAuditOutboxId?: string;
+    inviteEmailOutboxId?: string | null;
+  }> {
     await this.roleService.ensureDefaultRoles(orgId, invitedByUserId, tx as never);
     const fields = await this.resolveInviteCreateFields(orgId, dto, actor, {
       skipManagePermissionCheck: options?.skipManagePermissionCheck,
@@ -252,7 +261,20 @@ export class OrganizationInviteService {
       },
     });
 
-    return { inviteId: created.id, plainToken: plain, iamAuditOutboxId: outbox.id };
+    const delivery = await this.inviteDelivery.enqueueInviteDeliveryInTransaction(tx, {
+      organizationId: orgId,
+      inviteId: created.id,
+      plainToken: plain,
+      sentByUserId: invitedByUserId,
+      idempotencyKey: `invite:create:${created.id}`,
+    });
+
+    return {
+      inviteId: created.id,
+      plainToken: plain,
+      iamAuditOutboxId: outbox.id,
+      inviteEmailOutboxId: delivery.outboxId,
+    };
   }
 
   /**
@@ -320,12 +342,12 @@ export class OrganizationInviteService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.roleService.inviteExpiryDays);
 
-    let rotated = false;
+    let recoveryOutboxId: string | null = null;
     await this.prisma.$transaction(async (tx) => {
       await acquireInviteDeliveryContinuityLock(tx, inviteId);
       const current = await tx.organizationUserInvite.findUnique({
         where: { id: inviteId },
-        select: { status: true },
+        select: { id: true, status: true, email: true },
       });
       if (!current || current.status !== OrganizationInviteStatus.PENDING) {
         return;
@@ -338,6 +360,7 @@ export class OrganizationInviteService {
         orderBy: { createdAt: 'desc' },
       });
       if (liveOutbox) {
+        recoveryOutboxId = liveOutbox.id;
         return;
       }
       await tx.organizationUserInvite.update({
@@ -349,34 +372,44 @@ export class OrganizationInviteService {
           revokedAt: null,
         },
       });
-      rotated = true;
+      await this.iamAudit.enqueueInTransaction(tx, {
+        organizationId: orgId,
+        idempotencyKey: `invite-rotated:${inviteId}:${tokenLookup}`,
+        eventType: UserAccessAuditAction.USER_INVITE_ROTATED,
+        actorUserId: sentByUserId,
+        targetInviteId: inviteId,
+        description: `Einladungstoken für ${maskRecipientEmail(current.email)} rotiert (Kontinuität)`,
+      });
+      const delivery = await this.inviteDelivery.enqueueInviteDeliveryInTransaction(tx, {
+        organizationId: orgId,
+        inviteId,
+        plainToken: plain,
+        sentByUserId,
+        idempotencyKey: `invite:recovery:${inviteId}:${tokenLookup}`,
+      });
+      recoveryOutboxId = delivery.outboxId;
     });
 
-    if (!rotated) {
-      const latestMap = await this.inviteOutbox.findLatestByInviteIds([inviteId]);
-      const recovered = latestMap.get(inviteId);
-      if (recovered && recovered.status !== InviteEmailOutboxStatus.DEAD_LETTER) {
-        await this.inviteDelivery.processOutboxIds([recovered.id]);
-        const refreshed = await this.inviteOutbox.findById(recovered.id);
-        const status = mapOutboxToDeliveryStatus(refreshed?.status ?? null);
-        return {
-          deliveryRequested: true,
-          deliveryConfirmed: status === 'SENT',
-          invitePending: true,
-        };
-      }
+    if (!recoveryOutboxId) {
       return { deliveryRequested: false, deliveryConfirmed: false, invitePending: false };
     }
 
-    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
-      organizationId: orgId,
-      inviteId,
-      plainToken: plain,
-      sentByUserId,
-      idempotencyKey: `invite:recovery:${inviteId}:${tokenLookup}`,
-    });
+    await this.inviteDelivery.processOutboxIds([recoveryOutboxId]);
+    const deliveryRow = await this.inviteOutbox.findById(recoveryOutboxId);
+    const status = mapOutboxToDeliveryStatus(deliveryRow?.status ?? null);
+    return {
+      deliveryRequested: status === 'QUEUED' || status === 'SENDING' || status === 'SENT',
+      deliveryConfirmed: status === 'SENT',
+      invitePending: true,
+    };
+  }
+
+  async finalizePersistedInviteDelivery(outboxId: string | null | undefined): Promise<{
+    deliveryRequested: boolean;
+    deliveryConfirmed: boolean;
+  }> {
     if (!outboxId) {
-      return { deliveryRequested: false, deliveryConfirmed: false, invitePending: true };
+      return { deliveryRequested: false, deliveryConfirmed: false };
     }
     await this.inviteDelivery.processOutboxIds([outboxId]);
     const deliveryRow = await this.inviteOutbox.findById(outboxId);
@@ -384,7 +417,6 @@ export class OrganizationInviteService {
     return {
       deliveryRequested: status === 'QUEUED' || status === 'SENDING' || status === 'SENT',
       deliveryConfirmed: status === 'SENT',
-      invitePending: true,
     };
   }
 
@@ -481,22 +513,25 @@ export class OrganizationInviteService {
       });
       outboxIds.push(resentOutbox.id);
 
-      return inviteUpdated;
+      const delivery = await this.inviteDelivery.enqueueInviteDeliveryInTransaction(tx, {
+        organizationId: orgId,
+        inviteId: inviteUpdated.id,
+        plainToken: plain,
+        sentByUserId: actorUserId,
+        idempotencyKey: `invite:resend:${inviteUpdated.id}:${tokenLookup}`,
+      });
+      return { invite: inviteUpdated, deliveryOutboxId: delivery.outboxId };
     });
 
-    const { outboxId } = await this.inviteDelivery.enqueueInviteDelivery({
-      organizationId: orgId,
-      inviteId: updated.id,
-      plainToken: plain,
-      sentByUserId: actorUserId,
-      idempotencyKey: `invite:resend:${updated.id}:${tokenLookup}`,
-    });
-    await this.inviteDelivery.processOutboxIds([outboxId]);
-    const deliveryRow = outboxId ? await this.inviteOutbox.findById(outboxId) : null;
+    await this.inviteDelivery.processOutboxIds([updated.deliveryOutboxId]);
+    const deliveryRow = updated.deliveryOutboxId
+      ? await this.inviteOutbox.findById(updated.deliveryOutboxId)
+      : null;
+    const inviteView = updated.invite;
 
     await this.iamAudit.processOutboxIds(outboxIds);
 
-    return this.toAdminViewFromInvite(updated, deliveryRow?.status ?? null);
+    return this.toAdminViewFromInvite(inviteView, deliveryRow?.status ?? null);
   }
 
   async revokeInvite(

@@ -410,6 +410,7 @@ export class MasterGlobalIdentityService {
     let idempotentReplay = false;
     let inviteId = '';
     let invitePlain = '';
+    let inviteEmailOutboxId: string | null = null;
     const iamAuditOutboxIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
@@ -491,6 +492,7 @@ export class MasterGlobalIdentityService {
         );
         inviteId = persisted.inviteId;
         invitePlain = persisted.plainToken;
+        inviteEmailOutboxId = persisted.inviteEmailOutboxId ?? null;
         if (persisted.iamAuditOutboxId) {
           iamAuditOutboxIds.push(persisted.iamAuditOutboxId);
         }
@@ -554,25 +556,33 @@ export class MasterGlobalIdentityService {
           }
         }
       }
-    } else if (inviteId && invitePlain) {
-      try {
-        const delivery = await this.inviteService.enqueueDeliveryForPersistedInvite({
-          organizationId: mem.organizationId,
-          inviteId,
-          plainToken: invitePlain,
-          sentByUserId: actorUserId,
-        });
+    } else if (inviteId) {
+      if (inviteEmailOutboxId) {
+        const delivery = await this.inviteService.finalizePersistedInviteDelivery(
+          inviteEmailOutboxId,
+        );
         deliveryRequested = delivery.deliveryRequested;
         deliveryConfirmed = delivery.deliveryConfirmed;
-      } catch {
-        const continuity = await this.inviteService.ensureInviteDeliveryContinuity(
-          mem.organizationId,
-          inviteId,
-          actorUserId,
-        );
-        deliveryRequested = continuity.deliveryRequested;
-        deliveryConfirmed = continuity.deliveryConfirmed;
-        invitationPersisted = continuity.invitePending;
+      } else if (invitePlain) {
+        try {
+          const delivery = await this.inviteService.enqueueDeliveryForPersistedInvite({
+            organizationId: mem.organizationId,
+            inviteId,
+            plainToken: invitePlain,
+            sentByUserId: actorUserId,
+          });
+          deliveryRequested = delivery.deliveryRequested;
+          deliveryConfirmed = delivery.deliveryConfirmed;
+        } catch {
+          const continuity = await this.inviteService.ensureInviteDeliveryContinuity(
+            mem.organizationId,
+            inviteId,
+            actorUserId,
+          );
+          deliveryRequested = continuity.deliveryRequested;
+          deliveryConfirmed = continuity.deliveryConfirmed;
+          invitationPersisted = continuity.invitePending;
+        }
       }
     }
 

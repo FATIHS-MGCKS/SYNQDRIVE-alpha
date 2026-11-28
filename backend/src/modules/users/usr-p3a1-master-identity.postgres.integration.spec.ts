@@ -45,8 +45,8 @@ function assertDisposableDb(): void {
     throw new Error('DATABASE_URL must be a valid postgres URL');
   }
   const dbName = url.split('/').pop()?.split('?')[0] ?? '';
-  if (!['127.0.0.1', 'localhost'].includes(host) || !/usr/i.test(dbName)) {
-    throw new Error('DATABASE_URL must target disposable loopback usr test DB');
+  if (!['127.0.0.1', 'localhost'].includes(host) || !/^usr_p2_[a-z0-9_]+$/.test(dbName)) {
+    throw new Error('DATABASE_URL must target disposable loopback usr_p2_* test DB');
   }
 }
 

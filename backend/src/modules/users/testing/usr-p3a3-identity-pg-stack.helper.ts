@@ -33,6 +33,7 @@ export type UsrP3a3IdentityPgStack = {
   inviteService: OrganizationInviteService;
   passwordReset: PasswordResetService;
   inviteDelivery: InviteEmailDeliveryService;
+  inviteOutbox: InviteEmailOutboxRepository;
   iamAudit: IamAuditService;
   userAudit: UserAccessAuditService;
   noopMail: TransactionalMailService;
@@ -129,6 +130,7 @@ export function createUsrP3a3IdentityPgStack(
     inviteService,
     passwordReset,
     inviteDelivery,
+    inviteOutbox,
     iamAudit,
     userAudit,
     noopMail,

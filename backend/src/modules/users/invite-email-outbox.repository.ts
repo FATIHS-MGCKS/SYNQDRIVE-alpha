@@ -15,6 +15,39 @@ export interface CreateInviteEmailOutboxInput {
 export class InviteEmailOutboxRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async createEntryIdempotentInTransaction(
+    tx: Prisma.TransactionClient,
+    input: CreateInviteEmailOutboxInput,
+  ) {
+    try {
+      return await tx.inviteEmailOutbox.create({
+        data: {
+          organizationId: input.organizationId,
+          inviteId: input.inviteId,
+          idempotencyKey: input.idempotencyKey,
+          tokenCiphertext: input.tokenCiphertext,
+          sentByUserId: input.sentByUserId ?? null,
+          availableAt: input.availableAt ?? new Date(),
+          status: InviteEmailOutboxStatus.PENDING,
+        },
+      });
+    } catch (err) {
+      const code =
+        err instanceof Prisma.PrismaClientKnownRequestError
+          ? err.code
+          : err && typeof err === 'object' && 'code' in err
+            ? String((err as { code: unknown }).code)
+            : undefined;
+      if (code === 'P2002') {
+        const existing = await tx.inviteEmailOutbox.findFirst({
+          where: { idempotencyKey: input.idempotencyKey },
+        });
+        return existing ?? null;
+      }
+      throw err;
+    }
+  }
+
   async createEntryIdempotent(input: CreateInviteEmailOutboxInput) {
     try {
       return await this.prisma.inviteEmailOutbox.create({
