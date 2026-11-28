@@ -85,7 +85,9 @@
 
 ## USR-P3A.3A backend security acceptance (PR #2544)
 
-**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **HEAD evidence:** full P3A.1 suite **4/4**, P3A.3 security **12/12**, policy unit **9/9**, **0 skipped**.
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence:** P3A.1 **4/4**, P3A.3 security **12/12**, **HTTP authorization 15/15** (`usr-p3a3-identity-http-security.postgres.integration.spec.ts`), policy unit **9/9**, **0 skipped**, exit **0**.
+
+**USR-P3A.3A real HTTP authorization (PR #2544):** `createUsrP3a3IdentityHttpApp` — real `AuthGuard` (APP_GUARD), `RolesGuard`, `MasterAdminMfaGuard`, `StepUpGuard`, `UserAccessAuthorityService`, `IamMfaStepUpService`, `MasterGlobalIdentityService` via `createUsrP3a3IdentityPgStack`; signed access JWTs + persisted session families; MFA/step-up flags enabled in disposable env; `ValidationPipe` whitelist + forbidNonWhitelisted; only `TransactionalMailService` mocked. Preliminary mocked harness (`security-governance-identity.http-security.integration.spec.ts` **7/7**) retained as non-authoritative.
 
 | R-ID | Verdict | Notes |
 |------|---------|-------|
@@ -93,7 +95,7 @@
 | R02 | **PASS (partial)** | Real-stack PG identity/profile replay; outbox-bound `inviteId` |
 | R03 | **PASS (partial)** | `acquireInviteDeliveryContinuityLock` (913108); PG concurrent recovery + real invite delivery (mail mocked) |
 | R04 | **PASS (partial)** | `credentialSetupRequested` metadata + PG idempotent credential replay (no duplicate reset mail) |
-| R05 | **PARTIAL** | PG lock-wait **PASS** (p3a1 + p3a3); HTTP still harness **7/7** — full A01–A24 disposable-PG guards **NOT_EXECUTED** |
+| R05 | **PASS (partial)** | PG lock-wait + **real HTTP H01–H10** on disposable PG (see below); full A01–A24 matrix **not** claimed |
 | R06 | **PASS (partial)** | PG duplicate email + timezone; real org provision paths in R03/R04 cases |
 
 **Critical fix:** `master-admin-audit-privacy.util.ts` now retains `operationBinding`, `inviteId`, `membershipId`, `inviteByEmail` in persisted metadata (replay was fail-closed when binding was stripped).
@@ -108,16 +110,32 @@
 | P3A-FR04 | Seven locales English placeholders for new security-access keys |
 | P3A-FR05 | Credential setup UI gated until full R04 E2E proof |
 
-### A01–A24 matrix (this iteration)
+### HTTP authorization subset (H01–H10, disposable PG)
+
+| ID | Mapping | Result |
+|----|---------|--------|
+| H01 | A01 authorized create + audit | **PASS** |
+| H02 | A02 unauthenticated | **PASS** |
+| H03 | A03 org admin denied | **PASS** |
+| H04 | A04 billing delegate denied | **PASS** |
+| H05 | A05 revoked JWT | **PASS** |
+| H06 | A06 MFA/step-up matrix | **PASS** (invalid step-up → `STEP_UP_EXPIRED`; explicit clock-skew expiry case not split) |
+| H07 | A07 DTO / unknown fields | **PASS** |
+| H08 | A17 profile update | **PASS** |
+| H09 | A18 forbidden patch fields | **PASS** |
+| H10 | A19 legacy `/admin/users` parity | **PASS** |
+
+`FULL_NEST_BOOT` — bounded Nest module for identity HTTP surface (DI resolve `MasterGlobalIdentityService`, `GET /api/v1/health`, `SELECT 1`; not full `AppModule` — Redis/workers absent in disposable runner).
+
+### A01–A24 matrix (honest scope)
 
 | Case | Result |
 |------|--------|
-| A01 | **PASS** (HTTP harness, mocked service) |
-| A02–A03b | **PASS** (existing HTTP harness) |
-| A04–A05, A08–A24 | **NOT_EXECUTED** (requires full Nest + disposable PG security harness) |
-| A06–A07 | **PASS** (HTTP / DTO contract) |
+| A01–A07, A17–A19 | **PASS** (disposable PG real HTTP, subset above) |
+| A08–A16, A20–A24 | **NOT_EXECUTED** (P3A.3B / expanded matrix) |
+| Preliminary mocked harness | **7/7** (non-authoritative) |
 
-**P3A1_SECURITY_ACCEPTANCE=PENDING_P3A3B** — partial R + partial A; **no merge readiness**.
+**P3A3A_HTTP_AUTHORIZATION=CONDITIONAL_PARTIAL** — H01–H10 executed; **no full A01–A24**; **no merge readiness**.
 
 ### CI authority
 
