@@ -1,3 +1,7 @@
+import {
+  appendSecurityAccessNavParamsFromSearch,
+  stripSecurityAccessNavParams,
+} from '../security-access/security-access-url';
 import type { MasterNavLocationState, MasterView } from './master-nav.types';
 
 const CANONICAL_VIEWS: MasterView[] = [
@@ -87,7 +91,11 @@ export function normalizeMasterNavLocation(search: string): MasterNavLocationSta
   };
 }
 
-export function buildMasterNavSearch(state: MasterNavLocationState, preserveBillingAndVoice = true): string {
+export function buildMasterNavSearch(
+  state: MasterNavLocationState,
+  preserveBillingAndVoice = true,
+  searchSource?: string,
+): string {
   const params = new URLSearchParams();
   if (typeof window !== 'undefined' && preserveBillingAndVoice) {
     const current = new URLSearchParams(window.location.search);
@@ -132,13 +140,31 @@ export function buildMasterNavSearch(state: MasterNavLocationState, preserveBill
     params.set('hmTab', state.hmTab);
   }
 
+  if (state.view === 'security-access') {
+    const source =
+      searchSource ??
+      (typeof window !== 'undefined' ? window.location.search : '');
+    if (source) {
+      appendSecurityAccessNavParamsFromSearch(params, source);
+    }
+  } else {
+    stripSecurityAccessNavParams(params);
+    if (state.view !== 'organizations' && state.view !== 'billing') {
+      params.delete('orgId');
+    }
+  }
+
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
 
-export function pushMasterNavState(state: MasterNavLocationState, replace = false) {
+export function pushMasterNavState(
+  state: MasterNavLocationState,
+  replace = false,
+  searchSource?: string,
+) {
   if (typeof window === 'undefined') return;
-  const next = `${window.location.pathname}${buildMasterNavSearch(state)}`;
+  const next = `${window.location.pathname}${buildMasterNavSearch(state, true, searchSource)}`;
   if (replace) {
     window.history.replaceState(state, '', next);
   } else {

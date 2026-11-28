@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { api } from '../../lib/api';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { api, getErrorMessage } from '../../lib/api';
 import { SECURITY_ACCESS_REFRESH_MS, SECURITY_ACCESS_STALE_MS } from './security-access.utils';
 import type {
   AuditLogDetailDto,
@@ -14,25 +14,31 @@ import type {
   SecurityAttentionSummaryDto,
 } from './types';
 
-export function useSecurityAttentionSummary() {
+type LoadErrorKey = 'attention' | 'users' | 'userDetail' | 'platformRoles' | 'orgRoles' | 'auditLog' | 'own';
+
+export function useSecurityAttentionSummary(loadError: (k: LoadErrorKey) => string) {
   const [data, setData] = useState<SecurityAttentionSummaryDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await api.admin.securityAccess.attentionSummary();
+      if (requestId !== requestIdRef.current) return;
       setData(res);
       setFetchedAt(Date.now());
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Aufmerksamkeitsübersicht konnte nicht geladen werden');
+      if (requestId !== requestIdRef.current) return;
+      setError(getErrorMessage(e, loadError('attention')));
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, []);
+  }, [loadError]);
 
   useEffect(() => {
     void load();
@@ -55,25 +61,30 @@ export interface SecurityUsersQuery {
   organizationId?: string;
 }
 
-export function useSecurityUsers(query: SecurityUsersQuery, enabled = true) {
+export function useSecurityUsers(query: SecurityUsersQuery, enabled: boolean, loadError: (k: LoadErrorKey) => string) {
   const [result, setResult] = useState<PaginatedResponse<GovernanceUserListItemDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const queryKey = JSON.stringify(query);
 
   const load = useCallback(async () => {
     if (!enabled) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await api.admin.securityAccess.listUsers(query);
+      if (requestId !== requestIdRef.current) return;
       setResult(res);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Benutzer konnten nicht geladen werden');
+      if (requestId !== requestIdRef.current) return;
+      setError(getErrorMessage(e, loadError('users')));
       setResult(null);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [enabled, query.page, query.limit, query.search, query.platformRole, query.mfaState, query.attention, query.organizationId]);
+  }, [enabled, loadError, queryKey]);
 
   useEffect(() => {
     void load();
@@ -82,44 +93,69 @@ export function useSecurityUsers(query: SecurityUsersQuery, enabled = true) {
   return { result, loading, error, refresh: load };
 }
 
-export function useSecurityUserDetail(userId: string | null) {
+export function useSecurityUserDetail(userId: string | null, loadError: (k: LoadErrorKey) => string) {
   const [detail, setDetail] = useState<GovernanceUserDetailDto | null>(null);
   const [sessions, setSessions] = useState<GovernanceUserSessionDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const detailRequestRef = useRef(0);
+  const sessionsRequestRef = useRef(0);
+
+  useLayoutEffect(() => {
+    detailRequestRef.current += 1;
+    sessionsRequestRef.current += 1;
+    setDetail(null);
+    setSessions([]);
+    setError(null);
+    setSessionsError(null);
+    setLoading(!!userId);
+    setSessionsLoading(!!userId);
+  }, [userId]);
 
   const load = useCallback(async () => {
     if (!userId) {
       setDetail(null);
       setSessions([]);
+      setSessionsError(null);
+      setLoading(false);
+      setSessionsLoading(false);
       return;
     }
+    const requestId = ++detailRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await api.admin.securityAccess.getUser(userId);
+      if (requestId !== detailRequestRef.current) return;
       setDetail(res);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Benutzerdetails konnten nicht geladen werden');
+      if (requestId !== detailRequestRef.current) return;
+      setError(getErrorMessage(e, loadError('userDetail')));
       setDetail(null);
     } finally {
-      setLoading(false);
+      if (requestId === detailRequestRef.current) setLoading(false);
     }
-  }, [userId]);
+  }, [userId, loadError]);
 
   const loadSessions = useCallback(async () => {
     if (!userId) return;
+    const requestId = ++sessionsRequestRef.current;
     setSessionsLoading(true);
+    setSessionsError(null);
     try {
       const res = await api.admin.securityAccess.listUserSessions(userId);
+      if (requestId !== sessionsRequestRef.current) return;
       setSessions(res);
-    } catch {
+    } catch (e: unknown) {
+      if (requestId !== sessionsRequestRef.current) return;
+      setSessionsError(getErrorMessage(e, loadError('users')));
       setSessions([]);
     } finally {
-      setSessionsLoading(false);
+      if (requestId === sessionsRequestRef.current) setSessionsLoading(false);
     }
-  }, [userId]);
+  }, [userId, loadError]);
 
   useEffect(() => {
     void load();
@@ -129,26 +165,39 @@ export function useSecurityUserDetail(userId: string | null) {
     if (userId) void loadSessions();
   }, [userId, loadSessions]);
 
-  return { detail, sessions, loading, sessionsLoading, error, refresh: load, refreshSessions: loadSessions };
+  return {
+    detail,
+    sessions,
+    loading,
+    sessionsLoading,
+    error,
+    sessionsError,
+    refresh: load,
+    refreshSessions: loadSessions,
+  };
 }
 
-export function usePlatformRoles() {
+export function usePlatformRoles(loadError: (k: LoadErrorKey) => string) {
   const [roles, setRoles] = useState<PlatformRoleSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await api.admin.securityAccess.listPlatformRoles();
+      if (requestId !== requestIdRef.current) return;
       setRoles(Array.isArray(res) ? res : (res as { roles?: PlatformRoleSummaryDto[] }).roles ?? []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Plattformrollen konnten nicht geladen werden');
+      if (requestId !== requestIdRef.current) return;
+      setError(getErrorMessage(e, loadError('platformRoles')));
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, []);
+  }, [loadError]);
 
   useEffect(() => {
     void load();
@@ -164,24 +213,29 @@ export interface OrgRolesQuery {
   search?: string;
 }
 
-export function useOrgRoles(query: OrgRolesQuery) {
+export function useOrgRoles(query: OrgRolesQuery, loadError: (k: LoadErrorKey) => string) {
   const [result, setResult] = useState<PaginatedResponse<OrgRoleSummaryDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const queryKey = JSON.stringify(query);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await api.admin.securityAccess.listOrgRoles(query);
+      if (requestId !== requestIdRef.current) return;
       setResult(res);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Mandantenrollen konnten nicht geladen werden');
+      if (requestId !== requestIdRef.current) return;
+      setError(getErrorMessage(e, loadError('orgRoles')));
       setResult(null);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [query.page, query.limit, query.organizationId, query.search]);
+  }, [loadError, queryKey]);
 
   useEffect(() => {
     void load();
@@ -190,21 +244,42 @@ export function useOrgRoles(query: OrgRolesQuery) {
   return { result, loading, error, refresh: load };
 }
 
-export function useRoleDetail(roleId: string | null, scope: 'platform' | 'organization' | null, organizationId?: string | null) {
+export function useRoleDetail(
+  roleId: string | null,
+  scope: 'platform' | 'organization' | null,
+  organizationId?: string | null,
+) {
   const [detail, setDetail] = useState<GovernanceRoleDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
+  const requestIdRef = useRef(0);
+
+  useLayoutEffect(() => {
+    requestIdRef.current += 1;
+    setDetail(null);
+    setLoading(!!roleId && !!scope);
+  }, [roleId, scope, organizationId]);
 
   useEffect(() => {
     if (!roleId || !scope) {
       setDetail(null);
+      setLoading(false);
       return;
     }
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     void api.admin.securityAccess
       .getRole(roleId, scope, organizationId ?? undefined)
-      .then(setDetail)
-      .catch(() => setDetail(null))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (requestId !== requestIdRef.current) return;
+        setDetail(res);
+      })
+      .catch(() => {
+        if (requestId !== requestIdRef.current) return;
+        setDetail(null);
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) setLoading(false);
+      });
   }, [roleId, scope, organizationId]);
 
   return { detail, loading };
@@ -224,36 +299,29 @@ export interface AuditLogQuery {
   search?: string;
 }
 
-export function useAuditLog(query: AuditLogQuery) {
+export function useAuditLog(query: AuditLogQuery, loadError: (k: LoadErrorKey) => string) {
   const [result, setResult] = useState<PaginatedResponse<AuditLogListItemDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const queryKey = JSON.stringify(query);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await api.admin.activityLog(query);
+      if (requestId !== requestIdRef.current) return;
       setResult(res as PaginatedResponse<AuditLogListItemDto>);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Audit-Protokoll konnte nicht geladen werden');
+      if (requestId !== requestIdRef.current) return;
+      setError(getErrorMessage(e, loadError('auditLog')));
       setResult(null);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [
-    query.page,
-    query.limit,
-    query.entity,
-    query.action,
-    query.organizationId,
-    query.auditDomain,
-    query.securityOnly,
-    query.from,
-    query.to,
-    query.actorUserId,
-    query.search,
-  ]);
+  }, [loadError, queryKey]);
 
   useEffect(() => {
     void load();
@@ -265,17 +333,34 @@ export function useAuditLog(query: AuditLogQuery) {
 export function useAuditDetail(auditId: string | null) {
   const [detail, setDetail] = useState<AuditLogDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
+  const requestIdRef = useRef(0);
+
+  useLayoutEffect(() => {
+    requestIdRef.current += 1;
+    setDetail(null);
+    setLoading(!!auditId);
+  }, [auditId]);
 
   useEffect(() => {
     if (!auditId) {
       setDetail(null);
+      setLoading(false);
       return;
     }
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     void api.admin.activityLogDetail(auditId)
-      .then(setDetail)
-      .catch(() => setDetail(null))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (requestId !== requestIdRef.current) return;
+        setDetail(res);
+      })
+      .catch(() => {
+        if (requestId !== requestIdRef.current) return;
+        setDetail(null);
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) setLoading(false);
+      });
   }, [auditId]);
 
   return { detail, loading };

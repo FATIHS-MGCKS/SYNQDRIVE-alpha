@@ -78,6 +78,7 @@ import { masterRegistrationBrakeDe } from './master.registration.brake.de';
 import { masterCvTechnicalSpecsDe } from './master.cv.technicalSpecs.de';
 import { masterCvDimoPrivilegeDe } from './master.cv.dimoPrivilege.de';
 import { masterCvOemSpecsDe } from './master.cv.oemSpecs.de';
+import { masterSecurityAccessV1De } from './master.security-access.v1.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -6053,6 +6054,7 @@ export const de: Record<TranslationKey, string> = {
   ...masterCvTechnicalSpecsDe,
   ...masterCvDimoPrivilegeDe,
   ...masterCvOemSpecsDe,
+  ...masterSecurityAccessV1De,
   ...batteryV2HvInspectionDE,
   ...tireWearV3De,
   ...serviceIntelligenceDe,

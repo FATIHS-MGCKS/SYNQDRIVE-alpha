@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import { FormDialog } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { getToken } from '../../../lib/auth';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 
 export interface AuditExportDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ function todayDate(): string {
 }
 
 export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }: AuditExportDialogProps) {
+  const { t } = useSecurityAccessPresentation();
   const [from, setFrom] = useState(defaultFromDate());
   const [to, setTo] = useState(todayDate());
   const [format, setFormat] = useState<'json' | 'csv'>('csv');
@@ -30,7 +32,7 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
 
   const handleExport = async () => {
     if (!from || !to) {
-      setError('Zeitraum ist Pflicht.');
+      setError(t('master.securityAccess.export.error.rangeRequired'));
       return;
     }
     setLoading(true);
@@ -50,11 +52,11 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
 
       if (res.status === 403) {
         window.dispatchEvent(new CustomEvent('synqdrive:step-up-required', { detail: { action: 'MASTER_AUDIT_EXPORT' } }));
-        throw new Error('Schritt-für-Schritt-Bestätigung erforderlich.');
+        throw new Error(t('master.securityAccess.export.error.stepUp'));
       }
 
       if (!res.ok) {
-        let message = `Export fehlgeschlagen (${res.status})`;
+        let message = t('master.securityAccess.export.error.failedWithStatus', { status: String(res.status) });
         try {
           const body = (await res.json()) as { message?: string };
           if (body.message) message = body.message;
@@ -76,7 +78,7 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
       URL.revokeObjectURL(url);
       onOpenChange(false);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Export fehlgeschlagen');
+      setError(e instanceof Error ? e.message : t('master.securityAccess.export.error.failed'));
     } finally {
       setLoading(false);
     }
@@ -86,16 +88,16 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Audit exportieren"
-      description="Export enthält personenbezogene Daten (E-Mail, IP). Nur für autorisierte Compliance-Zwecke."
+      title={t('master.securityAccess.export.title')}
+      description={t('master.securityAccess.export.description')}
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Abbrechen
+            {t('master.securityAccess.common.cancel')}
           </Button>
           <Button type="button" onClick={() => void handleExport()} disabled={loading}>
             <Download className="mr-2 h-4 w-4" />
-            {loading ? 'Export…' : 'Export starten'}
+            {loading ? t('master.securityAccess.export.inProgress') : t('master.securityAccess.export.start')}
           </Button>
         </>
       }
@@ -103,7 +105,7 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
       <div className="space-y-4 text-sm">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs font-semibold">Von</label>
+            <label className="mb-1 block text-xs font-semibold">{t('master.securityAccess.export.dateFrom')}</label>
             <input
               type="date"
               value={from}
@@ -112,7 +114,7 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold">Bis</label>
+            <label className="mb-1 block text-xs font-semibold">{t('master.securityAccess.export.dateTo')}</label>
             <input
               type="date"
               value={to}
@@ -123,18 +125,18 @@ export function AuditExportDialog({ open, onOpenChange, defaultOrganizationId }:
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-semibold">Organisation (optional)</label>
+          <label className="mb-1 block text-xs font-semibold">{t('master.securityAccess.export.orgOptional')}</label>
           <input
             type="text"
             value={organizationId}
             onChange={(e) => setOrganizationId(e.target.value)}
-            placeholder="Organisations-ID oder leer = Plattform"
+            placeholder={t('master.securityAccess.export.orgPlaceholder')}
             className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm font-mono"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-semibold">Format</label>
+          <label className="mb-1 block text-xs font-semibold">{t('master.securityAccess.export.format')}</label>
           <select
             value={format}
             onChange={(e) => setFormat(e.target.value as 'json' | 'csv')}

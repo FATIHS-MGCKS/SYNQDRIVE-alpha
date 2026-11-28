@@ -1,17 +1,16 @@
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DataCard, DataTable, StatusChip } from '../../../components/patterns';
 import type { DataTableColumn } from '../../../components/patterns';
 import { MasterErrorState, MasterLoadingState } from '../../shell';
 import { useSecurityUsers } from '../useSecurityAccess';
 import type { GovernanceUserListItemDto } from '../types';
+import { useDebouncedValue } from '../useDebouncedValue';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
 import {
   attentionCodeIcon,
-  attentionCodeLabel,
   attentionCodeTone,
-  formatRelativeDe,
   mfaStateIcon,
-  mfaStateLabel,
   mfaStateTone,
 } from '../security-access.utils';
 
@@ -25,10 +24,16 @@ const INPUT =
   'w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-ring';
 
 export function SecurityUsersTab({ variant, organizationId, onOpenUser }: SecurityUsersTabProps) {
+  const { t, locale, mfaStateLabel, attentionCodeLabel, accountStateLabel, platformRoleLabel, formatRelative, loadError } =
+    useSecurityAccessPresentation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [searchDebounced, setSearchDebounced] = useState('');
+  const searchDebounced = useDebouncedValue(search, 300);
   const [mfaFilter, setMfaFilter] = useState('');
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchDebounced, mfaFilter, organizationId, variant]);
 
   const query = useMemo(
     () => ({
@@ -43,13 +48,13 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
     [page, searchDebounced, variant, mfaFilter, organizationId],
   );
 
-  const { result, loading, error, refresh } = useSecurityUsers(query);
+  const { result, loading, error, refresh } = useSecurityUsers(query, true, loadError);
 
   const columns = useMemo<DataTableColumn<GovernanceUserListItemDto>[]>(
     () => [
       {
         key: 'identity',
-        header: 'Identität',
+        header: t('master.securityAccess.users.columns.identity'),
         cell: (u) => (
           <div>
             <p className="text-sm font-semibold">{u.name}</p>
@@ -59,29 +64,25 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
       },
       {
         key: 'role',
-        header: 'Rolle',
+        header: t('master.securityAccess.users.columns.role'),
         cell: (u) => (
           <span className="text-xs font-medium">
-            {u.platformRole === 'MASTER_ADMIN'
-              ? 'Plattform-Administrator'
-              : u.platformRole === 'master-billing'
-                ? 'Abrechnung (eingeschränkt)'
-                : u.role}
+            {u.platformRole ? platformRoleLabel(u.platformRole) : u.role}
           </span>
         ),
       },
       {
         key: 'state',
-        header: 'Kontostatus',
+        header: t('master.securityAccess.users.columns.accountState'),
         cell: (u) => (
           <StatusChip tone="neutral" className="text-xs">
-            {u.accountState}
+            {accountStateLabel(u.accountState)}
           </StatusChip>
         ),
       },
       {
         key: 'mfa',
-        header: 'MFA',
+        header: t('master.securityAccess.users.columns.mfa'),
         cell: (u) => {
           const Icon = mfaStateIcon(u.mfaState);
           return (
@@ -93,10 +94,10 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
       },
       {
         key: 'attention',
-        header: 'Aufmerksamkeit',
+        header: t('master.securityAccess.users.columns.attention'),
         cell: (u) =>
           u.attentionCodes.length === 0 ? (
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-xs text-muted-foreground">{t('master.securityAccess.common.emDash')}</span>
           ) : (
             <div className="flex flex-wrap gap-1">
               {u.attentionCodes.slice(0, 2).map((code) => {
@@ -115,11 +116,11 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
       },
       {
         key: 'last',
-        header: 'Zuletzt aktiv',
-        cell: (u) => <span className="text-xs text-muted-foreground">{formatRelativeDe(u.lastActive)}</span>,
+        header: t('master.securityAccess.users.columns.lastActive'),
+        cell: (u) => <span className="text-xs text-muted-foreground">{formatRelative(u.lastActive)}</span>,
       },
     ],
-    [],
+    [accountStateLabel, attentionCodeLabel, formatRelative, locale, mfaStateLabel, platformRoleLabel, t],
   );
 
   const totalPages = result?.meta.totalPages ?? 1;
@@ -133,35 +134,25 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
             <input
               type="search"
               className={`${INPUT} pl-9`}
-              placeholder="Name oder E-Mail suchen…"
+              placeholder={t('master.securityAccess.users.searchPlaceholder')}
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-                window.clearTimeout((window as unknown as { _saSearch?: number })._saSearch);
-                (window as unknown as { _saSearch?: number })._saSearch = window.setTimeout(() => {
-                  setSearchDebounced(e.target.value);
-                }, 300);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           {variant === 'master-admins' && (
             <select
               value={mfaFilter}
-              onChange={(e) => {
-                setMfaFilter(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setMfaFilter(e.target.value)}
               className={INPUT}
             >
-              <option value="">Alle MFA-Status</option>
-              <option value="DISABLED">MFA fehlt</option>
-              <option value="ENABLED">MFA aktiv</option>
-              <option value="REQUIRED">MFA erforderlich</option>
+              <option value="">{t('master.securityAccess.users.mfaFilterAll')}</option>
+              <option value="DISABLED">{t('master.securityAccess.users.mfaFilterMissing')}</option>
+              <option value="ENABLED">{t('master.securityAccess.users.mfaFilterActive')}</option>
+              <option value="REQUIRED">{t('master.securityAccess.users.mfaFilterRequired')}</option>
             </select>
           )}
           <button type="button" className="sq-btn-secondary rounded-xl px-4 py-2 text-xs font-semibold" onClick={() => void refresh()}>
-            Aktualisieren
+            {t('master.securityAccess.users.refresh')}
           </button>
         </div>
       </DataCard>
@@ -169,7 +160,7 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
       {loading && !result ? (
         <MasterLoadingState variant="rows" count={5} />
       ) : error ? (
-        <MasterErrorState title="Benutzerliste" error={error} onRetry={() => void refresh()} />
+        <MasterErrorState title={t('master.securityAccess.users.errorTitle')} error={error} onRetry={() => void refresh()} />
       ) : (
         <>
           <div className="hidden lg:block">
@@ -177,7 +168,7 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
               columns={columns}
               rows={result?.data ?? []}
               getRowKey={(u) => u.id}
-              empty="Keine Benutzer gefunden"
+              empty={t('master.securityAccess.users.empty')}
               onRowClick={(u) => onOpenUser(u.id)}
             />
           </div>
@@ -220,10 +211,10 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
                 className="sq-btn-secondary rounded-lg px-3 py-1.5 text-xs disabled:opacity-40"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                Zurück
+                {t('master.securityAccess.pagination.back')}
               </button>
               <span className="text-xs text-muted-foreground">
-                Seite {page} / {totalPages}
+                {t('master.securityAccess.pagination.pageOf', { page: String(page), total: String(totalPages) })}
               </span>
               <button
                 type="button"
@@ -231,7 +222,7 @@ export function SecurityUsersTab({ variant, organizationId, onOpenUser }: Securi
                 className="sq-btn-secondary rounded-lg px-3 py-1.5 text-xs disabled:opacity-40"
                 onClick={() => setPage((p) => p + 1)}
               >
-                Weiter
+                {t('master.securityAccess.pagination.forward')}
               </button>
             </div>
           )}

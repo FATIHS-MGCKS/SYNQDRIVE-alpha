@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, RefreshCw } from 'lucide-react';
 import { MasterPageHeader } from '../shell';
-import { MasterErrorState, MasterLoadingState } from '../shell/MasterPageStates';
-import {
-  SECURITY_ACCESS_SECTIONS,
-  formatRelativeDe,
-} from './security-access.utils';
 import { useSecurityAttentionSummary } from './useSecurityAccess';
+import { useSecurityAccessPresentation } from './useSecurityAccessPresentation';
 import {
   readSecurityAccessLocation,
   syncSecurityAccessUrl,
@@ -28,10 +24,11 @@ interface SecurityAccessHubProps {
 }
 
 export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps) {
+  const { t, sectionTabs, loadError, formatRelative } = useSecurityAccessPresentation();
   const initial = useMemo(() => readSecurityAccessLocation(window.location.search), []);
   const [location, setLocation] = useState<SecurityAccessLocation>(initial);
   const [exportOpen, setExportOpen] = useState(false);
-  const summary = useSecurityAttentionSummary();
+  const summary = useSecurityAttentionSummary(loadError);
 
   const navigate = useCallback((patch: Partial<SecurityAccessLocation>, replace = false) => {
     syncSecurityAccessUrl(patch, { replace });
@@ -58,7 +55,10 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
   }, []);
 
   const metaLine = summary.data
-    ? `${summary.data.topItems.length > 0 ? summary.data.total : 0} Aufmerksamkeit · Stand ${formatRelativeDe(summary.data.generatedAt)}`
+    ? t('master.securityAccess.hub.metaAttention', {
+        count: String(summary.data.topItems.length > 0 ? summary.data.total : 0),
+        relative: formatRelative(summary.data.generatedAt),
+      })
     : undefined;
 
   const auditId = location.auditId ?? location.eventId;
@@ -67,7 +67,7 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
     <div className="space-y-5" data-testid="security-access-hub">
       <MasterPageHeader
         variant="page"
-        title="Identität & Zugriff"
+        title={t('master.securityAccess.hub.title')}
         meta={metaLine}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -78,7 +78,7 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
                 onClick={() => setExportOpen(true)}
               >
                 <Download className="h-4 w-4" />
-                Export
+                {t('master.securityAccess.hub.export')}
               </button>
             )}
             <button
@@ -86,34 +86,26 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
               className="sq-btn-secondary flex items-center gap-2 rounded-xl px-4 py-2 text-sm"
               onClick={() => void summary.refresh()}
               disabled={summary.loading}
-              aria-label="Daten neu laden"
+              aria-label={t('master.securityAccess.hub.reloadAria')}
             >
               <RefreshCw className={`h-4 w-4 ${summary.loading ? 'animate-spin' : ''}`} />
-              Aktualisieren
+              {t('master.securityAccess.hub.refresh')}
             </button>
           </div>
         }
-        tabs={SECURITY_ACCESS_SECTIONS.map((t) => ({ id: t.id, label: t.label }))}
+        tabs={sectionTabs}
         activeTabId={location.section}
         onTabChange={(id) => navigateSection(id as SecurityAccessSection)}
-        tabsAriaLabel="Identität und Zugriff"
+        tabsAriaLabel={t('master.securityAccess.hub.tabsAria')}
         tabsTestIdPrefix="security-access"
       />
 
       {location.section === 'overview' && (
-        <>
-          {summary.loading && !summary.data ? (
-            <MasterLoadingState variant="card" count={2} />
-          ) : summary.error ? (
-            <MasterErrorState title="Übersicht" error={summary.error} onRetry={() => void summary.refresh()} />
-          ) : (
-            <SecurityAccessOverviewTab
-              onNavigateSection={navigateSection}
-              onOpenUser={(userId) => navigate({ userId })}
-              onOpenAudit={(auditId) => navigate({ section: 'audit', auditId })}
-            />
-          )}
-        </>
+        <SecurityAccessOverviewTab
+          onNavigateSection={navigateSection}
+          onOpenUser={(userId) => navigate({ userId })}
+          onOpenAudit={(aid) => navigate({ section: 'audit', auditId: aid })}
+        />
       )}
 
       {location.section === 'users' && (
@@ -125,10 +117,7 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
       )}
 
       {location.section === 'master-admins' && (
-        <SecurityUsersTab
-          variant="master-admins"
-          onOpenUser={(userId) => navigate({ userId })}
-        />
+        <SecurityUsersTab variant="master-admins" onOpenUser={(userId) => navigate({ userId })} />
       )}
 
       {location.section === 'roles' && (
@@ -162,7 +151,11 @@ export function SecurityAccessHub({ onOpenOrganization }: SecurityAccessHubProps
 
       <UserDetailDrawer
         userId={location.userId}
-        contextLabel={location.section === 'master-admins' ? 'Plattform-Administrator' : 'Benutzer'}
+        contextLabel={
+          location.section === 'master-admins'
+            ? t('master.securityAccess.hub.contextPlatformAdmin')
+            : t('master.securityAccess.hub.contextUser')
+        }
         onClose={() => navigate({ userId: null }, true)}
         onOpenAudit={(id) => navigate({ section: 'audit', auditId: id, userId: null })}
         onOpenOrganization={onOpenOrganization}

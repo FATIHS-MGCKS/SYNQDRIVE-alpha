@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { normalizeMasterNavLocation, buildMasterNavSearch, readViewParam } from './master-nav-url';
 
 describe('master-nav-url', () => {
@@ -49,5 +49,18 @@ describe('master-nav-url', () => {
     const qs = buildMasterNavSearch({ view: 'product-management' }, false);
     expect(qs).toContain('view=product-management');
     expect(qs).not.toContain('orgTab=');
+  });
+
+  it('preserves securityAccess deep link when window search is set', () => {
+    vi.stubGlobal('window', {
+      location: {
+        search: '?view=security-access&securityAccess=users&userId=nav-test-user',
+        pathname: '/master',
+      },
+    });
+    const qs = buildMasterNavSearch({ view: 'security-access' }, true);
+    expect(qs).toContain('securityAccess=users');
+    expect(qs).toContain('userId=nav-test-user');
+    vi.unstubAllGlobals();
   });
 });

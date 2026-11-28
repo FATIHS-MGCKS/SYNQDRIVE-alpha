@@ -1,15 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DataCard, DataTable, StatusChip } from '../../../components/patterns';
 import type { DataTableColumn } from '../../../components/patterns';
 import { MasterErrorState, MasterLoadingState } from '../../shell';
 import { useAuditLog } from '../useSecurityAccess';
 import type { AuditLogListItemDto } from '../types';
-import {
-  auditResultLabel,
-  auditResultTone,
-  formatRelativeDe,
-  truncateReason,
-} from '../security-access.utils';
+import { useSecurityAccessPresentation } from '../useSecurityAccessPresentation';
+import { auditResultTone, truncateReason } from '../security-access.utils';
 
 interface SecurityAuditTabProps {
   securityOnly?: boolean;
@@ -27,6 +23,7 @@ export function SecurityAuditTab({
   auditDomain,
   onOpenAudit,
 }: SecurityAuditTabProps) {
+  const { t, auditResultLabel, formatRelative, loadError } = useSecurityAccessPresentation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [from, setFrom] = useState('');
@@ -46,28 +43,32 @@ export function SecurityAuditTab({
     [page, search, organizationId, auditDomain, securityOnly, from, to],
   );
 
-  const { result, loading, error, refresh } = useAuditLog(query);
+  const { result, loading, error, refresh } = useAuditLog(query, loadError);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, organizationId, auditDomain, securityOnly, from, to]);
 
   const columns = useMemo<DataTableColumn<AuditLogListItemDto>[]>(
     () => [
       {
         key: 'time',
-        header: 'Zeitstempel',
-        cell: (r) => <span className="text-xs text-muted-foreground">{formatRelativeDe(r.createdAt)}</span>,
+        header: t('master.securityAccess.audit.columns.timestamp'),
+        cell: (r) => <span className="text-xs text-muted-foreground">{formatRelative(r.createdAt)}</span>,
       },
       {
         key: 'actor',
-        header: 'Akteur',
+        header: t('master.securityAccess.audit.columns.actor'),
         cell: (r) => <span className="text-xs font-medium">{r.userName}</span>,
       },
       {
         key: 'action',
-        header: 'Aktion',
+        header: t('master.securityAccess.audit.columns.action'),
         cell: (r) => <span className="text-xs font-semibold">{r.action}</span>,
       },
       {
         key: 'target',
-        header: 'Ziel',
+        header: t('master.securityAccess.audit.columns.target'),
         cell: (r) => (
           <span className="text-xs text-muted-foreground">
             {r.entity}
@@ -77,12 +78,14 @@ export function SecurityAuditTab({
       },
       {
         key: 'org',
-        header: 'Organisation',
-        cell: (r) => <span className="text-xs">{r.organizationName ?? 'Plattform'}</span>,
+        header: t('master.securityAccess.audit.columns.organization'),
+        cell: (r) => (
+          <span className="text-xs">{r.organizationName ?? t('master.securityAccess.common.platform')}</span>
+        ),
       },
       {
         key: 'result',
-        header: 'Ergebnis',
+        header: t('master.securityAccess.audit.columns.result'),
         cell: (r) => (
           <StatusChip tone={auditResultTone(r.result)} className="text-[10px]">
             {auditResultLabel(r.result)}
@@ -91,15 +94,17 @@ export function SecurityAuditTab({
       },
       {
         key: 'reason',
-        header: 'Grund',
+        header: t('master.securityAccess.audit.columns.reason'),
         cell: (r) => <span className="text-xs text-muted-foreground">{truncateReason(r.reason)}</span>,
       },
     ],
-    [],
+    [auditResultLabel, formatRelative, t],
   );
 
   const totalPages = result?.meta.totalPages ?? 1;
-  const title = securityOnly ? 'Sicherheitsereignisse' : 'Audit-Protokoll';
+  const title = securityOnly
+    ? t('master.securityAccess.audit.titleSecurityEvents')
+    : t('master.securityAccess.audit.titleLog');
 
   return (
     <div className="space-y-4">
@@ -108,21 +113,30 @@ export function SecurityAuditTab({
           <input
             type="search"
             className={INPUT}
-            placeholder="Suche…"
+            placeholder={t('master.securityAccess.audit.searchPlaceholder')}
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <input type="date" className={INPUT} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Von" />
-          <input type="date" className={INPUT} value={to} onChange={(e) => setTo(e.target.value)} aria-label="Bis" />
+          <input
+            type="date"
+            className={INPUT}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            aria-label={t('master.securityAccess.audit.dateFromAria')}
+          />
+          <input
+            type="date"
+            className={INPUT}
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            aria-label={t('master.securityAccess.audit.dateToAria')}
+          />
           <button type="button" className="sq-btn-secondary rounded-xl px-4 py-2 text-xs font-semibold" onClick={() => void refresh()}>
-            Filter anwenden
+            {t('master.securityAccess.audit.applyFilters')}
           </button>
         </div>
         {!securityOnly && (
-          <p className="mt-2 text-[10px] text-muted-foreground">Nur-Lese — revisionssichere Audit-Wahrheit.</p>
+          <p className="mt-2 text-[10px] text-muted-foreground">{t('master.securityAccess.audit.readOnlyHint')}</p>
         )}
       </DataCard>
 
@@ -133,7 +147,11 @@ export function SecurityAuditTab({
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            {result?.meta.total ?? 0} Einträge · Seite {page} / {totalPages}
+            {t('master.securityAccess.audit.entryCount', {
+              count: String(result?.meta.total ?? 0),
+              page: String(page),
+              total: String(totalPages),
+            })}
           </p>
 
           <div className="hidden lg:block">
@@ -141,7 +159,7 @@ export function SecurityAuditTab({
               columns={columns}
               rows={result?.data ?? []}
               getRowKey={(r) => r.id}
-              empty="Keine Einträge"
+              empty={t('master.securityAccess.audit.empty')}
               onRowClick={(r) => onOpenAudit(r.id)}
             />
           </div>
@@ -155,7 +173,9 @@ export function SecurityAuditTab({
                 onClick={() => onOpenAudit(r.id)}
               >
                 <p className="text-sm font-semibold">{r.action}</p>
-                <p className="text-xs text-muted-foreground">{r.userName} · {formatRelativeDe(r.createdAt)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {r.userName} · {formatRelative(r.createdAt)}
+                </p>
                 <StatusChip tone={auditResultTone(r.result)} className="mt-2 text-[10px]">
                   {auditResultLabel(r.result)}
                 </StatusChip>
@@ -171,7 +191,7 @@ export function SecurityAuditTab({
                 className="sq-btn-secondary rounded-lg px-3 py-1.5 text-xs disabled:opacity-40"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                Zurück
+                {t('master.securityAccess.pagination.back')}
               </button>
               <button
                 type="button"
@@ -179,7 +199,7 @@ export function SecurityAuditTab({
                 className="sq-btn-secondary rounded-lg px-3 py-1.5 text-xs disabled:opacity-40"
                 onClick={() => setPage((p) => p + 1)}
               >
-                Weiter
+                {t('master.securityAccess.pagination.forward')}
               </button>
             </div>
           )}

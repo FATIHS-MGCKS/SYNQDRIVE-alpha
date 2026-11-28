@@ -22,6 +22,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **REGRESSION_TEST** | Optional MA shell test: no `listAll` on mount when `view=security-access` |
 | **COMPLIANCE** | None direct |
 | **OWNER_DECISION** | NO |
+| **USR-P1B_STATUS** | **REMEDIATED_REPO** — dead state/handlers/`listAll` removed; `master-app-shell-no-listall.test.ts` |
 
 ---
 
@@ -42,6 +43,7 @@ Classification legend: `CONFIRMED_DEFECT` | `CONFIRMED_SECURITY_GAP` | `MISSING_
 | **REGRESSION_TEST** | `npm run i18n:check` after key migration |
 | **COMPLIANCE** | GDPR Art. 12 accessibility of information (engineering target) — partial gap |
 | **OWNER_DECISION** | NO |
+| **USR-P1B_STATUS** | **REMEDIATED_REPO** — 225 keys × 9 locales; see [`USR_P1B_SHELL_I18N_EVIDENCE.md`](USR_P1B_SHELL_I18N_EVIDENCE.md) |
 
 ---
 

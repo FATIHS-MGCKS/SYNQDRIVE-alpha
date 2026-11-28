@@ -43,7 +43,7 @@ import {
 import { normalizeContextForIntelligenceView } from './intelligence/master-intelligence-context-hygiene.util';
 import type { MasterNavLocationState } from './navigation/master-nav.types';
 import { Toaster, toast } from 'sonner';
-import type { Organization, PlatformUser } from './data/platform-data';
+import type { Organization } from './data/platform-data';
 import { api, getErrorMessage } from '../lib/api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { OrganizationsOperationalRefreshProvider, useOrganizationsOperationalRefresh } from './organizations/organizations-operational-refresh';
@@ -75,22 +75,6 @@ function mapApiOrg(o: any): Organization {
     products: o.products ?? [],
     integrations: o.integrations ?? [],
     invoices: o.invoices ?? [],
-  };
-}
-
-function mapApiUser(u: any): PlatformUser {
-  return {
-    id: u.id,
-    name: u.name ?? '',
-    email: u.email ?? '',
-    role: (u.role ?? 'Worker') as any,
-    organizationId: u.organizationId ?? u.organization_id ?? '',
-    organizationName: u.organizationName ?? u.organization_name ?? '',
-    status: (u.status ?? 'Active') as any,
-    lastActive: u.lastActive ?? u.last_login ?? '',
-    created_at: u.created_at ?? u.createdAt ?? '',
-    avatar: u.avatar ?? (u.name ?? '').slice(0, 2).toUpperCase(),
-    last_login: u.last_login ?? u.lastLogin ?? '',
   };
 }
 
@@ -140,7 +124,6 @@ function MasterAppInner() {
 
   // Centralized data state - empty by default, loaded from API
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [users, setUsers] = useState<PlatformUser[]>([]);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [stepUpAction, setStepUpAction] = useState<string | undefined>();
   const skipMfaCancelCleanupRef = useRef(false);
@@ -161,12 +144,8 @@ function MasterAppInner() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [orgRes, usersRes] = await Promise.all([
-          api.organizations.list().catch(() => ({ data: [], meta: { total: 0 } })),
-          api.users.listAll().catch(() => []),
-        ]);
+        const orgRes = await api.organizations.list().catch(() => ({ data: [], meta: { total: 0 } }));
         setOrganizations((orgRes.data || []).map(mapApiOrg));
-        setUsers(Array.isArray(usersRes) ? usersRes.map(mapApiUser) : []);
       } catch (e) {
         console.error('Failed to load data:', e);
       }
@@ -237,7 +216,7 @@ function MasterAppInner() {
       );
       pushMasterIntelligenceUrl(normalized.view, intelligenceContext, { replace: true });
     } else {
-      pushMasterNavState(normalized, true);
+      pushMasterNavState(normalized, true, search);
     }
   }, []);
 
@@ -296,12 +275,8 @@ function MasterAppInner() {
 
   const reloadFromApi = async () => {
     try {
-      const [orgRes, usersRes] = await Promise.all([
-        api.organizations.list().catch(() => ({ data: [], meta: { total: 0 } })),
-        api.users.listAll().catch(() => []),
-      ]);
+      const orgRes = await api.organizations.list().catch(() => ({ data: [], meta: { total: 0 } }));
       setOrganizations((orgRes.data || []).map(mapApiOrg));
-      setUsers(Array.isArray(usersRes) ? usersRes.map(mapApiUser) : []);
     } catch { /* keep current state */ }
   };
 
@@ -380,46 +355,6 @@ function MasterAppInner() {
       throw e;
     }
   };
-
-  // ============ USER CRUD ============
-  const handleAddUser = async (user: PlatformUser) => {
-    try {
-      const orgId = user.organizationId;
-      await api.users.create({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        organizationId: orgId || undefined,
-      });
-      toast.success(`User "${user.name}" created`);
-      await reloadFromApi();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to create user');
-    }
-  };
-  const handleUpdateUser = async (user: PlatformUser) => {
-    try {
-      await api.users.update(user.id, {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      });
-      toast.success(`User "${user.name}" updated`);
-      await reloadFromApi();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to update user');
-    }
-  };
-  const handleDeleteUser = async (id: string) => {
-    try {
-      await api.users.delete(id);
-      toast.success('User deleted');
-      await reloadFromApi();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete user');
-    }
-  };
-
 
   const selectedOrgId = detailOrgId;
 
