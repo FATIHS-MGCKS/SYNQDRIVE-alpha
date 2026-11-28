@@ -239,6 +239,27 @@
 
 **P3A3A_CREDENTIAL_AUTHORITY=CONDITIONAL_PARTIAL** — R04 path proven on disposable PG; **FR01–FR05** still open; **no merge/deploy**.
 
+### Credential delivery final edge seal (CR01–CR03, PR #2544)
+
+**Operation:** `SYNQDRIVE_MASTER_USERS_P3A3A_CREDENTIAL_DELIVERY_FINAL_EDGE_SEAL`
+
+**CR01:** `MasterCredentialSetupDeliveryService` — persist token + intent (`delivery_generation`, encrypted `delivery_token_ciphertext`) inside security-op tx; SMTP **post-commit**; `transport_confirmed_at` truth; failed transport retry without classifying token existence as delivery success.
+
+**CR02:** `evaluateOperationBoundCredentialSetupConfirm` + `PasswordResetService.confirmReset` CAS (`passwordHash: null`, single token admit, intent `credentialEstablishedAt`) for `securityOperationId` tokens.
+
+**CR03:** Operation-scoped revoke preserved; unrelated `security_operation_id: null` admin resets not revoked on provision replay; operation-bound rate buckets keyed per `securityOperationId`.
+
+| ID | Result |
+|----|--------|
+| D01–D10 | **PASS** (`usr-p3a3-credential-delivery-edge.postgres.integration.spec.ts`) |
+| C01–C11 + FLE + prior matrices | **PASS** (regression via gate) |
+
+**Gate (agent):** `usr-p3a3-postgres-gate.sh` **113/113**, exit **0**; `npm run build` + `tsc` **passed**; `i18n:check` **passed**; `validate-module-registry.sh` **passed**.
+
+**`main` sync:** merged `origin/main` at `e8c2422064309501dc31685ddca4ab16966b3cea`; `hardcoded-copy-inventory.json` restored from trusted `main`.
+
+**BACKEND_IMPLEMENTATION_FROZEN=YES** (CR01–CR03 closure); **A01–A24**, **AppModule boot**, **FR01–FR05** remain acceptance blockers.
+
 ### CI authority
 
 `usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). Design: `architecture/users-and-invites/evidence/USR_P3A3_CI_AUTHORITY_PROPOSAL.md`. **NEW_CI_AUTHORITY_REQUIRED=YES** (separate authority PR; not in #2544).

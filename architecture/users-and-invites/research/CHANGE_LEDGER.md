@@ -23,3 +23,4 @@
 | 2026-11-28 | USR-P3A.3A first-login — `canEstablishInitialCredentialsViaInvite`; credentialless invite accept + HTTP L01–L12 disposable PG; T12/T14 without pre-auth |
 | 2026-11-28 | USR-P3A.3A first-login security edge — invite provision binding columns; atomic first credential CAS; invite lifecycle fences; E01–E10 PG; gate **94/94** |
 | 2026-11-28 | USR-P3A.3A credential authority — setup intents + operation-bound reset; FL-R01 live user + session authority; FL-R02 lock order; C01–C11/FLE PG; gate **102/102** |
+| 2026-11-28 | USR-P3A.3A credential delivery edge — CR01–CR03 post-commit reset transport + generation CAS; operation-bound confirm policy; D01–D10 PG; gate **113/113**; backend freeze |

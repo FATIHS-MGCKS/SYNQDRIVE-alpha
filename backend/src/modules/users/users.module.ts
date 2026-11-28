@@ -29,6 +29,7 @@ import { IamTeamService } from './iam-team.service';
 import { IamAccessReviewController } from './iam-access-review.controller';
 import { IamTeamController } from './iam-team.controller';
 import { MasterGlobalIdentityService } from './master-global-identity.service';
+import { MasterCredentialSetupDeliveryService } from './master-credential-setup-delivery.service';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 
@@ -67,10 +68,12 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     IamAccessReviewSnapshotService,
     IamTeamService,
     MasterGlobalIdentityService,
+    MasterCredentialSetupDeliveryService,
   ],
   exports: [
     UsersService,
     MasterGlobalIdentityService,
+    MasterCredentialSetupDeliveryService,
     OrganizationInviteService,
     OrganizationRoleService,
     CommunicationPermissionBackfillService,

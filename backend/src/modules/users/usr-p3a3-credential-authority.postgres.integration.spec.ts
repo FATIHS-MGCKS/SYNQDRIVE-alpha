@@ -20,6 +20,7 @@ import {
   USR_P3A3_FIRST_LOGIN_HTTP_JWT_SECRET,
 } from './testing/usr-p3a3-first-login-http-pg.harness';
 import { acquireMasterProvisionOrgMutationLocks } from './iam-identity-mutation-lock-order';
+import { MasterCredentialSetupDeliveryService } from './master-credential-setup-delivery.service';
 import { pgBackendPid, waitUntilBackendBlocked } from './testing/usr-p2-deterministic-concurrency.helper';
 import * as jwt from 'jsonwebtoken';
 
@@ -173,9 +174,13 @@ function resetTokenFromLastMail(
     });
     expect(intents).toBe(1);
     const boundTokens = await prisma.passwordResetToken.count({
+      where: { securityOperationId: opId, revokedAt: null },
+    });
+    expect(boundTokens).toBe(1);
+    const intent = await prisma.masterIdentityCredentialSetupIntent.findUniqueOrThrow({
       where: { securityOperationId: opId },
     });
-    expect(boundTokens).toBeLessThanOrEqual(1);
+    expect(intent.passwordResetTokenId).toBeTruthy();
   });
 
   it('C09 — unrelated reset token does not satisfy provisioning intent', async () => {
@@ -268,7 +273,8 @@ function resetTokenFromLastMail(
       where: { userId: userRow.id, securityOperationId: opId },
       data: { revokedAt: new Date() },
     });
-    await ctx.p3.passwordReset.requestAdminResetBoundToOperation({
+    const delivery = new MasterCredentialSetupDeliveryService(prisma as never, ctx.p3.passwordReset);
+    await delivery.ensureDeliveryForOperation({
       organizationId: orgId,
       userId: userRow.id,
       actorUserId: masterActorId,

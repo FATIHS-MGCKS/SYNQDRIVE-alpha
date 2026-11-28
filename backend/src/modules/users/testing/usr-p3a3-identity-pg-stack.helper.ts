@@ -22,6 +22,7 @@ import { TransactionalMailService } from '@modules/users/transactional-mail.serv
 import { UserAccessAuditService } from '@modules/users/user-access-audit.service';
 import { UsersService } from '@modules/users/users.service';
 import { MasterGlobalIdentityService } from '../master-global-identity.service';
+import { MasterCredentialSetupDeliveryService } from '../master-credential-setup-delivery.service';
 import { InviteAcceptService } from '../invite-accept.service';
 import { createUsrP2PgIamStack } from './usr-p2-pg-iam-stack.helper';
 
@@ -117,6 +118,11 @@ export function createUsrP3a3IdentityPgStack(
   const maProcessor = new MasterAdminAuditOutboxProcessorService(prisma as never, maOutboxRepo);
   const auditDelivery = new MasterAdminAuditDeliveryService(prisma as never, maOutboxRepo, maProcessor);
 
+  const credentialSetupDelivery = new MasterCredentialSetupDeliveryService(
+    prisma as never,
+    passwordReset,
+  );
+
   const globalIdentity = new MasterGlobalIdentityService(
     prisma as never,
     usersService,
@@ -124,6 +130,7 @@ export function createUsrP3a3IdentityPgStack(
     iamAudit,
     auditDelivery,
     passwordReset,
+    credentialSetupDelivery,
   );
 
   const inviteAccept = new InviteAcceptService(

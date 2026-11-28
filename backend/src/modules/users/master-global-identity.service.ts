@@ -24,6 +24,7 @@ import {
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { PasswordResetService } from '@modules/auth/password-reset.service';
+import { MasterCredentialSetupDeliveryService } from './master-credential-setup-delivery.service';
 import { acquireCanonicalSecurityMutationLocks } from '@modules/auth/iam-security-mutation-concurrency';
 import { acquireSecurityOperationAdmissionLock } from '@modules/auth/refresh-token-session-concurrency';
 import {
@@ -172,6 +173,7 @@ export class MasterGlobalIdentityService {
     private readonly iamAudit: IamAuditService,
     private readonly auditDelivery: MasterAdminAuditDeliveryService,
     private readonly passwordReset: PasswordResetService,
+    private readonly credentialSetupDelivery: MasterCredentialSetupDeliveryService,
   ) {}
 
   async provisionGlobalUser(
@@ -624,15 +626,18 @@ export class MasterGlobalIdentityService {
       !inviteByEmail &&
       membershipStatus === MembershipStatus.ACTIVE
     ) {
-      const continuation = await this.continueCredentialSetupForOperation({
+      const continuation = await this.credentialSetupDelivery.ensureDeliveryForOperation({
         securityOperationId,
         organizationId: mem.organizationId,
         userId: createdUserId,
         actorUserId: actor.id!,
       });
       credentialSetupRequested = continuation.intentPresent;
-      if (continuation.transportRequested) {
+      if (continuation.deliveryAttempted) {
         deliveryRequested = true;
+      }
+      if (continuation.deliveryConfirmed) {
+        deliveryConfirmed = true;
       }
     }
 
@@ -871,78 +876,6 @@ export class MasterGlobalIdentityService {
       email: user.email,
       name: user.name,
     };
-  }
-
-  private async continueCredentialSetupForOperation(input: {
-    securityOperationId: string;
-    organizationId: string;
-    userId: string;
-    actorUserId: string;
-  }): Promise<{
-    intentPresent: boolean;
-    transportRequested: boolean;
-    credentialEstablished: boolean;
-  }> {
-    const intent = await this.prisma.masterIdentityCredentialSetupIntent.findUnique({
-      where: { securityOperationId: input.securityOperationId },
-    });
-    if (!intent || intent.userId !== input.userId || intent.organizationId !== input.organizationId) {
-      return { intentPresent: false, transportRequested: false, credentialEstablished: false };
-    }
-    if (intent.credentialEstablishedAt) {
-      return { intentPresent: true, transportRequested: true, credentialEstablished: true };
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: input.userId },
-      select: { passwordHash: true, status: true },
-    });
-    if (user?.passwordHash) {
-      await this.prisma.masterIdentityCredentialSetupIntent.update({
-        where: { id: intent.id },
-        data: { credentialEstablishedAt: new Date() },
-      });
-      return { intentPresent: true, transportRequested: true, credentialEstablished: true };
-    }
-
-    if (intent.passwordResetTokenId) {
-      const bound = await this.prisma.passwordResetToken.findUnique({
-        where: { id: intent.passwordResetTokenId },
-        select: { usedAt: true, revokedAt: true, expiresAt: true },
-      });
-      if (
-        bound &&
-        !bound.usedAt &&
-        !bound.revokedAt &&
-        bound.expiresAt > new Date()
-      ) {
-        return { intentPresent: true, transportRequested: true, credentialEstablished: false };
-      }
-    }
-
-    try {
-      const { tokenId } = await this.passwordReset.requestAdminResetBoundToOperation({
-        organizationId: input.organizationId,
-        userId: input.userId,
-        actorUserId: input.actorUserId,
-        securityOperationId: input.securityOperationId,
-        reason: 'master_identity_provision',
-      });
-      await this.prisma.masterIdentityCredentialSetupIntent.updateMany({
-        where: {
-          id: intent.id,
-          passwordResetTokenId: null,
-          credentialEstablishedAt: null,
-        },
-        data: {
-          passwordResetTokenId: tokenId,
-          transportRequestedAt: new Date(),
-        },
-      });
-      return { intentPresent: true, transportRequested: true, credentialEstablished: false };
-    } catch {
-      return { intentPresent: true, transportRequested: false, credentialEstablished: false };
-    }
   }
 
   private buildProvisionAuditEnvelope(input: {
