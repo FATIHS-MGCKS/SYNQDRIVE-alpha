@@ -7,6 +7,8 @@ import {
   MembershipRole,
   MembershipStatus,
   OrganizationInviteStatus,
+  UserPlatformRole,
+  UserStatus,
 } from '@prisma/client';
 import { InviteAcceptService } from './invite-accept.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -26,7 +28,7 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       findUnique: jest.Mock;
       update: jest.Mock;
     };
-    user: { findUnique: jest.Mock; create: jest.Mock };
+    user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     organizationMembership: {
       findUnique: jest.Mock;
       create: jest.Mock;
@@ -86,6 +88,11 @@ describe('IAM invite acceptance (Prompt 15)', () => {
       user: {
         findUnique: jest.fn(),
         create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'new-user', ...data })),
+        update: jest.fn().mockImplementation(async ({ data, where }) => ({
+          id: where.id,
+          email,
+          ...data,
+        })),
       },
       organizationMembership: {
         findUnique: jest.fn(),
@@ -138,17 +145,53 @@ describe('IAM invite acceptance (Prompt 15)', () => {
   it('requires authentication for existing user', async () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash);
-    prisma.user.findUnique.mockResolvedValue({ id: userId, email });
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: 'existing-hash',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
 
     await expect(service.acceptInvite({ ...baseDto, token: plain, password: undefined }, null)).rejects.toThrow(
       UnauthorizedException,
     );
   });
 
+  it('allows credentialless provisioned identity to establish password without auth', async () => {
+    const { plain, hash } = generateInviteToken();
+    mockPendingInvite(plain, hash);
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: null,
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
+    prisma.organizationMembership.findUnique.mockResolvedValue({
+      id: 'm-invited',
+      role: MembershipRole.WORKER,
+      status: MembershipStatus.INVITED,
+    });
+
+    const result = await service.acceptInvite({ ...baseDto, token: plain }, null);
+
+    expect(result.accepted).toBe(true);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(prisma.user.update).toHaveBeenCalled();
+    expect(lifecycle.applyJoinInTransaction).toHaveBeenCalled();
+  });
+
   it('accepts existing user when authenticated email matches', async () => {
     const { plain, hash } = generateInviteToken();
     mockPendingInvite(plain, hash);
-    prisma.user.findUnique.mockResolvedValue({ id: userId, email });
+    prisma.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      passwordHash: 'existing-hash',
+      status: UserStatus.ACTIVE,
+      platformRole: UserPlatformRole.USER,
+    });
     prisma.organizationMembership.findUnique.mockResolvedValue(null);
 
     const result = await service.acceptInvite(

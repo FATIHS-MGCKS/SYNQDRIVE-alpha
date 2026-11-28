@@ -1,4 +1,9 @@
-import { MembershipRole, MembershipStatus } from '@prisma/client';
+import {
+  MembershipRole,
+  MembershipStatus,
+  UserPlatformRole,
+  UserStatus,
+} from '@prisma/client';
 import { normalizeMembershipPermissions } from '@shared/auth/permission.util';
 
 export const INVITE_ACCEPT_ERROR = {
@@ -55,4 +60,28 @@ export function canActivateMembershipFromInvite(
 
 export function buildConsumedTokenLookup(inviteId: string): string {
   return `consumed:${inviteId}`;
+}
+
+/** Master-provisioned identity: user row exists, INVITED membership, no password yet. */
+export function canEstablishInitialCredentialsViaInvite(input: {
+  user: {
+    passwordHash: string | null;
+    status: UserStatus;
+    platformRole: UserPlatformRole;
+  };
+  membership: { status: MembershipStatus } | null;
+}): boolean {
+  if (input.user.passwordHash) {
+    return false;
+  }
+  if (input.user.status !== UserStatus.ACTIVE) {
+    return false;
+  }
+  if (input.user.platformRole !== UserPlatformRole.USER) {
+    return false;
+  }
+  if (!input.membership || input.membership.status !== MembershipStatus.INVITED) {
+    return false;
+  }
+  return true;
 }

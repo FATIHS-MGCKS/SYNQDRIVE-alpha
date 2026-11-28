@@ -78,12 +78,19 @@ run_jest usr-p3a3-master-identity-security.postgres.integration.spec.ts
 log 'USR-P3A.3A transaction + invitation PostgreSQL'
 run_jest usr-p3a3-transaction-invitation.postgres.integration.spec.ts
 
+log 'USR-P3A.3A actual first-login (public HTTP, PostgreSQL)'
+export USR_P3A3_FIRST_LOGIN_HTTP_PG=1
+run_jest usr-p3a3-first-login-http.postgres.integration.spec.ts
+
 log 'USR-P3A.3 identity HTTP authorization (PostgreSQL)'
 export USR_P3A3_IDENTITY_HTTP_PG=1
 run_jest usr-p3a3-identity-http-security.postgres.integration.spec.ts
 
 log 'USR-P3A policy unit (fingerprint / replay binding)'
 npx jest master-global-identity-operation.policy.spec.ts --runInBand --forceExit
+
+log 'IAM invite acceptance security regression'
+npx jest iam-invite-acceptance.security.spec.ts --runInBand --forceExit
 
 log "PASS disposable database ${EPHEMERAL_DB}"
 echo "USR_P3A3_PG_EXECUTED=1"

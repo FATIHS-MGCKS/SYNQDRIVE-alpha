@@ -85,7 +85,7 @@
 
 ## USR-P3A.3A backend security acceptance (PR #2544)
 
-**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence:** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20** (`usr-p3a3-transaction-invitation.postgres.integration.spec.ts`), **HTTP authorization 15/15**, policy unit **9/9**, **0 skipped**, exit **0**.
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **Gate evidence:** P3A.1 **4/4**, P3A.3 security **12/12**, **transaction + invitation 20/20**, **first-login HTTP L01–L12 10/10**, **HTTP authorization 15/15**, policy unit **9/9**, IAM invite acceptance **14/14**, **84/84 total**, **0 skipped**, exit **0**.
 
 **Atomic invitation delivery (P3A.3A tx seal):** encrypted `inviteEmailOutbox` rows are created inside the same Prisma transaction as invite create/resend/recovery token rotation (+ IAM rotation audit on recovery). SMTP runs only via `processOutboxIds` after commit. Stale generations are suppressed at dispatch (`STALE_TOKEN_GENERATION` / `INVITE_NOT_PENDING`). Not exactly-once SMTP — in-flight transport may complete after supersede (documented).
 
@@ -154,14 +154,39 @@
 | T09 | **PASS** | delivery intent failure rollback |
 | T10 | **PASS** | concurrent recovery generation |
 | T11 | **PASS** | stale delivery suppression |
-| T12 | **PASS** | accept + recovery token parity |
+| T12 | **PASS** | accept + recovery token parity (credentialless, no pre-auth) |
 | T13 | **PASS** | revoke fences recovery |
-| T14 | **PASS** | authoritative accept |
+| T14 | **PASS** | authoritative accept (credentialless, no pre-auth) |
 | T15 | **PASS** | single semantic CREATE log |
 | T16 | **PASS** | org lifecycle fence |
 | T17 | **PASS** | invite/membership role parity |
 
 **P3A3A_TRANSACTION_INVITATION=CONDITIONAL_PARTIAL** — core R01/R02/R03/R06 invariants exercised; **not** full repository acceptance.
+
+### Actual first-login (L01–L12, public HTTP, disposable PG)
+
+**Root cause:** Master provisioning persists `User` + `INVITED` membership before invite acceptance (`passwordHash = null`). `InviteAcceptService` required authentication for any existing user while only setting passwords when no user row existed — credentialless recipients deadlocked.
+
+**Correction:** `canEstablishInitialCredentialsViaInvite` policy + `credentiallessFirstLogin` branch in `InviteAcceptService` (authoritative membership `INVITED`, `UserPlatformRole.USER`, `ACTIVE`, no password). Established accounts, suspended users, and privileged platform roles remain auth-gated.
+
+| ID | Result | Notes |
+|----|--------|-------|
+| L01 | **PASS** | MA provision + encrypted delivery outbox |
+| L02 | **PASS** | captured invite URL token |
+| L03–L06 | **PASS** | unauthenticated accept + `POST /api/v1/auth/login` + `validateAccessJwt` |
+| L07 | **PASS** | idempotent accept (no duplicate identity/membership) |
+| L08 | **PASS** | established password requires auth |
+| L09 | **PASS** | suspended identity denied |
+| L09b | **PASS** | privileged platform role denied credentialless path |
+| L10 | **PASS** | revoked/invalid token denied |
+| L11 | **PASS** | stale generation after recovery rotation; invite continuity lock `pg_backend_pid` barrier |
+| L12 | **PASS** | accept after revocation denied |
+
+**Harness:** `usr-p3a3-first-login-http-pg.harness.ts` — real `PublicInvitesController` + `AuthController`, canonical P2/P3 stack; mock mail transport only. Opt-in: `USR_P3A3_FIRST_LOGIN_HTTP_PG=1`.
+
+**R04 (`sendCredentialSetup` admin path):** still **OPEN** — optional admin credential reset not expanded; first-login uses invite accept + bcrypt only (no parallel credential authority).
+
+**P3A3A_FIRST_LOGIN=CONDITIONAL_PARTIAL** — proves public HTTP onboarding for MA-provisioned credentialless identities; **not** full A01–A24; **no merge readiness**.
 
 ### CI authority
 

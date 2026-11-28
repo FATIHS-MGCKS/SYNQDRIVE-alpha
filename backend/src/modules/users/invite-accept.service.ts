@@ -28,6 +28,7 @@ import {
 } from './utils/identity-email.util';
 import {
   canActivateMembershipFromInvite,
+  canEstablishInitialCredentialsViaInvite,
   INVITE_ACCEPT_ERROR,
   isPrivilegedInviteRole,
   requiresRejoinAcknowledgement,
@@ -72,7 +73,13 @@ export class InviteAcceptService {
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: invite.email },
-      select: { id: true, email: true },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        status: true,
+        platformRole: true,
+      },
     });
     const existingMembership = existingUser
       ? await this.prisma.organizationMembership.findUnique({
@@ -86,13 +93,20 @@ export class InviteAcceptService {
         })
       : null;
 
+    const credentiallessFirstLoginPreview =
+      existingUser &&
+      canEstablishInitialCredentialsViaInvite({
+        user: existingUser,
+        membership: existingMembership,
+      });
+
     const privilegedRole = isPrivilegedInviteRole(invite);
     const requiresRejoin = requiresRejoinAcknowledgement(existingMembership?.status);
 
     return {
       valid: true as const,
-      requiresPassword: !existingUser,
-      requiresAuthentication: Boolean(existingUser),
+      requiresPassword: !existingUser || Boolean(credentiallessFirstLoginPreview),
+      requiresAuthentication: Boolean(existingUser && !credentiallessFirstLoginPreview),
       requiresExplicitConfirmation: true,
       privilegedRole,
       requiresStepUp: privilegedRole,
@@ -142,7 +156,25 @@ export class InviteAcceptService {
 
     const invite = await this.loadPendingInvite(dto.token, inviteRecord);
 
-    if (existingUser) {
+    const existingMembershipPrecheck = existingUser
+      ? await this.prisma.organizationMembership.findUnique({
+          where: {
+            userId_organizationId: {
+              userId: existingUser.id,
+              organizationId: invite.organizationId,
+            },
+          },
+        })
+      : null;
+
+    const credentiallessFirstLogin =
+      existingUser &&
+      canEstablishInitialCredentialsViaInvite({
+        user: existingUser,
+        membership: existingMembershipPrecheck,
+      });
+
+    if (existingUser && !credentiallessFirstLogin) {
       if (!auth?.userId) {
         throw new UnauthorizedException({
           code: INVITE_ACCEPT_ERROR.AUTHENTICATION_REQUIRED,
@@ -155,14 +187,14 @@ export class InviteAcceptService {
           message: 'Authenticated identity does not match invite email',
         });
       }
-    } else if (auth && !identityEmailsMatch(auth.email, invite.email)) {
+    } else if (!existingUser && auth && !identityEmailsMatch(auth.email, invite.email)) {
       throw new ForbiddenException({
         code: INVITE_ACCEPT_ERROR.IDENTITY_MISMATCH,
         message: 'Sign out before accepting this invite with a new account',
       });
     }
 
-    if (!existingUser) {
+    if (!existingUser || credentiallessFirstLogin) {
       if (!dto.password || dto.password.length < MIN_USER_PASSWORD_LENGTH) {
         throw new BadRequestException(
           `Password is required (min ${MIN_USER_PASSWORD_LENGTH} characters)`,
@@ -178,16 +210,7 @@ export class InviteAcceptService {
       });
     }
 
-    const existingMembership = existingUser
-      ? await this.prisma.organizationMembership.findUnique({
-          where: {
-            userId_organizationId: {
-              userId: existingUser.id,
-              organizationId: invite.organizationId,
-            },
-          },
-        })
-      : null;
+    const existingMembership = existingMembershipPrecheck;
 
     if (existingMembership?.status === MembershipStatus.ACTIVE) {
       throw new BadRequestException('User is already an active member of this organization');
@@ -219,18 +242,52 @@ export class InviteAcceptService {
     const outboxIds: string[] = [];
 
     await this.prisma.$transaction(async (tx) => {
+      const authoritativeInvite = await tx.organizationUserInvite.findUnique({
+        where: { id: invite.id },
+        include: {
+          organization: { select: { id: true, companyName: true } },
+          organizationRole: { select: { id: true, name: true } },
+        },
+      });
+      if (!authoritativeInvite || authoritativeInvite.status !== OrganizationInviteStatus.PENDING) {
+        throw new BadRequestException({
+          code: INVITE_ACCEPT_ERROR.ALREADY_CONSUMED,
+          message: 'Invite is no longer pending',
+        });
+      }
+      if (authoritativeInvite.expiresAt.getTime() < Date.now()) {
+        throw new BadRequestException('Invite has expired');
+      }
+      const tokenValid = await verifyInviteToken(dto.token, authoritativeInvite.tokenHash);
+      if (!tokenValid) {
+        throw new BadRequestException({
+          code: INVITE_ACCEPT_ERROR.INVALID_TOKEN,
+          message: 'Invite token does not match current generation',
+        });
+      }
+      const inviteTx = authoritativeInvite;
+
       if (!user) {
         const passwordHash = await bcrypt.hash(dto.password!, 10);
         const fullName = [dto.firstName, dto.lastName].filter(Boolean).join(' ');
         user = await tx.user.create({
           data: {
-            email: invite.email,
+            email: inviteTx.email,
             firstName: dto.firstName?.trim() || null,
             lastName: dto.lastName?.trim() || null,
             name: fullName || null,
             passwordHash,
             mustChangePassword: false,
             status: UserStatus.ACTIVE,
+          },
+        });
+      } else if (credentiallessFirstLogin) {
+        const passwordHash = await bcrypt.hash(dto.password!, 10);
+        user = await tx.user.update({
+          where: { id: user.id },
+          data: {
+            passwordHash,
+            mustChangePassword: false,
           },
         });
       }
@@ -257,50 +314,50 @@ export class InviteAcceptService {
       const joinApplied = await this.lifecycle.applyJoinInTransaction(
         tx,
         {
-          organizationId: invite.organizationId,
+          organizationId: inviteTx.organizationId,
           userId: user!.id,
-          idempotencyKey: `membership-join:invite:${invite.id}`,
+          idempotencyKey: `membership-join:invite:${inviteTx.id}`,
           actor: { userId: user!.id },
-          role: invite.membershipRole,
-          organizationRoleId: invite.organizationRoleId,
-          roleLabel: invite.roleLabel,
-          stationScope: invite.stationScope,
-          stationIds: Array.isArray(invite.stationIds)
-            ? (invite.stationIds as string[])
+          role: inviteTx.membershipRole,
+          organizationRoleId: inviteTx.organizationRoleId,
+          roleLabel: inviteTx.roleLabel,
+          stationScope: inviteTx.stationScope,
+          stationIds: Array.isArray(inviteTx.stationIds)
+            ? (inviteTx.stationIds as string[])
             : null,
-          department: invite.department,
-          position: invite.position,
-          permissions: normalizeMembershipPermissions(invite.permissions),
-          fieldAgentAccess: invite.fieldAgentAccess,
+          department: inviteTx.department,
+          position: inviteTx.position,
+          permissions: normalizeMembershipPermissions(inviteTx.permissions),
+          fieldAgentAccess: inviteTx.fieldAgentAccess,
           mfaRequired: privilegedRole,
           source: 'invite',
-          inviteId: invite.id,
+          inviteId: inviteTx.id,
         },
         existingMembership,
       );
       outboxIds.push(joinApplied.outboxId);
 
       await tx.organizationUserInvite.update({
-        where: { id: invite.id },
+        where: { id: inviteTx.id },
         data: {
           status: OrganizationInviteStatus.ACCEPTED,
           acceptedAt: new Date(),
           acceptedByUserId: user!.id,
-          tokenHash: await bcrypt.hash(`consumed:${invite.id}:${Date.now()}`, 10),
+          tokenHash: await bcrypt.hash(`consumed:${inviteTx.id}:${Date.now()}`, 10),
         },
       });
 
       const acceptedOutbox = await this.iamAudit.enqueueInTransaction(tx, {
-        organizationId: invite.organizationId,
-        idempotencyKey: `invite-accept:${invite.id}`,
+        organizationId: inviteTx.organizationId,
+        idempotencyKey: `invite-accept:${inviteTx.id}`,
         eventType: UserAccessAuditAction.USER_INVITE_ACCEPTED,
         actorUserId: user!.id,
         subjectUserId: user!.id,
-        targetInviteId: invite.id,
+        targetInviteId: inviteTx.id,
         description: 'Einladung angenommen',
         after: {
-          membershipRole: invite.membershipRole,
-          organizationRoleId: invite.organizationRoleId,
+          membershipRole: inviteTx.membershipRole,
+          organizationRoleId: inviteTx.organizationRoleId,
           privilegedRole,
           previousMembershipStatus,
         },
@@ -308,6 +365,7 @@ export class InviteAcceptService {
           privilegedRole,
           previousMembershipStatus,
           rejoinAcknowledged: Boolean(dto.acknowledgeRejoin),
+          credentiallessFirstLogin: Boolean(credentiallessFirstLogin),
         },
         level: privilegedRole ? 'WARN' : 'INFO',
       });
@@ -315,8 +373,8 @@ export class InviteAcceptService {
 
       if (wasNewUser) {
         const createdOutbox = await this.iamAudit.enqueueInTransaction(tx, {
-          organizationId: invite.organizationId,
-          idempotencyKey: `invite-accept-user-created:${invite.id}`,
+          organizationId: inviteTx.organizationId,
+          idempotencyKey: `invite-accept-user-created:${inviteTx.id}`,
           eventType: UserAccessAuditAction.USER_CREATED,
           actorUserId: user!.id,
           subjectUserId: user!.id,
@@ -327,11 +385,11 @@ export class InviteAcceptService {
 
       await tx.activityLog.create({
         data: {
-          organizationId: invite.organizationId,
+          organizationId: inviteTx.organizationId,
           userId: user!.id,
           action: ActivityAction.CREATE,
           entity: ActivityEntity.ORGANIZATION_INVITE,
-          entityId: invite.id,
+          entityId: inviteTx.id,
           description: 'Einladung angenommen — Benachrichtigung erzeugt',
           level: privilegedRole ? 'WARN' : 'INFO',
           metaJson: {

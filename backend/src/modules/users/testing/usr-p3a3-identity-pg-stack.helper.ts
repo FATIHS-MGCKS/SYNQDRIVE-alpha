@@ -22,6 +22,7 @@ import { TransactionalMailService } from '@modules/users/transactional-mail.serv
 import { UserAccessAuditService } from '@modules/users/user-access-audit.service';
 import { UsersService } from '@modules/users/users.service';
 import { MasterGlobalIdentityService } from '../master-global-identity.service';
+import { InviteAcceptService } from '../invite-accept.service';
 import { createUsrP2PgIamStack } from './usr-p2-pg-iam-stack.helper';
 
 export type UsrP3a3IdentityPgStack = {
@@ -37,6 +38,8 @@ export type UsrP3a3IdentityPgStack = {
   iamAudit: IamAuditService;
   userAudit: UserAccessAuditService;
   noopMail: TransactionalMailService;
+  inviteAccept: InviteAcceptService;
+  lifecycle: IamMembershipLifecycleService;
 };
 
 /** Real canonical IAM + identity stack; only external mail transport is mocked. */
@@ -121,6 +124,8 @@ export function createUsrP3a3IdentityPgStack(
     passwordReset,
   );
 
+  const inviteAccept = new InviteAcceptService(prisma as never, lifecycle, iamAudit);
+
   return {
     prisma,
     globalIdentity,
@@ -134,5 +139,7 @@ export function createUsrP3a3IdentityPgStack(
     iamAudit,
     userAudit,
     noopMail,
+    inviteAccept,
+    lifecycle,
   };
 }

@@ -398,10 +398,9 @@ function assertDisposableDb(): void {
     await stack.inviteService.ensureInviteDeliveryContinuity(orgId, inviteId, masterActorId);
     jest.restoreAllMocks();
     expect(recoveryPlain.length).toBeGreaterThan(10);
-    const existing = await prisma.user.findFirstOrThrow({ where: { email } });
     const accepted = await inviteAccept.acceptInvite(
       { token: recoveryPlain, confirmed: true, password: 'Str0ng-Passw0rd!t12' },
-      { userId: existing.id, email: existing.email },
+      null,
     );
     expect(accepted.userId).toBeTruthy();
   });
@@ -456,10 +455,9 @@ function assertDisposableDb(): void {
     spy.mockRestore();
     expect(plainAccept.length).toBeGreaterThan(10);
     const invite = await prisma.organizationUserInvite.findFirstOrThrow({ where: { email, organizationId: orgId } });
-    const existing = await prisma.user.findFirstOrThrow({ where: { email } });
     const accepted = await inviteAccept.acceptInvite(
       { token: plainAccept, confirmed: true, password: 'Str0ng-Passw0rd!t14' },
-      { userId: existing.id, email: existing.email },
+      null,
     );
     expect(accepted.userId).toBeTruthy();
     const after = await prisma.organizationUserInvite.findUniqueOrThrow({ where: { id: invite.id } });
