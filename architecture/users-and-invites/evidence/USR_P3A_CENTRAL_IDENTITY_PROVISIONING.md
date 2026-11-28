@@ -300,7 +300,7 @@
 
 **Operation:** `SYNQDRIVE_MASTER_USERS_P3A3C_FINAL_REPOSITORY_ACCEPTANCE`  
 **Baseline main:** `e8c2422064309501dc31685ddca4ab16966b3cea`  
-**Candidate HEAD (pre-push):** branch tip after FE-R01/R02 + evidence (see git).
+**Candidate HEAD:** `166dbd30c`+ (FE-R01/R02 + P3A3C Playwright + evidence).
 
 | Gate | Command | Exit | Result |
 |------|---------|------|--------|
