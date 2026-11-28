@@ -1,0 +1,47 @@
+name: Billing pricebook publish — PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/billing/**'
+      - 'backend/prisma/migrations/20261127203000_billing_price_version_supersede_archive_guard/**'
+      - 'backend/prisma/migrations/20260715190000_billing_product_price_schema/**'
+      - 'backend/scripts/test/pricebook-publish-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/pricebook-publish-postgres-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pricebook-publish-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pricebook-publish-postgres:
+    name: Pricebook publish PostgreSQL regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        run: npm ci
+        working-directory: backend
+      - name: Start ephemeral PostgreSQL
+        run: bash scripts/test/ci-start-postgres.sh
+        working-directory: backend
+      - name: Pricebook publish disposable PostgreSQL gate
+        run: bash scripts/test/pricebook-publish-postgres-ci.sh
+        working-directory: backend
+        env:
+          CI_PG_USER: synqdrive
+          CI_PG_PASSWORD: synqdrive
+          CI_PG_PORT: 5432

@@ -144,6 +144,7 @@ describe('PricebookService getPricingConfiguration characterization', () => {
   beforeEach(() => {
     prisma = {
       billingPriceBook: { findFirst: jest.fn() },
+      billingPriceVersion: { findFirst: jest.fn() },
     };
     svc = new PricebookService(prisma, audit as never);
   });
@@ -157,12 +158,12 @@ describe('PricebookService getPricingConfiguration characterization', () => {
     expect(config.reason).toBe('NO_DEFAULT_PRICEBOOK');
   });
 
-  it('returns NO_ACTIVE_PRICE_VERSION when default book has no ACTIVE version', async () => {
+  it('returns NO_ACTIVE_PRICE_VERSION when default book has no applicable version', async () => {
     prisma.billingPriceBook.findFirst.mockResolvedValue({
       id: 'book-1',
       currency: 'EUR',
-      versions: [],
     });
+    prisma.billingPriceVersion.findFirst.mockResolvedValue(null);
 
     const config = await svc.getPricingConfiguration();
 
@@ -171,7 +172,7 @@ describe('PricebookService getPricingConfiguration characterization', () => {
     expect(config.priceBook?.id).toBe('book-1');
   });
 
-  it('returns configured default with first ACTIVE version from embedded query', async () => {
+  it('returns configured default with findActiveVersion result (as-of now)', async () => {
     const activeVersion = {
       id: 'ver-1',
       versionNumber: 1,
@@ -181,12 +182,37 @@ describe('PricebookService getPricingConfiguration characterization', () => {
     prisma.billingPriceBook.findFirst.mockResolvedValue({
       id: 'book-1',
       currency: 'EUR',
-      versions: [activeVersion],
     });
+    prisma.billingPriceVersion.findFirst.mockResolvedValue(activeVersion);
 
     const config = await svc.getPricingConfiguration();
 
     expect(config.configured).toBe(true);
     expect(config.activeVersion).toBe(activeVersion);
+    expect(prisma.billingPriceVersion.findFirst).toHaveBeenCalled();
+  });
+
+  it('does not treat future-effective ACTIVE version as currently applicable', async () => {
+    prisma.billingPriceBook.findFirst.mockResolvedValue({ id: 'book-1', currency: 'EUR' });
+    const priorApplicable = {
+      id: 'ver-current',
+      versionNumber: 1,
+      status: 'ACTIVE',
+      effectiveFrom: new Date('2020-01-01T00:00:00.000Z'),
+      tiers: [],
+    };
+    prisma.billingPriceVersion.findFirst.mockResolvedValue(priorApplicable);
+
+    const config = await svc.getPricingConfiguration();
+
+    expect(config.configured).toBe(true);
+    expect(config.activeVersion?.id).toBe('ver-current');
+    const findArgs = prisma.billingPriceVersion.findFirst.mock.calls[0]?.[0];
+    expect(findArgs?.where?.OR).toEqual(
+      expect.arrayContaining([
+        { effectiveFrom: null },
+        { effectiveFrom: { lte: expect.any(Date) } },
+      ]),
+    );
   });
 });
