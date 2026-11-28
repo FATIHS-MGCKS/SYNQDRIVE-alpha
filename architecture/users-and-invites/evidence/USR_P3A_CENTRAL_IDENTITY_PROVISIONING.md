@@ -300,7 +300,7 @@
 
 **Operation:** `SYNQDRIVE_MASTER_USERS_P3A3C_FINAL_REPOSITORY_ACCEPTANCE`  
 **Baseline main:** `e8c2422064309501dc31685ddca4ab16966b3cea`  
-**Candidate HEAD:** `fc20a916f47c8f0b8c8e8f0e8e8e8e8e8e8e8e8e` → see `git rev-parse HEAD` on branch at acceptance time (`fc20a916f` after evidence SHA commit).
+**Candidate HEAD:** `d6c674a2ae69fd3ee2022f54ee7bf08a4078a021`
 
 | Gate | Command | Exit | Result |
 |------|---------|------|--------|
