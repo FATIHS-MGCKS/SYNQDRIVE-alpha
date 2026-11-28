@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  InviteEmailOutboxStatus,
   MembershipRole,
   MembershipStatus,
   OrganizationInviteStatus,
@@ -34,6 +35,7 @@ import {
   type OrganizationInviteAdminView,
 } from './utils/invite-admin-response.util';
 import { normalizeIdentityEmail } from './utils/identity-email.util';
+import { acquireInviteDeliveryContinuityLock } from '@modules/auth/refresh-token-session-concurrency';
 import type { CreateOrganizationInviteDto } from './dto/organization-invite.dto';
 import type { Prisma as PrismaNamespace } from '@prisma/client';
 
@@ -265,15 +267,34 @@ export class OrganizationInviteService {
     deliveryConfirmed: boolean;
     invitePending: boolean;
   }> {
-    const invite = await this.findInviteOrThrow(orgId, inviteId);
-    if (invite.status !== OrganizationInviteStatus.PENDING) {
+    const admission = await this.prisma.$transaction(async (tx) => {
+      await acquireInviteDeliveryContinuityLock(tx, inviteId);
+      const invite = await tx.organizationUserInvite.findFirst({
+        where: { id: inviteId, organizationId: orgId },
+        select: { id: true, status: true },
+      });
+      if (!invite) {
+        throw new NotFoundException('Invitation not found');
+      }
+      if (invite.status !== OrganizationInviteStatus.PENDING) {
+        return { kind: 'not_pending' as const };
+      }
+      const existing = await tx.inviteEmailOutbox.findFirst({
+        where: { inviteId },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existing && existing.status !== InviteEmailOutboxStatus.DEAD_LETTER) {
+        return { kind: 'replay_outbox' as const, outboxId: existing.id };
+      }
+      return { kind: 'recover' as const };
+    });
+
+    if (admission.kind === 'not_pending') {
       return { deliveryRequested: false, deliveryConfirmed: false, invitePending: false };
     }
-    const latestMap = await this.inviteOutbox.findLatestByInviteIds([inviteId]);
-    const existing = latestMap.get(inviteId);
-    if (existing && existing.status !== 'DEAD_LETTER') {
-      await this.inviteDelivery.processOutboxIds([existing.id]);
-      const refreshed = await this.inviteOutbox.findById(existing.id);
+    if (admission.kind === 'replay_outbox') {
+      await this.inviteDelivery.processOutboxIds([admission.outboxId]);
+      const refreshed = await this.inviteOutbox.findById(admission.outboxId);
       const status = mapOutboxToDeliveryStatus(refreshed?.status ?? null);
       return {
         deliveryRequested: true,
@@ -301,11 +322,22 @@ export class OrganizationInviteService {
 
     let rotated = false;
     await this.prisma.$transaction(async (tx) => {
+      await acquireInviteDeliveryContinuityLock(tx, inviteId);
       const current = await tx.organizationUserInvite.findUnique({
         where: { id: inviteId },
         select: { status: true },
       });
       if (!current || current.status !== OrganizationInviteStatus.PENDING) {
+        return;
+      }
+      const liveOutbox = await tx.inviteEmailOutbox.findFirst({
+        where: {
+          inviteId,
+          status: { not: InviteEmailOutboxStatus.DEAD_LETTER },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (liveOutbox) {
         return;
       }
       await tx.organizationUserInvite.update({
@@ -321,6 +353,18 @@ export class OrganizationInviteService {
     });
 
     if (!rotated) {
+      const latestMap = await this.inviteOutbox.findLatestByInviteIds([inviteId]);
+      const recovered = latestMap.get(inviteId);
+      if (recovered && recovered.status !== InviteEmailOutboxStatus.DEAD_LETTER) {
+        await this.inviteDelivery.processOutboxIds([recovered.id]);
+        const refreshed = await this.inviteOutbox.findById(recovered.id);
+        const status = mapOutboxToDeliveryStatus(refreshed?.status ?? null);
+        return {
+          deliveryRequested: true,
+          deliveryConfirmed: status === 'SENT',
+          invitePending: true,
+        };
+      }
       return { deliveryRequested: false, deliveryConfirmed: false, invitePending: false };
     }
 

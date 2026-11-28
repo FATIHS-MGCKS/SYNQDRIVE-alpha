@@ -8,8 +8,14 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
+  ActivityAction,
+  BusinessType,
   MasterAdminAuditOutboxStatus,
   MasterAdminAuditScope,
+  MembershipRole,
+  MembershipStatus,
+  OrganizationInviteStatus,
+  OrganizationStatus,
   Prisma,
   PrismaClient,
   UserPlatformRole,
@@ -293,7 +299,7 @@ function assertDisposableDb(): void {
     expect(meta?.inviteByEmail).toBe(true);
   });
 
-  it.skip('R05 — identity email provision lock wait uses participating backend pid (PG load-sensitive; covered in USR-P2C)', async () => {
+  it('R05 — identity email provision lock wait uses participating backend pid', async () => {
     const email = `lock-p3a3-${randomUUID()}@example.test`;
     const raceId = randomUUID();
     await ensureRaceBarrierTable(prisma);
@@ -302,8 +308,8 @@ function assertDisposableDb(): void {
     let blockedBackendPid = 0;
     const connectionBPromise = (async () => {
       await waitRacePhaseAtLeast(prismaB, raceId, 'a_lock_acquired');
-      return prismaB.$transaction(async (txB) => {
-        blockedBackendPid = await pgBackendPid(prismaB);
+      blockedBackendPid = await pgBackendPid(prismaB);
+      await prismaB.$transaction(async (txB) => {
         await setRacePhase(prisma, raceId, 'b_waiting', { pid: blockedBackendPid });
         await acquireIdentityEmailProvisionLock(txB, email);
         await setRacePhase(prisma, raceId, 'done');
@@ -315,12 +321,119 @@ function assertDisposableDb(): void {
       await setRacePhase(prisma, raceId, 'a_lock_acquired');
       await waitRacePhaseAtLeast(prisma, raceId, 'b_waiting');
       const blockingPids = await waitUntilBackendBlocked(prisma, blockedBackendPid, {
-        timeoutMs: 20_000,
+        timeoutMs: 45_000,
+        pollMs: 15,
       });
       expect(blockingPids.length).toBeGreaterThan(0);
     });
 
     await connectionBPromise;
+  });
+
+  async function seedActiveOrg() {
+    const orgId = randomUUID();
+    await prisma.organization.create({
+      data: {
+        id: orgId,
+        companyName: `P3A3 Org ${orgId.slice(0, 8)}`,
+        businessType: BusinessType.RENTAL,
+        status: OrganizationStatus.ACTIVE,
+      },
+    });
+    return orgId;
+  }
+
+  it('R03 — concurrent invite delivery recovery serializes under continuity lock', async () => {
+    const orgId = await seedActiveOrg();
+    const email = `invite-rec-${randomUUID()}@example.test`;
+    const opId = `op-inv-${randomUUID()}`;
+    const first = await stack.globalIdentity.provisionGlobalUser(
+      {
+        email,
+        firstName: 'Invite',
+        lastName: 'Recovery',
+        idempotencyKey: opId,
+        initialMembership: { organizationId: orgId, role: MembershipRole.WORKER, inviteByEmail: true },
+      },
+      actor(),
+      auditReq(),
+    );
+    expect(first.onboarding.invitationPersisted).toBe(true);
+    const outboxRow = await prisma.masterAdminAuditOutbox.findUniqueOrThrow({
+      where: { idempotencyKey: buildMasterIdentityAuditIdempotencyKey(opId) },
+    });
+    const inviteId = readProvisionOperationMetadataFromOutbox(outboxRow)?.inviteId;
+    expect(inviteId).toBeTruthy();
+
+    await prisma.inviteEmailOutbox.updateMany({
+      where: { inviteId: inviteId! },
+      data: { status: 'DEAD_LETTER' },
+    });
+
+    const [a, b] = await Promise.all([
+      stack.inviteService.ensureInviteDeliveryContinuity(orgId, inviteId!, masterActorId),
+      stack.inviteService.ensureInviteDeliveryContinuity(orgId, inviteId!, masterActorId),
+    ]);
+    expect(a.deliveryRequested || b.deliveryRequested).toBe(true);
+    const inviteRow = await prisma.organizationUserInvite.findUniqueOrThrow({
+      where: { id: inviteId! },
+    });
+    expect(inviteRow.status).toBe(OrganizationInviteStatus.PENDING);
+    const activeOutboxes = await prisma.inviteEmailOutbox.count({
+      where: { inviteId: inviteId!, status: { not: 'DEAD_LETTER' } },
+    });
+    expect(activeOutboxes).toBeGreaterThanOrEqual(1);
+    expect(activeOutboxes).toBeLessThanOrEqual(2);
+  });
+
+  it('R04 — credential setup replay does not repeat admin reset mail', async () => {
+    const orgId = await seedActiveOrg();
+    const email = `cred-${randomUUID()}@example.test`;
+    const opId = `op-cred-${randomUUID()}`;
+    const dto = {
+      email,
+      firstName: 'Cred',
+      lastName: 'Setup',
+      idempotencyKey: opId,
+      sendCredentialSetup: true,
+      initialMembership: { organizationId: orgId, role: MembershipRole.WORKER, inviteByEmail: false },
+    };
+    const first = await stack.globalIdentity.provisionGlobalUser(dto, actor(), auditReq());
+    expect(first.onboarding.deliveryRequested).toBe(true);
+    const mailCallsAfterFirst = (stack.noopMail.sendPasswordReset as jest.Mock).mock.calls.length;
+
+    const second = await stack.globalIdentity.provisionGlobalUser(dto, actor(), auditReq());
+    expect(second.idempotentReplay).toBe(true);
+    expect((stack.noopMail.sendPasswordReset as jest.Mock).mock.calls.length).toBe(mailCallsAfterFirst);
+
+    const meta = readProvisionOperationMetadataFromOutbox(
+      await prisma.masterAdminAuditOutbox.findUniqueOrThrow({
+        where: { idempotencyKey: buildMasterIdentityAuditIdempotencyKey(opId) },
+      }),
+    );
+    expect(meta?.credentialSetupRequested).toBe(true);
+  });
+
+  it('R09 — semantic ActivityLog count stable across provision replay', async () => {
+    const email = `audit-sem-${randomUUID()}@example.test`;
+    const opId = `op-audit-${randomUUID()}`;
+    const first = await stack.globalIdentity.provisionGlobalUser(
+      { email, firstName: 'Audit', lastName: 'Count', idempotencyKey: opId },
+      actor(),
+      auditReq(),
+    );
+    const countLogs = async () =>
+      prisma.activityLog.count({
+        where: { entityId: first.user.id, action: ActivityAction.CREATE },
+      });
+    expect(await countLogs()).toBe(1);
+
+    await stack.globalIdentity.provisionGlobalUser(
+      { email, firstName: 'Audit', lastName: 'Count', idempotencyKey: opId },
+      actor(),
+      auditReq(),
+    );
+    expect(await countLogs()).toBe(1);
   });
 
   it('R01 — operation admission lock serializes concurrent audit dedup', async () => {

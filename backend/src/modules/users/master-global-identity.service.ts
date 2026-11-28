@@ -9,6 +9,7 @@ import {
   MembershipStatus,
   OrganizationInviteStatus,
   OrganizationStatus,
+  PasswordResetPurpose,
   Prisma,
   UserPlatformRole,
   UserStatus,
@@ -575,20 +576,42 @@ export class MasterGlobalIdentityService {
       }
     }
 
+    let credentialSetupRequested = false;
     if (
       dto.sendCredentialSetup &&
       !inviteByEmail &&
       membershipStatus === MembershipStatus.ACTIVE
     ) {
-      try {
-        await this.passwordReset.requestAdminReset({
-          organizationId: mem.organizationId,
-          userId: createdUserId,
-          actorUserId: actor.id,
-        });
+      const priorOutboxForCred = idempotentReplay
+        ? await this.prisma.masterAdminAuditOutbox.findUnique({
+            where: { idempotencyKey: auditIdempotencyKey },
+          })
+        : null;
+      const priorCredMeta = priorOutboxForCred
+        ? readProvisionOperationMetadataFromOutbox(priorOutboxForCred)
+        : null;
+      credentialSetupRequested = priorCredMeta?.credentialSetupRequested === true;
+      if (!credentialSetupRequested && idempotentReplay) {
+        credentialSetupRequested = await this.hasActiveAdminCredentialSetupIntent(
+          createdUserId,
+          mem.organizationId,
+        );
+      }
+      if (!credentialSetupRequested) {
+        try {
+          await this.passwordReset.requestAdminReset({
+            organizationId: mem.organizationId,
+            userId: createdUserId,
+            actorUserId: actor.id,
+          });
+          deliveryRequested = true;
+          credentialSetupRequested = true;
+          await this.markProvisionCredentialSetupRequested(auditIdempotencyKey);
+        } catch {
+          deliveryRequested = false;
+        }
+      } else {
         deliveryRequested = true;
-      } catch {
-        deliveryRequested = false;
       }
     }
 
@@ -827,6 +850,40 @@ export class MasterGlobalIdentityService {
       email: user.email,
       name: user.name,
     };
+  }
+
+  private async hasActiveAdminCredentialSetupIntent(
+    userId: string,
+    organizationId: string,
+  ): Promise<boolean> {
+    const pending = await this.prisma.passwordResetToken.count({
+      where: {
+        userId,
+        organizationId,
+        purpose: PasswordResetPurpose.ADMIN_INITIATED,
+        usedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+    return pending > 0;
+  }
+
+  private async markProvisionCredentialSetupRequested(auditIdempotencyKey: string): Promise<void> {
+    const row = await this.prisma.masterAdminAuditOutbox.findUnique({
+      where: { idempotencyKey: auditIdempotencyKey },
+    });
+    if (!row?.payload || typeof row.payload !== 'object') return;
+    const root = row.payload as {
+      masterAdminAuditEnvelope?: { metadata?: Record<string, unknown> };
+    };
+    const envelope = root.masterAdminAuditEnvelope;
+    if (!envelope?.metadata || typeof envelope.metadata !== 'object') return;
+    envelope.metadata.credentialSetupRequested = true;
+    await this.prisma.masterAdminAuditOutbox.update({
+      where: { id: row.id },
+      data: { payload: root as Prisma.InputJsonValue },
+    });
   }
 
   private buildProvisionAuditEnvelope(input: {

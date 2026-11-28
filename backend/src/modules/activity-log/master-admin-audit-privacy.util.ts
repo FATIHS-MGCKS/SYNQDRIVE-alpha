@@ -35,6 +35,7 @@ const ALLOWED_METADATA_KEYS = new Set([
   'membershipId',
   'inviteId',
   'inviteByEmail',
+  'credentialSetupRequested',
   'idempotent',
   'sessionId',
   'revokedSessionCount',

@@ -167,8 +167,8 @@ function assertDisposableDb(): void {
     let blockedBackendPid = 0;
     const connectionBPromise = (async () => {
       await waitRacePhaseAtLeast(prismaB, raceId, 'a_lock_acquired');
-      return prismaB.$transaction(async (txB) => {
-        blockedBackendPid = await pgBackendPid(prismaB);
+      blockedBackendPid = await pgBackendPid(prismaB);
+      await prismaB.$transaction(async (txB) => {
         await setRacePhase(prismaA, raceId, 'b_waiting', { pid: blockedBackendPid });
         await acquireIdentityEmailProvisionLock(txB, email);
         await setRacePhase(prismaA, raceId, 'done');
@@ -180,7 +180,8 @@ function assertDisposableDb(): void {
       await setRacePhase(prismaA, raceId, 'a_lock_acquired');
       await waitRacePhaseAtLeast(prismaA, raceId, 'b_waiting');
       const blockingPids = await waitUntilBackendBlocked(prismaA, blockedBackendPid, {
-        timeoutMs: 20_000,
+        timeoutMs: 45_000,
+        pollMs: 15,
       });
       expect(blockingPids.length).toBeGreaterThan(0);
     });

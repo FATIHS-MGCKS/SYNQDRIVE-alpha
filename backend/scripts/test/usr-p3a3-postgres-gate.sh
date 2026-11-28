@@ -67,9 +67,9 @@ run_jest() {
   npx jest "$@" --runInBand --forceExit || fail "jest failed: $*"
 }
 
-log 'USR-P3A.1 master identity PostgreSQL (baseline; excludes flaky lock-wait soak)'
+log 'USR-P3A.1 master identity PostgreSQL (full disposable suite)'
 export USR_P3A1_MASTER_IDENTITY_PG=1
-run_jest usr-p3a1-master-identity.postgres.integration.spec.ts -t 'concurrent user insert|audit outbox idempotency|provision replay binding'
+run_jest usr-p3a1-master-identity.postgres.integration.spec.ts
 
 log 'USR-P3A.3 master identity security PostgreSQL'
 export USR_P3A3_MASTER_IDENTITY_PG=1

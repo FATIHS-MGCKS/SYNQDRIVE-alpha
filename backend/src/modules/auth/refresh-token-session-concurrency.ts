@@ -9,6 +9,20 @@ export const IAM_ORG_SESSION_WRITE_LOCK_CLASS = 913_105;
 export const IAM_SECURITY_OPERATION_ADMISSION_LOCK_CLASS = 913_106;
 /** Serialize master global-identity provisioning per normalized email (USR-P3A). */
 export const IAM_IDENTITY_EMAIL_PROVISION_LOCK_CLASS = 913_107;
+/** Serialize invite email delivery recovery per invite id (USR-P3A.3 R03). */
+export const IAM_INVITE_DELIVERY_CONTINUITY_LOCK_CLASS = 913_108;
+
+export async function acquireInviteDeliveryContinuityLock(
+  tx: Prisma.TransactionClient,
+  inviteId: string,
+): Promise<void> {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(
+      ${IAM_INVITE_DELIVERY_CONTINUITY_LOCK_CLASS}::integer,
+      hashtext(${inviteId}::text)
+    )
+  `;
+}
 
 /**
  * Canonical lock hierarchy (P2-R12 / P2-R13):

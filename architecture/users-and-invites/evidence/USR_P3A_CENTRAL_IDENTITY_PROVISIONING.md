@@ -85,16 +85,16 @@
 
 ## USR-P3A.3A backend security acceptance (PR #2544)
 
-**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight).
+**Executed (local disposable PG):** `bash backend/scripts/test/usr-p3a3-postgres-gate.sh` → `USR_P3A3_PG_EXECUTED=1` (loopback `127.0.0.1`, DB `usr_p2_p3a3_*`, migrate deploy + IAM parity preflight). **HEAD evidence:** full P3A.1 suite **4/4**, P3A.3 security **12/12**, policy unit **9/9**, **0 skipped**.
 
 | R-ID | Verdict | Notes |
 |------|---------|-------|
-| R01 | **PASS (partial)** | Fingerprint omits `__omitted__` sentinels; PG conflicting fingerprint; policy **9/9** |
-| R02 | **PASS (partial)** | `operationBinding` + invite metadata allowed in audit privacy util; PG identity/profile same-key replay; org replay binds `inviteId` from outbox (not latest-by-email) |
-| R03 | **PASS (partial)** | Token rotation fenced to `PENDING`; recovery idempotency key unchanged |
-| R04 | **PASS (partial)** | Credential continuation on idempotent replay (non-invite ACTIVE membership) |
-| R05 | **PARTIAL** | HTTP guard slice **7** tests; full A01–A24 + lost-ack PG **NOT_EXECUTED**; lock-wait soak **skipped** (PG load) |
-| R06 | **PASS (partial)** | PG duplicate email + invalid timezone; org fencing code present — org-provision PG service path **NOT_EXECUTED** |
+| R01 | **PASS (partial)** | Fingerprint + PG conflicting fingerprint; policy **9/9** |
+| R02 | **PASS (partial)** | Real-stack PG identity/profile replay; outbox-bound `inviteId` |
+| R03 | **PASS (partial)** | `acquireInviteDeliveryContinuityLock` (913108); PG concurrent recovery + real invite delivery (mail mocked) |
+| R04 | **PASS (partial)** | `credentialSetupRequested` metadata + PG idempotent credential replay (no duplicate reset mail) |
+| R05 | **PARTIAL** | PG lock-wait **PASS** (p3a1 + p3a3); HTTP still harness **7/7** — full A01–A24 disposable-PG guards **NOT_EXECUTED** |
+| R06 | **PASS (partial)** | PG duplicate email + timezone; real org provision paths in R03/R04 cases |
 
 **Critical fix:** `master-admin-audit-privacy.util.ts` now retains `operationBinding`, `inviteId`, `membershipId`, `inviteByEmail` in persisted metadata (replay was fail-closed when binding was stripped).
 
@@ -121,7 +121,7 @@
 
 ### CI authority
 
-`usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). **NEW_CI_AUTHORITY_REQUIRED=YES** for owner-approved workflow entry if mandatory on every PR.
+`usr-p3a3-postgres-gate.sh` is **not** wired into `.github/workflows` (scope freeze). Design: `architecture/users-and-invites/evidence/USR_P3A3_CI_AUTHORITY_PROPOSAL.md`. **NEW_CI_AUTHORITY_REQUIRED=YES** (separate authority PR; not in #2544).
 
 ## Remaining matrix (P3A.3B)
 

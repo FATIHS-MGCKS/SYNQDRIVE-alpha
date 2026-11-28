@@ -191,6 +191,7 @@ export type ProvisionOperationMetadata = {
   inviteId?: string | null;
   membershipId?: string | null;
   inviteByEmail?: boolean;
+  credentialSetupRequested?: boolean;
 };
 
 export function readProvisionOperationMetadataFromOutbox(
@@ -206,6 +207,9 @@ export function readProvisionOperationMetadataFromOutbox(
     if (meta.membershipId === null) out.membershipId = null;
     else if (typeof meta.membershipId === 'string') out.membershipId = meta.membershipId;
     if (typeof meta.inviteByEmail === 'boolean') out.inviteByEmail = meta.inviteByEmail;
+    if (typeof meta.credentialSetupRequested === 'boolean') {
+      out.credentialSetupRequested = meta.credentialSetupRequested;
+    }
     return out;
   } catch {
     return null;
